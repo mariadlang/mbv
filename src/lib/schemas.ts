@@ -32,6 +32,8 @@ const profileSchema = z.object({
   startDate: z.string(),
   weekStartsOn: z.union([z.literal(0), z.literal(1)]),
   priorityAreaIds: z.array(z.string()),
+  mainPriorities: z.array(z.string()).optional(),
+  theme: z.enum(["light", "rose", "taupe"]).optional(),
   onboardingCompleted: z.boolean(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
@@ -43,6 +45,9 @@ const lifeAreaSchema = z.object({
   color: z.enum(["rose", "sage", "taupe", "charcoal", "blush"]),
   order: z.number(),
   active: z.boolean(),
+  currentScore: z.number().min(0).max(10).optional(),
+  desiredScore: z.number().min(0).max(10).optional(),
+  vision: z.string().optional(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });

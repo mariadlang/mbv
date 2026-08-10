@@ -34,13 +34,13 @@ export async function generateMetadata(): Promise<Metadata> {
       title: "My Best Version Planner",
       description: "Diseña la vida que quieres vivir. Progreso amable, un paso a la vez.",
       type: "website",
-      images: [{ url: "/og.png", width: 1200, height: 630, alt: "My Best Version Planner" }],
+      images: [{ url: "/og-reference.png", width: 1200, height: 630, alt: "My Best Version Planner" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "My Best Version Planner",
       description: "Diseña la vida que quieres vivir. Progreso amable, un paso a la vez.",
-      images: ["/og.png"],
+      images: ["/og-reference.png"],
     },
   };
 }

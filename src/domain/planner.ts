@@ -15,6 +15,8 @@ export interface Profile {
   startDate: string;
   weekStartsOn: 0 | 1;
   priorityAreaIds: string[];
+  mainPriorities?: string[];
+  theme?: "light" | "rose" | "taupe";
   onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +28,9 @@ export interface LifeArea {
   color: "rose" | "sage" | "taupe" | "charcoal" | "blush";
   order: number;
   active: boolean;
+  currentScore?: number;
+  desiredScore?: number;
+  vision?: string;
   createdAt: string;
   updatedAt: string;
 }

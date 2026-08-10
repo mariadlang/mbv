@@ -24,7 +24,7 @@ export const plannerService = {
   },
 
   async completeOnboarding(
-    input: OnboardingInput & { selectedAreaNames: string[] },
+    input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[] },
   ): Promise<PlannerSnapshot> {
     const now = new Date().toISOString();
     const colors = ["rose", "sage", "taupe", "blush", "charcoal"] as const;
@@ -34,6 +34,9 @@ export const plannerService = {
       color: colors[index % colors.length],
       order: index,
       active: true,
+      currentScore: 6,
+      desiredScore: 8,
+      vision: "",
       createdAt: now,
       updatedAt: now,
     }));
@@ -47,11 +50,22 @@ export const plannerService = {
         startDate: toLocalDateKey(new Date()),
         weekStartsOn: input.weekStartsOn,
         priorityAreaIds: lifeAreas.map((area) => area.id),
+        mainPriorities: (input.priorities ?? []).filter(Boolean).slice(0, 3),
+        theme: "light",
         onboardingCompleted: true,
         createdAt: now,
         updatedAt: now,
       },
       lifeAreas,
+      tasks: (input.priorities ?? []).filter(Boolean).slice(0, 3).map((title) => ({
+        id: id(),
+        title,
+        date: toLocalDateKey(new Date()),
+        priority: "high" as const,
+        status: "planned" as const,
+        createdAt: now,
+        updatedAt: now,
+      })),
     };
     await repository.replace(snapshot);
     return snapshot;
@@ -172,37 +186,44 @@ export const plannerService = {
     }));
   },
 
-  saveMood(mood: MoodName, energy: 1 | 2 | 3 | 4 | 5): Promise<PlannerSnapshot> {
+  saveMood(
+    mood: MoodName,
+    energy: 1 | 2 | 3 | 4 | 5,
+    factors: string[] = [],
+    note?: string,
+  ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const date = toLocalDateKey(new Date());
       const now = new Date().toISOString();
       const existing = snapshot.moodLogs.find((log) => log.date === date);
       const moodLogs = existing
         ? snapshot.moodLogs.map((log) =>
-            log.id === existing.id ? { ...log, mood, energy, updatedAt: now } : log,
+            log.id === existing.id ? { ...log, mood, energy, factors, note, updatedAt: now } : log,
           )
         : [
             ...snapshot.moodLogs,
-            { id: id(), date, mood, energy, factors: [], createdAt: now, updatedAt: now },
+            { id: id(), date, mood, energy, factors, note, createdAt: now, updatedAt: now },
           ];
       return { ...snapshot, moodLogs };
     });
   },
 
-  createGoal(input: GoalFormInput): Promise<PlannerSnapshot> {
+  createGoal(input: GoalFormInput, milestoneTitles: string[] = []): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = new Date().toISOString();
+      const goalId = id();
+      const cleanMilestones = milestoneTitles.map((title) => title.trim()).filter(Boolean);
       return {
         ...snapshot,
         goals: [
           ...snapshot.goals,
           {
-            id: id(),
+            id: goalId,
             title: input.title,
             reason: input.reason,
             lifeAreaId: input.lifeAreaId || undefined,
             targetDate: input.targetDate || undefined,
-            progressType: "manual",
+            progressType: cleanMilestones.length ? "milestones" : "manual",
             manualProgress: 0,
             priority: "medium",
             status: "active",
@@ -210,8 +231,47 @@ export const plannerService = {
             updatedAt: now,
           },
         ],
+        milestones: [
+          ...snapshot.milestones,
+          ...cleanMilestones.map((title) => ({
+            id: id(),
+            goalId,
+            title,
+            weight: 100 / cleanMilestones.length,
+            status: "active" as const,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        ],
       };
     });
+  },
+
+  updateLifeArea(
+    lifeAreaId: string,
+    input: { currentScore: number; desiredScore: number; vision: string },
+  ): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      lifeAreas: snapshot.lifeAreas.map((area) =>
+        area.id === lifeAreaId
+          ? { ...area, ...input, updatedAt: new Date().toISOString() }
+          : area,
+      ),
+    }));
+  },
+
+  updateProfileSettings(input: {
+    name?: string;
+    weekStartsOn?: 0 | 1;
+    theme?: "light" | "rose" | "taupe";
+  }): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      profile: snapshot.profile
+        ? { ...snapshot.profile, ...input, updatedAt: new Date().toISOString() }
+        : null,
+    }));
   },
 
   toggleMilestone(milestoneId: string): Promise<PlannerSnapshot> {
@@ -229,7 +289,10 @@ export const plannerService = {
     }));
   },
 
-  saveJournal(text: string): Promise<PlannerSnapshot> {
+  saveJournal(
+    text: string,
+    options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string } = {},
+  ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = new Date().toISOString();
       return {
@@ -238,8 +301,10 @@ export const plannerService = {
           {
             id: id(),
             date: toLocalDateKey(new Date()),
-            type: "free",
+            type: options.type ?? "free",
+            title: options.title,
             text: text.trim(),
+            goalId: options.goalId,
             status: "saved",
             createdAt: now,
             updatedAt: now,

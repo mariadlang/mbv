@@ -1,0 +1,95 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Save, Sparkles } from "lucide-react";
+import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
+import type { PlannerController } from "@/src/hooks/usePlanner";
+import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
+
+const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane];
+
+export function VisionPage({ planner }: { planner: PlannerController }) {
+  const { snapshot } = planner;
+  const [view, setView] = useState<"dream" | "wheel">("dream");
+  const [selectedId, setSelectedId] = useState(snapshot.lifeAreas[0]?.id ?? "");
+  const selected = snapshot.lifeAreas.find((area) => area.id === selectedId) ?? snapshot.lifeAreas[0];
+  const [vision, setVision] = useState(selected?.vision ?? "");
+  const [currentScore, setCurrentScore] = useState(selected?.currentScore ?? 6);
+  const [desiredScore, setDesiredScore] = useState(selected?.desiredScore ?? 8);
+
+  const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active).map((area) => ({
+    area: area.name.split(" ")[0],
+    actual: area.currentScore ?? 6,
+    deseada: area.desiredScore ?? 8,
+  })), [snapshot.lifeAreas]);
+
+  const chooseArea = (id: string) => {
+    const area = snapshot.lifeAreas.find((item) => item.id === id);
+    setSelectedId(id);
+    setVision(area?.vision ?? "");
+    setCurrentScore(area?.currentScore ?? 6);
+    setDesiredScore(area?.desiredScore ?? 8);
+  };
+
+  return (
+    <div className="page-stack">
+      <SectionHeading
+        eyebrow="Tu visión, sin límites"
+        title={view === "dream" ? "Dream Life" : "Rueda de vida"}
+        description={view === "dream" ? "Explora la vida que quieres construir por áreas." : "Evalúa dónde estás y visualiza hacia dónde quieres avanzar."}
+        action={<div className="segmented-control"><button className={view === "dream" ? "is-active" : ""} onClick={() => setView("dream")}>Dream Life</button><button className={view === "wheel" ? "is-active" : ""} onClick={() => setView("wheel")}>Rueda de vida</button></div>}
+      />
+
+      {view === "dream" ? (
+        <div className="vision-layout">
+          <section className="vision-card-grid">
+            {snapshot.lifeAreas.filter((area) => area.active).map((area, index) => {
+              const Icon = areaIcons[index % areaIcons.length];
+              return (
+                <button key={area.id} className={`vision-card ${selected?.id === area.id ? "is-selected" : ""}`} onClick={() => chooseArea(area.id)}>
+                  <span className={`vision-card__visual vision-card__visual--${area.color}`}><Icon size={30} strokeWidth={1.35} /></span>
+                  <Badge tone="neutral">{area.name}</Badge>
+                  <h2>{area.vision ? area.vision.split(".")[0] : `Diseñar mi visión de ${area.name.toLowerCase()}`}</h2>
+                  <p>{area.vision || "Describe cómo se siente esta área cuando está alineada contigo."}</p>
+                </button>
+              );
+            })}
+          </section>
+          {selected && (
+            <Card className="vision-editor">
+              <p className="eyebrow">Reflexión · {selected.name}</p>
+              <h2>¿Cómo se ve tu mejor versión aquí?</h2>
+              <textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" />
+              <div className="score-pair">
+                <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
+                <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
+              </div>
+              <Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision })}><Save size={16} /> Guardar visión</Button>
+            </Card>
+          )}
+        </div>
+      ) : (
+        <div className="wheel-layout">
+          <Card className="wheel-chart-card">
+            <div className="wheel-legend"><span><i className="legend-dot legend-dot--taupe" /> Actual</span><span><i className="legend-dot legend-dot--rose" /> Deseada</span></div>
+            <div className="wheel-chart" aria-label="Rueda de vida actual y deseada">
+              <ResponsiveContainer width="100%" height={460}>
+                <RadarChart data={radarData} outerRadius="72%">
+                  <PolarGrid stroke="#E5D9CE" />
+                  <PolarAngleAxis dataKey="area" tick={{ fill: "#40352D", fontSize: 12 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tickCount={6} tick={{ fill: "#9A8876", fontSize: 10 }} />
+                  <Radar name="Actual" dataKey="actual" stroke="#9A8876" fill="#9A8876" fillOpacity={0.18} />
+                  <Radar name="Deseada" dataKey="deseada" stroke="#C98282" fill="#C98282" fillOpacity={0.2} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <div className="wheel-side page-stack">
+            <Card className="reflection-panel"><Sparkles size={24} /><p className="eyebrow">Reflexión</p><h2>¿Qué área deseas fortalecer?</h2><p>{selected?.vision || "Elige un área y escribe una visión que te dé dirección, no presión."}</p><Button variant="secondary" onClick={() => setView("dream")}>Editar mi visión</Button></Card>
+            <Card className="wheel-summary"><p className="eyebrow">Resumen</p><strong>{(radarData.reduce((sum, item) => sum + item.actual, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio actual</span><strong>{(radarData.reduce((sum, item) => sum + item.deseada, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio deseado</span></Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

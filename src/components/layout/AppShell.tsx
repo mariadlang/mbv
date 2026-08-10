@@ -4,52 +4,62 @@ import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BarChart3,
+  Bell,
+  BookOpen,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleUserRound,
+  Eye,
   Feather,
   Flag,
   HeartPulse,
-  Home,
   LayoutDashboard,
   ListTodo,
   Menu,
-  MoreHorizontal,
+  MoonStar,
   Plus,
   Settings,
+  Smile,
+  Sun,
   Target,
 } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 
 const desktopItems = [
   ["/app/dashboard", "Dashboard", LayoutDashboard],
+  ["/app/vision", "Visión", Eye],
+  ["/app/goals", "Metas", Target],
   ["/app/planning", "Planificación", CalendarDays],
   ["/app/today", "Hoy", ListTodo],
+  ["/app/tasks", "Tareas", Flag],
   ["/app/habits", "Hábitos", HeartPulse],
-  ["/app/goals", "Metas", Target],
+  ["/app/mood", "Ánimo", Smile],
   ["/app/progress", "Progreso", BarChart3],
   ["/app/journal", "Journal", Feather],
   ["/app/settings", "Ajustes", Settings],
+  ["/app/help", "Centro de ayuda", BookOpen],
 ] as const;
 
 const mobileItems = [
-  ["/app/dashboard", "Inicio", Home],
-  ["/app/planning", "Plan", CalendarDays],
   ["/app/today", "Hoy", Flag],
+  ["/app/tasks", "Tareas", ListTodo],
   ["/app/habits", "Hábitos", HeartPulse],
-  ["/app/more", "Más", MoreHorizontal],
+  ["/app/mood", "Estado", Smile],
+  ["/app/journal", "Journal", Feather],
 ] as const;
 
 export function AppShell({
   children,
   userName,
   saving,
+  theme,
   onQuickAdd,
 }: {
   children: ReactNode;
   userName: string;
   saving: boolean;
+  theme: "light" | "rose" | "taupe";
   onQuickAdd: () => void;
 }) {
   const { pathname } = useLocation();
@@ -57,12 +67,12 @@ export function AppShell({
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? "app-shell--collapsed" : ""}`}>
+    <div className={`app-shell theme-${theme} ${sidebarCollapsed ? "app-shell--collapsed" : ""}`}>
       <aside className="sidebar" aria-label="Navegación principal">
-        <div className="sidebar__brand">
+        <NavLink to="/app/dashboard" className="sidebar__brand">
           <span className="wordmark">My Best Version</span>
           {!sidebarCollapsed && <span className="wordmark-sub">Planner</span>}
-        </div>
+        </NavLink>
         <nav className="sidebar__nav">
           {desktopItems.map(([href, label, Icon]) => (
             <NavLink
@@ -77,10 +87,7 @@ export function AppShell({
           ))}
         </nav>
         <div className="sidebar__footer">
-          <div className="local-note" title="Tus datos permanecen en este dispositivo">
-            <span className="local-note__dot" />
-            {!sidebarCollapsed && <span>Guardado en este dispositivo</span>}
-          </div>
+          <div className="sidebar-profile"><span>{userName.slice(0, 1).toUpperCase()}</span>{!sidebarCollapsed && <div><strong>{userName}</strong><small>Mi espacio</small></div>}</div>
           <button
             className="collapse-button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -93,10 +100,11 @@ export function AppShell({
 
       <div className="app-main">
         <header className="topbar">
-          <div className="topbar__mobile-brand">
+          <NavLink to="/app/dashboard" className="topbar__mobile-brand">
             <Menu size={20} aria-hidden="true" />
             <span className="wordmark">My Best Version</span>
-          </div>
+          </NavLink>
+          <div className="topbar__utilities"><button aria-label="Cambiar apariencia"><Sun size={18} /><MoonStar size={14} /></button><button aria-label="Notificaciones"><Bell size={19} /></button></div>
           <div className="topbar__status" aria-live="polite">
             <span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />
             {saving ? "Guardando…" : "Guardado"}

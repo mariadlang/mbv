@@ -97,7 +97,7 @@ export function usePlanner() {
     error,
     retry: load,
     completeOnboarding: (
-      input: OnboardingInput & { selectedAreaNames: string[] },
+      input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[] },
     ) => commit((service) => service.completeOnboarding(input)),
     loadDemo: () => commit((service) => service.loadDemo()),
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
@@ -108,12 +108,18 @@ export function usePlanner() {
     toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
-    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5) =>
-      commit((service) => service.saveMood(mood, energy)),
-    createGoal: (input: GoalFormInput) => commit((service) => service.createGoal(input)),
+    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5, factors: string[] = [], note?: string) =>
+      commit((service) => service.saveMood(mood, energy, factors, note)),
+    createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
+      commit((service) => service.createGoal(input, milestoneTitles)),
+    updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string }) =>
+      commit((service) => service.updateLifeArea(lifeAreaId, input)),
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe" }) =>
+      commit((service) => service.updateProfileSettings(input)),
     toggleMilestone: (milestoneId: string) =>
       commit((service) => service.toggleMilestone(milestoneId)),
-    saveJournal: (text: string) => commit((service) => service.saveJournal(text)),
+    saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string } = {}) =>
+      commit((service) => service.saveJournal(text, options)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
     clearAll: () => commit((service) => service.clear()),

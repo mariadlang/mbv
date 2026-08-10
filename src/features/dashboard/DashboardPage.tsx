@@ -1,277 +1,50 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowUpRight,
-  Check,
-  ChevronRight,
-  Circle,
-  Clock3,
-  Heart,
-  Leaf,
-  Plus,
-  RotateCcw,
-  Sparkles,
-  Target,
-} from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { calculateGoalProgress, isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
+import { ArrowRight, BookOpen, CalendarDays, Check, Circle, Dumbbell, Heart, Leaf, Pencil, PiggyBank, Quote, Rocket, Sparkles, Target } from "lucide-react";
 import type { MoodName } from "@/src/domain/planner";
+import { calculateGoalProgress, isHabitScheduledOn } from "@/src/domain/rules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { formatLongDate, formatShortDay, getRecentDates, toLocalDateKey } from "@/src/lib/dates";
-import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
+import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
 
-const moods: { name: MoodName; symbol: string }[] = [
-  { name: "Calmada", symbol: "◡" },
-  { name: "Enfocada", symbol: "◎" },
-  { name: "Alegre", symbol: "✦" },
-  { name: "Cansada", symbol: "◔" },
-  { name: "Abrumada", symbol: "≈" },
+const moodFaces: { name: MoodName; face: string }[] = [
+  { name: "Abrumada", face: "⌢" }, { name: "Cansada", face: "—" }, { name: "Calmada", face: "·" }, { name: "Enfocada", face: "⌣" }, { name: "Alegre", face: "◡" },
 ];
+const goalIcons = [Dumbbell, PiggyBank, Rocket];
 
 export function DashboardPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
-  const today = new Date();
-  const todayKey = toLocalDateKey(today);
-  const [energy, setEnergy] = useState<1 | 2 | 3 | 4 | 5>(4);
-  const todayTasks = snapshot.tasks.filter(
-    (task) => task.date === todayKey && task.status !== "cancelled",
-  );
-  const overdueTasks = snapshot.tasks.filter((task) => isTaskOverdue(task, todayKey));
-  const todayHabits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, today));
-  const activeGoals = snapshot.goals.filter((goal) => goal.status === "active").slice(0, 3);
+  const now = new Date();
+  const todayKey = toLocalDateKey(now);
+  const todayTasks = snapshot.tasks.filter((task) => task.date === todayKey && task.status !== "cancelled");
+  const upcoming = snapshot.tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").sort((a,b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")).slice(0,5);
+  const habits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, now)).slice(0,4);
   const todayMood = snapshot.moodLogs.find((log) => log.date === todayKey);
+  const [energy, setEnergy] = useState<1 | 2 | 3 | 4 | 5>(todayMood?.energy ?? 4);
+  const goals = snapshot.goals.filter((goal) => goal.status === "active").slice(0,3);
+  const annualProgress = useMemo(() => goals.length ? Math.round(goals.reduce((sum, goal) => sum + calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks), 0) / goals.length) : 0, [goals, snapshot.milestones, snapshot.tasks]);
 
-  const chartData = useMemo(() => {
-    return getRecentDates(7).map((date) => {
-      const dateKey = toLocalDateKey(date);
-      const scheduled = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, date));
-      const completed = scheduled.filter((habit) =>
-        snapshot.habitLogs.some((log) => log.habitId === habit.id && log.date === dateKey),
-      ).length;
-      return {
-        day: formatShortDay(date),
-        value: scheduled.length ? Math.round((completed / scheduled.length) * 100) : 0,
-      };
-    });
-  }, [snapshot.habitLogs, snapshot.habits]);
+  return <div className="reference-dashboard">
+    <header className="dashboard-greeting"><div><h1>Buenos días, {snapshot.profile?.name ?? "María"} <span>👋</span></h1><p>{formatLongDate(now)}</p></div></header>
+    <div className="reference-dashboard-grid">
+      <Card className="dash-intention ref-card"><div className="ref-card__heading"><h2>Mi intención de hoy</h2><Link to="/app/today" aria-label="Editar intención"><Pencil size={17} /></Link></div><div className="intention-quote"><Quote size={25} /><blockquote>{snapshot.profile?.dailyIntention || "Actuar con enfoque y gratitud para avanzar hacia la vida que deseo."}</blockquote><Heart size={20} /></div></Card>
 
-  const completedToday = todayHabits.filter((habit) =>
-    snapshot.habitLogs.some((log) => log.habitId === habit.id && log.date === todayKey),
-  ).length;
+      <Card className="dash-top3 ref-card"><div className="ref-card__heading"><h2>Top 3</h2><Link to="/app/tasks" aria-label="Editar prioridades"><Pencil size={17} /></Link></div>{todayTasks.length ? <div className="numbered-priorities">{todayTasks.slice(0,3).map((task,index) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={15} /> : index + 1}</span><strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong></button>)}</div> : <EmptyState title="Elige tus Top 3" text="Tres prioridades son suficientes para dar dirección al día." />}</Card>
 
-  return (
-    <div className="page-stack">
-      <SectionHeading
-        eyebrow={formatLongDate(today)}
-        title={`Hola, ${snapshot.profile?.name ?? "María"}`}
-        description="No necesitas hacerlo todo. Solo elegir qué importa ahora."
-        action={<Badge tone="sage"><Leaf size={14} /> Semana en equilibrio</Badge>}
-      />
+      <Card className="dash-goals ref-card"><div className="ref-card__heading"><h2>Metas prioritarias</h2><Link to="/app/goals">Ver todas</Link></div><div className="priority-goal-list">{goals.map((goal,index) => { const Icon=goalIcons[index % goalIcons.length]; const progress=calculateGoalProgress(goal,snapshot.milestones,snapshot.tasks); return <Link to="/app/goals" key={goal.id}><span className="priority-goal__icon"><Icon size={24} /></span><div><strong>{goal.title}</strong><ProgressBar value={progress} label={`Progreso de ${goal.title}`} /><small>{goal.reason}</small></div><b>{progress}%</b></Link>; })}{!goals.length && <EmptyState title="Define una meta" text="Conecta tu semana con una dirección mayor." />}</div><Link className="ref-card__footer-link" to="/app/goals">Ver todas mis metas <ArrowRight size={16} /></Link></Card>
 
-      <section className="intention-banner" aria-label="Intención del día">
-        <div className="intention-banner__curve" />
-        <div>
-          <span className="eyebrow">Mi intención de hoy</span>
-          <h2>{snapshot.profile?.dailyIntention || "Elige una intención que puedas sostener hoy."}</h2>
-        </div>
-        <Link to="/app/today" className="circle-link" aria-label="Editar intención del día">
-          <ArrowUpRight size={20} aria-hidden="true" />
-        </Link>
-      </section>
+      <Card className="dash-tasks ref-card"><div className="ref-card__heading"><h2>Tareas próximas</h2><Link to="/app/tasks">Ver todas</Link></div><div className="compact-task-list">{upcoming.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</span><strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong><CalendarDays size={14} /><small>{task.date === todayKey ? "Hoy" : task.date ?? "Inbox"}</small></button>)}</div></Card>
 
-      <div className="dashboard-grid dashboard-grid--top">
-        <Card className="top-three-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Enfoque diario</p>
-              <h2>Mis 3 prioridades</h2>
-            </div>
-            <Link to="/app/today" className="icon-button" aria-label="Abrir el día">
-              <ChevronRight size={20} />
-            </Link>
-          </div>
-          {todayTasks.length ? (
-            <div className="task-list">
-              {todayTasks.slice(0, 3).map((task, index) => (
-              <button className="task-row" key={task.id} onClick={() => planner.toggleTask(task.id)}>
-                <span className={`task-check ${task.status === "completed" ? "is-done" : ""}`}>
-                  {task.status === "completed" ? <Check size={16} /> : <span>{index + 1}</span>}
-                </span>
-                <span className="task-row__content">
-                  <strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong>
-                  <small>{task.estimatedMinutes ? `${task.estimatedMinutes} min` : "Sin hora"}</small>
-                </span>
-                <Badge tone={task.priority === "high" ? "rose" : "neutral"}>
-                  {task.priority === "high" ? "Prioridad" : "Hoy"}
-                </Badge>
-              </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="Un día con espacio"
-              text="Añade hasta tres prioridades realistas para hoy."
-              action={<Link to="/app/today" className="text-link">Planear mi día <ChevronRight size={16} /></Link>}
-            />
-          )}
-        </Card>
+      <Card className="dash-habits ref-card"><div className="ref-card__heading"><h2>Hábitos de hoy</h2><Link to="/app/habits">Ver hábitos</Link></div><div className="compact-habit-list">{habits.map((habit,index) => { const complete=snapshot.habitLogs.some((log)=>log.habitId===habit.id&&log.date===todayKey); const Icon=[Dumbbell,Target,BookOpen,Sparkles][index%4]; return <button key={habit.id} onClick={() => planner.toggleHabit(habit.id,todayKey)}><Icon size={19}/><strong>{habit.name}</strong>{habit.type === "boolean" ? <div className="week-dots">{[1,2,3,4,5,6,0].map((day) => <i className={habit.scheduledDays.includes(day) ? day === now.getDay() && complete ? "is-complete" : "is-on" : ""} key={day} />)}</div> : <span><b>{complete ? habit.target : 0}</b> / {habit.target} {habit.unit}</span>}</button>; })}</div></Card>
 
-        <Card className="habit-today-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Progreso amable</p>
-              <h2>Hábitos de hoy</h2>
-            </div>
-            <span className="metric-serif">{completedToday}/{todayHabits.length}</span>
-          </div>
-          {todayHabits.length ? (
-            <div className="habit-quick-list">
-              {todayHabits.slice(0, 4).map((habit) => {
-              const completed = snapshot.habitLogs.some(
-                (log) => log.habitId === habit.id && log.date === todayKey,
-              );
-              return (
-                <button
-                  key={habit.id}
-                  className={`habit-quick ${completed ? "is-done" : ""}`}
-                  onClick={() => planner.toggleHabit(habit.id, todayKey)}
-                  aria-pressed={completed}
-                >
-                  <span className="habit-quick__icon"><Heart size={17} /></span>
-                  <span>
-                    <strong>{habit.name}</strong>
-                    <small>{completed ? "Registrado" : "Hoy aún no se ha registrado"}</small>
-                  </span>
-                  {completed ? <Check size={18} /> : <Circle size={18} />}
-                </button>
-              );
-              })}
-            </div>
-          ) : (
-            <EmptyState
-              title="Todavía sin hábitos para hoy"
-              text="Crea uno pequeño y decide exactamente qué días quieres sostenerlo."
-            />
-          )}
-          <Link to="/app/habits" className="card-link">Ver todos mis hábitos <ChevronRight size={16} /></Link>
-        </Card>
+      <Card className="dash-mood ref-card"><h2>Ánimo y energía</h2><div className="dash-mood-inner"><div><h3>¿Cómo está tu ánimo?</h3><div className="dashboard-mood-faces">{moodFaces.map((item) => <button key={item.name} className={todayMood?.mood === item.name ? "is-selected" : ""} onClick={() => planner.saveMood(item.name,energy)} aria-label={item.name}>{item.face}</button>)}</div><p>{todayMood?.note || "Registra cómo te sientes para reconocer patrones con calma."}</p></div><div className="energy-gauge"><h3>¿Cómo está tu energía?</h3><div className="semi-gauge" style={{"--energy": `${energy * 20}%`} as CSSProperties}><span>⚡ <strong>{energy}</strong>/5</span></div><div className="energy-mini-buttons">{([1,2,3,4,5] as const).map((value)=><button key={value} className={energy===value?"is-selected":""} onClick={()=>setEnergy(value)}>{value}</button>)}</div></div></div></Card>
 
-        <Card className="mood-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Un minuto para ti</p>
-              <h2>¿Cómo te sientes?</h2>
-            </div>
-            {todayMood && <Badge tone="sage">Registrado</Badge>}
-          </div>
-          <div className="mood-selector" role="group" aria-label="Selecciona tu ánimo">
-            {moods.map((mood) => (
-              <button
-                key={mood.name}
-                className={todayMood?.mood === mood.name ? "mood-option is-selected" : "mood-option"}
-                onClick={() => planner.saveMood(mood.name, energy)}
-                aria-label={mood.name}
-              >
-                <span>{mood.symbol}</span>
-                <small>{mood.name}</small>
-              </button>
-            ))}
-          </div>
-          <div className="energy-row">
-            <span>Energía</span>
-            <div className="energy-scale" role="group" aria-label="Nivel de energía">
-              {([1, 2, 3, 4, 5] as const).map((level) => (
-                <button
-                  key={level}
-                  className={energy === level ? "is-selected" : ""}
-                  onClick={() => setEnergy(level)}
-                  aria-label={`Energía ${level}`}
-                >{level}</button>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
+      <Card className="dash-progress ref-card"><div className="ref-card__heading"><h2>Progreso anual</h2><Link to="/app/progress">Ver informe</Link></div><div className="annual-progress"><div className="progress-ring" style={{"--progress": `${annualProgress * 3.6}deg`} as CSSProperties}><span>{annualProgress}%</span></div><div><strong>Avance de tus metas este año</strong>{snapshot.lifeAreas.filter((area)=>area.active).slice(0,4).map((area)=><p key={area.id}><i className={`area-dot area-dot--${area.color}`} />{area.name}<b>{area.currentScore ? area.currentScore*10 : annualProgress}%</b></p>)}</div></div></Card>
 
-      {overdueTasks.length > 0 && (
-        <section className="pending-banner">
-          <span className="pending-banner__icon"><RotateCcw size={19} /></span>
-          <div>
-            <strong>{overdueTasks.length === 1 ? "Una tarea quedó pendiente" : `${overdueTasks.length} tareas quedaron pendientes`}</strong>
-            <p>Puedes completarlas, moverlas o cancelarlas. Reprogramar también es avanzar.</p>
-          </div>
-          <Button variant="secondary" onClick={() => planner.rescheduleTask(overdueTasks[0].id, todayKey)}>
-            Mover la primera a hoy
-          </Button>
-        </section>
-      )}
-
-      <div className="dashboard-grid dashboard-grid--bottom">
-        <Card className="goals-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Dirección</p>
-              <h2>Metas prioritarias</h2>
-            </div>
-            <Link to="/app/goals" className="icon-button" aria-label="Abrir metas"><Plus size={19} /></Link>
-          </div>
-          {activeGoals.length ? (
-            <div className="goal-list">
-              {activeGoals.map((goal) => {
-                const progress = calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks);
-                return (
-                  <Link to="/app/goals" className="goal-row" key={goal.id}>
-                    <span className="goal-row__icon"><Target size={18} /></span>
-                    <div>
-                      <strong>{goal.title}</strong>
-                      <ProgressBar value={progress} label="Progreso" />
-                    </div>
-                    <ChevronRight size={18} />
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState title="Una dirección para empezar" text="Crea una meta clara y conecta tus hábitos con ella." />
-          )}
-        </Card>
-
-        <Card className="week-progress-card">
-          <div className="card-heading">
-            <div>
-              <p className="eyebrow">Últimos 7 días</p>
-              <h2>Tu ritmo esta semana</h2>
-            </div>
-            <Sparkles size={20} className="rose-icon" aria-hidden="true" />
-          </div>
-          <div className="mini-chart" aria-label="Cumplimiento de hábitos de los últimos siete días">
-            <ResponsiveContainer width="100%" height={150}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 4, left: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="roseArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#C98282" stopOpacity={0.34} />
-                    <stop offset="100%" stopColor="#C98282" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9A8876", fontSize: 12 }} />
-                <Tooltip formatter={(value) => [`${value}%`, "Hábitos"]} />
-                <Area type="monotone" dataKey="value" stroke="#A96363" strokeWidth={2} fill="url(#roseArea)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="chart-summary">Completaste {completedToday} de {todayHabits.length} hábitos programados hoy. Los días no programados no reducen tu porcentaje.</p>
-        </Card>
-
-        <Card className="review-card">
-          <span className="review-card__label">Revisión semanal</span>
-          <Clock3 size={23} aria-hidden="true" />
-          <h2>Mira lo que<br />sí avanzó.</h2>
-          <p>Una pausa breve para reconocer, ajustar y elegir la próxima semana.</p>
-          <Link to="/app/journal" className="review-card__link">Abrir mi revisión <ArrowUpRight size={17} /></Link>
-        </Card>
-      </div>
+      <Card className="dash-review ref-card"><span className="review-icon"><CalendarDays size={26}/></span><div><h2>Revisión semanal</h2><p>Dedica 30 minutos para reflexionar, evaluar y planificar tu próxima semana.</p></div><Link className="button button--primary" to="/app/journal">Iniciar revisión</Link></Card>
     </div>
-  );
+    <footer className="dashboard-quote"><Quote size={18}/><span>Pequeñas acciones diarias crean grandes cambios a largo plazo.</span><Leaf size={26}/></footer>
+  </div>;
 }

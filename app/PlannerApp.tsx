@@ -18,6 +18,10 @@ const PlanningPage = lazy(() => import("@/src/features/planning/PlanningPage").t
 const ProgressPage = lazy(() => import("@/src/features/progress/ProgressPage").then((module) => ({ default: module.ProgressPage })));
 const SettingsPage = lazy(() => import("@/src/features/settings/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 const TodayPage = lazy(() => import("@/src/features/today/TodayPage").then((module) => ({ default: module.TodayPage })));
+const VisionPage = lazy(() => import("@/src/features/vision/VisionPage").then((module) => ({ default: module.VisionPage })));
+const TasksPage = lazy(() => import("@/src/features/tasks/TasksPage").then((module) => ({ default: module.TasksPage })));
+const MoodPage = lazy(() => import("@/src/features/mood/MoodPage").then((module) => ({ default: module.MoodPage })));
+const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module) => ({ default: module.HelpPage })));
 
 export default function PlannerApp() {
   const planner = usePlanner();
@@ -67,6 +71,7 @@ export default function PlannerApp() {
       <AppShell
         userName={planner.snapshot.profile.name}
         saving={planner.saving}
+        theme={planner.snapshot.profile.theme ?? "light"}
         onQuickAdd={() => setQuickAddOpen(true)}
       >
         {planner.error && <div className="inline-message inline-message--error" role="alert">{planner.error}</div>}
@@ -75,13 +80,17 @@ export default function PlannerApp() {
             <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app/dashboard" element={<DashboardPage planner={planner} />} />
+            <Route path="/app/vision" element={<VisionPage planner={planner} />} />
             <Route path="/app/planning" element={<PlanningPage planner={planner} />} />
             <Route path="/app/today" element={<TodayPage planner={planner} />} />
+            <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
             <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
+            <Route path="/app/mood" element={<MoodPage planner={planner} />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} />} />
+            <Route path="/app/help" element={<HelpPage />} />
             <Route path="/app/more" element={<MorePage />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
           </Routes>
