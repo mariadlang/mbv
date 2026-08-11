@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, LockKeyhole, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, LockKeyhole, LogOut, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
@@ -19,6 +19,8 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
   const [theme, setTheme] = useState<"light" | "rose" | "taupe">(planner.snapshot.profile?.theme ?? "light");
   const [currency, setCurrency] = useState<"COP" | "USD" | "EUR" | "MXN">(planner.snapshot.financialProfiles[0]?.baseCurrency ?? planner.snapshot.profile?.baseCurrency ?? "COP");
   const [financePrivacy, setFinancePrivacy] = useState(planner.snapshot.financialProfiles[0]?.privacyMode ?? planner.snapshot.profile?.financePrivacy ?? false);
+  const [usePurpose, setUsePurpose] = useState(planner.snapshot.profile?.usePurpose ?? "");
+  const [fitnessEnabled, setFitnessEnabled] = useState(planner.snapshot.profile?.fitnessEnabled ?? false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<BackupPreview | null>(null);
 
@@ -46,7 +48,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
   };
 
   const saveProfile = async () => {
-    await planner.updateProfileSettings({ name: name.trim() || "Mi Mejor Versión", weekStartsOn, theme, baseCurrency: currency, financePrivacy });
+    await planner.updateProfileSettings({ name: name.trim() || "Mi Mejor Versión", weekStartsOn, theme, baseCurrency: currency, financePrivacy, usePurpose, fitnessEnabled });
     setMessage("Tus preferencias quedaron guardadas.");
   };
 
@@ -56,23 +58,25 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
     <div className="settings-reference-layout">
       <Card className="settings-list-card">
         <section><div><strong>Perfil</strong><small>Nombre del perfil</small></div><input value={name} onChange={(event)=>setName(event.target.value)} aria-label="Nombre del perfil" /></section>
+        <section><div><strong>Para qué lo quiero usar</strong><small>Tu razón para volver a este espacio.</small></div><textarea rows={3} value={usePurpose} onChange={(event) => setUsePurpose(event.target.value)} /></section>
         <section><div><strong>Inicio de semana</strong><small>Selecciona el primer día de tu semana.</small></div><select value={weekStartsOn} onChange={(event)=>setWeekStartsOn(Number(event.target.value) as 0|1)}><option value={1}>Lunes</option><option value={0}>Domingo</option></select></section>
         <section className="theme-setting"><div><strong>Tema</strong><small>Elige la atmósfera visual del planner.</small></div><div>{(["light","rose","taupe"] as const).map((item)=><button key={item} className={theme===item?"is-selected":""} onClick={()=>setTheme(item)}><i className={`theme-swatch theme-swatch--${item}`}/>{item==="light"?"Claro":item==="rose"?"Rosa":"Taupe"}</button>)}</div></section>
         <section><div><strong>Moneda base</strong><small>Se usa para todos los registros financieros.</small></div><select value={currency} onChange={(event) => setCurrency(event.target.value as typeof currency)}><option value="COP">COP · Peso colombiano</option><option value="USD">USD · Dólar</option><option value="EUR">EUR · Euro</option><option value="MXN">MXN · Peso mexicano</option></select></section>
         <section><div><strong>Privacidad financiera</strong><small>Oculta los valores sin borrar tus movimientos.</small></div><button className={`privacy-toggle ${financePrivacy ? "is-on" : ""}`} aria-pressed={financePrivacy} onClick={() => setFinancePrivacy(!financePrivacy)}><span />{financePrivacy ? "Valores ocultos" : "Valores visibles"}</button></section>
+        <section><div><strong>Fitness Hub opcional</strong><small>Muestra ejercicios, comidas, macros, medidas y fotos solo cuando lo necesites.</small></div><button className={`privacy-toggle ${fitnessEnabled ? "is-on" : ""}`} aria-pressed={fitnessEnabled} onClick={() => setFitnessEnabled(!fitnessEnabled)}><span />{fitnessEnabled ? "Módulo activo" : "Módulo oculto"}</button></section>
         <section><div><strong>Guardar preferencias</strong><small>Actualiza perfil, semana, tema y finanzas.</small></div><Button onClick={saveProfile}>Guardar</Button></section>
         <section><div><strong>Exportar copia de seguridad</strong><small>Descarga un archivo con todos tus datos.</small></div><Button variant="secondary" onClick={async () => { await planner.downloadBackup(); setMessage("Tu respaldo se descargó correctamente."); }}><Download size={16}/> Exportar</Button></section>
         <section><div><strong>Importar copia de seguridad</strong><small>Primero podrás revisar el contenido; nada se reemplaza sin confirmar.</small></div><input ref={fileInput} className="sr-only" type="file" accept="application/json" onChange={(event) => inspectFile(event.target.files?.[0])} /><Button variant="secondary" onClick={()=>fileInput.current?.click()}><FileUp size={16}/> Seleccionar</Button></section>
         <section><div><strong>Restaurar datos de demostración</strong><small>Carga contenido ficticio para explorar la aplicación.</small></div><Button variant="secondary" onClick={async()=>{await planner.loadDemo();setMessage("Los datos ficticios de ejemplo están listos.");}}><RefreshCw size={16}/> Restaurar</Button></section>
         <section className="delete-setting"><div><strong>Eliminar todos los datos</strong><small>Esta acción no se puede deshacer.</small></div><Button variant="danger" onClick={()=>setDeleteOpen(true)}><Trash2 size={16}/> Eliminar</Button></section>
       </Card>
-      <aside className="settings-aside"><Card><ShieldCheck size={24}/><p className="eyebrow">Aviso de privacidad</p><h2>El control es tuyo</h2><p>Tus metas, hábitos, finanzas y reflexiones se guardan únicamente en tu navegador. No se conectan cuentas bancarias.</p></Card><Card><HelpCircle size={24}/><h2>¿Necesitas ayuda?</h2><p>Aprende los conceptos clave o reinicia el recorrido guiado.</p><Link className="button button--secondary" to="/app/help">Ir al centro de ayuda</Link></Card></aside>
+      <aside className="settings-aside"><Card><ShieldCheck size={24}/><p className="eyebrow">Aviso de privacidad</p><h2>El control es tuyo</h2><p>Tus metas, hábitos, finanzas y reflexiones se guardan únicamente en tu navegador. No se conectan cuentas bancarias.</p></Card><Card><LockKeyhole size={24}/><p className="eyebrow">Inicio de sesión</p><h2>Sesión protegida</h2><p>El acceso privado se valida con tu sesión de ChatGPT.</p><button className="button button--secondary" onClick={() => window.location.assign("/signout-with-chatgpt?return_to=/")}><LogOut size={16} /> Cerrar sesión</button></Card><Card><HelpCircle size={24}/><h2>¿Necesitas ayuda?</h2><p>Aprende los conceptos clave o reinicia el recorrido guiado.</p><Link className="button button--secondary" to="/app/help">Ir al centro de ayuda</Link></Card></aside>
     </div>
 
     <Card className="area-settings"><header><div><p className="eyebrow">Estructura transversal</p><h2>Áreas de vida</h2><p>Renombra, activa o reordena. Las metas y registros vinculados conservan su conexión.</p></div></header><div>{[...planner.snapshot.lifeAreas].sort((a,b) => a.order - b.order).map((area, index, all) => <div key={area.id}><input defaultValue={area.name} aria-label={`Nombre de ${area.name}`} onBlur={(event) => planner.updateLifeAreaSettings(area.id, { name: event.target.value })}/><label><input type="checkbox" checked={area.active} onChange={(event) => planner.updateLifeAreaSettings(area.id, { active: event.target.checked })}/> Activa</label><button disabled={index === 0} aria-label={`Subir ${area.name}`} onClick={() => planner.updateLifeAreaSettings(area.id, { direction: "up" })}><ArrowUp size={15}/></button><button disabled={index === all.length - 1} aria-label={`Bajar ${area.name}`} onClick={() => planner.updateLifeAreaSettings(area.id, { direction: "down" })}><ArrowDown size={15}/></button></div>)}</div></Card>
 
     <Modal open={Boolean(preview)} title="Revisar respaldo antes de importar" description="Al confirmar, este contenido reemplazará los datos actuales del dispositivo." onClose={() => { setPreview(null); setPendingFile(null); }}>
-      {preview && <div className="backup-preview"><div><strong>{preview.name}</strong><small>Exportado: {new Date(preview.exportedAt).toLocaleString("es-CO")}</small></div><dl><div><dt>Áreas</dt><dd>{preview.areas}</dd></div><div><dt>Metas</dt><dd>{preview.goals}</dd></div><div><dt>Hábitos</dt><dd>{preview.habits}</dd></div><div><dt>Tareas</dt><dd>{preview.tasks}</dd></div><div><dt>Movimientos</dt><dd>{preview.transactions}</dd></div></dl>{preview.migrated && <Badge tone="warm">Se actualizará del formato v1 al v2</Badge>}<div className="modal__actions"><Button variant="ghost" onClick={() => { setPreview(null); setPendingFile(null); }}>Cancelar</Button><Button onClick={confirmImport}>Importar y reemplazar</Button></div></div>}
+      {preview && <div className="backup-preview"><div><strong>{preview.name}</strong><small>Exportado: {new Date(preview.exportedAt).toLocaleString("es-CO")}</small></div><dl><div><dt>Áreas</dt><dd>{preview.areas}</dd></div><div><dt>Metas</dt><dd>{preview.goals}</dd></div><div><dt>Hábitos</dt><dd>{preview.habits}</dd></div><div><dt>Tareas</dt><dd>{preview.tasks}</dd></div><div><dt>Movimientos</dt><dd>{preview.transactions}</dd></div></dl>{preview.migrated && <Badge tone="warm">Se actualizará al formato v3</Badge>}<div className="modal__actions"><Button variant="ghost" onClick={() => { setPreview(null); setPendingFile(null); }}>Cancelar</Button><Button onClick={confirmImport}>Importar y reemplazar</Button></div></div>}
     </Modal>
 
     <Modal open={deleteOpen} title="¿Eliminar todos los datos?" description="Esta acción eliminará permanentemente tus metas, hábitos, finanzas y configuraciones." onClose={() => { setDeleteOpen(false); setConfirmText(""); }}>

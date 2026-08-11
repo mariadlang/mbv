@@ -27,7 +27,7 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
   const [priorities, setPriorities] = useState(["", "", ""]);
   const [importError, setImportError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const form = useForm<OnboardingInput>({ resolver: zodResolver(onboardingSchema), defaultValues: { name: "", intention: intentions[0][0], weekStartsOn: 1 } });
+  const form = useForm<OnboardingInput>({ resolver: zodResolver(onboardingSchema), defaultValues: { name: "", intention: intentions[0][0], usePurpose: "Construir una vida con más intención y claridad.", weekStartsOn: 1 } });
   const weekStartsOn = useWatch({ control: form.control, name: "weekStartsOn" });
 
   const chooseIntention = (value: string) => {
@@ -50,6 +50,7 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
         <p>Diseña la vida que<br /><em>quieres vivir</em></p>
         <div className="splash-illustration"><Leaf size={84} strokeWidth={1} /><span className="splash-notebook">MBV</span></div>
         <Button onClick={() => setStage(1)}>Comenzar <ArrowRight size={18} /></Button>
+        <span className="signed-session"><Check size={14} /> Inicio de sesión protegido con ChatGPT</span>
         <input ref={fileRef} className="sr-only" type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} />
         <button className="splash-import" onClick={() => fileRef.current?.click()}><FileUp size={14} /> Ya tengo un respaldo</button>
         {importError && <p className="form-error" role="alert">{importError}</p>}
@@ -78,6 +79,7 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
       {stage === 3 && <form onSubmit={complete}>
         <h1>Personaliza tu planner <em>para ti</em></h1><p>Cuéntanos algunos detalles para crear tu experiencia personalizada.</p>
         <label className="form-field"><span>¿Cómo te llamas?</span><input placeholder="Tu nombre" {...form.register("name")} />{form.formState.errors.name && <small className="form-error">{form.formState.errors.name.message}</small>}</label>
+        <label className="form-field"><span>¿Para qué quieres usar My Best Version?</span><textarea rows={3} {...form.register("usePurpose")} />{form.formState.errors.usePurpose && <small className="form-error">{form.formState.errors.usePurpose.message}</small>}</label>
         <fieldset className="form-field"><legend>¿Cuál es tu primer día de la semana?</legend><div className="weekday-start"><button type="button" className={weekStartsOn === 1 ? "is-selected" : ""} onClick={() => form.setValue("weekStartsOn", 1)}>LUN</button>{["MAR","MIÉ","JUE","VIE","SÁB"].map((day) => <span key={day}>{day}</span>)}<button type="button" className={weekStartsOn === 0 ? "is-selected" : ""} onClick={() => form.setValue("weekStartsOn", 0)}>DOM</button></div></fieldset>
         <fieldset className="form-field"><legend>¿Cuáles son tus 3 prioridades principales?</legend><div className="priority-inputs">{priorities.map((priority, index) => <label key={index}><span>{index + 1}</span><Target size={18} /><input value={priority} onChange={(event) => setPriorities(priorities.map((item, i) => i === index ? event.target.value : item))} placeholder={["Mi salud física y mental", "Hacer crecer mi carrera", "Tener tiempo de calidad"][index]} /></label>)}</div></fieldset>
         <Button type="submit" className="onboarding-primary">Crear mi planner</Button><small className="onboarding-hint">Último paso, ¡ya casi está!</small>

@@ -4,7 +4,7 @@ import { backupEnvelopeSchema, parseBackupEnvelope } from "@/src/lib/schemas";
 
 describe("backup validation", () => {
   it("accepts the current versioned backup shape", () => {
-    const backup = { schemaVersion: 2, exportedAt: "2026-08-10T12:00:00.000Z", data: createEmptySnapshot() };
+    const backup = { schemaVersion: 3, exportedAt: "2026-08-10T12:00:00.000Z", data: createEmptySnapshot() };
     expect(backupEnvelopeSchema.parse(backup)).toEqual(backup);
   });
 
@@ -27,9 +27,11 @@ describe("backup validation", () => {
       },
     };
     const migrated = parseBackupEnvelope(legacy);
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.data.transactions).toEqual([]);
     expect(migrated.data.projects).toEqual([]);
+    expect(migrated.data.cascadePlans).toEqual([]);
+    expect(migrated.data.visionBoardItems).toEqual([]);
   });
 
   it("rejects incompatible or partial backups", () => {

@@ -3,20 +3,22 @@
 import { useMemo, useState, type FormEvent } from "react";
 import {
   ArrowDownRight, ArrowUpRight, CalendarClock, CreditCard, Eye, EyeOff,
-  Landmark, PiggyBank, Plus, ReceiptText, RefreshCw, Scale, WalletCards,
+  Building2, Check, Circle, Landmark, PiggyBank, Plus, ReceiptText, RefreshCw, Scale, ShoppingCart, WalletCards,
 } from "lucide-react";
 import { calculateDebtBalance, calculateFinanceSummary, calculateFundBalance } from "@/src/domain/financeRules";
+import { calculateAccountBalance } from "@/src/domain/cascadeRules";
 import type { TransactionType } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { transactionFormSchema } from "@/src/lib/schemas";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 
-type FinanceTab = "summary" | "budget" | "movements" | "funds" | "debts" | "recurring" | "review";
+type FinanceTab = "summary" | "budget" | "movements" | "accounts" | "purchases" | "funds" | "debts" | "recurring" | "review";
 
 const tabs: { id: FinanceTab; label: string }[] = [
   { id: "summary", label: "Resumen" }, { id: "budget", label: "Presupuesto" },
   { id: "movements", label: "Movimientos" }, { id: "funds", label: "Fondos" },
+  { id: "accounts", label: "Bancos" }, { id: "purchases", label: "Compras pendientes" },
   { id: "debts", label: "Deudas" }, { id: "recurring", label: "Recurrentes" },
   { id: "review", label: "Revisión" },
 ];
@@ -33,7 +35,7 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
   const [tab, setTab] = useState<FinanceTab>("summary");
   const [feedback, setFeedback] = useState("");
   const [movement, setMovement] = useState({
-    type: "expense" as TransactionType, amount: "", date: today, categoryId: "", fundId: "", debtId: "", note: "",
+    type: "expense" as TransactionType, amount: "", date: today, categoryId: "", accountId: "", destinationAccountId: "", fundId: "", debtId: "", note: "",
   });
   const financialProfile = snapshot.financialProfiles[0];
   const currency = financialProfile?.baseCurrency ?? snapshot.profile?.baseCurrency ?? "COP";
@@ -136,6 +138,8 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
         <label className="form-field"><span>Valor</span><input type="number" min="1" value={movement.amount} onChange={(event) => setMovement({ ...movement, amount: event.target.value })} placeholder="0" /></label>
         <label className="form-field"><span>Fecha</span><input type="date" value={movement.date} onChange={(event) => setMovement({ ...movement, date: event.target.value })} /></label>
         <label className="form-field"><span>Categoría</span><select value={movement.categoryId} onChange={(event) => setMovement({ ...movement, categoryId: event.target.value })}><option value="">Sin categoría</option>{snapshot.financeCategories.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label className="form-field"><span>Cuenta o banco</span><select value={movement.accountId} onChange={(event) => setMovement({ ...movement, accountId: event.target.value })}><option value="">Sin cuenta</option>{snapshot.financialAccounts.filter((item) => item.status === "active").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        {movement.type === "transfer" && <label className="form-field"><span>Cuenta destino</span><select value={movement.destinationAccountId} onChange={(event) => setMovement({ ...movement, destinationAccountId: event.target.value })}><option value="">Selecciona</option>{snapshot.financialAccounts.filter((item) => item.status === "active" && item.id !== movement.accountId).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         {(movement.type === "contribution" || movement.type === "withdrawal") && <label className="form-field"><span>Fondo</span><select aria-label="Fondo de ahorro" value={movement.fundId} onChange={(event) => setMovement({ ...movement, fundId: event.target.value })}><option value="">Selecciona</option>{snapshot.savingsFunds.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         {movement.type === "debt_payment" && <label className="form-field"><span>Deuda</span><select value={movement.debtId} onChange={(event) => setMovement({ ...movement, debtId: event.target.value })}><option value="">Selecciona</option>{snapshot.debts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         <label className="form-field form-field--full"><span>Nota</span><input value={movement.note} onChange={(event) => setMovement({ ...movement, note: event.target.value })} placeholder="Una descripción breve" /></label>
@@ -145,10 +149,24 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
     </div>}
 
     {tab === "funds" && <FundsPanel planner={planner} money={money} />}
+    {tab === "accounts" && <AccountsPanel planner={planner} money={money} />}
+    {tab === "purchases" && <PurchasesPanel planner={planner} money={money} />}
     {tab === "debts" && <DebtsPanel planner={planner} money={money} />}
     {tab === "recurring" && <RecurringPanel planner={planner} money={money} />}
     {tab === "review" && <ReviewPanel planner={planner} monthKey={currentMonth} />}
   </div>;
+}
+
+function AccountsPanel({ planner, money }: { planner: PlannerController; money: (value: number) => string }) {
+  const [form, setForm] = useState({ name: "", type: "bank" as "cash" | "bank" | "wallet" | "other", initialBalance: "" });
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (!form.name.trim()) return; await planner.createFinancialAccount({ name: form.name, type: form.type, initialBalance: Number(form.initialBalance || 0) }); setForm({ name: "", type: "bank", initialBalance: "" }); };
+  return <div className="finance-two-column"><Card className="finance-form-card"><header><div><p className="eyebrow">Disponible por lugar</p><h2>Nueva cuenta</h2></div><Building2 size={22} /></header><form className="finance-form-grid" onSubmit={submit}><label className="form-field"><span>Nombre</span><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ej. Banco principal" /></label><label className="form-field"><span>Tipo</span><select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as typeof form.type })}><option value="bank">Banco</option><option value="cash">Efectivo</option><option value="wallet">Billetera</option><option value="other">Otra</option></select></label><label className="form-field"><span>Saldo inicial</span><input type="number" value={form.initialBalance} onChange={(event) => setForm({ ...form, initialBalance: event.target.value })} /></label><Button type="submit">Guardar cuenta</Button></form></Card><div className="account-grid">{planner.snapshot.financialAccounts.map((account) => <Card className="account-card" key={account.id}><span><Building2 size={19} /></span><Badge tone="neutral">{account.type}</Badge><h3>{account.name}</h3><strong>{money(calculateAccountBalance(planner.snapshot, account.id))}</strong><small>Saldo inicial + ingresos − gastos ± transferencias</small></Card>)}</div></div>;
+}
+
+function PurchasesPanel({ planner, money }: { planner: PlannerController; money: (value: number) => string }) {
+  const [form, setForm] = useState({ title: "", estimatedAmount: "", accountId: "", tentativeDate: "", priority: "medium" as "low" | "medium" | "high" });
+  const submit = async (event: FormEvent) => { event.preventDefault(); if (!form.title.trim()) return; await planner.createPendingPurchase({ title: form.title, estimatedAmount: Number(form.estimatedAmount), accountId: form.accountId || undefined, tentativeDate: form.tentativeDate || undefined, priority: form.priority }); setForm({ title: "", estimatedAmount: "", accountId: "", tentativeDate: "", priority: "medium" }); };
+  return <div className="finance-two-column"><Card className="finance-form-card"><header><div><p className="eyebrow">Compra consciente</p><h2>Nueva compra pendiente</h2></div><ShoppingCart size={22} /></header><form className="finance-form-grid" onSubmit={submit}><label className="form-field"><span>Compra</span><input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} /></label><label className="form-field"><span>Monto estimado</span><input required type="number" min="1" value={form.estimatedAmount} onChange={(event) => setForm({ ...form, estimatedAmount: event.target.value })} /></label><label className="form-field"><span>Pagar desde</span><select value={form.accountId} onChange={(event) => setForm({ ...form, accountId: event.target.value })}><option value="">Sin decidir</option>{planner.snapshot.financialAccounts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="form-field"><span>Fecha tentativa</span><input type="date" value={form.tentativeDate} onChange={(event) => setForm({ ...form, tentativeDate: event.target.value })} /></label><Button type="submit">Guardar compra</Button></form></Card><Card className="finance-panel"><header><div><p className="eyebrow">Antes de comprar</p><h2>Pendientes y disponibilidad</h2></div><ShoppingCart size={22} /></header><div className="pending-purchase-list">{planner.snapshot.pendingPurchases.map((item) => { const available = item.accountId ? calculateAccountBalance(planner.snapshot, item.accountId) : null; return <div key={item.id}><button onClick={() => planner.updatePendingPurchase(item.id, item.status === "purchased" ? "pending" : "purchased")}>{item.status === "purchased" ? <Check size={15} /> : <Circle size={15} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate || "Fecha flexible"} · disponible {available === null ? "sin cuenta" : money(available)}</small></div><b>{money(item.estimatedAmount)}</b></div>; })}</div></Card></div>;
 }
 
 function FundsPanel({ planner, money }: { planner: PlannerController; money: (value: number) => string }) {

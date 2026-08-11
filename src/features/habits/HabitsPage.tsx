@@ -30,6 +30,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
       unit: "check",
       scheduledDays: [1, 2, 3, 4, 5],
       lifeAreaId: "",
+      origin: "established",
     },
   });
 
@@ -159,9 +160,10 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
               <p>{habit.description || "Un pequeño gesto que suma a tu bienestar."}</p>
               <ProgressBar value={consistency.percentage} label="Consistencia" />
               <div className="habit-detail-card__meta">
-                <Badge tone="neutral">{area?.name ?? "Personal"}</Badge>
+                <Badge tone={habit.origin === "experiment" ? "rose" : "neutral"}>{habit.origin === "experiment" ? "Quiero probar" : area?.name ?? "Ya lo practico"}</Badge>
                 <span>{habit.scheduledDays.length === 7 ? "Cada día" : `${habit.scheduledDays.length} días/semana`}</span>
               </div>
+              {habit.recommendation && <div className="habit-recommendation"><Sprout size={15} /><span>{habit.recommendation}</span></div>}
             </Card>
           );
         })}
@@ -193,6 +195,10 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
             <span>Objetivo</span>
             <input type="number" min="1" {...form.register("target", { valueAsNumber: true })} />
             {form.formState.errors.target && <small className="form-error">{form.formState.errors.target.message}</small>}
+          </label>
+          <label className="form-field form-field--full">
+            <span>¿Cómo llega este hábito a tu vida?</span>
+            <select {...form.register("origin")}><option value="established">Ya lo tengo y quiero sostenerlo</option><option value="experiment">Quiero probarlo durante 14 días</option></select>
           </label>
           <label className="form-field">
             <span>Unidad</span>

@@ -21,6 +21,8 @@ export function MoodPage({ planner }: { planner: PlannerController }) {
   const today = planner.snapshot.moodLogs.find((log) => log.date === todayKey);
   const [mood, setMood] = useState<MoodName>(today?.mood ?? "Calmada");
   const [energy, setEnergy] = useState<1 | 2 | 3 | 4 | 5>(today?.energy ?? 3);
+  const [sleep, setSleep] = useState<1 | 2 | 3 | 4 | 5>(today?.sleep ?? 3);
+  const [concentration, setConcentration] = useState<1 | 2 | 3 | 4 | 5>(today?.concentration ?? 3);
   const [selectedFactors, setSelectedFactors] = useState<string[]>(today?.factors ?? []);
   const [note, setNote] = useState(today?.note ?? "");
   const chartData = useMemo(() => getRecentDates(30).map((date) => {
@@ -37,10 +39,11 @@ export function MoodPage({ planner }: { planner: PlannerController }) {
           <div className="mood-face-row">{moods.map((item) => <button key={item.name} className={mood === item.name ? "is-selected" : ""} onClick={() => setMood(item.name)} aria-pressed={mood === item.name}><span>{item.face}</span><small>{item.label}</small></button>)}</div>
           <h3>Nivel de energía</h3>
           <div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={energy === level ? "is-selected" : ""} onClick={() => setEnergy(level)}>{level}</button>)}</div>
+          <div className="mood-signal-grid"><div><h3>Calidad del sueño</h3><div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={sleep === level ? "is-selected" : ""} onClick={() => setSleep(level)}>{level}</button>)}</div></div><div><h3>Concentración</h3><div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={concentration === level ? "is-selected" : ""} onClick={() => setConcentration(level)}>{level}</button>)}</div></div></div>
           <h3>Factores que influyen hoy</h3>
           <div className="factor-chips">{factors.map((factor) => <button key={factor} className={selectedFactors.includes(factor) ? "is-selected" : ""} onClick={() => setSelectedFactors(selectedFactors.includes(factor) ? selectedFactors.filter((item) => item !== factor) : [...selectedFactors, factor])}>{factor}</button>)}</div>
           <label className="mood-note"><span>Notas opcionales</span><textarea rows={4} value={note} onChange={(event) => setNote(event.target.value)} placeholder="¿Hay algo que quieras anotar sobre tu día?" /></label>
-          <Button onClick={() => planner.saveMood(mood, energy, selectedFactors, note)}>Guardar registro</Button>
+          <Button onClick={() => planner.saveMood(mood, energy, selectedFactors, note, sleep, concentration)}>Guardar registro</Button>
         </Card>
         <Card className="mood-trend-card"><p className="eyebrow">Tendencia mensual</p><h2>Tu energía a lo largo del mes</h2><div className="mood-trend-chart"><ResponsiveContainer width="100%" height={260}><LineChart data={chartData}><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize:10,fill:"#9A8876"}} /><YAxis domain={[1,5]} ticks={[1,2,3,4,5]} axisLine={false} tickLine={false} tick={{fontSize:10,fill:"#9A8876"}} /><Tooltip /><Line type="monotone" dataKey="energy" connectNulls stroke="#C98282" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div><div className="neutral-observation"><strong>Observación neutral</strong><p>Tu energía puede variar. Escuchar tu ritmo también es avanzar.</p></div></Card>
       </div>

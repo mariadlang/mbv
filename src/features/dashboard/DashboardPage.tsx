@@ -32,6 +32,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
   const currency = financeProfile?.baseCurrency ?? snapshot.profile?.baseCurrency ?? "COP";
   const money = (value: number) => privacy ? "••••" : new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
   const primaryFund = snapshot.savingsFunds[0];
+  const visionReminder = snapshot.visionBoardItems.find((item) => item.reminderEnabled);
 
   return <div className="reference-dashboard">
     <header className="dashboard-greeting"><div><h1>Buenos días, {snapshot.profile?.name ?? "María"} <span>👋</span></h1><p>{formatLongDate(now)}</p></div></header>
@@ -52,6 +53,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
 
       <Card className="dash-review ref-card"><span className="review-icon"><CalendarDays size={26}/></span><div><h2>Revisión semanal</h2><p>Dedica 30 minutos para reflexionar, evaluar y planificar tu próxima semana.</p></div><Link className="button button--primary" to="/app/journal">Iniciar revisión</Link></Card>
       <Card className="dash-finance ref-card"><div className="ref-card__heading"><h2>Finanzas del mes</h2><Link to="/app/finance">Abrir finanzas</Link></div><div className="dash-finance-grid"><span className="dash-finance-icon"><WalletCards size={25}/></span><div><small>Presupuesto disponible</small><strong>{money(financeSummary.availableToAssign)}</strong><p>{financeSummary.budgetUsed === null ? "Registro incompleto" : `${Math.round(financeSummary.budgetUsed)}% del presupuesto de gastos utilizado`}</p></div><div><small>Ahorro registrado</small><strong>{money(financeSummary.savingsContributions)}</strong><p>{primaryFund ? `${primaryFund.name}: ${money(calculateFundBalance(snapshot, primaryFund.id))}` : "Crea un fondo para darle propósito"}</p></div></div></Card>
+      {visionReminder && <Card className="dash-vision-reminder ref-card"><span><Sparkles size={22} /></span><div><p className="eyebrow">Recordatorio de tu visión</p>{visionReminder.type === "quote" ? <blockquote>“{visionReminder.content}”</blockquote> : <><strong>{visionReminder.caption || "La vida que estás construyendo"}</strong><small>Vuelve a mirar tu vision board.</small></>}</div><Link to="/app/life-hub">Abrir vision board <ArrowRight size={15} /></Link></Card>}
     </div>
     <footer className="dashboard-quote"><Quote size={18}/><span>Pequeñas acciones diarias crean grandes cambios a largo plazo.</span><Leaf size={26}/></footer>
   </div>;

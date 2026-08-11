@@ -55,3 +55,33 @@ test("budget, savings fund and movement update the finance summary", async ({ pa
   await expect(page.getByText("Movimiento guardado. Los totales ya fueron actualizados.")).toBeVisible();
   await expect(page.getByText("Primer aporte")).toBeVisible();
 });
+
+test("cascade planning and optional life modules persist locally", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Comenzar/ }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByPlaceholder("Tu nombre").fill("María");
+  await page.getByRole("button", { name: /Crear mi planner/ }).click();
+
+  await page.goto("/app/planning");
+  await expect(page.getByRole("heading", { name: "Planeación cascada" })).toBeVisible();
+  await page.getByLabel("Intención de este nivel").fill("Construir una base serena y sostenible");
+  await page.getByLabel("Prioridad principal").fill("Publicar la primera versión");
+  await page.getByLabel(/Objetivos/).fill("Validar el producto\nCuidar mi energía");
+  await page.getByRole("button", { name: /Guardar 1 año/ }).click();
+  await expect(page.getByText("Nivel guardado y conectado")).toBeVisible();
+
+  await page.goto("/app/life-hub");
+  await expect(page.getByRole("heading", { name: "Mi espacio" })).toBeVisible();
+  await page.getByLabel("Pensamiento").fill("Aprender fotografía");
+  await page.getByRole("button", { name: "Capturar" }).click();
+  await expect(page.getByText("Aprender fotografía")).toBeVisible();
+  await page.getByRole("button", { name: "Fitness opcional" }).click();
+  await page.getByRole("button", { name: "Activar Fitness Hub" }).click();
+  await expect(page.getByRole("heading", { name: "Ejercicios" })).toBeVisible();
+
+  await page.goto("/app/help");
+  await expect(page.getByRole("heading", { name: "Apoyo psicológico · Línea 106" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Línea Púrpura" })).toBeVisible();
+});

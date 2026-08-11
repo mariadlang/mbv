@@ -65,6 +65,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     id: id(),
     name: options.name,
     intention: options.intention,
+    usePurpose: "Convertir mi visión en acciones sostenibles sin perder mi bienestar.",
     dailyIntention: "Avanzar con calma y claridad.",
     startDate: today,
     weekStartsOn: options.weekStartsOn,
@@ -73,6 +74,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     theme: "light",
     baseCurrency: "COP",
     financePrivacy: false,
+    fitnessEnabled: false,
     onboardingCompleted: true,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -303,6 +305,8 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
   const cardDebtId = id();
   const monthKey = today.slice(0, 7);
   const budgetId = id();
+  const primaryAccountId = id();
+  const cashAccountId = id();
 
   const financeCategories: PlannerSnapshot["financeCategories"] = [
     { id: incomeCategoryId, name: "Ingresos", type: "income", active: true, createdAt: timestamp, updatedAt: timestamp },
@@ -324,11 +328,11 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
   ];
 
   const transactions: PlannerSnapshot["transactions"] = [
-    { id: id(), type: "income", amount: 8_500_000, date: `${monthKey}-01`, categoryId: incomeCategoryId, note: "Ingreso del mes", status: "active", createdAt: timestamp, updatedAt: timestamp },
-    { id: id(), type: "expense", amount: 2_460_000, date: `${monthKey}-03`, categoryId: homeCategoryId, note: "Gastos del hogar", status: "active", createdAt: timestamp, updatedAt: timestamp },
-    { id: id(), type: "expense", amount: 620_000, date: `${monthKey}-06`, categoryId: wellbeingCategoryId, note: "Bienestar y movimiento", status: "active", createdAt: timestamp, updatedAt: timestamp },
-    { id: id(), type: "contribution", amount: 1_200_000, date: `${monthKey}-07`, categoryId: savingsCategoryId, fundId: travelFundId, note: "Aporte al viaje", status: "active", createdAt: timestamp, updatedAt: timestamp },
-    { id: id(), type: "debt_payment", amount: 600_000, date: `${monthKey}-08`, categoryId: debtCategoryId, debtId: cardDebtId, note: "Pago mensual", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "income", amount: 8_500_000, date: `${monthKey}-01`, categoryId: incomeCategoryId, accountId: primaryAccountId, note: "Ingreso del mes", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "expense", amount: 2_460_000, date: `${monthKey}-03`, categoryId: homeCategoryId, accountId: primaryAccountId, note: "Gastos del hogar", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "expense", amount: 620_000, date: `${monthKey}-06`, categoryId: wellbeingCategoryId, accountId: primaryAccountId, note: "Bienestar y movimiento", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "contribution", amount: 1_200_000, date: `${monthKey}-07`, categoryId: savingsCategoryId, accountId: primaryAccountId, fundId: travelFundId, note: "Aporte al viaje", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "debt_payment", amount: 600_000, date: `${monthKey}-08`, categoryId: debtCategoryId, accountId: primaryAccountId, debtId: cardDebtId, note: "Pago mensual", status: "active", createdAt: timestamp, updatedAt: timestamp },
   ];
 
   const savingsFunds: PlannerSnapshot["savingsFunds"] = [
@@ -339,8 +343,128 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     { id: cardDebtId, name: "Tarjeta de estudio", initialBalance: 4_800_000, informativeRate: 22.4, minimumPayment: 450_000, dueDay: 18, status: "active", createdAt: timestamp, updatedAt: timestamp },
   ];
 
+  const currentYear = now.getFullYear();
+  const cascadePlans: PlannerSnapshot["cascadePlans"] = [
+    {
+      id: id(),
+      horizon: "pathways",
+      periodKey: "vision",
+      intention: "Elegir los caminos que acercan mi vida diaria a mi Dream Life.",
+      priority: "Bienestar, libertad y un proyecto con propósito",
+      objectives: ["Cuidar mi energía", "Crear con constancia", "Construir libertad financiera"],
+      activities: [],
+      suggestion: "Cada camino debe convertirse en una decisión visible en tu agenda.",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "three_years",
+      periodKey: String(currentYear + 3),
+      intention: "Vivir de un proyecto sostenible, con tiempo para mi salud y mi familia.",
+      priority: "Consolidar una vida que se sienta tan bien como se ve",
+      objectives: ["Negocio rentable", "21K con bienestar", "Fondo familiar completo"],
+      activities: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "annual",
+      periodKey: String(currentYear),
+      intention: "Construir la base con enfoque y calma.",
+      priority: "Lanzar, validar y sostener",
+      objectives: ["Lanzar el planner", "Completar 21K", "Ahorrar para el viaje"],
+      activities: [
+        { id: id(), title: "Lanzamiento del planner", date: `${currentYear}-10-15`, type: "event" },
+      ],
+      suggestion: "Protege una prioridad principal por trimestre.",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "six_months",
+      periodKey: `${currentYear}-H2`,
+      intention: "Convertir avances dispersos en sistemas sostenibles.",
+      priority: "Validar el producto y cuidar mi energía",
+      objectives: ["Primera versión publicada", "Rutina de entrenamiento estable", "20% más de ahorro"],
+      activities: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "quarterly",
+      periodKey: `${currentYear}-Q3`,
+      intention: "Construir la base del siguiente nivel.",
+      priority: "Completar el MVP",
+      objectives: ["Flujo principal terminado", "Pruebas con cinco personas", "Plan de lanzamiento"],
+      activities: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "monthly",
+      periodKey: monthKey,
+      intention: "Avanzar con intención, sin llenar cada espacio.",
+      priority: "Terminar la experiencia esencial",
+      objectives: ["Cerrar Dashboard", "Completar cuatro entrenamientos semanales", "Revisar el presupuesto"],
+      activities: [
+        { id: id(), title: "Revisión mensual", date: `${monthKey}-28`, type: "event" },
+      ],
+      suggestion: "Deja una semana con menos carga para integrar y ajustar.",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "weekly",
+      periodKey: `${currentYear}-W33`,
+      intention: "Hacer menos, pero terminar lo importante.",
+      priority: "Probar el flujo principal",
+      objectives: ["Una prueba completa", "Tres entrenamientos", "Una tarde libre"],
+      activities: [],
+      suggestion: "La semana anterior avanzaste mejor cuando reservaste bloques de enfoque.",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    {
+      id: id(),
+      horizon: "daily",
+      periodKey: today,
+      intention: "Avanzar con calma y claridad.",
+      priority: "Revisar el flujo del Dashboard",
+      objectives: ["Bloque de enfoque", "Mover el cuerpo", "Cerrar el día con una nota"],
+      activities: [
+        { id: id(), title: "Bloque de enfoque", date: today, type: "activity" },
+      ],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ];
+
+  const projectChecklistItems: PlannerSnapshot["projectChecklistItems"] = [
+    { id: id(), projectId: launchProjectId, title: "Definir alcance del MVP", completed: true, createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), projectId: launchProjectId, title: "Probar el flujo principal", completed: false, createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), projectId: launchProjectId, title: "Preparar lanzamiento", completed: false, createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const brainDumpItems: PlannerSnapshot["brainDumpItems"] = [
+    { id: id(), title: "Aprender fotografía con el celular", type: "want_to_learn", tentativeDate: toLocalDateKey(addDays(now, 18)), priority: "low", status: "idea", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), title: "Comprar tenis para entrenamiento", type: "shopping", tentativeDate: toLocalDateKey(addDays(now, 9)), priority: "medium", status: "idea", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), title: "Leer Hábitos atómicos", type: "want_to_read", priority: "medium", status: "planned", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const routines: PlannerSnapshot["routines"] = [
+    { id: id(), name: "Rutina AM", period: "am", scheduledDays: [1, 2, 3, 4, 5], steps: [{ id: id(), title: "Agua y luz natural" }, { id: id(), title: "Escribir mis Top 3" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), name: "Pausa de la tarde", period: "afternoon", scheduledDays: [1, 2, 3, 4, 5], steps: [{ id: id(), title: "Caminar diez minutos" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), name: "Rutina PM", period: "pm", scheduledDays: [0, 1, 2, 3, 4, 5, 6], steps: [{ id: id(), title: "Preparar mañana" }, { id: id(), title: "Leer sin pantalla" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile,
     lifeAreas,
     habits,
@@ -354,7 +478,10 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     periodPlans: [],
     reviews: [],
     financialProfiles: [{ id: id(), baseCurrency: "COP", privacyMode: false, monthStartsOn: 1, status: "active", createdAt: timestamp, updatedAt: timestamp }],
-    financialAccounts: [],
+    financialAccounts: [
+      { id: primaryAccountId, name: "Banco principal", type: "bank", initialBalance: 5_600_000, status: "active", createdAt: timestamp, updatedAt: timestamp },
+      { id: cashAccountId, name: "Efectivo", type: "cash", initialBalance: 350_000, status: "active", createdAt: timestamp, updatedAt: timestamp },
+    ],
     financeCategories,
     monthlyBudgets,
     budgetLines,
@@ -366,5 +493,32 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
       { id: id(), name: "Pago tarjeta", type: "debt_payment", amount: 600_000, dayOfMonth: 18, categoryId: debtCategoryId, debtId: cardDebtId, active: true, createdAt: timestamp, updatedAt: timestamp },
     ],
     financialReviews: [],
+    projectChecklistItems,
+    cascadePlans,
+    brainDumpItems,
+    routines,
+    events: [
+      { id: id(), title: "Cita médica", startDate: toLocalDateKey(addDays(now, 5)), time: "09:30", category: "medical", createdAt: timestamp, updatedAt: timestamp },
+      { id: id(), title: "Cumpleaños de Ana", startDate: toLocalDateKey(addDays(now, 12)), category: "birthday", createdAt: timestamp, updatedAt: timestamp },
+    ],
+    visionBoardItems: [
+      { id: id(), type: "quote", content: "Pequeñas acciones diarias crean grandes cambios.", caption: "Mi recordatorio de hoy", reminderEnabled: true, createdAt: timestamp, updatedAt: timestamp },
+    ],
+    workoutLogs: [
+      { id: id(), date: today, weekKey: `${currentYear}-W33`, goal: "Fuerza y constancia", exercises: [{ id: id(), name: "Sentadilla", sets: 3, reps: 10, weight: 30 }, { id: id(), name: "Remo", sets: 3, reps: 12, weight: 18 }], createdAt: timestamp, updatedAt: timestamp },
+    ],
+    nutritionLogs: [
+      { id: id(), date: today, meals: [{ id: id(), name: "Comida 1", calories: 420, protein: 28, carbs: 45, fat: 14 }, { id: id(), name: "Snack", calories: 180, protein: 12, carbs: 22, fat: 5 }], createdAt: timestamp, updatedAt: timestamp },
+    ],
+    bodyCheckIns: [
+      { id: id(), date: today, weight: 62.4, measurements: { cintura: 72, cadera: 96 }, createdAt: timestamp, updatedAt: timestamp },
+    ],
+    challenges: [
+      { id: id(), title: "Pierde el miedo", type: "fear", intention: "Hacer una acción valiente cada semana.", startDate: today, completedDates: [], status: "active", createdAt: timestamp, updatedAt: timestamp },
+      { id: id(), title: "Reto no sugar", type: "no_sugar", intention: "Observar mi energía durante 14 días.", startDate: today, endDate: toLocalDateKey(addDays(now, 14)), completedDates: [], status: "active", createdAt: timestamp, updatedAt: timestamp },
+    ],
+    pendingPurchases: [
+      { id: id(), title: "Curso de ilustración", estimatedAmount: 850_000, accountId: primaryAccountId, tentativeDate: toLocalDateKey(addDays(now, 25)), priority: "medium", status: "pending", createdAt: timestamp, updatedAt: timestamp },
+    ],
   };
 }

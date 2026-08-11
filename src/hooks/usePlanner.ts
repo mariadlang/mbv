@@ -4,15 +4,25 @@ import { useCallback, useEffect, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type {
+  BodyCheckInFormInput,
+  BrainDumpFormInput,
+  CascadePlanFormInput,
+  ChallengeFormInput,
   DebtFormInput,
+  EventFormInput,
+  FinancialAccountFormInput,
   GoalFormInput,
   HabitFormInput,
+  MealFormInput,
   OnboardingInput,
+  PendingPurchaseFormInput,
   ProjectFormInput,
   RecurringItemFormInput,
+  RoutineFormInput,
   SavingsFundFormInput,
   TaskFormInput,
   TransactionFormInput,
+  WorkoutFormInput,
 } from "@/src/lib/schemas";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
@@ -127,8 +137,8 @@ export function usePlanner() {
     toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
-    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5, factors: string[] = [], note?: string) =>
-      commit((service) => service.saveMood(mood, energy, factors, note)),
+    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
+      commit((service) => service.saveMood(mood, energy, factors, note, sleep, concentration)),
     createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
       commit((service) => service.createGoal(input, milestoneTitles)),
     updateGoalStatus: (goalId: string, status: EntityStatus) =>
@@ -137,7 +147,7 @@ export function usePlanner() {
       commit((service) => service.updateGoalProgress(goalId, value)),
     updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean }) =>
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string }) =>
       commit((service) => service.updateProfileSettings(input)),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
@@ -160,6 +170,32 @@ export function usePlanner() {
       commit((service) => service.createRecurringItem(input)),
     saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
+    saveCascadePlan: (input: CascadePlanFormInput) =>
+      commit((service) => service.saveCascadePlan(input)),
+    createBrainDumpItem: (input: BrainDumpFormInput) =>
+      commit((service) => service.createBrainDumpItem(input)),
+    updateBrainDumpItem: (itemId: string, input: { status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string }) =>
+      commit((service) => service.updateBrainDumpItem(itemId, input)),
+    scheduleBrainDumpItem: (itemId: string, date: string) =>
+      commit((service) => service.scheduleBrainDumpItem(itemId, date)),
+    createRoutine: (input: RoutineFormInput) => commit((service) => service.createRoutine(input)),
+    createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
+    createVisionBoardItem: (input: { type: "quote" | "image"; content: string; caption?: string; reminderEnabled?: boolean }) =>
+      commit((service) => service.createVisionBoardItem(input)),
+    toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
+    saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
+    saveMeal: (input: MealFormInput) => commit((service) => service.saveMeal(input)),
+    saveBodyCheckIn: (input: BodyCheckInFormInput) => commit((service) => service.saveBodyCheckIn(input)),
+    createChallenge: (input: ChallengeFormInput) => commit((service) => service.createChallenge(input)),
+    toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),
+    createFinancialAccount: (input: FinancialAccountFormInput) => commit((service) => service.createFinancialAccount(input)),
+    createPendingPurchase: (input: PendingPurchaseFormInput) => commit((service) => service.createPendingPurchase(input)),
+    updatePendingPurchase: (itemId: string, status: "pending" | "purchased" | "released") =>
+      commit((service) => service.updatePendingPurchase(itemId, status)),
+    addProjectChecklistItem: (projectId: string, title: string) =>
+      commit((service) => service.addProjectChecklistItem(projectId, title)),
+    toggleProjectChecklistItem: (itemId: string) =>
+      commit((service) => service.toggleProjectChecklistItem(itemId)),
     clearAll: () => commit((service) => service.clear()),
     downloadBackup,
     importBackup,

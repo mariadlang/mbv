@@ -8,6 +8,7 @@ const entityStatusSchema = z.enum(["draft", "active", "paused", "completed", "ar
 export const onboardingSchema = z.object({
   name: z.string().trim().min(2, "Cuéntanos cómo quieres que te llamemos."),
   intention: z.string().trim().min(4, "Escribe una intención breve para comenzar."),
+  usePurpose: z.string().trim().min(4, "Cuéntanos para qué quieres usar tu planner."),
   weekStartsOn: z.union([z.literal(0), z.literal(1)]),
 });
 
@@ -18,6 +19,7 @@ export const habitFormSchema = z.object({
   unit: z.string().trim().min(1, "Indica una unidad."),
   scheduledDays: z.array(z.number().int().min(0).max(6)).min(1, "Elige al menos un día."),
   lifeAreaId: optionalId,
+  origin: z.enum(["established", "experiment"]).optional(),
 });
 
 export const goalFormSchema = z.object({
@@ -98,13 +100,72 @@ export const recurringItemFormSchema = z.object({
   debtId: optionalId,
 });
 
+export const cascadePlanFormSchema = z.object({
+  horizon: z.enum(["pathways", "three_years", "annual", "six_months", "quarterly", "monthly", "weekly", "daily"]),
+  periodKey: z.string().min(1),
+  parentPlanId: optionalId,
+  intention: z.string().trim().min(2),
+  priority: z.string().trim().min(2),
+  objectives: z.array(z.string().trim()).default([]),
+  activities: z.array(z.object({ title: z.string().trim().min(2), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })).default([]),
+});
+
+export const brainDumpFormSchema = z.object({
+  title: z.string().trim().min(2),
+  type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read"]),
+  tentativeDate: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+});
+
+export const routineFormSchema = z.object({
+  name: z.string().trim().min(2),
+  period: z.enum(["am", "afternoon", "pm"]),
+  scheduledDays: z.array(z.number().int().min(0).max(6)).min(1),
+  steps: z.array(z.string().trim().min(1)).min(1),
+});
+
+export const eventFormSchema = z.object({
+  title: z.string().trim().min(2), startDate: z.string().min(1), endDate: z.string().optional(),
+  time: z.string().optional(), category: z.enum(["medical", "birthday", "social", "work", "wellness", "personal"]),
+  notes: z.string().trim().optional(),
+});
+
+export const workoutFormSchema = z.object({
+  date: z.string().min(1), goal: z.string().trim().optional(),
+  exercise: z.string().trim().min(2), sets: z.number().int().positive(), reps: z.number().int().positive(), weight: z.number().min(0),
+});
+
+export const mealFormSchema = z.object({
+  date: z.string().min(1), name: z.string().trim().min(2), calories: z.number().min(0).optional(),
+  protein: z.number().min(0).optional(), carbs: z.number().min(0).optional(), fat: z.number().min(0).optional(),
+});
+
+export const bodyCheckInFormSchema = z.object({
+  date: z.string().min(1), weight: z.number().positive().optional(),
+  waist: z.number().positive().optional(), hip: z.number().positive().optional(), photoDataUrl: z.string().optional(),
+});
+
+export const challengeFormSchema = z.object({
+  title: z.string().trim().min(2), type: z.enum(["fear", "intermittent_fasting", "no_sugar", "custom"]),
+  intention: z.string().trim().min(2), startDate: z.string().min(1), endDate: z.string().optional(),
+});
+
+export const financialAccountFormSchema = z.object({
+  name: z.string().trim().min(2), type: z.enum(["cash", "bank", "wallet", "other"]), initialBalance: z.number().int(),
+});
+
+export const pendingPurchaseFormSchema = z.object({
+  title: z.string().trim().min(2), estimatedAmount: z.number().int().positive(), accountId: optionalId,
+  tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]).default("medium"),
+});
+
 const profileSchema = z.object({
-  id: z.string(), name: z.string(), intention: z.string(), dailyIntention: z.string(),
+  id: z.string(), name: z.string(), intention: z.string(), usePurpose: z.string().optional(), dailyIntention: z.string(),
   startDate: z.string(), weekStartsOn: z.union([z.literal(0), z.literal(1)]),
   priorityAreaIds: z.array(z.string()), mainPriorities: z.array(z.string()).optional(),
   theme: z.enum(["light", "rose", "taupe"]).optional(),
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
-  financePrivacy: z.boolean().optional(), lastBackupAt: z.string().optional(),
+  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), lastBackupAt: z.string().optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -120,7 +181,8 @@ const habitSchema = z.object({
   id: z.string(), name: z.string(), description: z.string().optional(),
   type: z.enum(["boolean", "quantity", "duration"]),
   scheduledDays: z.array(z.number().int().min(0).max(6)), target: z.number().positive(), unit: z.string(),
-  lifeAreaId: optionalId, goalId: optionalId, status: z.enum(["active", "paused", "archived"]),
+  lifeAreaId: optionalId, goalId: optionalId, origin: z.enum(["established", "experiment"]).optional(),
+  recommendation: z.string().optional(), status: z.enum(["active", "paused", "archived"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -157,6 +219,8 @@ const milestoneSchema = z.object({
 const moodLogSchema = z.object({
   id: z.string(), date: z.string(), mood: z.enum(["Calmada", "Enfocada", "Alegre", "Cansada", "Abrumada"]),
   energy: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  sleep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+  concentration: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
   factors: z.array(z.string()), note: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -171,6 +235,63 @@ const projectSchema = z.object({
   id: z.string(), name: z.string(), outcome: z.string(), lifeAreaId: optionalId, goalId: optionalId,
   targetDate: z.string().optional(), status: entityStatusSchema,
   createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const projectChecklistItemSchema = z.object({
+  id: z.string(), projectId: z.string(), title: z.string(), completed: z.boolean(),
+  createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const cascadePlanSchema = z.object({
+  id: z.string(), horizon: z.enum(["pathways", "three_years", "annual", "six_months", "quarterly", "monthly", "weekly", "daily"]),
+  periodKey: z.string(), parentPlanId: optionalId, intention: z.string(), priority: z.string(), objectives: z.array(z.string()),
+  activities: z.array(z.object({ id: z.string(), title: z.string(), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })),
+  suggestion: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const brainDumpItemSchema = z.object({
+  id: z.string(), title: z.string(), type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read"]),
+  tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]), status: z.enum(["idea", "planned", "completed", "released"]),
+  createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const routineSchema = z.object({
+  id: z.string(), name: z.string(), period: z.enum(["am", "afternoon", "pm"]),
+  scheduledDays: z.array(z.number().int().min(0).max(6)), steps: z.array(z.object({ id: z.string(), title: z.string() })),
+  status: z.enum(["active", "paused", "archived"]), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const plannerEventSchema = z.object({
+  id: z.string(), title: z.string(), startDate: z.string(), endDate: z.string().optional(), time: z.string().optional(),
+  category: z.enum(["medical", "birthday", "social", "work", "wellness", "personal"]), notes: z.string().optional(),
+  createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const visionBoardItemSchema = z.object({
+  id: z.string(), type: z.enum(["quote", "image"]), content: z.string(), caption: z.string().optional(),
+  reminderEnabled: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const workoutLogSchema = z.object({
+  id: z.string(), date: z.string(), weekKey: z.string(), goal: z.string().optional(),
+  exercises: z.array(z.object({ id: z.string(), name: z.string(), sets: z.number().int(), reps: z.number().int(), weight: z.number() })),
+  createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const nutritionLogSchema = z.object({
+  id: z.string(), date: z.string(), meals: z.array(z.object({ id: z.string(), name: z.string(), calories: z.number().optional(), protein: z.number().optional(), carbs: z.number().optional(), fat: z.number().optional() })),
+  createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const bodyCheckInSchema = z.object({
+  id: z.string(), date: z.string(), weight: z.number().optional(), measurements: z.record(z.string(), z.number()),
+  photoDataUrl: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+const challengeSchema = z.object({
+  id: z.string(), title: z.string(), type: z.enum(["fear", "intermittent_fasting", "no_sugar", "custom"]),
+  intention: z.string(), startDate: z.string(), endDate: z.string().optional(), completedDates: z.array(z.string()),
+  status: z.enum(["active", "completed", "archived"]), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
 const periodPlanSchema = z.object({
@@ -246,6 +367,12 @@ const financialReviewSchema = z.object({
   status: z.enum(["draft", "completed"]), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
+const pendingPurchaseSchema = z.object({
+  id: z.string(), title: z.string(), estimatedAmount: z.number().int().positive(), accountId: z.string().optional(),
+  tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]),
+  status: z.enum(["pending", "purchased", "released"]), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
 const snapshotFields = {
   profile: profileSchema.nullable(), lifeAreas: z.array(lifeAreaSchema), habits: z.array(habitSchema),
   habitLogs: z.array(habitLogSchema), tasks: z.array(taskSchema), goals: z.array(goalSchema),
@@ -254,7 +381,7 @@ const snapshotFields = {
 
 const legacyPlannerSnapshotSchema = z.object({ schemaVersion: z.literal(1), ...snapshotFields });
 
-export const plannerSnapshotSchema = z.object({
+const plannerSnapshotV2Schema = z.object({
   schemaVersion: z.literal(2), ...snapshotFields,
   projects: z.array(projectSchema), periodPlans: z.array(periodPlanSchema), reviews: z.array(reviewSchema),
   financialProfiles: z.array(financialProfileSchema), financialAccounts: z.array(financialAccountSchema),
@@ -264,28 +391,45 @@ export const plannerSnapshotSchema = z.object({
   financialReviews: z.array(financialReviewSchema),
 });
 
-const backupV1Schema = z.object({ schemaVersion: z.literal(1), exportedAt: z.string(), data: legacyPlannerSnapshotSchema });
-const backupV2Schema = z.object({ schemaVersion: z.literal(2), exportedAt: z.string(), data: plannerSnapshotSchema });
+export const plannerSnapshotSchema = z.object({
+  ...plannerSnapshotV2Schema.omit({ schemaVersion: true }).shape,
+  schemaVersion: z.literal(3),
+  projectChecklistItems: z.array(projectChecklistItemSchema), cascadePlans: z.array(cascadePlanSchema),
+  brainDumpItems: z.array(brainDumpItemSchema), routines: z.array(routineSchema), events: z.array(plannerEventSchema),
+  visionBoardItems: z.array(visionBoardItemSchema), workoutLogs: z.array(workoutLogSchema),
+  nutritionLogs: z.array(nutritionLogSchema), bodyCheckIns: z.array(bodyCheckInSchema),
+  challenges: z.array(challengeSchema), pendingPurchases: z.array(pendingPurchaseSchema),
+});
 
-export const backupEnvelopeSchema = z.union([backupV2Schema, backupV1Schema]);
+const backupV1Schema = z.object({ schemaVersion: z.literal(1), exportedAt: z.string(), data: legacyPlannerSnapshotSchema });
+const backupV2Schema = z.object({ schemaVersion: z.literal(2), exportedAt: z.string(), data: plannerSnapshotV2Schema });
+const backupV3Schema = z.object({ schemaVersion: z.literal(3), exportedAt: z.string(), data: plannerSnapshotSchema });
+
+export const backupEnvelopeSchema = z.union([backupV3Schema, backupV2Schema, backupV1Schema]);
 
 export function parseBackupEnvelope(input: unknown): BackupEnvelope {
   const parsed = backupEnvelopeSchema.parse(input);
-  if (parsed.schemaVersion === 2) return parsed as BackupEnvelope;
+  if (parsed.schemaVersion === 3) return parsed as BackupEnvelope;
   const now = new Date().toISOString();
   const profile = parsed.data.profile
     ? { ...parsed.data.profile, baseCurrency: "COP" as const, financePrivacy: false, updatedAt: now }
     : null;
+  const v2Data = parsed.schemaVersion === 2 ? parsed.data : {
+    ...parsed.data,
+    schemaVersion: 2 as const,
+    profile,
+    projects: [], periodPlans: [], reviews: [], financialProfiles: [], financialAccounts: [],
+    financeCategories: [], monthlyBudgets: [], budgetLines: [], transactions: [], savingsFunds: [],
+    debts: [], recurringItems: [], financialReviews: [],
+  };
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: parsed.exportedAt,
     data: {
-      ...parsed.data,
-      schemaVersion: 2,
-      profile,
-      projects: [], periodPlans: [], reviews: [], financialProfiles: [], financialAccounts: [],
-      financeCategories: [], monthlyBudgets: [], budgetLines: [], transactions: [], savingsFunds: [],
-      debts: [], recurringItems: [], financialReviews: [],
+      ...v2Data,
+      schemaVersion: 3,
+      projectChecklistItems: [], cascadePlans: [], brainDumpItems: [], routines: [], events: [],
+      visionBoardItems: [], workoutLogs: [], nutritionLogs: [], bodyCheckIns: [], challenges: [], pendingPurchases: [],
     } as PlannerSnapshot,
   };
 }
@@ -299,3 +443,13 @@ export type TransactionFormInput = z.infer<typeof transactionFormSchema>;
 export type SavingsFundFormInput = z.input<typeof savingsFundFormSchema>;
 export type DebtFormInput = z.infer<typeof debtFormSchema>;
 export type RecurringItemFormInput = z.infer<typeof recurringItemFormSchema>;
+export type CascadePlanFormInput = z.input<typeof cascadePlanFormSchema>;
+export type BrainDumpFormInput = z.input<typeof brainDumpFormSchema>;
+export type RoutineFormInput = z.infer<typeof routineFormSchema>;
+export type EventFormInput = z.infer<typeof eventFormSchema>;
+export type WorkoutFormInput = z.infer<typeof workoutFormSchema>;
+export type MealFormInput = z.infer<typeof mealFormSchema>;
+export type BodyCheckInFormInput = z.infer<typeof bodyCheckInFormSchema>;
+export type ChallengeFormInput = z.infer<typeof challengeFormSchema>;
+export type FinancialAccountFormInput = z.infer<typeof financialAccountFormSchema>;
+export type PendingPurchaseFormInput = z.input<typeof pendingPurchaseFormSchema>;

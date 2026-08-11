@@ -11,6 +11,7 @@ export interface Profile {
   id: string;
   name: string;
   intention: string;
+  usePurpose?: string;
   dailyIntention: string;
   startDate: string;
   weekStartsOn: 0 | 1;
@@ -19,6 +20,7 @@ export interface Profile {
   theme?: "light" | "rose" | "taupe";
   baseCurrency?: "COP" | "USD" | "EUR" | "MXN";
   financePrivacy?: boolean;
+  fitnessEnabled?: boolean;
   lastBackupAt?: string;
   onboardingCompleted: boolean;
   createdAt: string;
@@ -52,6 +54,8 @@ export interface Habit {
   unit: string;
   lifeAreaId?: string;
   goalId?: string;
+  origin?: "established" | "experiment";
+  recommendation?: string;
   status: "active" | "paused" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -125,6 +129,8 @@ export interface MoodLog {
   date: string;
   mood: MoodName;
   energy: 1 | 2 | 3 | 4 | 5;
+  sleep?: 1 | 2 | 3 | 4 | 5;
+  concentration?: 1 | 2 | 3 | 4 | 5;
   factors: string[];
   note?: string;
   createdAt: string;
@@ -154,6 +160,161 @@ export interface Project {
   goalId?: string;
   targetDate?: string;
   status: EntityStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectChecklistItem {
+  id: string;
+  projectId: string;
+  title: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CascadeHorizon =
+  | "pathways"
+  | "three_years"
+  | "annual"
+  | "six_months"
+  | "quarterly"
+  | "monthly"
+  | "weekly"
+  | "daily";
+
+export interface PlanActivity {
+  id: string;
+  title: string;
+  date?: string;
+  type: "objective" | "activity" | "event";
+}
+
+export interface CascadePlan {
+  id: string;
+  horizon: CascadeHorizon;
+  periodKey: string;
+  parentPlanId?: string;
+  intention: string;
+  priority: string;
+  objectives: string[];
+  activities: PlanActivity[];
+  suggestion?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BrainDumpType =
+  | "wishlist"
+  | "want_to_do"
+  | "must_do"
+  | "shopping"
+  | "want_to_learn"
+  | "want_to_read";
+
+export interface BrainDumpItem {
+  id: string;
+  title: string;
+  type: BrainDumpType;
+  tentativeDate?: string;
+  priority: "low" | "medium" | "high";
+  status: "idea" | "planned" | "completed" | "released";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoutineStep {
+  id: string;
+  title: string;
+}
+
+export interface Routine {
+  id: string;
+  name: string;
+  period: "am" | "afternoon" | "pm";
+  scheduledDays: number[];
+  steps: RoutineStep[];
+  status: "active" | "paused" | "archived";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlannerEvent {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate?: string;
+  time?: string;
+  category: "medical" | "birthday" | "social" | "work" | "wellness" | "personal";
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VisionBoardItem {
+  id: string;
+  type: "quote" | "image";
+  content: string;
+  caption?: string;
+  reminderEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weight: number;
+}
+
+export interface WorkoutLog {
+  id: string;
+  date: string;
+  weekKey: string;
+  goal?: string;
+  exercises: WorkoutExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MealLog {
+  id: string;
+  name: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
+export interface NutritionLog {
+  id: string;
+  date: string;
+  meals: MealLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BodyCheckIn {
+  id: string;
+  date: string;
+  weight?: number;
+  measurements: Record<string, number>;
+  photoDataUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Challenge {
+  id: string;
+  title: string;
+  type: "fear" | "intermittent_fasting" | "no_sugar" | "custom";
+  intention: string;
+  startDate: string;
+  endDate?: string;
+  completedDates: string[];
+  status: "active" | "completed" | "archived";
   createdAt: string;
   updatedAt: string;
 }
@@ -314,8 +475,20 @@ export interface FinancialReview {
   updatedAt: string;
 }
 
+export interface PendingPurchase {
+  id: string;
+  title: string;
+  estimatedAmount: number;
+  accountId?: string;
+  tentativeDate?: string;
+  priority: "low" | "medium" | "high";
+  status: "pending" | "purchased" | "released";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlannerSnapshot {
-  schemaVersion: 2;
+  schemaVersion: 3;
   profile: Profile | null;
   lifeAreas: LifeArea[];
   habits: Habit[];
@@ -338,17 +511,28 @@ export interface PlannerSnapshot {
   debts: Debt[];
   recurringItems: RecurringItem[];
   financialReviews: FinancialReview[];
+  projectChecklistItems: ProjectChecklistItem[];
+  cascadePlans: CascadePlan[];
+  brainDumpItems: BrainDumpItem[];
+  routines: Routine[];
+  events: PlannerEvent[];
+  visionBoardItems: VisionBoardItem[];
+  workoutLogs: WorkoutLog[];
+  nutritionLogs: NutritionLog[];
+  bodyCheckIns: BodyCheckIn[];
+  challenges: Challenge[];
+  pendingPurchases: PendingPurchase[];
 }
 
 export interface BackupEnvelope {
-  schemaVersion: 2;
+  schemaVersion: 3;
   exportedAt: string;
   data: PlannerSnapshot;
 }
 
 export function createEmptySnapshot(): PlannerSnapshot {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile: null,
     lifeAreas: [],
     habits: [],
@@ -371,5 +555,16 @@ export function createEmptySnapshot(): PlannerSnapshot {
     debts: [],
     recurringItems: [],
     financialReviews: [],
+    projectChecklistItems: [],
+    cascadePlans: [],
+    brainDumpItems: [],
+    routines: [],
+    events: [],
+    visionBoardItems: [],
+    workoutLogs: [],
+    nutritionLogs: [],
+    bodyCheckIns: [],
+    challenges: [],
+    pendingPurchases: [],
   };
 }

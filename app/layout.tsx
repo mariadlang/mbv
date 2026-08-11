@@ -25,21 +25,21 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase,
     title: "My Best Version Planner",
-    description: "Un planner consciente para conectar visión, metas, hábitos, finanzas, acciones y reflexión sin culpa.",
+    description: "Un planner consciente para convertir tu Dream Life en caminos, planes, hábitos, proyectos, finanzas y acciones diarias.",
     icons: {
       icon: "/favicon.png",
       shortcut: "/favicon.png",
     },
     openGraph: {
       title: "My Best Version Planner",
-      description: "Diseña la vida que quieres vivir. Hábitos, metas y finanzas con progreso amable.",
+      description: "Diseña la vida que quieres vivir con planeación cascada, hábitos, proyectos, bienestar y finanzas.",
       type: "website",
       images: [{ url: "/og.png", width: 1200, height: 630, alt: "My Best Version Planner" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "My Best Version Planner",
-      description: "Diseña la vida que quieres vivir. Hábitos, metas y finanzas con progreso amable.",
+      description: "Diseña la vida que quieres vivir con planeación cascada, hábitos, proyectos, bienestar y finanzas.",
       images: ["/og.png"],
     },
   };

@@ -1,0 +1,209 @@
+"use client";
+/* eslint-disable @next/next/no-img-element */
+
+import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  Bell,
+  BookHeart,
+  CalendarDays,
+  Camera,
+  Check,
+  Circle,
+  Dumbbell,
+  ImagePlus,
+  Lightbulb,
+  ListPlus,
+  MoonStar,
+  Plus,
+  ShoppingBag,
+  Sparkles,
+  Sun,
+  Utensils,
+} from "lucide-react";
+import type { BrainDumpType } from "@/src/domain/planner";
+import type { PlannerController } from "@/src/hooks/usePlanner";
+import { toLocalDateKey } from "@/src/lib/dates";
+import { Badge, Button, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+
+type HubTab = "lists" | "routines" | "fitness" | "vision" | "events" | "challenges";
+
+const listLabels: Record<BrainDumpType, string> = {
+  wishlist: "Wishlist",
+  want_to_do: "Want to do",
+  must_do: "Must do",
+  shopping: "Compras",
+  want_to_learn: "Want to learn",
+  want_to_read: "Want to read",
+};
+
+const eventLabels = {
+  medical: "Cita médica",
+  birthday: "Cumpleaños",
+  social: "Salida",
+  work: "Trabajo",
+  wellness: "Bienestar",
+  personal: "Personal",
+};
+
+async function fileToDataUrl(file: File): Promise<string> {
+  if (file.size > 1_500_000) throw new Error("La imagen debe pesar menos de 1,5 MB.");
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export function LifeHubPage({ planner }: { planner: PlannerController }) {
+  const { snapshot } = planner;
+  const today = toLocalDateKey(new Date());
+  const [tab, setTab] = useState<HubTab>("lists");
+  const [message, setMessage] = useState("");
+  const [listTitle, setListTitle] = useState("");
+  const [listType, setListType] = useState<BrainDumpType>("want_to_do");
+  const [listDate, setListDate] = useState("");
+  const [routineName, setRoutineName] = useState("Rutina AM");
+  const [routinePeriod, setRoutinePeriod] = useState<"am" | "afternoon" | "pm">("am");
+  const [routineSteps, setRoutineSteps] = useState("");
+  const [quote, setQuote] = useState("");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState(today);
+  const [eventTime, setEventTime] = useState("");
+  const [eventCategory, setEventCategory] = useState<keyof typeof eventLabels>("personal");
+  const [exercise, setExercise] = useState("");
+  const [sets, setSets] = useState(3);
+  const [reps, setReps] = useState(10);
+  const [weight, setWeight] = useState(0);
+  const [mealName, setMealName] = useState("Comida 1");
+  const [calories, setCalories] = useState(0);
+  const [protein, setProtein] = useState(0);
+  const [carbs, setCarbs] = useState(0);
+  const [fat, setFat] = useState(0);
+  const [bodyWeight, setBodyWeight] = useState(0);
+  const [waist, setWaist] = useState(0);
+  const [hip, setHip] = useState(0);
+  const [bodyPhoto, setBodyPhoto] = useState<string | undefined>();
+
+  const groupedLists = useMemo(() => (Object.keys(listLabels) as BrainDumpType[]).map((type) => ({
+    type,
+    items: snapshot.brainDumpItems.filter((item) => item.type === type),
+  })), [snapshot.brainDumpItems]);
+
+  const addListItem = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!listTitle.trim()) return;
+    await planner.createBrainDumpItem({ title: listTitle, type: listType, tentativeDate: listDate || undefined, priority: listType === "must_do" ? "high" : "medium" });
+    setListTitle("");
+  };
+
+  const addRoutine = async (event: FormEvent) => {
+    event.preventDefault();
+    const steps = routineSteps.split("\n").map((item) => item.trim()).filter(Boolean);
+    if (!routineName.trim() || !steps.length) return;
+    await planner.createRoutine({ name: routineName, period: routinePeriod, scheduledDays: [0, 1, 2, 3, 4, 5, 6], steps });
+    setRoutineSteps("");
+  };
+
+  const addQuote = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!quote.trim()) return;
+    await planner.createVisionBoardItem({ type: "quote", content: quote, reminderEnabled: true });
+    setQuote("");
+  };
+
+  const uploadVisionImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await planner.createVisionBoardItem({ type: "image", content: dataUrl, caption: file.name, reminderEnabled: true });
+      setMessage("Imagen añadida a tu vision board.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No pudimos leer esa imagen.");
+    }
+  };
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) {
+      setMessage("Tu navegador no admite notificaciones. Los recordatorios seguirán visibles en la app.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setMessage(permission === "granted" ? "Recordatorios activados en este navegador." : "Puedes activar los permisos más tarde desde tu navegador.");
+    if (permission === "granted") new Notification("My Best Version", { body: snapshot.visionBoardItems.find((item) => item.reminderEnabled)?.content || "Recuerda la vida que estás construyendo." });
+  };
+
+  const addEvent = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!eventTitle.trim()) return;
+    await planner.createEvent({ title: eventTitle, startDate: eventDate, time: eventTime || undefined, category: eventCategory });
+    setEventTitle("");
+  };
+
+  const addWorkout = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!exercise.trim()) return;
+    await planner.saveWorkout({ date: today, exercise, sets, reps, weight, goal: "Progreso semanal" });
+    setExercise("");
+  };
+
+  const addMeal = async (event: FormEvent) => {
+    event.preventDefault();
+    await planner.saveMeal({ date: today, name: mealName, calories, protein, carbs, fat });
+    setMealName(`Comida ${(snapshot.nutritionLogs.find((item) => item.date === today)?.meals.length ?? 0) + 2}`);
+  };
+
+  const saveBody = async (event: FormEvent) => {
+    event.preventDefault();
+    await planner.saveBodyCheckIn({ date: today, weight: bodyWeight || undefined, waist: waist || undefined, hip: hip || undefined, photoDataUrl: bodyPhoto });
+    setMessage("Check-in corporal guardado de forma local y privada.");
+  };
+
+  const bodyPhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try { setBodyPhoto(await fileToDataUrl(file)); } catch (error) { setMessage(error instanceof Error ? error.message : "No pudimos leer la foto."); }
+  };
+
+  const addChallenge = async (type: "fear" | "intermittent_fasting" | "no_sugar") => {
+    const presets = {
+      fear: ["Pierde el miedo", "Hacer una acción que me saque de mi zona de confort."],
+      intermittent_fasting: ["Ayuno intermitente", "Observar mi energía y seguir una pauta elegida con criterio profesional."],
+      no_sugar: ["Reto no sugar", "Reducir el azúcar añadido y observar cómo me siento."],
+    } as const;
+    await planner.createChallenge({ title: presets[type][0], type, intention: presets[type][1], startDate: today });
+  };
+
+  return (
+    <div className="page-stack life-hub-page">
+      <SectionHeading eyebrow="Todo lo que también sostiene tu vida" title="Mi espacio" description="Captura ideas, organiza rutinas, guarda tu visión y activa solo los módulos que quieres usar." />
+      <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{(["lists", "routines", "fitness", "vision", "events", "challenges"] as HubTab[]).map((item) => <button key={item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "lists" ? "Listas" : item === "routines" ? "Rutinas" : item === "fitness" ? "Fitness opcional" : item === "vision" ? "Vision board" : item === "events" ? "Eventos + tareas" : "Retos"}</button>)}</nav>
+      {message && <div className="inline-message" role="status">{message}</div>}
+
+      {tab === "lists" && <>
+        <Card className="hub-capture-card"><div><ListPlus size={23} /><p className="eyebrow">Braindump flexible</p><h2>Deja el pensamiento aquí. Decide después.</h2><p>La fecha es tentativa y siempre podrás moverla, completarla o liberarla.</p></div><form onSubmit={addListItem}><label className="form-field"><span>Pensamiento</span><input value={listTitle} onChange={(event) => setListTitle(event.target.value)} placeholder="Ej. Tomar un curso de fotografía" /></label><label className="form-field"><span>Lista</span><select value={listType} onChange={(event) => setListType(event.target.value as BrainDumpType)}>{Object.entries(listLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label className="form-field"><span>Fecha tentativa</span><input type="date" value={listDate} onChange={(event) => setListDate(event.target.value)} /></label><Button type="submit"><Plus size={16} /> Capturar</Button></form></Card>
+        <div className="brain-lists-grid">{groupedLists.map(({ type, items }) => <Card className="brain-list" key={type}><header><span>{type === "shopping" ? <ShoppingBag size={18} /> : type === "want_to_read" ? <BookHeart size={18} /> : <Lightbulb size={18} />}</span><div><h3>{listLabels[type]}</h3><small>{items.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header>{items.map((item) => <div className={`brain-item is-${item.status}`} key={item.id}><button onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate || "Sin fecha · flexible"}</small></div><button onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label="Liberar">×</button></div>)}{!items.length && <p className="brain-empty">Todo lo que aparezca aquí puede quedarse sin decidir por ahora.</p>}</Card>)}</div>
+      </>}
+
+      {tab === "routines" && <div className="hub-two-column"><Card className="hub-form-card"><Sun size={24} /><p className="eyebrow">Nueva rutina</p><h2>Diseña una secuencia que te cuide</h2><form onSubmit={addRoutine}><label className="form-field"><span>Nombre</span><input value={routineName} onChange={(event) => setRoutineName(event.target.value)} /></label><label className="form-field"><span>Momento</span><select value={routinePeriod} onChange={(event) => setRoutinePeriod(event.target.value as typeof routinePeriod)}><option value="am">AM · mañana</option><option value="afternoon">Tarde</option><option value="pm">PM · noche</option></select></label><label className="form-field"><span>Pasos · uno por línea</span><textarea rows={7} value={routineSteps} onChange={(event) => setRoutineSteps(event.target.value)} placeholder={"Agua y luz natural\nEscribir mis Top 3"} /></label><Button type="submit">Guardar rutina</Button></form></Card><div className="routine-grid">{snapshot.routines.map((routine) => <Card className="routine-card" key={routine.id}><span>{routine.period === "am" ? <Sun size={20} /> : routine.period === "pm" ? <MoonStar size={20} /> : <Sparkles size={20} />}</span><Badge tone="rose">{routine.period === "am" ? "AM" : routine.period === "pm" ? "PM" : "Tarde"}</Badge><h2>{routine.name}</h2>{routine.steps.map((step, index) => <p key={step.id}><i>{index + 1}</i>{step.title}</p>)}</Card>)}</div></div>}
+
+      {tab === "fitness" && !snapshot.profile?.fitnessEnabled && <Card className="fitness-gate"><span><Dumbbell size={29} /></span><p className="eyebrow">Módulo opcional</p><h1>Fitness Hub</h1><p>Está oculto de forma predeterminada para que tu planner se sienta ligero. Actívalo solo si quieres registrar ejercicios, macros, comidas, peso, medidas y fotos semanales.</p><Button onClick={() => planner.updateProfileSettings({ fitnessEnabled: true })}>Activar Fitness Hub</Button></Card>}
+
+      {tab === "fitness" && snapshot.profile?.fitnessEnabled && <>
+        <div className="fitness-header"><div><p className="eyebrow">Fitness Hub · semana actual</p><h2>Progreso sin ruido</h2></div><Button variant="ghost" onClick={() => planner.updateProfileSettings({ fitnessEnabled: false })}>Ocultar módulo</Button></div>
+        <div className="fitness-grid">
+          <Card className="hub-form-card"><Dumbbell size={22} /><h2>Ejercicios</h2><form onSubmit={addWorkout}><label className="form-field"><span>Ejercicio</span><input value={exercise} onChange={(event) => setExercise(event.target.value)} placeholder="Sentadilla" /></label><div className="mini-field-grid"><label className="form-field"><span>Series</span><input type="number" min="1" value={sets} onChange={(event) => setSets(Number(event.target.value))} /></label><label className="form-field"><span>Reps</span><input type="number" min="1" value={reps} onChange={(event) => setReps(Number(event.target.value))} /></label><label className="form-field"><span>Peso kg</span><input type="number" min="0" step="0.5" value={weight} onChange={(event) => setWeight(Number(event.target.value))} /></label></div><Button type="submit">Añadir ejercicio</Button></form>{snapshot.workoutLogs.flatMap((log) => log.exercises.map((item) => <div className="workout-row" key={item.id}><strong>{item.name}</strong><span>{item.sets} × {item.reps} · {item.weight} kg</span></div>))}</Card>
+          <Card className="hub-form-card"><Utensils size={22} /><h2>Comidas y macros</h2><form onSubmit={addMeal}><label className="form-field"><span>Comida</span><input value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="mini-field-grid"><label className="form-field"><span>Kcal</span><input type="number" min="0" value={calories} onChange={(event) => setCalories(Number(event.target.value))} /></label><label className="form-field"><span>Proteína</span><input type="number" min="0" value={protein} onChange={(event) => setProtein(Number(event.target.value))} /></label><label className="form-field"><span>Carbs</span><input type="number" min="0" value={carbs} onChange={(event) => setCarbs(Number(event.target.value))} /></label><label className="form-field"><span>Grasa</span><input type="number" min="0" value={fat} onChange={(event) => setFat(Number(event.target.value))} /></label></div><Button type="submit">Agregar otra comida</Button></form><div className="meal-total">{snapshot.nutritionLogs.find((item) => item.date === today)?.meals.map((meal) => <p key={meal.id}><span>{meal.name}</span><strong>{meal.calories ?? 0} kcal · P {meal.protein ?? 0}g</strong></p>)}</div></Card>
+          <Card className="hub-form-card"><Camera size={22} /><h2>Check-in semanal</h2><form onSubmit={saveBody}><div className="mini-field-grid"><label className="form-field"><span>Peso kg</span><input type="number" min="0" step="0.1" value={bodyWeight || ""} onChange={(event) => setBodyWeight(Number(event.target.value))} /></label><label className="form-field"><span>Cintura cm</span><input type="number" min="0" step="0.1" value={waist || ""} onChange={(event) => setWaist(Number(event.target.value))} /></label><label className="form-field"><span>Cadera cm</span><input type="number" min="0" step="0.1" value={hip || ""} onChange={(event) => setHip(Number(event.target.value))} /></label></div><label className="upload-tile"><Camera size={20} /><span>{bodyPhoto ? "Foto lista para guardar" : "Añadir foto opcional"}</span><input className="sr-only" type="file" accept="image/*" onChange={bodyPhotoChange} /></label><Button type="submit">Guardar check-in privado</Button></form>{snapshot.bodyCheckIns.slice(0, 4).map((item) => <p className="body-history" key={item.id}><span>{item.date}</span><strong>{item.weight ? `${item.weight} kg` : "Sin peso"}</strong></p>)}</Card>
+        </div>
+      </>}
+
+      {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addQuote}><label className="form-field"><span>Frase o recordatorio</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder="La vida que quiero también se construye hoy." /></label><Button type="submit"><Plus size={16} /> Añadir frase</Button></form><label className="button button--secondary"><ImagePlus size={16} /> Subir imagen<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label><Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> Activar recordatorios</Button></Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type === "image" ? <img src={item.content} alt={item.caption || "Imagen de vision board"} /> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || "Mi visión"}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? "Recordar" : "Pausado"}</button></footer></Card>)}</div></>}
+
+      {tab === "events" && <div className="hub-two-column"><Card className="hub-form-card"><CalendarDays size={22} /><p className="eyebrow">Nuevo evento</p><h2>Guarda lo importante</h2><form onSubmit={addEvent}><label className="form-field"><span>Evento</span><input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder="Ej. Cita de control" /></label><div className="mini-field-grid"><label className="form-field"><span>Fecha</span><input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} /></label><label className="form-field"><span>Hora</span><input type="time" value={eventTime} onChange={(event) => setEventTime(event.target.value)} /></label></div><label className="form-field"><span>Clasificación</span><select value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><Button type="submit">Guardar evento</Button></form><div className="event-list">{snapshot.events.map((item) => <p key={item.id}><span><i className={`event-dot event-dot--${item.category}`} />{item.title}</span><strong>{item.startDate} {item.time}</strong></p>)}</div></Card><Card className="all-tasks-card"><p className="eyebrow">All tasks</p><h2>Todas las tareas y su status</h2>{snapshot.tasks.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}{task.title}</span><Badge tone={task.status === "completed" ? "sage" : task.status === "in_progress" ? "rose" : "neutral"}>{task.status === "completed" ? "Done" : task.status === "in_progress" ? "On going" : "Not initiated"}</Badge></button>)}</Card></div>}
+
+      {tab === "challenges" && <><div className="challenge-presets">{(["fear", "intermittent_fasting", "no_sugar"] as const).map((type) => <Card key={type}><span><Sparkles size={22} /></span><h2>{type === "fear" ? "Pierde el miedo" : type === "intermittent_fasting" ? "Ayuno intermitente" : "Reto no sugar"}</h2><p>{type === "fear" ? "Haz algo que te dé miedo para ampliar tu zona de comodidad." : type === "intermittent_fasting" ? "Registra los días que cumples la pauta que elegiste." : "Observa tu energía al reducir el azúcar añadido."}</p><Button variant="secondary" onClick={() => addChallenge(type)}>Comenzar reto</Button></Card>)}</div><div className="active-challenges">{snapshot.challenges.map((challenge) => { const progress = challenge.completedDates.length; return <Card key={challenge.id}><header><div><Badge tone="rose">Activo</Badge><h2>{challenge.title}</h2></div><button onClick={() => planner.toggleChallengeDate(challenge.id, today)}>{challenge.completedDates.includes(today) ? <Check size={18} /> : <Plus size={18} />} Hoy</button></header><p>{challenge.intention}</p><ProgressBar value={Math.min(100, progress * 7)} label={`${progress} días registrados`} /></Card>; })}</div></>}
+    </div>
+  );
+}
