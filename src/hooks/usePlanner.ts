@@ -2,8 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { MoodName, PlannerSnapshot } from "@/src/domain/planner";
-import type { GoalFormInput, HabitFormInput, OnboardingInput } from "@/src/lib/schemas";
+import type { EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type {
+  DebtFormInput,
+  GoalFormInput,
+  HabitFormInput,
+  OnboardingInput,
+  ProjectFormInput,
+  RecurringItemFormInput,
+  SavingsFundFormInput,
+  TaskFormInput,
+  TransactionFormInput,
+} from "@/src/lib/schemas";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
 
@@ -90,6 +100,11 @@ export function usePlanner() {
     [commit],
   );
 
+  const previewBackup = useCallback(async (file: File) => {
+    const service = await getService();
+    return service.previewBackup(await file.text());
+  }, []);
+
   return {
     snapshot,
     loading,
@@ -105,6 +120,10 @@ export function usePlanner() {
       commit((service) => service.toggleHabit(habitId, date)),
     createTask: (title: string, date?: string) =>
       commit((service) => service.createTask(title, date)),
+    createTaskDetailed: (input: TaskFormInput) =>
+      commit((service) => service.createTaskDetailed(input)),
+    createProject: (input: ProjectFormInput) =>
+      commit((service) => service.createProject(input)),
     toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
@@ -112,19 +131,39 @@ export function usePlanner() {
       commit((service) => service.saveMood(mood, energy, factors, note)),
     createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
       commit((service) => service.createGoal(input, milestoneTitles)),
+    updateGoalStatus: (goalId: string, status: EntityStatus) =>
+      commit((service) => service.updateGoalStatus(goalId, status)),
+    updateGoalProgress: (goalId: string, value: number) =>
+      commit((service) => service.updateGoalProgress(goalId, value)),
     updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe" }) =>
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean }) =>
       commit((service) => service.updateProfileSettings(input)),
+    updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
+      commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
     toggleMilestone: (milestoneId: string) =>
       commit((service) => service.toggleMilestone(milestoneId)),
     saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string } = {}) =>
       commit((service) => service.saveJournal(text, options)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
+    saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
+      commit((service) => service.saveReview(type, summary, decisions)),
+    saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
+      commit((service) => service.saveMonthlyBudget(input)),
+    createTransaction: (input: TransactionFormInput) =>
+      commit((service) => service.createTransaction(input)),
+    createSavingsFund: (input: SavingsFundFormInput) =>
+      commit((service) => service.createSavingsFund(input)),
+    createDebt: (input: DebtFormInput) => commit((service) => service.createDebt(input)),
+    createRecurringItem: (input: RecurringItemFormInput) =>
+      commit((service) => service.createRecurringItem(input)),
+    saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
+      commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
     clearAll: () => commit((service) => service.clear()),
     downloadBackup,
     importBackup,
+    previewBackup,
   };
 }
 

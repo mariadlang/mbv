@@ -2,8 +2,9 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, CalendarDays, Check, Circle, Dumbbell, Heart, Leaf, Pencil, PiggyBank, Quote, Rocket, Sparkles, Target } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, Circle, Dumbbell, Heart, Leaf, Pencil, PiggyBank, Quote, Rocket, Sparkles, Target, WalletCards } from "lucide-react";
 import type { MoodName } from "@/src/domain/planner";
+import { calculateFinanceSummary, calculateFundBalance } from "@/src/domain/financeRules";
 import { calculateGoalProgress, isHabitScheduledOn } from "@/src/domain/rules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
@@ -25,6 +26,12 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
   const [energy, setEnergy] = useState<1 | 2 | 3 | 4 | 5>(todayMood?.energy ?? 4);
   const goals = snapshot.goals.filter((goal) => goal.status === "active").slice(0,3);
   const annualProgress = useMemo(() => goals.length ? Math.round(goals.reduce((sum, goal) => sum + calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks), 0) / goals.length) : 0, [goals, snapshot.milestones, snapshot.tasks]);
+  const financeSummary = calculateFinanceSummary(snapshot, todayKey.slice(0, 7));
+  const financeProfile = snapshot.financialProfiles[0];
+  const privacy = financeProfile?.privacyMode ?? snapshot.profile?.financePrivacy ?? false;
+  const currency = financeProfile?.baseCurrency ?? snapshot.profile?.baseCurrency ?? "COP";
+  const money = (value: number) => privacy ? "••••" : new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+  const primaryFund = snapshot.savingsFunds[0];
 
   return <div className="reference-dashboard">
     <header className="dashboard-greeting"><div><h1>Buenos días, {snapshot.profile?.name ?? "María"} <span>👋</span></h1><p>{formatLongDate(now)}</p></div></header>
@@ -44,6 +51,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
       <Card className="dash-progress ref-card"><div className="ref-card__heading"><h2>Progreso anual</h2><Link to="/app/progress">Ver informe</Link></div><div className="annual-progress"><div className="progress-ring" style={{"--progress": `${annualProgress * 3.6}deg`} as CSSProperties}><span>{annualProgress}%</span></div><div><strong>Avance de tus metas este año</strong>{snapshot.lifeAreas.filter((area)=>area.active).slice(0,4).map((area)=><p key={area.id}><i className={`area-dot area-dot--${area.color}`} />{area.name}<b>{area.currentScore ? area.currentScore*10 : annualProgress}%</b></p>)}</div></div></Card>
 
       <Card className="dash-review ref-card"><span className="review-icon"><CalendarDays size={26}/></span><div><h2>Revisión semanal</h2><p>Dedica 30 minutos para reflexionar, evaluar y planificar tu próxima semana.</p></div><Link className="button button--primary" to="/app/journal">Iniciar revisión</Link></Card>
+      <Card className="dash-finance ref-card"><div className="ref-card__heading"><h2>Finanzas del mes</h2><Link to="/app/finance">Abrir finanzas</Link></div><div className="dash-finance-grid"><span className="dash-finance-icon"><WalletCards size={25}/></span><div><small>Presupuesto disponible</small><strong>{money(financeSummary.availableToAssign)}</strong><p>{financeSummary.budgetUsed === null ? "Registro incompleto" : `${Math.round(financeSummary.budgetUsed)}% del presupuesto de gastos utilizado`}</p></div><div><small>Ahorro registrado</small><strong>{money(financeSummary.savingsContributions)}</strong><p>{primaryFund ? `${primaryFund.name}: ${money(calculateFundBalance(snapshot, primaryFund.id))}` : "Crea un fondo para darle propósito"}</p></div></div></Card>
     </div>
     <footer className="dashboard-quote"><Quote size={18}/><span>Pequeñas acciones diarias crean grandes cambios a largo plazo.</span><Leaf size={26}/></footer>
   </div>;

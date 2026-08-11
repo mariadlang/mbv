@@ -55,6 +55,7 @@ export function PlanningPage({ planner }: { planner: PlannerController }) {
   const saveReset = async () => {
     if (!resetText.trim()) return;
     await planner.saveJournal(resetText, { type: "monthly_reset", title: `Monthly Reset · ${format(anchorDate, "MMMM yyyy", { locale: es })}` });
+    await planner.saveReview("monthly", resetText);
     setSavedReset(true);
   };
 

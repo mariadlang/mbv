@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BarChart3,
+  Banknote,
   Bell,
   BookOpen,
   CalendarDays,
@@ -17,6 +18,7 @@ import {
   LayoutDashboard,
   ListTodo,
   Menu,
+  MoreHorizontal,
   MoonStar,
   Plus,
   Settings,
@@ -35,6 +37,7 @@ const desktopItems = [
   ["/app/tasks", "Tareas", Flag],
   ["/app/habits", "Hábitos", HeartPulse],
   ["/app/mood", "Ánimo", Smile],
+  ["/app/finance", "Finanzas", Banknote],
   ["/app/progress", "Progreso", BarChart3],
   ["/app/journal", "Journal", Feather],
   ["/app/settings", "Ajustes", Settings],
@@ -42,11 +45,11 @@ const desktopItems = [
 ] as const;
 
 const mobileItems = [
+  ["/app/dashboard", "Inicio", LayoutDashboard],
+  ["/app/planning", "Plan", CalendarDays],
   ["/app/today", "Hoy", Flag],
-  ["/app/tasks", "Tareas", ListTodo],
   ["/app/habits", "Hábitos", HeartPulse],
-  ["/app/mood", "Estado", Smile],
-  ["/app/journal", "Journal", Feather],
+  ["/app/more", "Más", MoreHorizontal],
 ] as const;
 
 export function AppShell({

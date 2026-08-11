@@ -1,8 +1,8 @@
 "use client";
 
 import { lazy, Suspense, useState, useSyncExternalStore, type FormEvent } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { BookOpen, HeartPulse, Landmark, Plus, Smile } from "lucide-react";
 import { usePlanner } from "@/src/hooks/usePlanner";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Primitives";
@@ -22,6 +22,7 @@ const VisionPage = lazy(() => import("@/src/features/vision/VisionPage").then((m
 const TasksPage = lazy(() => import("@/src/features/tasks/TasksPage").then((module) => ({ default: module.TasksPage })));
 const MoodPage = lazy(() => import("@/src/features/mood/MoodPage").then((module) => ({ default: module.MoodPage })));
 const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module) => ({ default: module.HelpPage })));
+const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then((module) => ({ default: module.FinancePage })));
 
 export default function PlannerApp() {
   const planner = usePlanner();
@@ -86,6 +87,7 @@ export default function PlannerApp() {
             <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
             <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
             <Route path="/app/mood" element={<MoodPage planner={planner} />} />
+            <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
@@ -100,6 +102,13 @@ export default function PlannerApp() {
         <form className="quick-task-form" onSubmit={addQuickTask}>
           <label className="form-field"><span>Tarea</span><input value={quickTask} onChange={(event) => setQuickTask(event.target.value)} placeholder="Ej. Pedir cita de control" /></label>
           <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setQuickAddOpen(false)}>Ahora no</Button><Button type="submit"><Plus size={17} /> Guardar en Inbox</Button></div>
+          <div className="quick-add-options" aria-label="Otros registros rápidos">
+            <span>También puedes registrar</span>
+            <Link to="/app/habits" onClick={() => setQuickAddOpen(false)}><HeartPulse size={16} /> Hábito</Link>
+            <Link to="/app/mood" onClick={() => setQuickAddOpen(false)}><Smile size={16} /> Ánimo</Link>
+            <Link to="/app/journal" onClick={() => setQuickAddOpen(false)}><BookOpen size={16} /> Nota</Link>
+            <Link to="/app/finance" onClick={() => setQuickAddOpen(false)}><Landmark size={16} /> Movimiento</Link>
+          </div>
         </form>
       </Modal>
     </BrowserRouter>

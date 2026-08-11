@@ -71,6 +71,8 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     priorityAreaIds: lifeAreas.filter((area) => area.active).slice(0, 3).map((area) => area.id),
     mainPriorities: ["Avanzar en el lanzamiento del planner", "Entrenamiento + movimiento", "Tiempo de calidad en familia"],
     theme: "light",
+    baseCurrency: "COP",
+    financePrivacy: false,
     onboardingCompleted: true,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -78,6 +80,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
 
   const runningGoalId = id();
   const plannerGoalId = id();
+  const launchProjectId = id();
   const goals: Goal[] = [
     {
       id: runningGoalId,
@@ -224,6 +227,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
       status: "planned",
       estimatedMinutes: 45,
       goalId: plannerGoalId,
+      projectId: launchProjectId,
       lifeAreaId: areaId("Proyectos creativos"),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -276,8 +280,67 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     },
   ];
 
+  const projects: PlannerSnapshot["projects"] = [
+    {
+      id: launchProjectId,
+      name: "Lanzamiento del planner",
+      outcome: "Publicar una primera versión útil y probarla con personas reales.",
+      lifeAreaId: areaId("Proyectos creativos"),
+      goalId: plannerGoalId,
+      targetDate: toLocalDateKey(addDays(now, 60)),
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ];
+
+  const incomeCategoryId = id();
+  const homeCategoryId = id();
+  const wellbeingCategoryId = id();
+  const savingsCategoryId = id();
+  const debtCategoryId = id();
+  const travelFundId = id();
+  const cardDebtId = id();
+  const monthKey = today.slice(0, 7);
+  const budgetId = id();
+
+  const financeCategories: PlannerSnapshot["financeCategories"] = [
+    { id: incomeCategoryId, name: "Ingresos", type: "income", active: true, createdAt: timestamp, updatedAt: timestamp },
+    { id: homeCategoryId, name: "Hogar", type: "expense", active: true, createdAt: timestamp, updatedAt: timestamp },
+    { id: wellbeingCategoryId, name: "Bienestar", type: "expense", active: true, createdAt: timestamp, updatedAt: timestamp },
+    { id: savingsCategoryId, name: "Ahorro viaje", type: "savings", active: true, createdAt: timestamp, updatedAt: timestamp },
+    { id: debtCategoryId, name: "Pago de deuda", type: "debt", active: true, createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const monthlyBudgets: PlannerSnapshot["monthlyBudgets"] = [
+    { id: budgetId, monthKey, plannedIncome: 8_500_000, notes: "Un plan flexible para elegir con claridad.", status: "active", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const budgetLines: PlannerSnapshot["budgetLines"] = [
+    { id: id(), budgetId, categoryId: homeCategoryId, plannedAmount: 3_200_000, createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), budgetId, categoryId: wellbeingCategoryId, plannedAmount: 1_100_000, createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), budgetId, categoryId: savingsCategoryId, plannedAmount: 1_500_000, createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), budgetId, categoryId: debtCategoryId, plannedAmount: 600_000, createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const transactions: PlannerSnapshot["transactions"] = [
+    { id: id(), type: "income", amount: 8_500_000, date: `${monthKey}-01`, categoryId: incomeCategoryId, note: "Ingreso del mes", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "expense", amount: 2_460_000, date: `${monthKey}-03`, categoryId: homeCategoryId, note: "Gastos del hogar", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "expense", amount: 620_000, date: `${monthKey}-06`, categoryId: wellbeingCategoryId, note: "Bienestar y movimiento", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "contribution", amount: 1_200_000, date: `${monthKey}-07`, categoryId: savingsCategoryId, fundId: travelFundId, note: "Aporte al viaje", status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), type: "debt_payment", amount: 600_000, date: `${monthKey}-08`, categoryId: debtCategoryId, debtId: cardDebtId, note: "Pago mensual", status: "active", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const savingsFunds: PlannerSnapshot["savingsFunds"] = [
+    { id: travelFundId, name: "Viaje familiar", targetAmount: 13_000_000, initialAmount: 6_050_000, targetDate: toLocalDateKey(addDays(now, 240)), status: "active", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
+  const debts: PlannerSnapshot["debts"] = [
+    { id: cardDebtId, name: "Tarjeta de estudio", initialBalance: 4_800_000, informativeRate: 22.4, minimumPayment: 450_000, dueDay: 18, status: "active", createdAt: timestamp, updatedAt: timestamp },
+  ];
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile,
     lifeAreas,
     habits,
@@ -287,5 +350,21 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     milestones,
     moodLogs,
     journalEntries,
+    projects,
+    periodPlans: [],
+    reviews: [],
+    financialProfiles: [{ id: id(), baseCurrency: "COP", privacyMode: false, monthStartsOn: 1, status: "active", createdAt: timestamp, updatedAt: timestamp }],
+    financialAccounts: [],
+    financeCategories,
+    monthlyBudgets,
+    budgetLines,
+    transactions,
+    savingsFunds,
+    debts,
+    recurringItems: [
+      { id: id(), name: "Aporte viaje", type: "contribution", amount: 1_200_000, dayOfMonth: 7, categoryId: savingsCategoryId, fundId: travelFundId, active: true, createdAt: timestamp, updatedAt: timestamp },
+      { id: id(), name: "Pago tarjeta", type: "debt_payment", amount: 600_000, dayOfMonth: 18, categoryId: debtCategoryId, debtId: cardDebtId, active: true, createdAt: timestamp, updatedAt: timestamp },
+    ],
+    financialReviews: [],
   };
 }
