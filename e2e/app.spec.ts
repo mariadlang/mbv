@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("onboarding creates an empty local planner", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /My Best Version Planner/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Diseña tu mejor versión/ })).toBeVisible();
 
   await page.getByRole("button", { name: /Comenzar/ }).click();
   await page.getByRole("button", { name: "Continuar" }).click();

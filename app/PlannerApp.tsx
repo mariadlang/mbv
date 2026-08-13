@@ -8,6 +8,7 @@ import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { Onboarding } from "@/src/features/onboarding/Onboarding";
+import { BrandMark } from "@/src/components/ui/BrandMark";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -38,7 +39,7 @@ export default function PlannerApp() {
   if (!mounted || planner.loading) {
     return (
       <main className="brand-loading" aria-label="Cargando My Best Version Planner">
-        <span className="wordmark">My Best Version</span>
+        <BrandMark />
         <span className="brand-loading__ring" />
         <p>Preparando un espacio para lo que importa…</p>
       </main>
@@ -48,7 +49,7 @@ export default function PlannerApp() {
   if (planner.error && !planner.snapshot.profile) {
     return (
       <main className="error-page">
-        <p className="wordmark">My Best Version</p>
+        <BrandMark />
         <h1>No pudimos abrir tu planner.</h1>
         <p>{planner.error}</p>
         <Button onClick={planner.retry}>Intentar de nuevo</Button>

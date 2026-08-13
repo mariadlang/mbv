@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Coins, FileUp, Heart, 
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { onboardingSchema, type OnboardingInput } from "@/src/lib/schemas";
 import { Button } from "@/src/components/ui/Primitives";
+import { BrandMark } from "@/src/components/ui/BrandMark";
 
 const intentions = [
   ["Convertirme en mi mejor versión", "Crecimiento personal y bienestar", Sparkles],
@@ -44,10 +45,10 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
     return <main className="splash-page">
       <div className="splash-orb splash-orb--one" /><div className="splash-orb splash-orb--two" />
       <section className="splash-content">
-        <div className="mbv-monogram">M<span>B</span><em>V</em><i>❧</i></div>
-        <h1>My Best<br />Version <em>Planner</em></h1>
+        <BrandMark />
+        <h1>Diseña tu mejor <em>versión</em></h1>
         <div className="splash-divider"><span /><Heart size={17} /><span /></div>
-        <p>Diseña la vida que<br /><em>quieres vivir</em></p>
+        <p>Planea con intención.<br /><em>Avanza a tu ritmo.</em></p>
         <div className="splash-illustration"><Leaf size={84} strokeWidth={1} /><span className="splash-notebook">MBV</span></div>
         <Button onClick={() => setStage(1)}>Comenzar <ArrowRight size={18} /></Button>
         <span className="signed-session"><Check size={14} /> Inicio de sesión protegido con ChatGPT</span>

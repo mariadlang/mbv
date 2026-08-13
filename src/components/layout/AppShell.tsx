@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BarChart3,
@@ -28,22 +28,38 @@ import {
   Target,
 } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
+import { BrandMark } from "@/src/components/ui/BrandMark";
 
-const desktopItems = [
-  ["/app/dashboard", "Dashboard", LayoutDashboard],
-  ["/app/vision", "Visión", Eye],
-  ["/app/goals", "Metas", Target],
-  ["/app/planning", "Planificación", CalendarDays],
-  ["/app/today", "Hoy", ListTodo],
-  ["/app/tasks", "Tareas", Flag],
-  ["/app/habits", "Hábitos", HeartPulse],
-  ["/app/mood", "Ánimo", Smile],
-  ["/app/finance", "Finanzas", Banknote],
-  ["/app/life-hub", "Mi espacio", Layers3],
-  ["/app/progress", "Progreso", BarChart3],
-  ["/app/journal", "Journal", Feather],
-  ["/app/settings", "Ajustes", Settings],
-  ["/app/help", "Centro de ayuda", BookOpen],
+const desktopGroups = [
+  {
+    label: "Mi dirección",
+    items: [
+      ["/app/dashboard", "Inicio", LayoutDashboard],
+      ["/app/vision", "Mi visión", Eye],
+      ["/app/goals", "Metas", Target],
+      ["/app/planning", "Planificación", CalendarDays],
+    ],
+  },
+  {
+    label: "Mi día a día",
+    items: [
+      ["/app/today", "Hoy", ListTodo],
+      ["/app/tasks", "Tareas", Flag],
+      ["/app/habits", "Hábitos", HeartPulse],
+      ["/app/mood", "Bienestar", Smile],
+      ["/app/finance", "Finanzas", Banknote],
+      ["/app/life-hub", "Mi espacio", Layers3],
+    ],
+  },
+  {
+    label: "Reflexionar",
+    items: [
+      ["/app/progress", "Progreso", BarChart3],
+      ["/app/journal", "Journal", Feather],
+      ["/app/settings", "Ajustes", Settings],
+      ["/app/help", "Ayuda", BookOpen],
+    ],
+  },
 ] as const;
 
 const mobileItems = [
@@ -70,25 +86,36 @@ export function AppShell({
   const { pathname } = useLocation();
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
+  const colorMode = useUiStore((state) => state.colorMode);
+  const toggleColorMode = useUiStore((state) => state.toggleColorMode);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = colorMode;
+  }, [colorMode]);
 
   return (
-    <div className={`app-shell theme-${theme} ${sidebarCollapsed ? "app-shell--collapsed" : ""}`}>
+    <div className={`app-shell theme-${theme} ${sidebarCollapsed ? "app-shell--collapsed" : ""}`} data-color-mode={colorMode}>
+      <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <aside className="sidebar" aria-label="Navegación principal">
-        <NavLink to="/app/dashboard" className="sidebar__brand">
-          <span className="wordmark">My Best Version</span>
-          {!sidebarCollapsed && <span className="wordmark-sub">Planner</span>}
+        <NavLink to="/app/dashboard" className="sidebar__brand" aria-label="My Best Version, inicio">
+          <BrandMark compact={sidebarCollapsed} iconOnly={sidebarCollapsed} />
         </NavLink>
         <nav className="sidebar__nav">
-          {desktopItems.map(([href, label, Icon]) => (
-            <NavLink
-              key={href}
-              to={href}
-              className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`}
-              title={sidebarCollapsed ? label : undefined}
-            >
-              <Icon size={19} strokeWidth={1.6} aria-hidden="true" />
-              {!sidebarCollapsed && <span>{label}</span>}
-            </NavLink>
+          {desktopGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              {!sidebarCollapsed && <span className="nav-group__label">{group.label}</span>}
+              {group.items.map(([href, label, Icon]) => (
+                <NavLink
+                  key={href}
+                  to={href}
+                  className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`}
+                  title={sidebarCollapsed ? label : undefined}
+                >
+                  <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
+                  {!sidebarCollapsed && <span>{label}</span>}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="sidebar__footer">
@@ -105,11 +132,22 @@ export function AppShell({
 
       <div className="app-main">
         <header className="topbar">
-          <NavLink to="/app/dashboard" className="topbar__mobile-brand">
+          <NavLink to="/app/more" className="topbar__mobile-brand" aria-label="Abrir más opciones">
             <Menu size={20} aria-hidden="true" />
-            <span className="wordmark">My Best Version</span>
+            <BrandMark compact />
           </NavLink>
-          <div className="topbar__utilities"><button aria-label="Cambiar apariencia"><Sun size={18} /><MoonStar size={14} /></button><button aria-label="Notificaciones"><Bell size={19} /></button></div>
+          <div className="topbar__utilities">
+            <button
+              type="button"
+              onClick={toggleColorMode}
+              aria-label={colorMode === "light" ? "Activar modo oscuro" : "Activar modo claro"}
+              aria-pressed={colorMode === "dark"}
+              title={colorMode === "light" ? "Modo oscuro" : "Modo claro"}
+            >
+              {colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}
+            </button>
+            <button type="button" aria-label="Notificaciones" title="Recordatorios y notificaciones"><Bell size={19} /></button>
+          </div>
           <div className="topbar__status" aria-live="polite">
             <span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />
             {saving ? "Guardando…" : "Guardado"}
@@ -120,7 +158,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="page-content" key={pathname}>{children}</main>
+        <main id="main-content" className="page-content" key={pathname}>{children}</main>
       </div>
 
       <button className="fab" onClick={onQuickAdd} aria-label="Añadir tarea rápida">
