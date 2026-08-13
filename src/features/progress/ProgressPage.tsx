@@ -49,12 +49,12 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
           <div className="large-chart" aria-label="Hábitos registrados y tareas completadas en los últimos siete días">
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} margin={{ top: 20, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="#E5D9CE" vertical={false} strokeDasharray="3 5" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#9A8876", fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "#9A8876", fontSize: 12 }} />
-                <Tooltip cursor={{ fill: "#F4EDE5" }} />
-                <Bar dataKey="hábitos" fill="#C98282" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="tareas" fill="#AAB29B" radius={[8, 8, 0, 0]} />
+                <CartesianGrid stroke="var(--color-border)" vertical={false} strokeDasharray="3 5" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }} />
+                <Tooltip cursor={{ fill: "var(--color-surface-muted)" }} contentStyle={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border)", borderRadius: 12 }} />
+                <Bar dataKey="hábitos" fill="var(--color-brand)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="tareas" fill="var(--color-accent-lavender)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

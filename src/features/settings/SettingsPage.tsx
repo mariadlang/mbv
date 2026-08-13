@@ -2,14 +2,17 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, LockKeyhole, LogOut, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, LockKeyhole, LogOut, MoonStar, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { useUiStore } from "@/src/stores/useUiStore";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
 export function SettingsPage({ planner }: { planner: PlannerController }) {
+  const colorMode = useUiStore((state) => state.colorMode);
+  const setColorMode = useUiStore((state) => state.setColorMode);
   const fileInput = useRef<HTMLInputElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -61,6 +64,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
         <section><div><strong>Para qué lo quiero usar</strong><small>Tu razón para volver a este espacio.</small></div><textarea rows={3} value={usePurpose} onChange={(event) => setUsePurpose(event.target.value)} /></section>
         <section><div><strong>Inicio de semana</strong><small>Selecciona el primer día de tu semana.</small></div><select value={weekStartsOn} onChange={(event)=>setWeekStartsOn(Number(event.target.value) as 0|1)}><option value={1}>Lunes</option><option value={0}>Domingo</option></select></section>
         <section className="theme-setting"><div><strong>Tema</strong><small>Elige la atmósfera visual del planner.</small></div><div>{(["light","rose","taupe"] as const).map((item)=><button key={item} className={theme===item?"is-selected":""} onClick={()=>setTheme(item)}><i className={`theme-swatch theme-swatch--${item}`}/>{item==="light"?"Claro":item==="rose"?"Rosa":"Taupe"}</button>)}</div></section>
+        <section className="theme-setting"><div><strong>Modo de color</strong><small>Reduce el brillo cuando quieras una experiencia más suave.</small></div><div className="color-mode-setting"><button type="button" className={colorMode === "light" ? "is-selected" : ""} onClick={() => setColorMode("light")} aria-pressed={colorMode === "light"}><Sun size={16} /> Claro</button><button type="button" className={colorMode === "dark" ? "is-selected" : ""} onClick={() => setColorMode("dark")} aria-pressed={colorMode === "dark"}><MoonStar size={16} /> Oscuro</button></div></section>
         <section><div><strong>Moneda base</strong><small>Se usa para todos los registros financieros.</small></div><select value={currency} onChange={(event) => setCurrency(event.target.value as typeof currency)}><option value="COP">COP · Peso colombiano</option><option value="USD">USD · Dólar</option><option value="EUR">EUR · Euro</option><option value="MXN">MXN · Peso mexicano</option></select></section>
         <section><div><strong>Privacidad financiera</strong><small>Oculta los valores sin borrar tus movimientos.</small></div><button className={`privacy-toggle ${financePrivacy ? "is-on" : ""}`} aria-pressed={financePrivacy} onClick={() => setFinancePrivacy(!financePrivacy)}><span />{financePrivacy ? "Valores ocultos" : "Valores visibles"}</button></section>
         <section><div><strong>Fitness Hub opcional</strong><small>Muestra ejercicios, comidas, macros, medidas y fotos solo cuando lo necesites.</small></div><button className={`privacy-toggle ${fitnessEnabled ? "is-on" : ""}`} aria-pressed={fitnessEnabled} onClick={() => setFitnessEnabled(!fitnessEnabled)}><span />{fitnessEnabled ? "Módulo activo" : "Módulo oculto"}</button></section>

@@ -1,5 +1,9 @@
 # My Best Version Planner
 
+## Deployment
+
+Vercel publica produccion automaticamente desde la rama `main` de `mariadlang/mbv`.
+
 Aplicación web local-first para convertir visión personal en metas, hábitos, acciones semanales y reflexión diaria. Está diseñada para acompañar sin culpa: los días no programados no penalizan la constancia y los pendientes vencidos pueden reprogramarse.
 
 ## Stack

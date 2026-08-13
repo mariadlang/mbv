@@ -75,11 +75,11 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
             <div className="wheel-chart" aria-label="Rueda de vida actual y deseada">
               <ResponsiveContainer width="100%" height={460}>
                 <RadarChart data={radarData} outerRadius="72%">
-                  <PolarGrid stroke="#E5D9CE" />
-                  <PolarAngleAxis dataKey="area" tick={{ fill: "#40352D", fontSize: 12 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 10]} tickCount={6} tick={{ fill: "#9A8876", fontSize: 10 }} />
-                  <Radar name="Actual" dataKey="actual" stroke="#9A8876" fill="#9A8876" fillOpacity={0.18} />
-                  <Radar name="Deseada" dataKey="deseada" stroke="#C98282" fill="#C98282" fillOpacity={0.2} />
+                  <PolarGrid stroke="var(--color-border)" />
+                  <PolarAngleAxis dataKey="area" tick={{ fill: "var(--color-text-primary)", fontSize: 12 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tickCount={6} tick={{ fill: "var(--color-text-secondary)", fontSize: 10 }} />
+                  <Radar name="Actual" dataKey="actual" stroke="var(--color-accent-sand)" fill="var(--color-accent-sand)" fillOpacity={0.22} />
+                  <Radar name="Deseada" dataKey="deseada" stroke="var(--color-brand-strong)" fill="var(--color-brand)" fillOpacity={0.24} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
