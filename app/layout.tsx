@@ -32,21 +32,21 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase,
-    title: "My Best Version · Planea, acciona, logra",
-    description: "Un planner consciente para convertir tu visión en planes, hábitos y acciones sostenibles.",
+    title: "My Best Version · Life, but more you.",
+    description: "Organización para el desarrollo personal: convierte tu visión en planes, hábitos y acciones sostenibles.",
     icons: {
       icon: "/favicon.png",
       shortcut: "/favicon.png",
     },
     openGraph: {
-      title: "My Best Version · Planea, acciona, logra",
+      title: "My Best Version · Life, but more you.",
       description: "Diseña la vida que quieres vivir con planeación en cascada, hábitos, bienestar y finanzas.",
       type: "website",
-      images: [{ url: "/og-v2.jpg", width: 1728, height: 910, alt: "My Best Version · Planea, acciona, logra" }],
+      images: [{ url: "/og-v2.jpg", width: 1728, height: 910, alt: "My Best Version · Life, but more you." }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "My Best Version · Planea, acciona, logra",
+      title: "My Best Version · Life, but more you.",
       description: "Diseña la vida que quieres vivir con planeación en cascada, hábitos, bienestar y finanzas.",
       images: ["/og-v2.jpg"],
     },
