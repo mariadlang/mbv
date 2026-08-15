@@ -63,8 +63,10 @@ export const plannerService = {
       updatedAt: now,
     }));
     const financeCategories = [
-      ["Ingresos", "income"], ["Hogar", "expense"], ["Bienestar", "expense"],
-      ["Ahorro", "savings"], ["Pago de deuda", "debt"],
+      ["Ingresos", "income"], ["Hogar", "expense"], ["Básicos", "expense"], ["Alquiler", "expense"],
+      ["Luz", "expense"], ["Agua", "expense"], ["Gas", "expense"], ["Diversión", "expense"],
+      ["Lujos", "expense"], ["Salidas", "expense"], ["Otros", "expense"], ["Regalos", "expense"],
+      ["Transporte", "expense"], ["Ahorro", "savings"], ["Pago de deuda", "debt"],
     ].map(([name, type]) => ({
       id: id(), name, type: type as "income" | "expense" | "savings" | "debt",
       active: true, createdAt: now, updatedAt: now,
@@ -95,11 +97,12 @@ export const plannerService = {
         status: "active", createdAt: now, updatedAt: now,
       }],
       financeCategories,
-      tasks: (input.priorities ?? []).filter(Boolean).slice(0, 3).map((title) => ({
+      tasks: (input.priorities ?? []).filter(Boolean).slice(0, 3).map((title, index) => ({
         id: id(),
         title,
         date: toLocalDateKey(new Date()),
         priority: "high" as const,
+        focusPriority: (index + 1) as 1 | 2 | 3,
         status: "planned" as const,
         createdAt: now,
         updatedAt: now,
@@ -175,7 +178,7 @@ export const plannerService = {
     });
   },
 
-  createTask(title: string, date?: string): Promise<PlannerSnapshot> {
+  createTask(title: string, date?: string, focusPriority?: 1 | 2 | 3): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = new Date().toISOString();
       return {
@@ -187,6 +190,7 @@ export const plannerService = {
             title: title.trim(),
             date,
             priority: "medium",
+            focusPriority,
             status: date ? "planned" : "inbox",
             createdAt: now,
             updatedAt: now,
@@ -209,6 +213,7 @@ export const plannerService = {
           time: input.time || undefined,
           estimatedMinutes: input.estimatedMinutes,
           priority: input.priority ?? "medium",
+          focusPriority: input.focusPriority,
           lifeAreaId: input.lifeAreaId || undefined,
           goalId: input.goalId || undefined,
           milestoneId: input.milestoneId || undefined,
@@ -268,7 +273,7 @@ export const plannerService = {
       ...snapshot,
       tasks: snapshot.tasks.map((task) =>
         task.id === taskId
-          ? { ...task, date, status: "postponed", updatedAt: new Date().toISOString() }
+          ? { ...task, date, status: "postponed", rescheduleCount: (task.rescheduleCount ?? 0) + 1, updatedAt: new Date().toISOString() }
           : task,
       ),
     }));
@@ -314,6 +319,7 @@ export const plannerService = {
             reason: input.reason,
             lifeAreaId: input.lifeAreaId || undefined,
             targetDate: input.targetDate || undefined,
+            targetMonth: input.targetMonth || undefined,
             progressType,
             targetValue: input.targetValue,
             currentValue: progressType === "numeric" ? 0 : undefined,
@@ -367,7 +373,7 @@ export const plannerService = {
 
   updateLifeArea(
     lifeAreaId: string,
-    input: { currentScore: number; desiredScore: number; vision: string },
+    input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string },
   ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
@@ -387,6 +393,7 @@ export const plannerService = {
     financePrivacy?: boolean;
     fitnessEnabled?: boolean;
     usePurpose?: string;
+    avatarDataUrl?: string;
   }): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
@@ -715,10 +722,11 @@ export const plannerService = {
   },
 
   createVisionBoardItem(input: {
-    type: "quote" | "image";
+    type: "quote" | "image" | "mixed";
     content: string;
     caption?: string;
     reminderEnabled?: boolean;
+    reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly";
   }): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
@@ -728,6 +736,7 @@ export const plannerService = {
           id: id(), type: input.type, content: input.content,
           caption: input.caption?.trim() || undefined,
           reminderEnabled: input.reminderEnabled ?? true,
+          reminderFrequency: input.reminderFrequency ?? "weekly",
           createdAt: now, updatedAt: now,
         }, ...snapshot.visionBoardItems],
       };
@@ -845,9 +854,20 @@ export const plannerService = {
     });
   },
 
+  updateFinancialAccountBalance(accountId: string, initialBalance: number): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      financialAccounts: snapshot.financialAccounts.map((account) => account.id === accountId
+        ? { ...account, initialBalance: Math.round(initialBalance), updatedAt: nowIso() }
+        : account),
+    }));
+  },
+
   createPendingPurchase(input: PendingPurchaseFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
+      const tentativeDate = input.tentativeDate || undefined;
+      const taskDate = tentativeDate?.length === 7 ? `${tentativeDate}-01` : tentativeDate;
       return {
         ...snapshot,
         pendingPurchases: [{
@@ -855,6 +875,10 @@ export const plannerService = {
           accountId: input.accountId || undefined, tentativeDate: input.tentativeDate || undefined,
           priority: input.priority ?? "medium", status: "pending", createdAt: now, updatedAt: now,
         }, ...snapshot.pendingPurchases],
+        tasks: taskDate ? [{
+          id: id(), title: `Comprar: ${input.title.trim()}`, date: taskDate,
+          priority: input.priority ?? "medium", status: "planned", createdAt: now, updatedAt: now,
+        }, ...snapshot.tasks] : snapshot.tasks,
       };
     });
   },
@@ -891,18 +915,20 @@ export const plannerService = {
   },
 
   updateDailyIntention(dailyIntention: string): Promise<PlannerSnapshot> {
-    return updateSnapshot((snapshot) =>
-      snapshot.profile
-        ? {
-            ...snapshot,
-            profile: {
-              ...snapshot.profile,
-              dailyIntention: dailyIntention.trim(),
-              updatedAt: new Date().toISOString(),
-            },
-          }
-        : snapshot,
-    );
+    return updateSnapshot((snapshot) => {
+      if (!snapshot.profile) return snapshot;
+      const now = nowIso();
+      const text = dailyIntention.trim();
+      const today = toLocalDateKey(new Date());
+      const existing = snapshot.journalEntries.find((entry) => entry.date === today && entry.title === "Intención del día");
+      return {
+        ...snapshot,
+        profile: { ...snapshot.profile, dailyIntention: text, updatedAt: now },
+        journalEntries: existing
+          ? snapshot.journalEntries.map((entry) => entry.id === existing.id ? { ...entry, text, updatedAt: now } : entry)
+          : [{ id: id(), date: today, type: "free", title: "Intención del día", text, status: "saved", createdAt: now, updatedAt: now }, ...snapshot.journalEntries],
+      };
+    });
   },
 
   async exportBackup(): Promise<string> {

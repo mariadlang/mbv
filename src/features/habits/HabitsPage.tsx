@@ -10,6 +10,7 @@ import { getRecentDates, getWeekDates, formatShortDay, toLocalDateKey } from "@/
 import { habitFormSchema, type HabitFormInput } from "@/src/lib/schemas";
 import { Badge, Button, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { MoodPage } from "@/src/features/mood/MoodPage";
 
 const dayOptions = [
   [1, "L"], [2, "M"], [3, "X"], [4, "J"], [5, "V"], [6, "S"], [0, "D"],
@@ -168,6 +169,8 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
           );
         })}
       </div>
+
+      <section className="wellbeing-section" aria-label="Bienestar, ánimo y energía"><MoodPage planner={planner} /></section>
 
       <Modal open={dialogOpen} title="Crear un hábito" description="Empieza con algo pequeño y claro. Siempre podrás ajustarlo." onClose={() => setDialogOpen(false)}>
         <form className="form-grid" onSubmit={onSubmit}>

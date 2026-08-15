@@ -26,6 +26,7 @@ export const goalFormSchema = z.object({
   title: z.string().trim().min(3, "Escribe un resultado concreto."),
   reason: z.string().trim().min(4, "Añade una razón que te conecte con esta meta."),
   targetDate: z.string().optional(),
+  targetMonth: z.string().optional(),
   lifeAreaId: optionalId,
   progressType: z.enum(["milestones", "numeric", "manual", "tasks"]).default("milestones"),
   targetValue: z.number().positive().optional(),
@@ -41,6 +42,7 @@ export const taskFormSchema = z.object({
   time: z.string().optional(),
   estimatedMinutes: z.number().int().positive().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
+  focusPriority: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   lifeAreaId: optionalId,
   goalId: optionalId,
   milestoneId: optionalId,
@@ -112,7 +114,7 @@ export const cascadePlanFormSchema = z.object({
 
 export const brainDumpFormSchema = z.object({
   title: z.string().trim().min(2),
-  type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read"]),
+  type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read", "watch_list"]),
   tentativeDate: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
 });
@@ -165,7 +167,7 @@ const profileSchema = z.object({
   priorityAreaIds: z.array(z.string()), mainPriorities: z.array(z.string()).optional(),
   theme: z.enum(["light", "rose", "taupe"]).optional(),
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
-  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), lastBackupAt: z.string().optional(),
+  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: z.string().optional(), lastBackupAt: z.string().optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -173,7 +175,7 @@ const lifeAreaSchema = z.object({
   id: z.string(), name: z.string(), color: z.enum(["rose", "sage", "taupe", "charcoal", "blush"]),
   order: z.number(), active: z.boolean(), currentScore: z.number().min(0).max(10).optional(),
   desiredScore: z.number().min(0).max(10).optional(), vision: z.string().optional(),
-  icon: z.string().optional(), reflection: z.string().optional(),
+  icon: z.string().optional(), reflection: z.string().optional(), dream: z.string().optional(), imageDataUrl: z.string().optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -197,6 +199,7 @@ const taskSchema = z.object({
   financialCategoryId: optionalId, date: z.string().optional(), time: z.string().optional(),
   estimatedMinutes: z.number().optional(), recurrence: z.enum(["daily", "weekly", "monthly"]).optional(),
   priority: z.enum(["low", "medium", "high"]),
+  focusPriority: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(), rescheduleCount: z.number().int().min(0).optional(),
   status: z.enum(["inbox", "planned", "in_progress", "completed", "postponed", "cancelled"]),
   completedAt: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
@@ -205,7 +208,7 @@ const goalSchema = z.object({
   id: z.string(), title: z.string(), reason: z.string(), lifeAreaId: optionalId,
   progressType: z.enum(["milestones", "numeric", "manual", "tasks"]),
   targetValue: z.number().optional(), currentValue: z.number().optional(), unit: z.string().optional(),
-  targetDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]),
+  targetDate: z.string().optional(), targetMonth: z.string().optional(), priority: z.enum(["low", "medium", "high"]),
   status: entityStatusSchema, manualProgress: z.number().optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
@@ -250,7 +253,7 @@ const cascadePlanSchema = z.object({
 });
 
 const brainDumpItemSchema = z.object({
-  id: z.string(), title: z.string(), type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read"]),
+  id: z.string(), title: z.string(), type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read", "watch_list"]),
   tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]), status: z.enum(["idea", "planned", "completed", "released"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
@@ -268,8 +271,13 @@ const plannerEventSchema = z.object({
 });
 
 const visionBoardItemSchema = z.object({
-  id: z.string(), type: z.enum(["quote", "image"]), content: z.string(), caption: z.string().optional(),
-  reminderEnabled: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
+  id: z.string(), type: z.enum(["quote", "image", "mixed"]), content: z.string(), caption: z.string().optional(),
+  reminderEnabled: z.boolean(), reminderFrequency: z.enum(["daily", "weekly", "monthly", "quarterly"]).optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
+});
+
+export const imageUploadSchema = z.object({
+  type: z.string().refine((value) => value.startsWith("image/"), "Selecciona un archivo de imagen."),
+  size: z.number().max(1_500_000, "La imagen debe pesar menos de 1,5 MB."),
 });
 
 const workoutLogSchema = z.object({

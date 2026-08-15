@@ -21,7 +21,6 @@ const SettingsPage = lazy(() => import("@/src/features/settings/SettingsPage").t
 const TodayPage = lazy(() => import("@/src/features/today/TodayPage").then((module) => ({ default: module.TodayPage })));
 const VisionPage = lazy(() => import("@/src/features/vision/VisionPage").then((module) => ({ default: module.VisionPage })));
 const TasksPage = lazy(() => import("@/src/features/tasks/TasksPage").then((module) => ({ default: module.TasksPage })));
-const MoodPage = lazy(() => import("@/src/features/mood/MoodPage").then((module) => ({ default: module.MoodPage })));
 const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module) => ({ default: module.HelpPage })));
 const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then((module) => ({ default: module.FinancePage })));
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
@@ -35,6 +34,8 @@ export default function PlannerApp() {
   );
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickTask, setQuickTask] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpMode, setHelpMode] = useState<"overwhelmed" | "start" | "energy" | null>(null);
 
   if (!mounted || planner.loading) {
     return (
@@ -73,9 +74,11 @@ export default function PlannerApp() {
     <BrowserRouter>
       <AppShell
         userName={planner.snapshot.profile.name}
+        userAvatar={planner.snapshot.profile.avatarDataUrl}
         saving={planner.saving}
         theme={planner.snapshot.profile.theme ?? "light"}
         onQuickAdd={() => setQuickAddOpen(true)}
+        onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }}
       >
         {planner.error && <div className="inline-message inline-message--error" role="alert">{planner.error}</div>}
         <Suspense fallback={<div className="route-loading" role="status">Abriendo tu espacio…</div>}>
@@ -85,10 +88,13 @@ export default function PlannerApp() {
             <Route path="/app/dashboard" element={<DashboardPage planner={planner} />} />
             <Route path="/app/vision" element={<VisionPage planner={planner} />} />
             <Route path="/app/planning" element={<PlanningPage planner={planner} />} />
+            <Route path="/app/planning/long-term" element={<PlanningPage planner={planner} initialView="year" />} />
+            <Route path="/app/planning/monthly" element={<PlanningPage planner={planner} initialView="month" />} />
+            <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} initialView="week" />} />
             <Route path="/app/today" element={<TodayPage planner={planner} />} />
             <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
             <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
-            <Route path="/app/mood" element={<MoodPage planner={planner} />} />
+            <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
@@ -113,6 +119,9 @@ export default function PlannerApp() {
             <Link to="/app/finance" onClick={() => setQuickAddOpen(false)}><Landmark size={16} /> Movimiento</Link>
           </div>
         </form>
+      </Modal>
+      <Modal open={helpOpen} title="¿Qué necesitas ahora?" description="Elige lo que se parece más a este momento. Te mostraremos un paso breve." onClose={() => setHelpOpen(false)}>
+        {!helpMode ? <div className="unblock-options"><Button variant="secondary" onClick={() => setHelpMode("overwhelmed")}>Estoy abrumada</Button><Button variant="secondary" onClick={() => setHelpMode("start")}>No sé empezar</Button><Button variant="secondary" onClick={() => setHelpMode("energy")}>Tengo poca energía</Button><Link className="button button--ghost" to="/app/help" onClick={() => setHelpOpen(false)}>Ver todas las herramientas</Link></div> : <div className="minimum-mode"><p className="eyebrow">{helpMode === "energy" ? "Modo mínimo" : "Desbloquearme"}</p><h2>{helpMode === "overwhelmed" ? "Reduce el campo de visión" : helpMode === "start" ? "Haz visible el primer movimiento" : "Hoy también cuenta en pequeño"}</h2><ol><li>{helpMode === "overwhelmed" ? "Elige solo una de tus tres prioridades." : helpMode === "start" ? "Abre la tarea y escribe el primer verbo." : "Elige una tarea de menos de 10 minutos."}</li><li>Pon un temporizador de 10 minutos.</li><li>Al terminar, decide con calma si continúas o paras.</li></ol><Link className="button button--primary" to="/app/today" onClick={() => setHelpOpen(false)}>Ver mi próximo paso</Link></div>}
       </Modal>
     </BrowserRouter>
   );

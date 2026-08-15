@@ -77,7 +77,7 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await page.getByLabel("Pensamiento").fill("Aprender fotografía");
   await page.getByRole("button", { name: "Capturar" }).click();
   await expect(page.getByText("Aprender fotografía")).toBeVisible();
-  await page.getByRole("button", { name: "Fitness opcional" }).click();
+  await page.getByRole("button", { name: "Fitness Hub" }).click();
   await page.getByRole("button", { name: "Activar Fitness Hub" }).click();
   await expect(page.getByRole("heading", { name: "Ejercicios" })).toBeVisible();
 

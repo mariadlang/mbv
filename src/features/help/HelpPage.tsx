@@ -4,10 +4,14 @@ import { BookOpen, ChevronRight, HeartHandshake, HelpCircle, MessageCircle, Phon
 import { Card, SectionHeading } from "@/src/components/ui/Primitives";
 
 const helpCards = [
-  [Sparkles, "Tour guiado", "Recorre cómo tu Dream Life baja por cada nivel de planeación."],
-  [BookOpen, "Conceptos clave", "Conecta visión, caminos, planes, metas, proyectos, tareas y hábitos."],
-  [HelpCircle, "Preguntas frecuentes", "Tus datos se guardan localmente y puedes exportar un backup."],
-  [Search, "Buscar en ayuda", "Encuentra rápidamente una función o una explicación."],
+  [Sparkles, "Estoy abrumada", "Elige una sola prioridad y deja el resto en pausa por ahora."],
+  [BookOpen, "No sé empezar", "Convierte la tarea en un primer paso visible de diez minutos."],
+  [HelpCircle, "Tengo poca energía", "Activa el modo mínimo: una tarea breve y un hábito de cuidado."],
+  [Search, "La tarea es muy grande", "Divídela hasta que el primer paso pueda hacerse hoy."],
+  [Sparkles, "No tengo tiempo", "Busca el bloque más pequeño disponible y reduce el alcance."],
+  [BookOpen, "No quiero hacerlo", "Aclara si puedes eliminar, delegar o cambiar la forma de hacerlo."],
+  [HelpCircle, "Me frena el perfeccionismo", "Define una versión suficientemente buena antes de comenzar."],
+  [Search, "Tour guiado", "Recorre cómo tu Dream Life baja por cada nivel de planeación."],
 ] as const;
 
 export function HelpPage() {

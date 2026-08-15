@@ -23,17 +23,20 @@ import {
 import type { BrainDumpType } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
-import { Badge, Button, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
+import { imageUploadSchema } from "@/src/lib/schemas";
+import { useSearchParams } from "react-router-dom";
 
-type HubTab = "lists" | "routines" | "fitness" | "vision" | "events" | "challenges";
+type HubTab = "lists" | "routines" | "fitness" | "vision" | "events";
 
 const listLabels: Record<BrainDumpType, string> = {
-  wishlist: "Wishlist",
-  want_to_do: "Want to do",
-  must_do: "Must do",
-  shopping: "Compras",
-  want_to_learn: "Want to learn",
-  want_to_read: "Want to read",
+  wishlist: "Deseos",
+  want_to_do: "Cosas que quiero hacer",
+  must_do: "Debo hacer",
+  shopping: "Compras por realizar",
+  want_to_learn: "Quiero aprender",
+  want_to_read: "Quiero leer",
+  watch_list: "Series, TV y podcasts",
 };
 
 const eventLabels = {
@@ -46,7 +49,7 @@ const eventLabels = {
 };
 
 async function fileToDataUrl(file: File): Promise<string> {
-  if (file.size > 1_500_000) throw new Error("La imagen debe pesar menos de 1,5 MB.");
+  imageUploadSchema.parse({ type: file.type, size: file.size });
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -58,7 +61,8 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
-  const [tab, setTab] = useState<HubTab>("lists");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<HubTab>(searchParams.get("tab") === "fitness" ? "fitness" : "lists");
   const [message, setMessage] = useState("");
   const [listTitle, setListTitle] = useState("");
   const [listType, setListType] = useState<BrainDumpType>("want_to_do");
@@ -67,6 +71,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const [routinePeriod, setRoutinePeriod] = useState<"am" | "afternoon" | "pm">("am");
   const [routineSteps, setRoutineSteps] = useState("");
   const [quote, setQuote] = useState("");
+  const [visionImage, setVisionImage] = useState<string | null>(null);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState(today);
   const [eventTime, setEventTime] = useState("");
@@ -117,8 +122,8 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      await planner.createVisionBoardItem({ type: "image", content: dataUrl, caption: file.name, reminderEnabled: true });
-      setMessage("Imagen añadida a tu vision board.");
+      setVisionImage(dataUrl);
+      setMessage("Imagen lista. Confirma para añadirla a tu vision board.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No pudimos leer esa imagen.");
     }
@@ -166,19 +171,10 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     try { setBodyPhoto(await fileToDataUrl(file)); } catch (error) { setMessage(error instanceof Error ? error.message : "No pudimos leer la foto."); }
   };
 
-  const addChallenge = async (type: "fear" | "intermittent_fasting" | "no_sugar") => {
-    const presets = {
-      fear: ["Pierde el miedo", "Hacer una acción que me saque de mi zona de confort."],
-      intermittent_fasting: ["Ayuno intermitente", "Observar mi energía y seguir una pauta elegida con criterio profesional."],
-      no_sugar: ["Reto no sugar", "Reducir el azúcar añadido y observar cómo me siento."],
-    } as const;
-    await planner.createChallenge({ title: presets[type][0], type, intention: presets[type][1], startDate: today });
-  };
-
   return (
     <div className="page-stack life-hub-page">
       <SectionHeading eyebrow="Todo lo que también sostiene tu vida" title="Mi espacio" description="Captura ideas, organiza rutinas, guarda tu visión y activa solo los módulos que quieres usar." />
-      <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{(["lists", "routines", "fitness", "vision", "events", "challenges"] as HubTab[]).map((item) => <button key={item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "lists" ? "Listas" : item === "routines" ? "Rutinas" : item === "fitness" ? "Fitness opcional" : item === "vision" ? "Vision board" : item === "events" ? "Eventos + tareas" : "Retos"}</button>)}</nav>
+      <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{(["lists", "routines", "fitness", "vision", "events"] as HubTab[]).map((item) => <button key={item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "lists" ? "Listas" : item === "routines" ? "Rutinas" : item === "fitness" ? "Fitness Hub" : item === "vision" ? "Vision board" : "Eventos y Tareas"}</button>)}</nav>
       {message && <div className="inline-message" role="status">{message}</div>}
 
       {tab === "lists" && <>
@@ -199,11 +195,10 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
         </div>
       </>}
 
-      {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addQuote}><label className="form-field"><span>Frase o recordatorio</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder="La vida que quiero también se construye hoy." /></label><Button type="submit"><Plus size={16} /> Añadir frase</Button></form><label className="button button--secondary"><ImagePlus size={16} /> Subir imagen<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label><Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> Activar recordatorios</Button></Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type === "image" ? <img src={item.content} alt={item.caption || "Imagen de vision board"} /> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || "Mi visión"}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? "Recordar" : "Pausado"}</button></footer></Card>)}</div></>}
+      {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addQuote}><label className="form-field"><span>Frase o recordatorio</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder="La vida que quiero también se construye hoy." /></label><Button type="submit"><Plus size={16} /> Añadir frase</Button></form><label className="button button--secondary"><ImagePlus size={16} /> Elegir imagen<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label>{visionImage && <Button onClick={async () => { await planner.createVisionBoardItem({ type: quote.trim() ? "mixed" : "image", content: visionImage, caption: quote.trim() || undefined, reminderEnabled: true, reminderFrequency: "weekly" }); setVisionImage(null); setQuote(""); setMessage("Elemento añadido a tu vision board."); }}>Confirmar y añadir</Button>}<label className="form-field"><span>Frecuencia sugerida</span><select aria-label="Frecuencia de recordatorios"><option>Semanal</option><option>Diaria</option><option>Mensual</option><option>Trimestral</option></select></label><Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> Activar recordatorios</Button></Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type !== "quote" ? <><img src={item.content} alt={item.caption || "Imagen de vision board"} />{item.caption && <blockquote>“{item.caption}”</blockquote>}</> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || "Mi visión"}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? `Recordar · ${item.reminderFrequency ?? "semanal"}` : "Pausado"}</button></footer></Card>)}</div></>}
 
       {tab === "events" && <div className="hub-two-column"><Card className="hub-form-card"><CalendarDays size={22} /><p className="eyebrow">Nuevo evento</p><h2>Guarda lo importante</h2><form onSubmit={addEvent}><label className="form-field"><span>Evento</span><input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder="Ej. Cita de control" /></label><div className="mini-field-grid"><label className="form-field"><span>Fecha</span><input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} /></label><label className="form-field"><span>Hora</span><input type="time" value={eventTime} onChange={(event) => setEventTime(event.target.value)} /></label></div><label className="form-field"><span>Clasificación</span><select value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><Button type="submit">Guardar evento</Button></form><div className="event-list">{snapshot.events.map((item) => <p key={item.id}><span><i className={`event-dot event-dot--${item.category}`} />{item.title}</span><strong>{item.startDate} {item.time}</strong></p>)}</div></Card><Card className="all-tasks-card"><p className="eyebrow">All tasks</p><h2>Todas las tareas y su status</h2>{snapshot.tasks.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}{task.title}</span><Badge tone={task.status === "completed" ? "sage" : task.status === "in_progress" ? "rose" : "neutral"}>{task.status === "completed" ? "Done" : task.status === "in_progress" ? "On going" : "Not initiated"}</Badge></button>)}</Card></div>}
 
-      {tab === "challenges" && <><div className="challenge-presets">{(["fear", "intermittent_fasting", "no_sugar"] as const).map((type) => <Card key={type}><span><Sparkles size={22} /></span><h2>{type === "fear" ? "Pierde el miedo" : type === "intermittent_fasting" ? "Ayuno intermitente" : "Reto no sugar"}</h2><p>{type === "fear" ? "Haz algo que te dé miedo para ampliar tu zona de comodidad." : type === "intermittent_fasting" ? "Registra los días que cumples la pauta que elegiste." : "Observa tu energía al reducir el azúcar añadido."}</p><Button variant="secondary" onClick={() => addChallenge(type)}>Comenzar reto</Button></Card>)}</div><div className="active-challenges">{snapshot.challenges.map((challenge) => { const progress = challenge.completedDates.length; return <Card key={challenge.id}><header><div><Badge tone="rose">Activo</Badge><h2>{challenge.title}</h2></div><button onClick={() => planner.toggleChallengeDate(challenge.id, today)}>{challenge.completedDates.includes(today) ? <Check size={18} /> : <Plus size={18} />} Hoy</button></header><p>{challenge.intention}</p><ProgressBar value={Math.min(100, progress * 7)} label={`${progress} días registrados`} /></Card>; })}</div></>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -7,6 +8,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { useUiStore } from "@/src/stores/useUiStore";
+import { imageUploadSchema } from "@/src/lib/schemas";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
@@ -14,6 +16,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
   const colorMode = useUiStore((state) => state.colorMode);
   const setColorMode = useUiStore((state) => state.setColorMode);
   const fileInput = useRef<HTMLInputElement>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -24,6 +27,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
   const [financePrivacy, setFinancePrivacy] = useState(planner.snapshot.financialProfiles[0]?.privacyMode ?? planner.snapshot.profile?.financePrivacy ?? false);
   const [usePurpose, setUsePurpose] = useState(planner.snapshot.profile?.usePurpose ?? "");
   const [fitnessEnabled, setFitnessEnabled] = useState(planner.snapshot.profile?.fitnessEnabled ?? false);
+  const [avatarDataUrl, setAvatarDataUrl] = useState(planner.snapshot.profile?.avatarDataUrl);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<BackupPreview | null>(null);
 
@@ -51,7 +55,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
   };
 
   const saveProfile = async () => {
-    await planner.updateProfileSettings({ name: name.trim() || "Mi Mejor Versión", weekStartsOn, theme, baseCurrency: currency, financePrivacy, usePurpose, fitnessEnabled });
+    await planner.updateProfileSettings({ name: name.trim() || "Mi Mejor Versión", weekStartsOn, theme, baseCurrency: currency, financePrivacy, usePurpose, fitnessEnabled, avatarDataUrl });
     setMessage("Tus preferencias quedaron guardadas.");
   };
 
@@ -60,6 +64,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
     {message && <div className="inline-message" role="status">{message}</div>}
     <div className="settings-reference-layout">
       <Card className="settings-list-card">
+        <section><div><strong>Foto de perfil</strong><small>Se guarda de forma privada en este navegador.</small></div><div className="profile-photo-setting">{avatarDataUrl ? <img src={avatarDataUrl} alt="Vista previa de perfil" /> : <span>{name.slice(0, 1).toUpperCase()}</span>}<input ref={avatarInput} className="sr-only" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; const parsed = imageUploadSchema.safeParse({ type: file.type, size: file.size }); if (!parsed.success) return setMessage(parsed.error.issues[0]?.message ?? "Revisa la imagen."); const reader = new FileReader(); reader.onload = () => setAvatarDataUrl(String(reader.result)); reader.readAsDataURL(file); }} /><Button variant="secondary" onClick={() => avatarInput.current?.click()}>Elegir foto</Button></div></section>
         <section><div><strong>Perfil</strong><small>Nombre del perfil</small></div><input value={name} onChange={(event)=>setName(event.target.value)} aria-label="Nombre del perfil" /></section>
         <section><div><strong>Para qué lo quiero usar</strong><small>Tu razón para volver a este espacio.</small></div><textarea rows={3} value={usePurpose} onChange={(event) => setUsePurpose(event.target.value)} /></section>
         <section><div><strong>Inicio de semana</strong><small>Selecciona el primer día de tu semana.</small></div><select value={weekStartsOn} onChange={(event)=>setWeekStartsOn(Number(event.target.value) as 0|1)}><option value={1}>Lunes</option><option value={0}>Domingo</option></select></section>

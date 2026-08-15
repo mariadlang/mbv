@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, ChevronRight, Circle, Clock3, Plus, Save, SunMedium } from "lucide-react";
 import type { MoodName } from "@/src/domain/planner";
 import { isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
+import { getDailyTopThree } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
@@ -22,7 +23,9 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
   const todayKey = toLocalDateKey(today);
   const [intention, setIntention] = useState(snapshot.profile?.dailyIntention ?? "");
   const [newTask, setNewTask] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<"" | "1" | "2" | "3">("");
   const todayTasks = snapshot.tasks.filter((task) => task.date === todayKey && task.status !== "cancelled");
+  const focusTasks = getDailyTopThree(snapshot.tasks, todayKey);
   const overdue = snapshot.tasks.filter((task) => isTaskOverdue(task, todayKey));
   const habits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, today));
   const mood = snapshot.moodLogs.find((log) => log.date === todayKey);
@@ -30,8 +33,9 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
   const addTask = async (event: FormEvent) => {
     event.preventDefault();
     if (!newTask.trim()) return;
-    await planner.createTask(newTask, todayKey);
+    await planner.createTask(newTask, todayKey, newTaskPriority ? Number(newTaskPriority) as 1 | 2 | 3 : undefined);
     setNewTask("");
+    setNewTaskPriority("");
   };
 
   return (
@@ -66,10 +70,10 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
               <Badge tone="rose">Lo importante</Badge>
             </div>
             <div className="focus-task-list">
-              {todayTasks.slice(0, 3).map((task, index) => (
+              {focusTasks.map((task) => (
                 <button key={task.id} className="focus-task" onClick={() => planner.toggleTask(task.id)}>
                   <span className={`focus-task__number ${task.status === "completed" ? "is-done" : ""}`}>
-                    {task.status === "completed" ? <Check size={17} /> : index + 1}
+                    {task.status === "completed" ? <Check size={17} /> : task.focusPriority}
                   </span>
                   <span><strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong><small>{task.estimatedMinutes ? `${task.estimatedMinutes} min` : "Sin hora"}</small></span>
                   <ChevronRight size={18} />
@@ -86,6 +90,7 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
             <form className="quick-add" onSubmit={addTask}>
               <Plus size={18} aria-hidden="true" />
               <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Añadir una tarea para hoy" aria-label="Nueva tarea" />
+              <select value={newTaskPriority} onChange={(event) => setNewTaskPriority(event.target.value as typeof newTaskPriority)} aria-label="Prioridad del día"><option value="">Sin prioridad</option><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select>
               <Button type="submit" variant="secondary">Añadir</Button>
             </form>
             <div className="task-list task-list--spaced">

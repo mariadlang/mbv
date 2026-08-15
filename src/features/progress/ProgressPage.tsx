@@ -6,6 +6,7 @@ import { calculateGoalProgress } from "@/src/domain/rules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatShortDay, getRecentDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { Link } from "react-router-dom";
 
 export function ProgressPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
@@ -27,9 +28,9 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Evidencia, no juicio"
-        title="Progreso"
-        description="Una mirada a lo que sí avanzó y al ritmo que estás construyendo."
+        eyebrow="EN MOVIMIENTO"
+        title="Tu progreso"
+        description="Mira lo que has construido, reconoce tu ritmo y descubre cuánto has avanzado."
         action={<Badge tone="sage"><Sparkles size={14} /> Últimos 7 días</Badge>}
       />
 
@@ -71,11 +72,12 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
       </div>
 
       <Card>
-        <div className="card-heading"><div><p className="eyebrow">Metas activas</p><h2>Progreso trazable</h2></div><Badge tone="neutral">Fuente: metas, hitos y tareas</Badge></div>
+        <div className="card-heading"><div><p className="eyebrow">Tus metas, más cerca</p><h2>El camino que ya estás recorriendo</h2></div><Badge tone="neutral">Metas, hitos y tareas</Badge></div>
         <div className="progress-goal-list">
           {snapshot.goals.map((goal) => {
             const progress = calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks);
-            return <div key={goal.id}><div><strong>{goal.title}</strong><small>{goal.progressType === "milestones" ? "Calculado por hitos" : "Progreso manual"}</small></div><ProgressBar value={progress} label="Progreso" /></div>;
+            const nextMilestone = snapshot.milestones.find((item) => item.goalId === goal.id && item.status !== "completed");
+            return <div key={goal.id}><div><strong>{goal.title}</strong><small>Próximo paso: {nextMilestone?.title ?? "elige una acción pequeña"}</small></div><ProgressBar value={progress} label="Progreso" /><Link className="button button--text" to="/app/goals">Continuar esta meta</Link></div>;
           })}
         </div>
       </Card>

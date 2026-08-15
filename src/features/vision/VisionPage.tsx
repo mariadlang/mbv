@@ -1,10 +1,12 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState } from "react";
 import { BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Save, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
+import { imageUploadSchema } from "@/src/lib/schemas";
 
 const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane];
 
@@ -14,6 +16,8 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
   const [selectedId, setSelectedId] = useState(snapshot.lifeAreas[0]?.id ?? "");
   const selected = snapshot.lifeAreas.find((area) => area.id === selectedId) ?? snapshot.lifeAreas[0];
   const [vision, setVision] = useState(selected?.vision ?? "");
+  const [dream, setDream] = useState(selected?.dream ?? "");
+  const [imageDataUrl, setImageDataUrl] = useState(selected?.imageDataUrl);
   const [currentScore, setCurrentScore] = useState(selected?.currentScore ?? 6);
   const [desiredScore, setDesiredScore] = useState(selected?.desiredScore ?? 8);
 
@@ -27,6 +31,8 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
     const area = snapshot.lifeAreas.find((item) => item.id === id);
     setSelectedId(id);
     setVision(area?.vision ?? "");
+    setDream(area?.dream ?? "");
+    setImageDataUrl(area?.imageDataUrl);
     setCurrentScore(area?.currentScore ?? 6);
     setDesiredScore(area?.desiredScore ?? 8);
   };
@@ -47,7 +53,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
               const Icon = areaIcons[index % areaIcons.length];
               return (
                 <button key={area.id} className={`vision-card ${selected?.id === area.id ? "is-selected" : ""}`} onClick={() => chooseArea(area.id)}>
-                  <span className={`vision-card__visual vision-card__visual--${area.color}`}><Icon size={30} strokeWidth={1.35} /></span>
+                  <span className={`vision-card__visual vision-card__visual--${area.color}`}>{area.imageDataUrl ? <img src={area.imageDataUrl} alt="" /> : <Icon size={30} strokeWidth={1.35} />}</span>
                   <Badge tone="neutral">{area.name}</Badge>
                   <h2>{area.vision ? area.vision.split(".")[0] : `Diseñar mi visión de ${area.name.toLowerCase()}`}</h2>
                   <p>{area.vision || "Describe cómo se siente esta área cuando está alineada contigo."}</p>
@@ -59,12 +65,14 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
             <Card className="vision-editor">
               <p className="eyebrow">Reflexión · {selected.name}</p>
               <h2>¿Cómo se ve tu mejor versión aquí?</h2>
-              <textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" />
+              <label className="form-field"><span>Mi sueño</span><input value={dream} onChange={(event) => setDream(event.target.value)} placeholder="Ej. Vivir con energía y calma" /></label>
+              <label className="form-field"><span>Mi visión</span><textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" /></label>
+              <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !imageUploadSchema.safeParse({ type: file.type, size: file.size }).success) return; const reader = new FileReader(); reader.onload = () => setImageDataUrl(String(reader.result)); reader.readAsDataURL(file); }} /></label>
               <div className="score-pair">
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
                 <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
               </div>
-              <Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision })}><Save size={16} /> Guardar visión</Button>
+              <Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl })}><Save size={16} /> Guardar Dream Life</Button>
             </Card>
           )}
         </div>

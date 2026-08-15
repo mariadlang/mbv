@@ -14,6 +14,7 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { Link } from "react-router-dom";
 import {
   CalendarDays,
   Check,
@@ -74,10 +75,10 @@ function periodKeyFor(horizon: CascadeHorizon, anchor: Date, selectedDate: strin
   return selectedDate;
 }
 
-export function PlanningPage({ planner }: { planner: PlannerController }) {
+export function PlanningPage({ planner, initialView = "year" }: { planner: PlannerController; initialView?: PlanningView }) {
   const { snapshot } = planner;
   const todayKey = toLocalDateKey(new Date());
-  const [view, setView] = useState<PlanningView>("year");
+  const [view, setView] = useState<PlanningView>(initialView);
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [taskTitle, setTaskTitle] = useState("");
@@ -213,6 +214,8 @@ export function PlanningPage({ planner }: { planner: PlannerController }) {
         <form className="planning-add" onSubmit={addTask}><Plus size={19} /><input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="¿Qué quieres hacer esta semana?" /><select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)}>{weekDates.map((date) => <option value={toLocalDateKey(date)} key={date.toISOString()}>{formatShortDay(date)} {date.getDate()}</option>)}</select><Button type="submit">Añadir</Button></form>
         <section className="week-board">{weekDates.map((date) => { const key = toLocalDateKey(date); const tasks = snapshot.tasks.filter((task) => task.date === key && task.status !== "cancelled"); return <Card className={`day-column ${key === todayKey ? "is-today" : ""}`} key={key}><header className="day-column__header"><div><span>{formatShortDay(date)}</span><strong>{date.getDate()}</strong></div>{key === todayKey && <Badge tone="rose">Hoy</Badge>}</header><div className="day-column__tasks">{tasks.map((task) => <button className={`week-task ${task.status === "completed" ? "is-complete" : ""}`} key={task.id} onClick={() => planner.toggleTask(task.id)}>{task.status === "completed" ? <Check size={15} /> : <Circle size={14} />}<span>{task.title}</span>{task.time && <small>{task.time}</small>}</button>)}{!tasks.length && <p className="day-column__empty">Espacio disponible</p>}</div></Card>; })}</section>
       </>}
+
+      {view === "week" && <Card className="weekly-reset-card"><div><p className="eyebrow">Weekly Reset · 5 minutos</p><h2>Prepara una semana que se sienta posible</h2></div><ol><li><strong>Celebra</strong><span>Nombra algo que sí avanzó.</span></li><li><strong>Observa</strong><span>Hábitos, energía, dinero y metas.</span></li><li><strong>Suelta</strong><span>Libera lo que ya no necesita acompañarte.</span></li><li><strong>Ajusta</strong><span>Mueve tareas sin culpa.</span></li><li><strong>Elige</strong><span>Define las tres prioridades de la semana.</span></li></ol><div><Button onClick={() => planner.saveReview("weekly", `Semana revisada: ${weeklyInsight.summary}`, [weeklyInsight.suggestion])}>Guardar Weekly Reset</Button><Link className="button button--secondary" to="/app/today">Tu semana está lista · Ver mi lunes</Link></div></Card>}
 
       {view === "day" && <div className="daily-schedule-layout">
         <Card className="daily-schedule-card"><header><div><p className="eyebrow">Horario flexible</p><h2>{format(new Date(`${selectedDate}T12:00:00`), "EEEE d 'de' MMMM", { locale: es })}</h2></div><input type="date" value={selectedDate} onChange={(event) => { setSelectedDate(event.target.value); setCascadeHorizon("daily"); }} /></header><div className="schedule-grid">{[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map((hour) => { const tasks = snapshot.tasks.filter((task) => task.date === selectedDate && Number(task.time?.slice(0,2)) === hour); return <div key={hour}><time>{String(hour).padStart(2,"0")}:00</time><span>{tasks.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}>{task.title}</button>)}</span></div>; })}</div></Card>

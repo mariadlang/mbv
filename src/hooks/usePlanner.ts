@@ -128,8 +128,8 @@ export function usePlanner() {
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
     toggleHabit: (habitId: string, date: string) =>
       commit((service) => service.toggleHabit(habitId, date)),
-    createTask: (title: string, date?: string) =>
-      commit((service) => service.createTask(title, date)),
+    createTask: (title: string, date?: string, focusPriority?: 1 | 2 | 3) =>
+      commit((service) => service.createTask(title, date, focusPriority)),
     createTaskDetailed: (input: TaskFormInput) =>
       commit((service) => service.createTaskDetailed(input)),
     createProject: (input: ProjectFormInput) =>
@@ -145,9 +145,9 @@ export function usePlanner() {
       commit((service) => service.updateGoalStatus(goalId, status)),
     updateGoalProgress: (goalId: string, value: number) =>
       commit((service) => service.updateGoalProgress(goalId, value)),
-    updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string }) =>
+    updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string }) =>
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string }) =>
       commit((service) => service.updateProfileSettings(input)),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
@@ -180,7 +180,7 @@ export function usePlanner() {
       commit((service) => service.scheduleBrainDumpItem(itemId, date)),
     createRoutine: (input: RoutineFormInput) => commit((service) => service.createRoutine(input)),
     createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
-    createVisionBoardItem: (input: { type: "quote" | "image"; content: string; caption?: string; reminderEnabled?: boolean }) =>
+    createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
     saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
@@ -189,6 +189,7 @@ export function usePlanner() {
     createChallenge: (input: ChallengeFormInput) => commit((service) => service.createChallenge(input)),
     toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),
     createFinancialAccount: (input: FinancialAccountFormInput) => commit((service) => service.createFinancialAccount(input)),
+    updateFinancialAccountBalance: (accountId: string, initialBalance: number) => commit((service) => service.updateFinancialAccountBalance(accountId, initialBalance)),
     createPendingPurchase: (input: PendingPurchaseFormInput) => commit((service) => service.createPendingPurchase(input)),
     updatePendingPurchase: (itemId: string, status: "pending" | "purchased" | "released") =>
       commit((service) => service.updatePendingPurchase(itemId, status)),

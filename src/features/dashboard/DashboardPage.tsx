@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, CalendarDays, Check, Circle, Dumbbell, Heart, Lea
 import type { MoodName } from "@/src/domain/planner";
 import { calculateFinanceSummary, calculateFundBalance } from "@/src/domain/financeRules";
 import { calculateGoalProgress, isHabitScheduledOn } from "@/src/domain/rules";
+import { getDailyTopThree } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
 import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
@@ -19,7 +20,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
   const now = new Date();
   const todayKey = toLocalDateKey(now);
-  const todayTasks = snapshot.tasks.filter((task) => task.date === todayKey && task.status !== "cancelled");
+  const focusTasks = getDailyTopThree(snapshot.tasks, todayKey);
   const upcoming = snapshot.tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").sort((a,b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")).slice(0,5);
   const habits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, now)).slice(0,4);
   const todayMood = snapshot.moodLogs.find((log) => log.date === todayKey);
@@ -39,7 +40,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
     <div className="reference-dashboard-grid">
       <Card className="dash-intention ref-card"><div className="ref-card__heading"><h2>Mi intención de hoy</h2><Link to="/app/today" aria-label="Editar intención"><Pencil size={17} /></Link></div><div className="intention-quote"><Quote size={25} /><blockquote>{snapshot.profile?.dailyIntention || "Actuar con enfoque y gratitud para avanzar hacia la vida que deseo."}</blockquote><Heart size={20} /></div></Card>
 
-      <Card className="dash-top3 ref-card"><div className="ref-card__heading"><h2>Top 3</h2><Link to="/app/tasks" aria-label="Editar prioridades"><Pencil size={17} /></Link></div>{todayTasks.length ? <div className="numbered-priorities">{todayTasks.slice(0,3).map((task,index) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={15} /> : index + 1}</span><strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong></button>)}</div> : <EmptyState title="Elige tus Top 3" text="Tres prioridades son suficientes para dar dirección al día." />}</Card>
+      <Card className="dash-top3 ref-card"><div className="ref-card__heading"><h2>Top 3</h2><Link to="/app/tasks" aria-label="Editar prioridades"><Pencil size={17} /></Link></div>{focusTasks.length ? <div className="numbered-priorities">{focusTasks.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)}><span>{task.status === "completed" ? <Check size={15} /> : task.focusPriority}</span><strong className={task.status === "completed" ? "is-complete" : ""}>{task.title}</strong></button>)}</div> : <EmptyState title="Elige tus Top 3" text="Asigna prioridad 1, 2 o 3 desde Tareas u Hoy." />}</Card>
 
       <Card className="dash-goals ref-card"><div className="ref-card__heading"><h2>Metas prioritarias</h2><Link to="/app/goals">Ver todas</Link></div><div className="priority-goal-list">{goals.map((goal,index) => { const Icon=goalIcons[index % goalIcons.length]; const progress=calculateGoalProgress(goal,snapshot.milestones,snapshot.tasks); return <Link to="/app/goals" key={goal.id}><span className="priority-goal__icon"><Icon size={24} /></span><div><strong>{goal.title}</strong><ProgressBar value={progress} label={`Progreso de ${goal.title}`} /><small>{goal.reason}</small></div><b>{progress}%</b></Link>; })}{!goals.length && <EmptyState title="Define una meta" text="Conecta tu semana con una dirección mayor." />}</div><Link className="ref-card__footer-link" to="/app/goals">Ver todas mis metas <ArrowRight size={16} /></Link></Card>
 
@@ -55,6 +56,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
       <Card className="dash-finance ref-card"><div className="ref-card__heading"><h2>Finanzas del mes</h2><Link to="/app/finance">Abrir finanzas</Link></div><div className="dash-finance-grid"><span className="dash-finance-icon"><WalletCards size={25}/></span><div><small>Presupuesto disponible</small><strong>{money(financeSummary.availableToAssign)}</strong><p>{financeSummary.budgetUsed === null ? "Registro incompleto" : `${Math.round(financeSummary.budgetUsed)}% del presupuesto de gastos utilizado`}</p></div><div><small>Ahorro registrado</small><strong>{money(financeSummary.savingsContributions)}</strong><p>{primaryFund ? `${primaryFund.name}: ${money(calculateFundBalance(snapshot, primaryFund.id))}` : "Crea un fondo para darle propósito"}</p></div></div></Card>
       {visionReminder && <Card className="dash-vision-reminder ref-card"><span><Sparkles size={22} /></span><div><p className="eyebrow">Recordatorio de tu visión</p>{visionReminder.type === "quote" ? <blockquote>“{visionReminder.content}”</blockquote> : <><strong>{visionReminder.caption || "La vida que estás construyendo"}</strong><small>Vuelve a mirar tu vision board.</small></>}</div><Link to="/app/life-hub">Abrir vision board <ArrowRight size={15} /></Link></Card>}
     </div>
-    <footer className="dashboard-quote"><Quote size={18}/><span>Pequeñas acciones diarias crean grandes cambios a largo plazo.</span><Leaf size={26}/></footer>
+    <Card className="next-step-card"><div><p className="eyebrow">Tu próximo paso</p><h2>{!focusTasks.length ? "Elige tus tres prioridades" : !todayMood ? "Registra cómo llegas a este día" : focusTasks.some((task) => task.status !== "completed") ? "Continúa con tu prioridad más importante" : "Reconoce lo que ya completaste"}</h2><p>{!focusTasks.length ? "Dar nombre a lo importante hará que el resto del día se sienta más claro." : "Una acción pequeña y concreta es suficiente para mantener la dirección."}</p></div><Link className="button button--primary" to={!focusTasks.length ? "/app/today" : !todayMood ? "/app/habits" : "/app/today"}>Dar el siguiente paso <ArrowRight size={16} /></Link></Card>
+    <footer className="dashboard-quote"><Quote size={18}/><span>Life, but more you.</span><Leaf size={26}/></footer>
   </div>;
 }
