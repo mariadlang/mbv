@@ -24,20 +24,19 @@ import type {
   WorkoutFormInput,
 } from "@/src/lib/schemas";
 import { parseBackupEnvelope, plannerSnapshotSchema } from "@/src/lib/schemas";
-import { toLocalDateKey } from "@/src/lib/dates";
+import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository } from "@/src/repositories/local/IndexedDbPlannerRepository";
+import { createSnapshotWriteQueue } from "@/src/services/snapshotWriteQueue";
 
 const repository = new IndexedDbPlannerRepository();
+const writes = createSnapshotWriteQueue(repository);
 const id = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
 async function updateSnapshot(
   updater: (snapshot: PlannerSnapshot) => PlannerSnapshot,
 ): Promise<PlannerSnapshot> {
-  const current = await repository.load();
-  const next = updater(current);
-  await repository.replace(next);
-  return next;
+  return writes.update(updater);
 }
 
 export const plannerService = {
@@ -108,8 +107,10 @@ export const plannerService = {
         updatedAt: now,
       })),
     };
-    await repository.replace(snapshot);
-    return snapshot;
+    return writes.run(async () => {
+      await repository.replace(snapshot);
+      return snapshot;
+    });
   },
 
   loadDemo(): Promise<PlannerSnapshot> {
@@ -118,7 +119,10 @@ export const plannerService = {
       intention: "Construir una semana que se sienta posible y propia.",
       weekStartsOn: 1,
     });
-    return repository.replace(snapshot).then(() => snapshot);
+    return writes.run(async () => {
+      await repository.replace(snapshot);
+      return snapshot;
+    });
   },
 
   createHabit(input: HabitFormInput): Promise<PlannerSnapshot> {
@@ -487,9 +491,7 @@ export const plannerService = {
   ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
-      const periodKey = type === "annual"
-        ? toLocalDateKey(new Date()).slice(0, 4)
-        : toLocalDateKey(new Date()).slice(0, 7);
+      const periodKey = getReviewPeriodKey(type, new Date(), snapshot.profile?.weekStartsOn ?? 1);
       return {
         ...snapshot,
         reviews: [{
@@ -956,12 +958,16 @@ export const plannerService = {
   async importBackup(json: string): Promise<PlannerSnapshot> {
     const parsed: unknown = JSON.parse(json);
     const backup = parseBackupEnvelope(parsed);
-    await repository.replace(backup.data);
-    return backup.data;
+    return writes.run(async () => {
+      await repository.replace(backup.data);
+      return backup.data;
+    });
   },
 
-  async clear(): Promise<PlannerSnapshot> {
-    await repository.clear();
-    return createEmptySnapshot();
+  clear(): Promise<PlannerSnapshot> {
+    return writes.run(async () => {
+      await repository.clear();
+      return createEmptySnapshot();
+    });
   },
 };

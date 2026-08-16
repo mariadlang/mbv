@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import { backupEnvelopeSchema, parseBackupEnvelope } from "@/src/lib/schemas";
+import { backupEnvelopeSchema, imageUploadSchema, parseBackupEnvelope } from "@/src/lib/schemas";
 
 describe("backup validation", () => {
   it("accepts the current versioned backup shape", () => {
@@ -36,5 +36,54 @@ describe("backup validation", () => {
 
   it("rejects incompatible or partial backups", () => {
     expect(() => backupEnvelopeSchema.parse({ schemaVersion: 99, data: {} })).toThrow();
+  });
+
+  it("migrates a v2 backup and supplies every v3 collection", () => {
+    const snapshot = createEmptySnapshot();
+    const v2Data = {
+      profile: snapshot.profile,
+      lifeAreas: snapshot.lifeAreas,
+      habits: snapshot.habits,
+      habitLogs: snapshot.habitLogs,
+      tasks: snapshot.tasks,
+      goals: snapshot.goals,
+      milestones: snapshot.milestones,
+      moodLogs: snapshot.moodLogs,
+      journalEntries: snapshot.journalEntries,
+      projects: snapshot.projects,
+      periodPlans: snapshot.periodPlans,
+      reviews: snapshot.reviews,
+      financialProfiles: snapshot.financialProfiles,
+      financialAccounts: snapshot.financialAccounts,
+      financeCategories: snapshot.financeCategories,
+      monthlyBudgets: snapshot.monthlyBudgets,
+      budgetLines: snapshot.budgetLines,
+      transactions: snapshot.transactions,
+      savingsFunds: snapshot.savingsFunds,
+      debts: snapshot.debts,
+      recurringItems: snapshot.recurringItems,
+      financialReviews: snapshot.financialReviews,
+    };
+    const migrated = parseBackupEnvelope({
+      schemaVersion: 2,
+      exportedAt: "2026-08-10T12:00:00.000Z",
+      data: { ...v2Data, schemaVersion: 2 },
+    });
+
+    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.data.cascadePlans).toEqual([]);
+    expect(migrated.data.bodyCheckIns).toEqual([]);
+    expect(migrated.data.pendingPurchases).toEqual([]);
+  });
+
+  it("keeps a valid v3 backup unchanged", () => {
+    const backup = { schemaVersion: 3 as const, exportedAt: "2026-08-10T12:00:00.000Z", data: createEmptySnapshot() };
+    expect(parseBackupEnvelope(backup)).toEqual(backup);
+  });
+
+  it("accepts only small PNG, JPEG or WebP uploads", () => {
+    expect(imageUploadSchema.safeParse({ type: "image/png", size: 1_000 }).success).toBe(true);
+    expect(imageUploadSchema.safeParse({ type: "image/svg+xml", size: 1_000 }).success).toBe(false);
+    expect(imageUploadSchema.safeParse({ type: "image/jpeg", size: 2_000_000 }).success).toBe(false);
   });
 });

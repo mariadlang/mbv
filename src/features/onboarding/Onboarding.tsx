@@ -51,7 +51,7 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
         <p>Planea con intención.<br /><em>Avanza a tu ritmo.</em></p>
         <div className="splash-illustration"><Leaf size={84} strokeWidth={1} /><span className="splash-notebook">MBV</span></div>
         <Button onClick={() => setStage(1)}>Comenzar <ArrowRight size={18} /></Button>
-        <span className="signed-session"><Check size={14} /> Inicio de sesión protegido con ChatGPT</span>
+        <span className="signed-session"><Check size={14} /> Tus datos se guardan localmente en este navegador</span>
         <input ref={fileRef} className="sr-only" type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} />
         <button className="splash-import" onClick={() => fileRef.current?.click()}><FileUp size={14} /> Ya tengo un respaldo</button>
         {importError && <p className="form-error" role="alert">{importError}</p>}

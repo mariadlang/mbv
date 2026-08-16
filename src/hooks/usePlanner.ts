@@ -24,12 +24,19 @@ import type {
   TransactionFormInput,
   WorkoutFormInput,
 } from "@/src/lib/schemas";
+import { backupFileSchema } from "@/src/lib/schemas";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
 
 async function getService(): Promise<PlannerService> {
   const loadedService = await import("@/src/services/plannerService");
   return loadedService.plannerService;
+}
+
+function reportPlannerError(context: string, error: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    console.error(`[planner] ${context}`, error);
+  }
 }
 
 export function usePlanner() {
@@ -44,7 +51,8 @@ export function usePlanner() {
       const service = await getService();
       setSnapshot(await service.load());
       setError(null);
-    } catch {
+    } catch (caught) {
+      reportPlannerError("load", caught);
       setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
@@ -60,7 +68,8 @@ export function usePlanner() {
         setSnapshot(data);
         setError(null);
       })
-      .catch(() => {
+      .catch((caught) => {
+        reportPlannerError("initial load", caught);
         if (active) setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
       })
       .finally(() => {
@@ -80,9 +89,10 @@ export function usePlanner() {
         setSnapshot(next);
         setError(null);
         return next;
-      } catch {
+      } catch (caught) {
+        reportPlannerError("save", caught);
         setError("No pudimos guardar este cambio. Inténtalo de nuevo.");
-        throw new Error("Planner operation failed");
+        throw caught;
       } finally {
         setSaving(false);
       }
@@ -104,6 +114,7 @@ export function usePlanner() {
 
   const importBackup = useCallback(
     async (file: File) => {
+      backupFileSchema.parse({ type: file.type, size: file.size });
       const json = await file.text();
       return commit((service) => service.importBackup(json));
     },
@@ -111,6 +122,7 @@ export function usePlanner() {
   );
 
   const previewBackup = useCallback(async (file: File) => {
+    backupFileSchema.parse({ type: file.type, size: file.size });
     const service = await getService();
     return service.previewBackup(await file.text());
   }, []);
