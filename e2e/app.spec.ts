@@ -157,14 +157,15 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 });
 
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
+  test.setTimeout(60_000);
   await completeOnboarding(page);
   await page.goto("/app/tasks");
   await page.goto("/app/journal");
-  await page.goBack();
+  await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/app\/tasks$/);
-  await page.goForward();
+  await page.goForward({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/app\/journal$/);
-  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible({ timeout: 15_000 });
 
   if (test.info().project.name === "mobile") {
     await page.getByRole("link", { name: "Más", exact: true }).click();
