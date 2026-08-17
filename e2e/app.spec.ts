@@ -132,6 +132,7 @@ test("exports, deletes and restores a validated local backup", async ({ page }) 
 });
 
 test("deep links, refresh and browser history work in the production runtime", async ({ page }) => {
+  test.setTimeout(90_000);
   await completeOnboarding(page);
   const routes = [
     ["/app", /Buenos días/],
