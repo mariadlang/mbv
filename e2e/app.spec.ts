@@ -131,7 +131,7 @@ test("exports, deletes and restores a validated local backup", async ({ page }) 
   await expect(page.getByRole("heading", { name: /Buenos días, Valeria/ })).toBeVisible();
 });
 
-test("deep links, refresh and browser history work in the production runtime", async ({ page }) => {
+test("deep links and refresh work in the production runtime", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
   const routes = [
@@ -154,13 +154,17 @@ test("deep links, refresh and browser history work in the production runtime", a
   }
   await page.reload();
   await expect(page.getByRole("heading", { name: /Ajustes y datos/ })).toBeVisible();
+});
 
+test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
+  await completeOnboarding(page);
   await page.goto("/app/tasks");
   await page.goto("/app/journal");
   await page.goBack();
   await expect(page).toHaveURL(/\/app\/tasks$/);
   await page.goForward();
   await expect(page).toHaveURL(/\/app\/journal$/);
+  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
   if (test.info().project.name === "mobile") {
     await page.getByRole("link", { name: "Más", exact: true }).click();
