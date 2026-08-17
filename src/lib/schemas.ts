@@ -4,6 +4,9 @@ import type { BackupEnvelope, PlannerSnapshot } from "@/src/domain/planner";
 const timestampSchema = z.string().min(1);
 const optionalId = z.string().optional();
 const entityStatusSchema = z.enum(["draft", "active", "paused", "completed", "archived"]);
+const imageDataUrlSchema = z.string()
+  .max(2_100_000, "La imagen es demasiado grande.")
+  .regex(/^data:image\/(png|jpeg|webp);base64,/i, "La imagen no tiene un formato compatible.");
 
 export const onboardingSchema = z.object({
   name: z.string().trim().min(2, "Cuéntanos cómo quieres que te llamemos."),
@@ -144,7 +147,7 @@ export const mealFormSchema = z.object({
 
 export const bodyCheckInFormSchema = z.object({
   date: z.string().min(1), weight: z.number().positive().optional(),
-  waist: z.number().positive().optional(), hip: z.number().positive().optional(), photoDataUrl: z.string().optional(),
+  waist: z.number().positive().optional(), hip: z.number().positive().optional(), photoDataUrl: imageDataUrlSchema.optional(),
 });
 
 export const challengeFormSchema = z.object({
@@ -167,7 +170,7 @@ const profileSchema = z.object({
   priorityAreaIds: z.array(z.string()), mainPriorities: z.array(z.string()).optional(),
   theme: z.enum(["light", "rose", "taupe"]).optional(),
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
-  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: z.string().optional(), lastBackupAt: z.string().optional(),
+  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: imageDataUrlSchema.optional(), lastBackupAt: z.string().optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -175,7 +178,7 @@ const lifeAreaSchema = z.object({
   id: z.string(), name: z.string(), color: z.enum(["rose", "sage", "taupe", "charcoal", "blush"]),
   order: z.number(), active: z.boolean(), currentScore: z.number().min(0).max(10).optional(),
   desiredScore: z.number().min(0).max(10).optional(), vision: z.string().optional(),
-  icon: z.string().optional(), reflection: z.string().optional(), dream: z.string().optional(), imageDataUrl: z.string().optional(),
+  icon: z.string().optional(), reflection: z.string().optional(), dream: z.string().optional(), imageDataUrl: imageDataUrlSchema.optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -276,8 +279,16 @@ const visionBoardItemSchema = z.object({
 });
 
 export const imageUploadSchema = z.object({
-  type: z.string().refine((value) => value.startsWith("image/"), "Selecciona un archivo de imagen."),
+  type: z.enum(["image/png", "image/jpeg", "image/webp"], { message: "Usa una imagen PNG, JPG o WebP." }),
   size: z.number().max(1_500_000, "La imagen debe pesar menos de 1,5 MB."),
+});
+
+export const backupFileSchema = z.object({
+  type: z.string().refine(
+    (value) => value === "application/json" || value === "text/json" || value === "",
+    "Selecciona un archivo JSON.",
+  ),
+  size: z.number().max(10_000_000, "El respaldo debe pesar menos de 10 MB."),
 });
 
 const workoutLogSchema = z.object({
@@ -293,7 +304,7 @@ const nutritionLogSchema = z.object({
 
 const bodyCheckInSchema = z.object({
   id: z.string(), date: z.string(), weight: z.number().optional(), measurements: z.record(z.string(), z.number()),
-  photoDataUrl: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
+  photoDataUrl: imageDataUrlSchema.optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
 const challengeSchema = z.object({
