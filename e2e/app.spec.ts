@@ -159,15 +159,33 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
-  await page.goto("/app/tasks");
-  await page.goto("/app/journal");
-  await page.goBack({ waitUntil: "domcontentloaded" });
-  await expect(page).toHaveURL(/\/app\/tasks$/);
-  await page.goForward({ waitUntil: "domcontentloaded" });
-  await expect(page).toHaveURL(/\/app\/journal$/);
-  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible({ timeout: 15_000 });
+  const isMobile = test.info().project.name === "mobile";
 
-  if (test.info().project.name === "mobile") {
+  if (isMobile) {
+    await page.getByRole("link", { name: "Más", exact: true }).click();
+    await page.getByRole("link", { name: /Tareas y proyectos/ }).click();
+  } else {
+    await page.getByRole("link", { name: "Tareas", exact: true }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
+
+  if (isMobile) {
+    await page.getByRole("link", { name: "Más", exact: true }).click();
+    await page.getByRole("link", { name: /Journal/ }).click();
+  } else {
+    await page.getByRole("link", { name: "Mi diario", exact: true }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
+
+  const historySteps = isMobile ? 2 : 1;
+  for (let step = 0; step < historySteps; step += 1) await page.goBack();
+  await expect(page).toHaveURL(/\/app\/tasks$/);
+  await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
+  for (let step = 0; step < historySteps; step += 1) await page.goForward();
+  await expect(page).toHaveURL(/\/app\/journal$/);
+  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
+
+  if (isMobile) {
     await page.getByRole("link", { name: "Más", exact: true }).click();
     await page.getByRole("link", { name: /Tareas/ }).click();
   } else {
