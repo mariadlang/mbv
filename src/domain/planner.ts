@@ -22,6 +22,7 @@ export interface Profile {
   financePrivacy?: boolean;
   fitnessEnabled?: boolean;
   avatarDataUrl?: string;
+  activationCompleted?: boolean;
   lastBackupAt?: string;
   onboardingCompleted: boolean;
   createdAt: string;
@@ -41,6 +42,8 @@ export interface LifeArea {
   reflection?: string;
   dream?: string;
   imageDataUrl?: string;
+  category?: string;
+  custom?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,6 +152,7 @@ export interface JournalEntry {
   type: "free" | "gratitude" | "weekly_review" | "monthly_reset";
   title?: string;
   text: string;
+  imageDataUrl?: string;
   goalId?: string;
   lifeAreaId?: string;
   periodPlanId?: string;
@@ -380,6 +384,7 @@ export interface FinancialAccount {
   name: string;
   type: "cash" | "bank" | "wallet" | "other";
   initialBalance: number;
+  balanceAdjustment?: number;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -489,6 +494,7 @@ export interface PendingPurchase {
   estimatedAmount: number;
   accountId?: string;
   tentativeDate?: string;
+  taskId?: string;
   priority: "low" | "medium" | "high";
   status: "pending" | "purchased" | "released";
   createdAt: string;

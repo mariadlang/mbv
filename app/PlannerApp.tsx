@@ -24,6 +24,7 @@ const TasksPage = lazy(() => import("@/src/features/tasks/TasksPage").then((modu
 const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module) => ({ default: module.HelpPage })));
 const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then((module) => ({ default: module.FinancePage })));
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
+const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
 
 export default function PlannerApp() {
   const planner = usePlanner();
@@ -101,7 +102,8 @@ export default function PlannerApp() {
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} />} />
-            <Route path="/app/help" element={<HelpPage />} />
+            <Route path="/app/help" element={<HelpPage planner={planner} />} />
+            <Route path="/app/learn" element={<LearnPage planner={planner} />} />
             <Route path="/app/more" element={<MorePage />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
           </Routes>
@@ -114,7 +116,7 @@ export default function PlannerApp() {
           <div className="quick-add-options" aria-label="Otros registros rápidos">
             <span>También puedes registrar</span>
             <Link to="/app/habits" onClick={() => setQuickAddOpen(false)}><HeartPulse size={16} /> Hábito</Link>
-            <Link to="/app/mood" onClick={() => setQuickAddOpen(false)}><Smile size={16} /> Ánimo</Link>
+            <Link to="/app/habits?checkin=1" onClick={() => setQuickAddOpen(false)}><Smile size={16} /> Ánimo</Link>
             <Link to="/app/journal" onClick={() => setQuickAddOpen(false)}><BookOpen size={16} /> Nota</Link>
             <Link to="/app/finance" onClick={() => setQuickAddOpen(false)}><Landmark size={16} /> Movimiento</Link>
           </div>

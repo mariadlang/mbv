@@ -36,6 +36,14 @@ export const goalFormSchema = z.object({
   unit: z.string().trim().optional(),
   manualProgress: z.number().min(0).max(100).optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
+}).superRefine((value, context) => {
+  if (value.targetDate && value.targetMonth) {
+    context.addIssue({
+      code: "custom",
+      path: ["targetDate"],
+      message: "Elige una fecha exacta o un mes deseado, no ambos.",
+    });
+  }
 });
 
 export const taskFormSchema = z.object({
@@ -170,7 +178,7 @@ const profileSchema = z.object({
   priorityAreaIds: z.array(z.string()), mainPriorities: z.array(z.string()).optional(),
   theme: z.enum(["light", "rose", "taupe"]).optional(),
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
-  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: imageDataUrlSchema.optional(), lastBackupAt: z.string().optional(),
+  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: imageDataUrlSchema.optional(), activationCompleted: z.boolean().optional(), lastBackupAt: z.string().optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -179,6 +187,7 @@ const lifeAreaSchema = z.object({
   order: z.number(), active: z.boolean(), currentScore: z.number().min(0).max(10).optional(),
   desiredScore: z.number().min(0).max(10).optional(), vision: z.string().optional(),
   icon: z.string().optional(), reflection: z.string().optional(), dream: z.string().optional(), imageDataUrl: imageDataUrlSchema.optional(),
+  category: z.string().optional(), custom: z.boolean().optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -232,7 +241,7 @@ const moodLogSchema = z.object({
 
 const journalEntrySchema = z.object({
   id: z.string(), date: z.string(), type: z.enum(["free", "gratitude", "weekly_review", "monthly_reset"]),
-  title: z.string().optional(), text: z.string(), goalId: optionalId, lifeAreaId: optionalId,
+  title: z.string().optional(), text: z.string(), imageDataUrl: z.string().optional(), goalId: optionalId, lifeAreaId: optionalId,
   periodPlanId: optionalId, financialReviewId: optionalId, status: z.enum(["draft", "saved"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
@@ -335,7 +344,7 @@ const financialProfileSchema = z.object({
 
 const financialAccountSchema = z.object({
   id: z.string(), name: z.string(), type: z.enum(["cash", "bank", "wallet", "other"]),
-  initialBalance: z.number().int(), status: z.enum(["active", "archived"]),
+  initialBalance: z.number().int(), balanceAdjustment: z.number().int().optional(), status: z.enum(["active", "archived"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -388,7 +397,7 @@ const financialReviewSchema = z.object({
 
 const pendingPurchaseSchema = z.object({
   id: z.string(), title: z.string(), estimatedAmount: z.number().int().positive(), accountId: z.string().optional(),
-  tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]),
+  tentativeDate: z.string().optional(), taskId: z.string().optional(), priority: z.enum(["low", "medium", "high"]),
   status: z.enum(["pending", "purchased", "released"]), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

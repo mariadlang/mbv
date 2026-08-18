@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { BriefcaseBusiness, CalendarDays, Check, ChevronDown, Circle, Clock3, Filter, Flag, Plus, SlidersHorizontal, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Check, Circle, Clock3, Flag, Plus, Sparkles } from "lucide-react";
 import { isTaskOverdue } from "@/src/domain/rules";
 import { resistanceSuggestion } from "@/src/domain/guidanceRules";
 import { calculateProjectProgress, projectNextSuggestion } from "@/src/domain/cascadeRules";
@@ -38,10 +38,13 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   const addDetailed = async (event: FormEvent) => {
     event.preventDefault();
     if (!advanced.title.trim()) return;
+    const focusPriority = advanced.focusPriority ? Number(advanced.focusPriority) as 1 | 2 | 3 : undefined;
+    const occupied = focusPriority && snapshot.tasks.find((task) => task.date === advanced.date && task.focusPriority === focusPriority && task.status !== "completed" && task.status !== "cancelled");
+    if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return;
     await planner.createTaskDetailed({
       ...advanced,
       estimatedMinutes: advanced.estimatedMinutes ? Number(advanced.estimatedMinutes) : undefined,
-      focusPriority: advanced.focusPriority ? Number(advanced.focusPriority) as 1 | 2 | 3 : undefined,
+      focusPriority,
       date: advanced.date || undefined,
       time: advanced.time || undefined,
       lifeAreaId: advanced.lifeAreaId || undefined,
@@ -63,9 +66,8 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   return <div className="page-stack tasks-page">
     <SectionHeading eyebrow="Ejecuta lo que sí importa" title="Tareas y proyectos" description="Captura acciones y agrúpalas en entregables concretos." action={<Button onClick={() => setAdvancedOpen(!advancedOpen)}><Plus size={17} /> Nueva tarea</Button>} />
     <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Inbox" : item === "today" ? "Hoy" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
-    <div className="task-toolbar"><Button variant="secondary"><Filter size={16} /> Filtros</Button><button>Orden: Prioridad <ChevronDown size={15} /></button><button aria-label="Opciones de visualización"><SlidersHorizontal size={16} /></button></div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
-    {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 2) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
+    {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
 
     {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><Clock3 size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
       <label className="form-field form-field--full"><span>Tarea</span><input required value={advanced.title} onChange={(event) => setAdvanced({ ...advanced, title: event.target.value })} /></label>

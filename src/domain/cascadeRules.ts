@@ -15,7 +15,7 @@ export function calculateAccountBalance(snapshot: PlannerSnapshot, accountId: st
       return transaction.type === "income"
         ? balance + transaction.amount
         : balance - transaction.amount;
-    }, account.initialBalance);
+    }, account.initialBalance + (account.balanceAdjustment ?? 0));
 }
 
 export function calculateProjectProgress(snapshot: PlannerSnapshot, projectId: string): number {

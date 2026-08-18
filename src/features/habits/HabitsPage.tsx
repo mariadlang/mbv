@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Check, Flame, Pause, Plus, Sprout } from "lucide-react";
+import { Check, Flame, Plus, Sprout } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { calculateHabitConsistency, isHabitScheduledOn } from "@/src/domain/rules";
 import { getRecentDates, getWeekDates, formatShortDay, toLocalDateKey } from "@/src/lib/dates";
@@ -18,9 +19,15 @@ const dayOptions = [
 
 export function HabitsPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
+  const [searchParams] = useSearchParams();
+  const wellbeingRef = useRef<HTMLElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const weekDates = getWeekDates(new Date(), snapshot.profile?.weekStartsOn ?? 1);
   const recentDates = useMemo(() => getRecentDates(30), []);
+
+  useEffect(() => {
+    if (searchParams.get("checkin") === "1") wellbeingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [searchParams]);
 
   const form = useForm<HabitFormInput>({
     resolver: zodResolver(habitFormSchema),
@@ -155,7 +162,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
             <Card className="habit-detail-card" key={habit.id}>
               <div className="habit-detail-card__top">
                 <span className="habit-detail-card__icon"><Sprout size={20} /></span>
-                <button className="icon-button" aria-label={`Pausar ${habit.name}`}><Pause size={17} /></button>
+                <Badge tone="neutral">{habit.status === "active" ? "Activo" : habit.status}</Badge>
               </div>
               <h3>{habit.name}</h3>
               <p>{habit.description || "Un pequeño gesto que suma a tu bienestar."}</p>
@@ -170,7 +177,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
         })}
       </div>
 
-      <section className="wellbeing-section" aria-label="Bienestar, ánimo y energía"><MoodPage planner={planner} /></section>
+      <section ref={wellbeingRef} className="wellbeing-section" aria-label="Bienestar, ánimo y energía"><MoodPage planner={planner} /></section>
 
       <Modal open={dialogOpen} title="Crear un hábito" description="Empieza con algo pequeño y claro. Siempre podrás ajustarlo." onClose={() => setDialogOpen(false)}>
         <form className="form-grid" onSubmit={onSubmit}>

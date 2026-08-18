@@ -1,44 +1,77 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Coins, FileUp, Heart, Home, Leaf, Palette, Plane, Sparkles, Target } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BriefcaseBusiness,
+  Check,
+  Coins,
+  FileUp,
+  Heart,
+  Home,
+  Leaf,
+  Palette,
+  Plane,
+  Sparkles,
+} from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { onboardingSchema, type OnboardingInput } from "@/src/lib/schemas";
+import { onboardingSchema } from "@/src/lib/schemas";
 import { Button } from "@/src/components/ui/Primitives";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 
-const intentions = [
-  ["Convertirme en mi mejor versión", "Crecimiento personal y bienestar", Sparkles],
-  ["Lograr equilibrio y bienestar", "Salud, mente y emociones", Heart],
-  ["Impulsar mi carrera o negocio", "Desarrollo profesional y financiero", BriefcaseBusiness],
-  ["Explorar nuevas posibilidades", "Descubrimiento y transformación", Leaf],
-] as const;
-
 const areas = [
-  ["Salud y bienestar", Heart], ["Carrera", BriefcaseBusiness], ["Finanzas", Coins], ["Relaciones", Heart],
-  ["Hogar", Home], ["Crecimiento", Leaf], ["Proyectos creativos", Palette], ["Experiencias", Plane],
+  ["Salud y bienestar", Heart],
+  ["Carrera / profesional", BriefcaseBusiness],
+  ["Finanzas", Coins],
+  ["Relaciones", Heart],
+  ["Hogar", Home],
+  ["Crecimiento personal", Leaf],
+  ["Espiritual", Sparkles],
+  ["Proyectos creativos", Palette],
+  ["Experiencias", Plane],
+  ["Otro", Leaf],
 ] as const;
 
 export function Onboarding({ planner }: { planner: PlannerController }) {
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
-  const [selectedIntention, setSelectedIntention] = useState<string>(intentions[0][0]);
-  const [selectedAreas, setSelectedAreas] = useState<string[]>(["Salud y bienestar", "Carrera", "Crecimiento"]);
-  const [priorities, setPriorities] = useState(["", "", ""]);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [difference, setDifference] = useState("");
+  const [name, setName] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const form = useForm<OnboardingInput>({ resolver: zodResolver(onboardingSchema), defaultValues: { name: "", intention: intentions[0][0], usePurpose: "Construir una vida con más intención y claridad.", weekStartsOn: 1 } });
-  const weekStartsOn = useWatch({ control: form.control, name: "weekStartsOn" });
 
-  const chooseIntention = (value: string) => {
-    setSelectedIntention(value);
-    form.setValue("intention", value, { shouldValidate: true });
+  const toggleArea = (area: string) => {
+    setFormError(null);
+    setSelectedAreas((current) => current.includes(area)
+      ? current.filter((item) => item !== area)
+      : current.length < 3
+        ? [...current, area]
+        : current);
   };
-  const complete = form.handleSubmit((values) => planner.completeOnboarding({ ...values, selectedAreaNames: selectedAreas, priorities }));
+
   const importBackup = async (file: File | undefined) => {
     if (!file) return;
-    try { await planner.importBackup(file); } catch { setImportError("Este archivo no parece ser un respaldo válido de My Best Version Planner."); }
+    try {
+      await planner.importBackup(file);
+    } catch {
+      setImportError("Este archivo no parece ser un respaldo válido de My Best Version.");
+    }
+  };
+
+  const complete = async () => {
+    const parsed = onboardingSchema.safeParse({
+      name,
+      intention: difference,
+      usePurpose: difference,
+      weekStartsOn: 1,
+    });
+    if (!parsed.success) {
+      setFormError(parsed.error.issues[0]?.message ?? "Revisa este paso antes de continuar.");
+      return;
+    }
+    await planner.completeOnboarding({ ...parsed.data, selectedAreaNames: selectedAreas, priorities: [] });
   };
 
   if (stage === 0) {
@@ -46,45 +79,68 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
       <div className="splash-orb splash-orb--one" /><div className="splash-orb splash-orb--two" />
       <section className="splash-content">
         <BrandMark />
-        <h1>Diseña tu mejor <em>versión</em></h1>
+        <p className="eyebrow">MY BEST VERSION</p>
+        <h1>Life, but <em>more you.</em></h1>
         <div className="splash-divider"><span /><Heart size={17} /><span /></div>
-        <p>Planea con intención.<br /><em>Avanza a tu ritmo.</em></p>
+        <p>Convierte la vida que quieres construir<br /><em>en decisiones que caben en hoy.</em></p>
         <div className="splash-illustration"><Leaf size={84} strokeWidth={1} /><span className="splash-notebook">MBV</span></div>
-        <Button onClick={() => setStage(1)}>Comenzar <ArrowRight size={18} /></Button>
-        <span className="signed-session"><Check size={14} /> Tus datos se guardan localmente en este navegador</span>
+        <Button onClick={() => setStage(1)}>Crear mi espacio <ArrowRight size={18} /></Button>
+        <span className="signed-session"><Check size={14} /> Tus datos se guardan localmente en este dispositivo</span>
         <input ref={fileRef} className="sr-only" type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} />
         <button className="splash-import" onClick={() => fileRef.current?.click()}><FileUp size={14} /> Ya tengo un respaldo</button>
         {importError && <p className="form-error" role="alert">{importError}</p>}
-        <small>Al continuar, aceptas nuestros <u>Términos y Privacidad</u>.</small>
       </section>
     </main>;
   }
 
   return <main className="onboarding-page onboarding-page--reference">
-    <header className="onboarding-header"><button className="onboarding-back" onClick={() => setStage((stage - 1) as 0 | 1 | 2 | 3)} aria-label="Volver"><ArrowLeft size={20} /></button><span>Paso {stage} de 3</span></header>
+    <header className="onboarding-header">
+      <button className="onboarding-back" onClick={() => setStage((stage - 1) as 0 | 1 | 2 | 3)} aria-label="Volver"><ArrowLeft size={20} /></button>
+      <span>Paso {stage} de 3</span>
+    </header>
     <div className="onboarding-progress"><span style={{ width: `${stage / 3 * 100}%` }} /></div>
     <section className="onboarding-panel onboarding-panel--reference">
       {stage === 1 && <>
-        <span className="onboarding-symbol"><Heart size={24} /></span>
-        <h1>¿Qué quieres construir <em>en esta etapa?</em></h1>
-        <p>Define tu intención principal para que podamos acompañarte mejor.</p>
-        <div className="intention-options">{intentions.map(([title, description, Icon]) => <button key={title} className={selectedIntention === title ? "is-selected" : ""} onClick={() => chooseIntention(title)}><span className="radio-dot">{selectedIntention === title && <i />}</span><span className="intention-option__icon"><Icon size={22} /></span><span><strong>{title}</strong><small>{description}</small></span></button>)}</div>
-        <blockquote>“No se trata de tenerlo todo claro, sino de dar el siguiente paso.”</blockquote>
-        <Button className="onboarding-primary" onClick={() => setStage(2)}>Continuar</Button>
+        <span className="onboarding-symbol"><Sparkles size={24} /></span>
+        <h1>¿Qué quieres mejorar <em>primero?</em></h1>
+        <p>Elige hasta tres áreas. No estás decidiendo toda tu vida, solo dónde quieres empezar.</p>
+        <div className="area-grid-reference" role="group" aria-label="Áreas para comenzar">
+          {areas.map(([area, Icon]) => {
+            const selected = selectedAreas.includes(area);
+            return <button key={area} type="button" className={selected ? "is-selected" : ""} onClick={() => toggleArea(area)} aria-pressed={selected}>
+              <span className="area-check">{selected && <Check size={14} />}</span><Icon size={34} strokeWidth={1.35} /><strong>{area}</strong>
+            </button>;
+          })}
+        </div>
+        <small className="onboarding-hint">{selectedAreas.length}/3 seleccionadas</small>
+        {formError && <p className="form-error" role="alert">{formError}</p>}
+        <Button className="onboarding-primary" disabled={!selectedAreas.length} onClick={() => { setFormError(null); setStage(2); }}>Continuar</Button>
       </>}
+
       {stage === 2 && <>
-        <h1>¿En qué áreas quieres <em>enfocarte?</em></h1><p>Selecciona las áreas importantes para ti en este momento.</p>
-        <div className="area-grid-reference">{areas.map(([name, Icon]) => { const selected = selectedAreas.includes(name); return <button key={name} className={selected ? "is-selected" : ""} onClick={() => setSelectedAreas(selected ? selectedAreas.filter((item) => item !== name) : [...selectedAreas, name])} aria-pressed={selected}><span className="area-check">{selected && <Check size={14} />}</span><Icon size={34} strokeWidth={1.35} /><strong>{name}</strong></button>; })}</div>
-        <Button className="onboarding-primary" disabled={!selectedAreas.length} onClick={() => setStage(3)}>Continuar</Button><small className="onboarding-hint">Podrás ajustar tus áreas más adelante.</small>
+        <span className="onboarding-symbol"><Heart size={24} /></span>
+        <h1>¿Qué te gustaría que fuera <em>diferente?</em></h1>
+        <p>Una frase es suficiente. La usaremos como dirección, nunca como una tarea automática.</p>
+        <label className="form-field onboarding-wide-field">
+          <span>Quiero que sea diferente…</span>
+          <textarea rows={6} value={difference} onChange={(event) => setDifference(event.target.value)} placeholder="Ej. Quiero sentir que mi semana tiene espacio para mi salud y mi proyecto personal." />
+        </label>
+        {formError && <p className="form-error" role="alert">{formError}</p>}
+        <Button className="onboarding-primary" onClick={() => {
+          if (difference.trim().length < 4) return setFormError("Escribe una frase breve para darte una primera dirección.");
+          setFormError(null); setStage(3);
+        }}>Continuar</Button>
       </>}
-      {stage === 3 && <form onSubmit={complete}>
-        <h1>Personaliza tu planner <em>para ti</em></h1><p>Cuéntanos algunos detalles para crear tu experiencia personalizada.</p>
-        <label className="form-field"><span>¿Cómo te llamas?</span><input placeholder="Tu nombre" {...form.register("name")} />{form.formState.errors.name && <small className="form-error">{form.formState.errors.name.message}</small>}</label>
-        <label className="form-field"><span>¿Para qué quieres usar My Best Version?</span><textarea rows={3} {...form.register("usePurpose")} />{form.formState.errors.usePurpose && <small className="form-error">{form.formState.errors.usePurpose.message}</small>}</label>
-        <fieldset className="form-field"><legend>¿Cuál es tu primer día de la semana?</legend><div className="weekday-start"><button type="button" className={weekStartsOn === 1 ? "is-selected" : ""} onClick={() => form.setValue("weekStartsOn", 1)}>LUN</button>{["MAR","MIÉ","JUE","VIE","SÁB"].map((day) => <span key={day}>{day}</span>)}<button type="button" className={weekStartsOn === 0 ? "is-selected" : ""} onClick={() => form.setValue("weekStartsOn", 0)}>DOM</button></div></fieldset>
-        <fieldset className="form-field"><legend>¿Cuáles son tus 3 prioridades principales?</legend><div className="priority-inputs">{priorities.map((priority, index) => <label key={index}><span>{index + 1}</span><Target size={18} /><input value={priority} onChange={(event) => setPriorities(priorities.map((item, i) => i === index ? event.target.value : item))} placeholder={["Mi salud física y mental", "Hacer crecer mi carrera", "Tener tiempo de calidad"][index]} /></label>)}</div></fieldset>
-        <Button type="submit" className="onboarding-primary">Crear mi planner</Button><small className="onboarding-hint">Último paso, ¡ya casi está!</small>
-      </form>}
+
+      {stage === 3 && <>
+        <span className="onboarding-symbol"><Leaf size={24} /></span>
+        <h1>¿Cómo quieres que <em>te llamemos?</em></h1>
+        <p>Eso es todo por ahora. El inicio de semana y otras preferencias estarán en Ajustes.</p>
+        <label className="form-field onboarding-wide-field"><span>Tu nombre</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. María" /></label>
+        {formError && <p className="form-error" role="alert">{formError}</p>}
+        <Button className="onboarding-primary" onClick={complete}>Crear mi espacio</Button>
+        <small className="onboarding-hint">No necesitas configurarlo todo para comenzar.</small>
+      </>}
     </section>
   </main>;
 }

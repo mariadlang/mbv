@@ -144,6 +144,8 @@ export function usePlanner() {
       commit((service) => service.createTask(title, date, focusPriority)),
     createTaskDetailed: (input: TaskFormInput) =>
       commit((service) => service.createTaskDetailed(input)),
+    assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
+      commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
     toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
@@ -159,18 +161,22 @@ export function usePlanner() {
       commit((service) => service.updateGoalProgress(goalId, value)),
     updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string }) =>
+    createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
+      commit((service) => service.createLifeArea(input)),
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
       commit((service) => service.updateProfileSettings(input)),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
     toggleMilestone: (milestoneId: string) =>
       commit((service) => service.toggleMilestone(milestoneId)),
-    saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string } = {}) =>
+    saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string; imageDataUrl?: string } = {}) =>
       commit((service) => service.saveJournal(text, options)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
       commit((service) => service.saveReview(type, summary, decisions)),
+    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = []) =>
+      commit((service) => service.saveStructuredReview(type, responses, decisions)),
     saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
       commit((service) => service.saveMonthlyBudget(input)),
     createTransaction: (input: TransactionFormInput) =>
@@ -202,6 +208,7 @@ export function usePlanner() {
     toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),
     createFinancialAccount: (input: FinancialAccountFormInput) => commit((service) => service.createFinancialAccount(input)),
     updateFinancialAccountBalance: (accountId: string, initialBalance: number) => commit((service) => service.updateFinancialAccountBalance(accountId, initialBalance)),
+    adjustFinancialAccountBalance: (accountId: string, desiredBalance: number) => commit((service) => service.adjustFinancialAccountBalance(accountId, desiredBalance)),
     createPendingPurchase: (input: PendingPurchaseFormInput) => commit((service) => service.createPendingPurchase(input)),
     updatePendingPurchase: (itemId: string, status: "pending" | "purchased" | "released") =>
       commit((service) => service.updatePendingPurchase(itemId, status)),
