@@ -24,12 +24,19 @@ import type {
   TransactionFormInput,
   WorkoutFormInput,
 } from "@/src/lib/schemas";
+import { backupFileSchema } from "@/src/lib/schemas";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
 
 async function getService(): Promise<PlannerService> {
   const loadedService = await import("@/src/services/plannerService");
   return loadedService.plannerService;
+}
+
+function reportPlannerError(context: string, error: unknown) {
+  if (process.env.NODE_ENV !== "production") {
+    console.error(`[planner] ${context}`, error);
+  }
 }
 
 export function usePlanner() {
@@ -44,7 +51,8 @@ export function usePlanner() {
       const service = await getService();
       setSnapshot(await service.load());
       setError(null);
-    } catch {
+    } catch (caught) {
+      reportPlannerError("load", caught);
       setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
@@ -60,7 +68,8 @@ export function usePlanner() {
         setSnapshot(data);
         setError(null);
       })
-      .catch(() => {
+      .catch((caught) => {
+        reportPlannerError("initial load", caught);
         if (active) setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
       })
       .finally(() => {
@@ -80,9 +89,10 @@ export function usePlanner() {
         setSnapshot(next);
         setError(null);
         return next;
-      } catch {
+      } catch (caught) {
+        reportPlannerError("save", caught);
         setError("No pudimos guardar este cambio. Inténtalo de nuevo.");
-        throw new Error("Planner operation failed");
+        throw caught;
       } finally {
         setSaving(false);
       }
@@ -104,6 +114,7 @@ export function usePlanner() {
 
   const importBackup = useCallback(
     async (file: File) => {
+      backupFileSchema.parse({ type: file.type, size: file.size });
       const json = await file.text();
       return commit((service) => service.importBackup(json));
     },
@@ -111,6 +122,7 @@ export function usePlanner() {
   );
 
   const previewBackup = useCallback(async (file: File) => {
+    backupFileSchema.parse({ type: file.type, size: file.size });
     const service = await getService();
     return service.previewBackup(await file.text());
   }, []);
@@ -132,6 +144,8 @@ export function usePlanner() {
       commit((service) => service.createTask(title, date, focusPriority)),
     createTaskDetailed: (input: TaskFormInput) =>
       commit((service) => service.createTaskDetailed(input)),
+    assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
+      commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
     toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
@@ -147,18 +161,22 @@ export function usePlanner() {
       commit((service) => service.updateGoalProgress(goalId, value)),
     updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string }) =>
+    createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
+      commit((service) => service.createLifeArea(input)),
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
       commit((service) => service.updateProfileSettings(input)),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
     toggleMilestone: (milestoneId: string) =>
       commit((service) => service.toggleMilestone(milestoneId)),
-    saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string } = {}) =>
+    saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string; imageDataUrl?: string } = {}) =>
       commit((service) => service.saveJournal(text, options)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
       commit((service) => service.saveReview(type, summary, decisions)),
+    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = []) =>
+      commit((service) => service.saveStructuredReview(type, responses, decisions)),
     saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
       commit((service) => service.saveMonthlyBudget(input)),
     createTransaction: (input: TransactionFormInput) =>
@@ -190,6 +208,7 @@ export function usePlanner() {
     toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),
     createFinancialAccount: (input: FinancialAccountFormInput) => commit((service) => service.createFinancialAccount(input)),
     updateFinancialAccountBalance: (accountId: string, initialBalance: number) => commit((service) => service.updateFinancialAccountBalance(accountId, initialBalance)),
+    adjustFinancialAccountBalance: (accountId: string, desiredBalance: number) => commit((service) => service.adjustFinancialAccountBalance(accountId, desiredBalance)),
     createPendingPurchase: (input: PendingPurchaseFormInput) => commit((service) => service.createPendingPurchase(input)),
     updatePendingPurchase: (itemId: string, status: "pending" | "purchased" | "released") =>
       commit((service) => service.updatePendingPurchase(itemId, status)),
