@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { BriefcaseBusiness, CalendarDays, Check, ChevronDown, Circle, Clock3, Filter, Flag, Plus, SlidersHorizontal, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, Check, Circle, Clock3, Flag, Plus, Sparkles } from "lucide-react";
 import { isTaskOverdue } from "@/src/domain/rules";
+import { resistanceSuggestion } from "@/src/domain/guidanceRules";
 import { calculateProjectProgress, projectNextSuggestion } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
@@ -16,7 +17,8 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   const [tab, setTab] = useState<TaskTab>("today");
   const [title, setTitle] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [advanced, setAdvanced] = useState({ title: "", description: "", date: today, time: "", estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
+  const [resistanceHelp, setResistanceHelp] = useState<string | null>(null);
+  const [advanced, setAdvanced] = useState({ title: "", description: "", date: today, time: "", estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", focusPriority: "" as "" | "1" | "2" | "3", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
   const [project, setProject] = useState({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
     if (tab === "inbox") return task.status === "inbox";
@@ -36,9 +38,13 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   const addDetailed = async (event: FormEvent) => {
     event.preventDefault();
     if (!advanced.title.trim()) return;
+    const focusPriority = advanced.focusPriority ? Number(advanced.focusPriority) as 1 | 2 | 3 : undefined;
+    const occupied = focusPriority && snapshot.tasks.find((task) => task.date === advanced.date && task.focusPriority === focusPriority && task.status !== "completed" && task.status !== "cancelled");
+    if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return;
     await planner.createTaskDetailed({
       ...advanced,
       estimatedMinutes: advanced.estimatedMinutes ? Number(advanced.estimatedMinutes) : undefined,
+      focusPriority,
       date: advanced.date || undefined,
       time: advanced.time || undefined,
       lifeAreaId: advanced.lifeAreaId || undefined,
@@ -60,8 +66,8 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   return <div className="page-stack tasks-page">
     <SectionHeading eyebrow="Ejecuta lo que sí importa" title="Tareas y proyectos" description="Captura acciones y agrúpalas en entregables concretos." action={<Button onClick={() => setAdvancedOpen(!advancedOpen)}><Plus size={17} /> Nueva tarea</Button>} />
     <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Inbox" : item === "today" ? "Hoy" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
-    <div className="task-toolbar"><Button variant="secondary"><Filter size={16} /> Filtros</Button><button>Orden: Prioridad <ChevronDown size={15} /></button><button aria-label="Opciones de visualización"><SlidersHorizontal size={16} /></button></div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
+    {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
 
     {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><Clock3 size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
       <label className="form-field form-field--full"><span>Tarea</span><input required value={advanced.title} onChange={(event) => setAdvanced({ ...advanced, title: event.target.value })} /></label>
@@ -70,6 +76,7 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
       <label className="form-field"><span>Hora</span><input type="time" value={advanced.time} onChange={(event) => setAdvanced({ ...advanced, time: event.target.value })} /></label>
       <label className="form-field"><span>Duración estimada</span><input type="number" min="1" placeholder="minutos" value={advanced.estimatedMinutes} onChange={(event) => setAdvanced({ ...advanced, estimatedMinutes: event.target.value })} /></label>
       <label className="form-field"><span>Prioridad</span><select value={advanced.priority} onChange={(event) => setAdvanced({ ...advanced, priority: event.target.value as typeof advanced.priority })}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
+      <label className="form-field"><span>Top 3 del día</span><select value={advanced.focusPriority} onChange={(event) => setAdvanced({ ...advanced, focusPriority: event.target.value as typeof advanced.focusPriority })}><option value="">No es Top 3</option><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label>
       <label className="form-field"><span>Área</span><select value={advanced.lifeAreaId} onChange={(event) => setAdvanced({ ...advanced, lifeAreaId: event.target.value })}><option value="">Sin área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>
       <label className="form-field"><span>Meta</span><select value={advanced.goalId} onChange={(event) => setAdvanced({ ...advanced, goalId: event.target.value })}><option value="">Sin meta</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
       <label className="form-field"><span>Proyecto</span><select value={advanced.projectId} onChange={(event) => setAdvanced({ ...advanced, projectId: event.target.value })}><option value="">Sin proyecto</option>{snapshot.projects.filter((item) => item.status === "active").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

@@ -1,4 +1,24 @@
-import type { PlannerSnapshot, Transaction } from "./planner";
+import type { FinanceCategory, PlannerSnapshot, Transaction } from "./planner";
+
+export const defaultFinanceCategories: { name: string; type: FinanceCategory["type"] }[] = [
+  { name: "Ingresos", type: "income" }, { name: "Hogar", type: "expense" },
+  { name: "Básicos", type: "expense" }, { name: "Alquiler", type: "expense" },
+  { name: "Luz", type: "expense" }, { name: "Agua", type: "expense" },
+  { name: "Gas", type: "expense" }, { name: "Diversión", type: "expense" },
+  { name: "Lujos", type: "expense" }, { name: "Salidas", type: "expense" },
+  { name: "Otros", type: "expense" }, { name: "Regalos", type: "expense" },
+  { name: "Transporte", type: "expense" }, { name: "Ahorro", type: "savings" },
+  { name: "Pago de deuda", type: "debt" },
+];
+
+export function mergeDefaultFinanceCategories(categories: FinanceCategory[], createId: () => string, timestamp: string) {
+  const names = new Set(categories.map((category) => category.name.trim().toLocaleLowerCase("es")));
+  const missing = defaultFinanceCategories.filter((category) => !names.has(category.name.toLocaleLowerCase("es")));
+  return [...categories, ...missing.map((category) => ({
+    id: createId(), name: category.name, type: category.type, active: true,
+    createdAt: timestamp, updatedAt: timestamp,
+  }))];
+}
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 

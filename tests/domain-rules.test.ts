@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculateGoalProgress, calculateHabitConsistency, clampProgress, isTaskOverdue } from "@/src/domain/rules";
 import type { Goal, Habit, HabitLog, Milestone, Task } from "@/src/domain/planner";
+import { goalFormSchema } from "@/src/lib/schemas";
 
 const now = "2026-08-10T12:00:00.000Z";
 const goal: Goal = {
@@ -27,6 +28,13 @@ describe("goal progress", () => {
     expect(clampProgress(-20)).toBe(0);
     expect(clampProgress(140)).toBe(100);
     expect(calculateGoalProgress({ ...goal, progressType: "numeric", currentValue: 15, targetValue: 10 }, [], [])).toBe(100);
+  });
+
+  it("accepts a target date or target month but never both", () => {
+    const base = { title: "Completar 21K", reason: "Cuidar mi salud", priority: "medium" as const };
+    expect(goalFormSchema.safeParse({ ...base, targetDate: "2026-10-01" }).success).toBe(true);
+    expect(goalFormSchema.safeParse({ ...base, targetMonth: "2026-10" }).success).toBe(true);
+    expect(goalFormSchema.safeParse({ ...base, targetDate: "2026-10-01", targetMonth: "2026-10" }).success).toBe(false);
   });
 });
 

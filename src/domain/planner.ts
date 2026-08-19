@@ -21,6 +21,8 @@ export interface Profile {
   baseCurrency?: "COP" | "USD" | "EUR" | "MXN";
   financePrivacy?: boolean;
   fitnessEnabled?: boolean;
+  avatarDataUrl?: string;
+  activationCompleted?: boolean;
   lastBackupAt?: string;
   onboardingCompleted: boolean;
   createdAt: string;
@@ -38,6 +40,10 @@ export interface LifeArea {
   vision?: string;
   icon?: string;
   reflection?: string;
+  dream?: string;
+  imageDataUrl?: string;
+  category?: string;
+  custom?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +92,8 @@ export interface Task {
   estimatedMinutes?: number;
   recurrence?: "daily" | "weekly" | "monthly";
   priority: "low" | "medium" | "high";
+  focusPriority?: 1 | 2 | 3;
+  rescheduleCount?: number;
   status: TaskStatus;
   completedAt?: string;
   createdAt: string;
@@ -104,6 +112,7 @@ export interface Goal {
   currentValue?: number;
   unit?: string;
   targetDate?: string;
+  targetMonth?: string;
   priority: "low" | "medium" | "high";
   status: EntityStatus;
   manualProgress?: number;
@@ -143,6 +152,7 @@ export interface JournalEntry {
   type: "free" | "gratitude" | "weekly_review" | "monthly_reset";
   title?: string;
   text: string;
+  imageDataUrl?: string;
   goalId?: string;
   lifeAreaId?: string;
   periodPlanId?: string;
@@ -210,7 +220,8 @@ export type BrainDumpType =
   | "must_do"
   | "shopping"
   | "want_to_learn"
-  | "want_to_read";
+  | "want_to_read"
+  | "watch_list";
 
 export interface BrainDumpItem {
   id: string;
@@ -253,10 +264,11 @@ export interface PlannerEvent {
 
 export interface VisionBoardItem {
   id: string;
-  type: "quote" | "image";
+  type: "quote" | "image" | "mixed";
   content: string;
   caption?: string;
   reminderEnabled: boolean;
+  reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly";
   createdAt: string;
   updatedAt: string;
 }
@@ -372,6 +384,7 @@ export interface FinancialAccount {
   name: string;
   type: "cash" | "bank" | "wallet" | "other";
   initialBalance: number;
+  balanceAdjustment?: number;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -481,6 +494,7 @@ export interface PendingPurchase {
   estimatedAmount: number;
   accountId?: string;
   tentativeDate?: string;
+  taskId?: string;
   priority: "low" | "medium" | "high";
   status: "pending" | "purchased" | "released";
   createdAt: string;

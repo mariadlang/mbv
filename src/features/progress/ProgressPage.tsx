@@ -1,11 +1,12 @@
 "use client";
 
-import { Award, CheckCircle2, HeartPulse, Sparkles, Target } from "lucide-react";
+import { Award, CheckCircle2, ChevronRight, HeartPulse, Sparkles, Target } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { calculateGoalProgress } from "@/src/domain/rules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatShortDay, getRecentDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { Link } from "react-router-dom";
 
 export function ProgressPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
@@ -27,9 +28,9 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
   return (
     <div className="page-stack">
       <SectionHeading
-        eyebrow="Evidencia, no juicio"
-        title="Progreso"
-        description="Una mirada a lo que sí avanzó y al ritmo que estás construyendo."
+        eyebrow="EN MOVIMIENTO"
+        title="Tu progreso"
+        description="Mira lo que has construido, reconoce tu ritmo y descubre cuánto has avanzado."
         action={<Badge tone="sage"><Sparkles size={14} /> Últimos 7 días</Badge>}
       />
 
@@ -70,15 +71,25 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
         </Card>
       </div>
 
-      <Card>
-        <div className="card-heading"><div><p className="eyebrow">Metas activas</p><h2>Progreso trazable</h2></div><Badge tone="neutral">Fuente: metas, hitos y tareas</Badge></div>
-        <div className="progress-goal-list">
+      <Card className="goals-closer-card">
+        <div className="card-heading"><div><p className="eyebrow">METAS EN MOVIMIENTO</p><h2>Tus metas, más cerca</h2><p>Cada paso te muestra cuánto has avanzado y qué viene después.</p></div><Badge tone="neutral">Metas, hitos y tareas</Badge></div>
+        <div className="progress-goal-list progress-goal-list--editorial">
           {snapshot.goals.map((goal) => {
             const progress = calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks);
-            return <div key={goal.id}><div><strong>{goal.title}</strong><small>{goal.progressType === "milestones" ? "Calculado por hitos" : "Progreso manual"}</small></div><ProgressBar value={progress} label="Progreso" /></div>;
+            const milestones = snapshot.milestones.filter((item) => item.goalId === goal.id);
+            const completed = milestones.filter((item) => item.status === "completed").length;
+            const nextMilestone = milestones.find((item) => item.status !== "completed");
+            const nextTask = snapshot.tasks.find((item) => item.goalId === goal.id && item.status !== "completed" && item.status !== "cancelled");
+            return <article key={goal.id}><span className="goal-editorial-icon"><Target size={20} /></span><div className="goal-editorial-main"><strong>{goal.title}</strong><small>{completed} de {milestones.length} hitos completados</small><ProgressBar value={progress} label="Progreso de la meta" /></div><div className="goal-editorial-next"><small>PRÓXIMO PASO</small><strong>{nextTask?.title ?? nextMilestone?.title ?? "Definir una acción concreta"}</strong><Link to="/app/goals">Ver mi camino <ChevronRight size={15} /></Link></div><b>{progress}%</b></article>;
           })}
+          {!snapshot.goals.length && <p className="support-copy">Cuando crees una meta, aquí verás su avance real y el siguiente paso.</p>}
         </div>
       </Card>
+
+      <div className="progress-bottom-grid">
+        <Card><div className="card-heading"><div><p className="eyebrow">ÁREAS DE VIDA</p><h2>Cómo se sienten hoy</h2><p>Estas cifras expresan satisfacción actual, no porcentaje de progreso.</p></div></div><div className="life-area-score-list">{snapshot.lifeAreas.filter((area) => area.active).map((area) => <div key={area.id}><span>{area.name}</span><strong>{area.currentScore ?? "—"}/10</strong></div>)}</div></Card>
+        <Card className="weekly-review-cta"><Sparkles size={24} /><p className="eyebrow">LO QUE ESTAMOS NOTANDO</p><h2>{completedTasks ? "Tus acciones ya están dejando evidencia." : "Tu ritmo puede empezar con una sola acción."}</h2><p>{completedTasks ? `Has completado ${completedTasks} tareas. Usa el Weekly Reset para decidir cuáles sí merecen seguir.` : "Prepara una semana pequeña y posible; después podrás observar el patrón."}</p><Link className="button button--secondary" to="/app/planning/weekly?reset=1">Iniciar Weekly Reset</Link></Card>
+      </div>
     </div>
   );
 }

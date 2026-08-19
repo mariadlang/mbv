@@ -6,7 +6,7 @@ describe("cascade planning rules", () => {
   it("calculates bank balances with transfers and spending", () => {
     const snapshot = createEmptySnapshot();
     snapshot.financialAccounts = [
-      { id: "a", name: "A", type: "bank", initialBalance: 1000, status: "active", createdAt: "x", updatedAt: "x" },
+      { id: "a", name: "A", type: "bank", initialBalance: 1000, balanceAdjustment: 50, status: "active", createdAt: "x", updatedAt: "x" },
       { id: "b", name: "B", type: "bank", initialBalance: 0, status: "active", createdAt: "x", updatedAt: "x" },
     ];
     snapshot.transactions = [
@@ -14,7 +14,7 @@ describe("cascade planning rules", () => {
       { id: "2", type: "expense", amount: 100, date: "2026-01-02", accountId: "a", status: "active", createdAt: "x", updatedAt: "x" },
       { id: "3", type: "transfer", amount: 200, date: "2026-01-03", accountId: "a", destinationAccountId: "b", status: "active", createdAt: "x", updatedAt: "x" },
     ];
-    expect(calculateAccountBalance(snapshot, "a")).toBe(1200);
+    expect(calculateAccountBalance(snapshot, "a")).toBe(1250);
     expect(calculateAccountBalance(snapshot, "b")).toBe(200);
   });
 
