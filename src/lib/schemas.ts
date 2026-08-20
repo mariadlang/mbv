@@ -484,4 +484,3 @@ export type BodyCheckInFormInput = z.infer<typeof bodyCheckInFormSchema>;
 export type ChallengeFormInput = z.infer<typeof challengeFormSchema>;
 export type FinancialAccountFormInput = z.infer<typeof financialAccountFormSchema>;
 export type PendingPurchaseFormInput = z.input<typeof pendingPurchaseFormSchema>;
-

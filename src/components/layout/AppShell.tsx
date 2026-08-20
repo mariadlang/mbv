@@ -43,4 +43,3 @@ export function AppShell({ children, userName, userAvatar, saving, theme, onQuic
     <nav className="mobile-nav" aria-label="Navegación móvil">{mobileItems.map(([href,label,Icon]) => { const active = pathname === href; return <NavLink key={href} to={href} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{label}</span></NavLink>; })}</nav>
   </div>;
 }
-

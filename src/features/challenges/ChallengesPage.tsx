@@ -153,4 +153,3 @@ function ActiveChallengeCard({ challenge, today, planner }: { challenge: Challen
     <Button variant={completedToday ? "outline" : "primary"} disabled={!inRange} onClick={() => planner.toggleChallengeDate(challenge.id, today)} aria-pressed={completedToday}>{completedToday ? <><RotateCcw size={16} /> Quitar registro de hoy</> : <><Check size={16} /> Registrar hoy</>}</Button>
   </Card>;
 }
-

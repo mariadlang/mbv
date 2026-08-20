@@ -15,4 +15,3 @@ const groups = [
 export function MorePage() {
   return <div className="page-stack more-page"><SectionHeading eyebrow="Tu planner completo" title="Más" description="Encuentra cada espacio según lo que quieres hacer ahora." />{groups.map((group) => <section className="more-group" key={group.title}><h2>{group.title}</h2><div className="more-grid">{group.links.map(([href, title, text, Icon]) => <Link to={href} key={href}><Card className="more-card"><span><Icon size={21} /></span><div><h3>{title}</h3><p>{text}</p></div><ChevronRight size={19} /></Card></Link>)}</div></section>)}</div>;
 }
-

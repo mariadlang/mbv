@@ -24,4 +24,3 @@ export function challengeEncouragement(completed: number, completedToday: boolea
   if (completed === 0) return "El primer paso puede ser pequeño y aun así contar.";
   return "Puedes retomarlo hoy o volver cuando se sienta posible.";
 }
-

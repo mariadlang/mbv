@@ -82,4 +82,3 @@ describe("challenge rules", () => {
     expect(challengeEncouragement(2, false)).toMatch(/retomarlo/);
   });
 });
-

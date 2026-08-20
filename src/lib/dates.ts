@@ -54,4 +54,3 @@ export function getReviewPeriodKey(
   const week = String(getWeek(date, weekOptions)).padStart(2, "0");
   return `${weekYear}-W${week}`;
 }
-

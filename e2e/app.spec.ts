@@ -212,4 +212,3 @@ test("creates a gentle challenge and records today", async ({ page }) => {
   await page.getByRole("button", { name: "Registrar hoy" }).click();
   await expect(page.getByRole("button", { name: "Quitar registro de hoy" })).toHaveAttribute("aria-pressed", "true");
 });
-
