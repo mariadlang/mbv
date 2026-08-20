@@ -161,6 +161,9 @@ export const bodyCheckInFormSchema = z.object({
 export const challengeFormSchema = z.object({
   title: z.string().trim().min(2), type: z.enum(["fear", "intermittent_fasting", "no_sugar", "custom"]),
   intention: z.string().trim().min(2), startDate: z.string().min(1), endDate: z.string().optional(),
+}).refine((value) => !value.endDate || value.endDate >= value.startDate, {
+  path: ["endDate"],
+  message: "La fecha final debe ser igual o posterior al inicio.",
 });
 
 export const financialAccountFormSchema = z.object({

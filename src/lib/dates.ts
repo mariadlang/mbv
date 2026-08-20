@@ -1,4 +1,4 @@
-import { addDays, format, getWeek, getWeekYear, startOfWeek, subDays } from "date-fns";
+import { addDays, differenceInCalendarDays, format, getWeek, getWeekYear, isValid, parseISO, startOfWeek, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 export function toLocalDateKey(date: Date): string {
@@ -21,6 +21,22 @@ export function formatLongDate(date: Date): string {
 
 export function formatShortDay(date: Date): string {
   return format(date, "EEE", { locale: es }).replace(".", "");
+}
+
+export function formatDateKey(dateKey: string): string {
+  const date = parseISO(dateKey);
+  return isValid(date) ? format(date, "d 'de' MMMM 'de' yyyy", { locale: es }) : dateKey;
+}
+
+export function getInclusiveDateCount(startDate: string, endDate: string): number {
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  if (!isValid(start) || !isValid(end) || end < start) return 0;
+  return differenceInCalendarDays(end, start) + 1;
+}
+
+export function isDateKeyWithinRange(date: string, startDate: string, endDate?: string): boolean {
+  return date >= startDate && (!endDate || date <= endDate);
 }
 
 export function getReviewPeriodKey(

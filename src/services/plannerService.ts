@@ -915,6 +915,15 @@ export const plannerService = {
     }));
   },
 
+  updateChallengeStatus(challengeId: string, status: "active" | "completed" | "archived"): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      challenges: snapshot.challenges.map((challenge) => challenge.id === challengeId
+        ? { ...challenge, status, updatedAt: nowIso() }
+        : challenge),
+    }));
+  },
+
   createFinancialAccount(input: FinancialAccountFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
