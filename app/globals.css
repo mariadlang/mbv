@@ -1416,6 +1416,30 @@ body { font-size: 14px; background: var(--color-background); }
 .active-challenges header { display: flex; align-items: flex-start; justify-content: space-between; }
 .active-challenges header button { display: flex; min-height: 36px; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 8px; background: white; padding: 0 10px; cursor: pointer; }
 .active-challenges p { color: var(--taupe); font-size: .68rem; }
+.challenge-preset-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.challenge-preset-card h3, .active-challenge-card h3, .completed-challenge-card h3 { margin: 0; }
+.challenge-preset-card p { margin: 0; }
+.challenge-preset-card small { flex: 1; color: var(--taupe); font-size: .61rem; line-height: 1.5; }
+.challenge-preset-card .button { width: 100%; }
+.active-challenge-card { display: grid; gap: 14px; }
+.active-challenge-card > header { gap: 14px; }
+.challenge-card-title { display: flex; align-items: flex-start; gap: 11px; }
+.challenge-card-title > span { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; border-radius: 50%; background: var(--blush); color: var(--rose-deep); }
+.challenge-card-title .badge { margin-bottom: 6px; }
+.challenge-period { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--taupe); font-size: .59rem; }
+.challenge-day-count { display: flex; align-items: baseline; gap: 8px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 11px 0; }
+.challenge-day-count strong { font-family: var(--font-editorial); font-size: 1.65rem; font-weight: 500; }
+.challenge-day-count span { color: var(--taupe); font-size: .63rem; }
+.active-challenge-card .challenge-encouragement { margin: 0; min-height: 0; }
+.active-challenge-card > .button { justify-self: start; }
+.challenge-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.challenge-form .form-field--wide, .challenge-health-note { grid-column: 1 / -1; }
+.challenge-health-note { margin: 0; border-radius: 10px; background: var(--blush); padding: 12px 14px; color: var(--taupe); font-size: .63rem; line-height: 1.5; }
+.completed-challenges { display: grid; gap: 8px; }
+.completed-challenge-card { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.completed-challenge-card > span { color: var(--rose-deep); }
+.completed-challenge-card > div { flex: 1; }
+.completed-challenge-card p { margin: 3px 0 0; color: var(--taupe); font-size: .62rem; }
 
 @media (max-width: 1180px) {
   .cascade-map { grid-template-columns: repeat(4,1fr); }
@@ -1428,7 +1452,7 @@ body { font-size: 14px; background: var(--color-background); }
 @media (max-width: 760px) {
   .cascade-map-card { padding: 17px; }
   .cascade-map { grid-template-columns: repeat(2,1fr); }
-  .cascade-fields, .weekly-planner-assistant, .daily-schedule-layout, .hub-two-column, .fitness-grid, .challenge-presets, .active-challenges { grid-template-columns: 1fr; }
+  .cascade-fields, .weekly-planner-assistant, .daily-schedule-layout, .hub-two-column, .fitness-grid, .challenge-presets, .active-challenges, .challenge-form { grid-template-columns: 1fr; }
   .cascade-editor > header, .cascade-editor > footer, .fitness-header { align-items: stretch; flex-direction: column; }
   .cascade-editor > header { display: flex; }
   .cascade-editor > header aside { max-width: none; }

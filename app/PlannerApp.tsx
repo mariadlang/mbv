@@ -25,6 +25,7 @@ const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module)
 const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then((module) => ({ default: module.FinancePage })));
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
 const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
+const ChallengesPage = lazy(() => import("@/src/features/challenges/ChallengesPage").then((module) => ({ default: module.ChallengesPage })));
 
 export default function PlannerApp() {
   const planner = usePlanner();
@@ -95,6 +96,7 @@ export default function PlannerApp() {
             <Route path="/app/today" element={<TodayPage planner={planner} />} />
             <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
             <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
+            <Route path="/app/challenges" element={<ChallengesPage planner={planner} />} />
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} />} />

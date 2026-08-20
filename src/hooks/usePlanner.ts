@@ -206,6 +206,8 @@ export function usePlanner() {
     saveBodyCheckIn: (input: BodyCheckInFormInput) => commit((service) => service.saveBodyCheckIn(input)),
     createChallenge: (input: ChallengeFormInput) => commit((service) => service.createChallenge(input)),
     toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),
+    updateChallengeStatus: (challengeId: string, status: "active" | "completed" | "archived") =>
+      commit((service) => service.updateChallengeStatus(challengeId, status)),
     createFinancialAccount: (input: FinancialAccountFormInput) => commit((service) => service.createFinancialAccount(input)),
     updateFinancialAccountBalance: (accountId: string, initialBalance: number) => commit((service) => service.updateFinancialAccountBalance(accountId, initialBalance)),
     adjustFinancialAccountBalance: (accountId: string, desiredBalance: number) => commit((service) => service.adjustFinancialAccountBalance(accountId, desiredBalance)),

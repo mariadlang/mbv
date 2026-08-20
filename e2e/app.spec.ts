@@ -140,6 +140,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/today", /^Hoy$/],
     ["/app/tasks", /Tareas y proyectos/],
     ["/app/habits", /^Hábitos$/],
+    ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
     ["/app/life-hub", /^Mi espacio$/],
     ["/app/goals", /^Metas$/],
@@ -199,4 +200,15 @@ test("help routes expose the configured support resources", async ({ page }) => 
   await page.goto("/app/help");
   await expect(page.getByRole("heading", { name: "Apoyo psicológico · Línea 106" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Línea Púrpura" })).toBeVisible();
+});
+
+test("creates a gentle challenge and records today", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/challenges");
+  await page.getByRole("button", { name: "Elegir este reto" }).first().click();
+  await page.getByLabel("Nombre del reto").fill("Dar un paso valiente");
+  await page.getByRole("button", { name: "Guardar reto" }).click();
+  await expect(page.getByRole("heading", { name: "Dar un paso valiente" })).toBeVisible();
+  await page.getByRole("button", { name: "Registrar hoy" }).click();
+  await expect(page.getByRole("button", { name: "Quitar registro de hoy" })).toHaveAttribute("aria-pressed", "true");
 });
