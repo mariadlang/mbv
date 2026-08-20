@@ -3,14 +3,14 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { BarChart3, Banknote, BookOpen, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, Eye, Feather, Flag, HeartPulse, LayoutDashboard, Layers3, ListTodo, Menu, MoreHorizontal, MoonStar, Plus, Settings, Sun, Target, X } from "lucide-react";
+import { BarChart3, Banknote, BookOpen, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, Eye, Feather, Flag, HeartPulse, LayoutDashboard, Layers3, ListTodo, Menu, MoreHorizontal, MoonStar, Mountain, Plus, Settings, Sun, Target, X } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 
 const desktopGroups = [
   { label: "Mi dirección", items: [["/app/dashboard", "Inicio", LayoutDashboard], ["/app/vision", "Visión y objetivos", Eye], ["/app/goals", "Metas", Target]] },
   { label: "Planeación en cascada", items: [["/app/planning/long-term", "Largo plazo", CalendarDays], ["/app/planning/monthly", "Plan mensual", CalendarDays], ["/app/planning/weekly", "Plan semanal", CalendarDays], ["/app/today", "Hoy", ListTodo]] },
-  { label: "Mi día a día", items: [["/app/life-hub?tab=fitness", "Fitness Hub", HeartPulse], ["/app/tasks", "Tareas", Flag], ["/app/habits", "Hábitos y bienestar", HeartPulse], ["/app/finance", "Finanzas", Banknote], ["/app/life-hub", "Mi espacio", Layers3]] },
+  { label: "Mi día a día", items: [["/app/life-hub?tab=fitness", "Fitness Hub", HeartPulse], ["/app/tasks", "Tareas", Flag], ["/app/habits", "Hábitos y bienestar", HeartPulse], ["/app/challenges", "Retos", Mountain], ["/app/finance", "Finanzas", Banknote], ["/app/life-hub", "Mi espacio", Layers3]] },
   { label: "Reconocer", items: [["/app/progress", "Tu progreso", BarChart3], ["/app/journal", "Mi diario", Feather], ["/app/help", "¿Necesitas ayuda?", BookOpen], ["/app/settings", "Ajustes", Settings]] },
 ] as const;
 const mobileItems = [["/app/dashboard", "Inicio", LayoutDashboard], ["/app/planning/weekly", "Semana", CalendarDays], ["/app/today", "Hoy", Flag], ["/app/progress", "Progreso", BarChart3], ["/app/more", "Más", MoreHorizontal]] as const;
@@ -43,3 +43,4 @@ export function AppShell({ children, userName, userAvatar, saving, theme, onQuic
     <nav className="mobile-nav" aria-label="Navegación móvil">{mobileItems.map(([href,label,Icon]) => { const active = pathname === href; return <NavLink key={href} to={href} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{label}</span></NavLink>; })}</nav>
   </div>;
 }
+
