@@ -1,64 +1,131 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { ArrowLeft, CalendarDays, Check, ChevronDown, Circle, Flag, Pause, Plus, Target } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, Circle, Flag, Pause, Plus, Sparkles, Target, Trash2 } from "lucide-react";
 import { calculateGoalProgress } from "@/src/domain/rules";
+import { getNextStep } from "@/src/domain/guidanceRules";
+import type { EntityStatus } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { goalFormSchema, type GoalFormInput } from "@/src/lib/schemas";
+import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 
+type GoalFilter = "active" | "paused" | "completed" | "all";
+type DateMode = "date" | "month" | "flexible";
+type LocationState = { openGoal?: boolean; areaId?: string; title?: string; reason?: string };
+
 export function GoalsPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
+  const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [milestoneTitles, setMilestoneTitles] = useState(["", "", ""]);
+  const [filter, setFilter] = useState<GoalFilter>("active");
+  const [areaFilter, setAreaFilter] = useState("");
+  const [dateMode, setDateMode] = useState<DateMode>("flexible");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [successGoalId, setSuccessGoalId] = useState<string | null>(null);
+  const [milestones, setMilestones] = useState(() => [
+    { id: crypto.randomUUID(), title: "" },
+    { id: crypto.randomUUID(), title: "" },
+  ]);
   const selectedGoal = snapshot.goals.find((goal) => goal.id === selectedGoalId);
-  const form = useForm<GoalFormInput>({ resolver: zodResolver(goalFormSchema), defaultValues: { title: "", reason: "", targetDate: "", targetMonth: "", lifeAreaId: "", progressType: "milestones", priority: "medium" } });
-  const progressType = useWatch({ control: form.control, name: "progressType" }) ?? "milestones";
+  const form = useForm<GoalFormInput>({
+    resolver: zodResolver(goalFormSchema),
+    defaultValues: { title: "", reason: "", targetDate: "", targetMonth: "", lifeAreaId: "", priority: "medium" },
+  });
+  const title = useWatch({ control: form.control, name: "title" }) ?? "";
+  const progressType = useWatch({ control: form.control, name: "progressType" });
+  const inferredMethod = /\b(ahorrar|km|kilos?|kg|páginas?|cop|usd|euros?|\$|\d+)\b/i.test(title)
+    ? "Valor numérico"
+    : /\b(lanzar|crear|publicar|terminar|completar|organizar)\b/i.test(title)
+      ? "Hitos sugeridos"
+      : "Avance manual";
+
+  useEffect(() => {
+    const state = location.state as LocationState | null;
+    if (!state?.openGoal) return;
+    queueMicrotask(() => {
+      setOpen(true);
+      form.reset({
+        title: state.title ?? "",
+        reason: state.reason ?? "",
+        lifeAreaId: state.areaId ?? "",
+        targetDate: "",
+        targetMonth: "",
+        priority: "medium",
+      });
+      navigate(location.pathname, { replace: true, state: null });
+    });
+  }, [form, location.pathname, location.state, navigate]);
+
+  const visibleGoals = useMemo(() => snapshot.goals.filter((goal) => {
+    if (filter !== "all" && goal.status !== filter) return false;
+    return !areaFilter || goal.lifeAreaId === areaFilter;
+  }), [snapshot.goals, filter, areaFilter]);
+
+  const closeCreate = () => {
+    setOpen(false);
+    setSuccessGoalId(null);
+    setDateMode("flexible");
+    setAdvancedOpen(false);
+    setMilestones([{ id: crypto.randomUUID(), title: "" }, { id: crypto.randomUUID(), title: "" }]);
+    form.reset({ title: "", reason: "", targetDate: "", targetMonth: "", lifeAreaId: "", priority: "medium" });
+  };
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await planner.createGoal(values, milestoneTitles);
-    form.reset();
-    setMilestoneTitles(["", "", ""]);
-    setOpen(false);
+    const normalized: GoalFormInput = {
+      ...values,
+      targetDate: dateMode === "date" ? values.targetDate : "",
+      targetMonth: dateMode === "month" ? values.targetMonth : "",
+      progressType: advancedOpen ? values.progressType : undefined,
+    };
+    const next = await planner.createGoal(normalized, milestones.map((item) => item.title));
+    setSuccessGoalId(next.goals.at(-1)?.id ?? null);
   });
 
   if (selectedGoal) {
     const area = snapshot.lifeAreas.find((item) => item.id === selectedGoal.lifeAreaId);
     const progress = calculateGoalProgress(selectedGoal, snapshot.milestones, snapshot.tasks);
-    const milestones = snapshot.milestones.filter((item) => item.goalId === selectedGoal.id);
+    const goalMilestones = snapshot.milestones.filter((item) => item.goalId === selectedGoal.id);
     const linkedTasks = snapshot.tasks.filter((task) => task.goalId === selectedGoal.id);
+    const next = linkedTasks.find((task) => task.status !== "completed" && task.status !== "cancelled")
+      ?? getNextStep(snapshot, toLocalDateKey(new Date()));
     return <div className="page-stack goal-detail-page">
-      <button className="back-link" onClick={() => setSelectedGoalId(null)}><ArrowLeft size={16}/> Volver a metas</button>
-      <header className="goal-detail-hero"><span className="goal-detail-icon"><Target size={29}/></span><div><Badge tone="rose">{area?.name ?? "Personal"}</Badge><h1>{selectedGoal.title}</h1><p><CalendarDays size={15}/> {selectedGoal.targetDate ? `Fecha objetivo: ${selectedGoal.targetDate}` : selectedGoal.targetMonth ? `Mes deseado: ${selectedGoal.targetMonth}` : "Ritmo flexible"} · En progreso</p></div><div className="goal-detail-progress"><strong>{progress}%</strong><span>completado</span><ProgressBar value={progress} label="Progreso de la meta" /></div></header>
+      <button className="back-link" onClick={() => setSelectedGoalId(null)}><ArrowLeft size={16} /> Volver a metas</button>
+      <header className="goal-detail-hero"><span className="goal-detail-icon"><Target size={29} /></span><div><Badge tone="rose">{area?.name ?? "Personal"}</Badge><h1>{selectedGoal.title}</h1><p><CalendarDays size={15} /> {selectedGoal.targetDate ? `Fecha objetivo: ${selectedGoal.targetDate}` : selectedGoal.targetMonth ? `Mes deseado: ${selectedGoal.targetMonth}` : "Ritmo flexible"} · En progreso</p></div><div className="goal-detail-progress"><strong>{progress}%</strong><span>completado</span><ProgressBar value={progress} label="Progreso de la meta" /></div></header>
       <div className="goal-status-actions"><Badge tone="neutral">{selectedGoal.progressType === "numeric" ? "Progreso numérico" : selectedGoal.progressType === "tasks" ? "Por tareas" : selectedGoal.progressType === "manual" ? "Progreso manual" : "Por hitos"}</Badge><Button variant="secondary" onClick={() => planner.updateGoalStatus(selectedGoal.id, selectedGoal.status === "paused" ? "active" : "paused")}>{selectedGoal.status === "paused" ? "Reanudar" : "Pausar"}</Button><Button variant="ghost" onClick={() => planner.updateGoalStatus(selectedGoal.id, "completed")}>Marcar completa</Button></div>
-      <Card className="goal-why"><p className="eyebrow">¿Por qué es importante?</p><p>{selectedGoal.reason}</p></Card>
-      <div className="goal-detail-grid"><Card><p className="eyebrow">Hitos</p><h2>El camino, paso a paso</h2><div className="detail-milestones">{milestones.length ? milestones.map((milestone) => <button key={milestone.id} onClick={() => planner.toggleMilestone(milestone.id)} className={milestone.status === "completed" ? "is-complete" : ""}>{milestone.status === "completed" ? <Check size={15}/> : <Circle size={15}/>}<span>{milestone.title}</span></button>) : <EmptyState title="Sin hitos todavía" text="Añade hitos al crear una nueva meta para medir avances concretos." />}</div></Card><Card><p className="eyebrow">Tareas vinculadas</p><h2>Próximas acciones</h2><div className="detail-milestones">{linkedTasks.length ? linkedTasks.map((task)=><button key={task.id} onClick={()=>planner.toggleTask(task.id)} className={task.status === "completed" ? "is-complete" : ""}>{task.status === "completed" ? <Check size={15}/> : <Circle size={15}/>}<span>{task.title}</span></button>) : <p className="support-copy">Las tareas creadas desde el gestor pueden vincularse con esta meta en futuras iteraciones.</p>}</div></Card><Card><p className="eyebrow">Periodo</p><h2>{selectedGoal.createdAt.slice(0,10)}</h2><p>Inicio</p><hr/><strong>{selectedGoal.targetDate ?? "Flexible"}</strong><p>Fecha objetivo</p></Card></div>
-      <Card className="goal-timeline"><div className="goal-timeline__line"><span/><i style={{"--position": `${progress}%`} as CSSProperties}/></div><div><span>Inicio</span><span>Primer hito</span><span>Mitad</span><span>Meta cumplida</span></div></Card>
+      <Card className="goal-why"><p className="eyebrow">Por qué importa</p><p>{selectedGoal.reason}</p></Card>
+      <Card className="goal-next-step"><div><p className="eyebrow">Próximo paso</p><h2>{"title" in next ? next.title : "Elegir una acción concreta"}</h2><p>Haz visible lo siguiente antes de añadir más complejidad.</p></div><Link className="button button--primary" to="/app/planning/monthly">Planificar esta meta <ArrowRight size={16} /></Link></Card>
+      <div className="goal-detail-grid"><Card><p className="eyebrow">Hitos</p><h2>El camino, paso a paso</h2><div className="detail-milestones">{goalMilestones.length ? goalMilestones.map((milestone) => <button key={milestone.id} onClick={() => planner.toggleMilestone(milestone.id)} className={milestone.status === "completed" ? "is-complete" : ""}>{milestone.status === "completed" ? <Check size={15} /> : <Circle size={15} />}<span>{milestone.title}</span></button>) : <EmptyState title="Sin hitos todavía" text="Puedes avanzar con tareas vinculadas o progreso manual." />}</div></Card><Card><p className="eyebrow">Tareas vinculadas</p><h2>Próximas acciones</h2><div className="detail-milestones">{linkedTasks.length ? linkedTasks.map((task) => <button key={task.id} onClick={() => planner.toggleTask(task.id)} className={task.status === "completed" ? "is-complete" : ""}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}<span>{task.title}</span></button>) : <EmptyState title="Todavía no hay acciones" text="Planifica la meta para bajarla a este mes y esta semana." />}</div></Card><Card><p className="eyebrow">Periodo</p><h2>{selectedGoal.createdAt.slice(0, 10)}</h2><p>Inicio</p><hr /><strong>{selectedGoal.targetDate ?? selectedGoal.targetMonth ?? "Flexible"}</strong><p>Objetivo</p></Card></div>
+      <Card className="goal-timeline"><div className="goal-timeline__line"><span /><i style={{ "--position": `${progress}%` } as CSSProperties} /></div><div><span>Inicio</span><span>Primer paso</span><span>Mitad</span><span>Meta cumplida</span></div></Card>
     </div>;
   }
 
   return <div className="page-stack">
-    <SectionHeading eyebrow="Dirección antes que cantidad" title="Metas anuales" description="Tus metas principales para este año, conectadas con la vida que quieres construir." action={<Button onClick={() => setOpen(true)}><Plus size={17} /> Crear meta</Button>} />
-    <div className="filter-row"><button className="filter-chip is-active">Activas <span>{snapshot.goals.filter((goal) => goal.status === "active").length}</span></button><button className="filter-chip">Pausadas</button><button className="filter-chip">Completadas</button><button className="filter-chip">Todas las áreas <ChevronDown size={15} /></button></div>
-    {snapshot.goals.length ? <div className="goals-grid">{snapshot.goals.map((goal) => { const area = snapshot.lifeAreas.find((item) => item.id === goal.lifeAreaId); const progress = calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks); return <Card className="goal-card" key={goal.id}><div className="goal-card__top"><span className="goal-card__icon"><Target size={20} /></span><div className="goal-card__badges"><Badge tone="neutral">{area?.name ?? "Personal"}</Badge>{goal.priority === "high" && <Badge tone="rose">Prioridad</Badge>}</div><button className="icon-button" aria-label={`${goal.status === "paused" ? "Reanudar" : "Pausar"} ${goal.title}`} onClick={() => planner.updateGoalStatus(goal.id, goal.status === "paused" ? "active" : "paused")}><Pause size={17} /></button></div><h2>{goal.title}</h2><p>{goal.reason}</p><div className="goal-card__progress"><span className="metric-serif">{progress}%</span><ProgressBar value={progress} label="Progreso" /></div><div className="goal-card__footer"><span><CalendarDays size={13}/> {goal.targetDate ? goal.targetDate : "Sin fecha límite"}</span><Button variant="ghost" onClick={() => setSelectedGoalId(goal.id)}>Ver detalle</Button></div></Card>; })}</div> : <EmptyState title="Crea tu primera meta" text="Empieza por un resultado que de verdad importe ahora." action={<Button onClick={() => setOpen(true)}>Crear mi primera meta</Button>} />}
+    <SectionHeading eyebrow="Tu dirección" title="Metas" description="Resultados que conectan la vida que quieres con lo que eliges hacer ahora." action={<Button onClick={() => setOpen(true)}><Plus size={17} /> Crear meta</Button>} />
+    <div className="filter-row" role="group" aria-label="Filtrar metas">
+      {(["active", "paused", "completed", "all"] as GoalFilter[]).map((item) => <button key={item} className={`filter-chip ${filter === item ? "is-active" : ""}`} onClick={() => setFilter(item)}>{item === "active" ? "Activas" : item === "paused" ? "Pausadas" : item === "completed" ? "Completadas" : "Todas"}</button>)}
+      <label className="filter-select"><span className="sr-only">Filtrar por área</span><select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}><option value="">Todas las áreas</option>{snapshot.lifeAreas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>
+    </div>
+    {visibleGoals.length ? <div className="goals-grid">{visibleGoals.map((goal) => { const area = snapshot.lifeAreas.find((item) => item.id === goal.lifeAreaId); const progress = calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks); const completed = snapshot.milestones.filter((item) => item.goalId === goal.id && item.status === "completed").length; const total = snapshot.milestones.filter((item) => item.goalId === goal.id).length; return <Card className="goal-card" key={goal.id}><div className="goal-card__top"><span className="goal-card__icon"><Target size={20} /></span><div className="goal-card__badges"><Badge tone="neutral">{area?.name ?? "Personal"}</Badge>{goal.priority === "high" && <Badge tone="rose">Prioridad</Badge>}</div><button className="icon-button" aria-label={`${goal.status === "paused" ? "Reanudar" : "Pausar"} ${goal.title}`} onClick={() => planner.updateGoalStatus(goal.id, (goal.status === "paused" ? "active" : "paused") as EntityStatus)}><Pause size={17} /></button></div><h2>{goal.title}</h2><p>{total ? `${completed} de ${total} hitos completados` : goal.reason}</p><div className="goal-card__progress"><ProgressBar value={progress} label={`Progreso de ${goal.title}`} /><span className="metric-serif">{progress}%</span></div><div className="goal-card__footer"><span><CalendarDays size={13} /> {goal.targetDate ?? goal.targetMonth ?? "Flexible"}</span><Button variant="ghost" onClick={() => setSelectedGoalId(goal.id)}>Ver mi camino</Button></div></Card>; })}</div> : <EmptyState title="Todavía no hay metas aquí" text="Una meta describe un resultado que importa, no solo una actividad." action={<Button onClick={() => setOpen(true)}>Crear mi primera meta</Button>} />}
 
-    <Modal open={open} title="Crear nueva meta" description="Aclara el resultado, su razón y los hitos que marcarán el camino." onClose={() => setOpen(false)}>
-      <form className="form-grid goal-create-form" onSubmit={onSubmit}>
-        <label className="form-field"><span>Título de la meta</span><input placeholder="Ej. Completar 21K" {...form.register("title")} />{form.formState.errors.title && <small className="form-error">{form.formState.errors.title.message}</small>}</label>
-        <label className="form-field"><span>Área de vida</span><select {...form.register("lifeAreaId")}><option value="">Selecciona un área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select></label>
-        <label className="form-field"><span>Método de progreso</span><select {...form.register("progressType")}><option value="milestones">Hitos</option><option value="numeric">Valor numérico</option><option value="tasks">Tareas vinculadas</option><option value="manual">Porcentaje manual</option></select></label>
-        <label className="form-field"><span>Prioridad</span><select {...form.register("priority")}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
-        <label className="form-field form-field--full"><span>¿Por qué es importante para ti?</span><textarea rows={3} placeholder="Conecta con tu propósito…" {...form.register("reason")} />{form.formState.errors.reason && <small className="form-error">{form.formState.errors.reason.message}</small>}</label>
-        {progressType === "milestones" && <fieldset className="form-field form-field--full milestone-inputs"><legend>Hitos clave</legend>{milestoneTitles.map((milestone,index)=><label key={index}><Flag size={15}/><input value={milestone} onChange={(event)=>setMilestoneTitles(milestoneTitles.map((item,i)=>i===index?event.target.value:item))} placeholder={`Hito ${index+1}`} /></label>)}</fieldset>}
-        {progressType === "numeric" && <><label className="form-field"><span>Valor objetivo</span><input type="number" min="1" {...form.register("targetValue", { valueAsNumber: true })} /></label><label className="form-field"><span>Unidad</span><input placeholder="Ej. km, COP, páginas" {...form.register("unit")} /></label></>}
-        {progressType === "manual" && <label className="form-field"><span>Avance inicial (%)</span><input type="number" min="0" max="100" {...form.register("manualProgress", { valueAsNumber: true })} /></label>}
-        <fieldset className="form-field form-field--full"><legend>¿Cuándo te gustaría lograrla?</legend><div className="goal-date-options"><label><span>Fecha exacta (opcional)</span><input type="date" {...form.register("targetDate")} /></label><span>o</span><label><span>Mes deseado (opcional)</span><input type="month" {...form.register("targetMonth")} /></label></div><small>Puedes elegir una de las dos opciones o mantener la meta flexible.</small></fieldset>
-        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button type="submit">Crear meta</Button></div>
-      </form>
+    <Modal open={open} title={successGoalId ? "Meta creada" : "Crear una meta"} description={successGoalId ? "Ya sabes adónde quieres llegar. Ahora hagámoslo manejable." : "Empieza por el resultado y su razón. Los detalles técnicos pueden esperar."} onClose={closeCreate}>
+      {successGoalId ? <div className="goal-success"><span><Check size={24} /></span><h2>¿Qué significaría avanzar este mes?</h2><p>Convierte la meta en una prioridad mensual y después elige qué podrías avanzar esta semana.</p><Link className="button button--primary" to="/app/planning/monthly" onClick={closeCreate}>Planificar esta meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={closeCreate}>Ahora no</Button></div> : <form className="form-grid goal-create-form" onSubmit={onSubmit}>
+        <label className="form-field form-field--full"><span>¿Qué quieres lograr?</span><input placeholder="Ej. Completar 21K" {...form.register("title")} />{form.formState.errors.title && <small className="form-error">{form.formState.errors.title.message}</small>}</label>
+        <label className="form-field form-field--full"><span>¿Por qué importa para ti?</span><textarea rows={3} placeholder="Conecta con una razón propia…" {...form.register("reason")} />{form.formState.errors.reason && <small className="form-error">{form.formState.errors.reason.message}</small>}</label>
+        <label className="form-field form-field--full"><span>¿A qué área pertenece?</span><select {...form.register("lifeAreaId")}><option value="">Sin área por ahora</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select></label>
+        <fieldset className="form-field form-field--full"><legend>¿Cuándo te gustaría lograrlo?</legend><div className="goal-deadline-choice" role="radiogroup" aria-label="Tipo de fecha objetivo">{(["date", "month", "flexible"] as DateMode[]).map((mode) => <button type="button" role="radio" aria-checked={dateMode === mode} className={dateMode === mode ? "is-selected" : ""} onClick={() => { setDateMode(mode); if (mode !== "date") form.setValue("targetDate", ""); if (mode !== "month") form.setValue("targetMonth", ""); }} key={mode}>{mode === "date" ? "Fecha exacta" : mode === "month" ? "Mes deseado" : "Flexible"}</button>)}</div>{dateMode === "date" && <input type="date" aria-label="Fecha exacta" {...form.register("targetDate")} />}{dateMode === "month" && <input type="month" aria-label="Mes deseado" {...form.register("targetMonth")} />}{form.formState.errors.targetDate && <small className="form-error">{form.formState.errors.targetDate.message}</small>}</fieldset>
+        <Card className="context-tip form-field--full"><Sparkles size={17} /><div><strong>Una buena meta describe un resultado</strong><p>“Correr 21K” muestra mejor el destino que “salir a correr”.</p></div></Card>
+        <div className="goal-method-summary form-field--full"><div><p className="eyebrow">Cómo mediremos el avance</p><strong>{advancedOpen ? (progressType === "numeric" ? "Valor numérico" : progressType === "tasks" ? "Tareas vinculadas" : progressType === "manual" ? "Avance manual" : "Hitos") : inferredMethod}</strong></div><button type="button" onClick={() => setAdvancedOpen(!advancedOpen)}>{advancedOpen ? "Ocultar opciones" : "Cambiar cómo mediré mi progreso"}</button></div>
+        {advancedOpen && <><label className="form-field"><span>Método</span><select {...form.register("progressType")}><option value="milestones">Hitos</option><option value="numeric">Valor numérico</option><option value="tasks">Tareas vinculadas</option><option value="manual">Avance manual</option></select></label><label className="form-field"><span>Prioridad</span><select {...form.register("priority")}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>{progressType === "numeric" && <><label className="form-field"><span>Valor objetivo</span><input type="number" min="1" {...form.register("targetValue", { valueAsNumber: true })} /></label><label className="form-field"><span>Unidad</span><input placeholder="km, COP, páginas" {...form.register("unit")} /></label></>}</>}
+        {(progressType === "milestones" || (!advancedOpen && inferredMethod === "Hitos sugeridos")) && <fieldset className="form-field form-field--full milestone-inputs"><legend>Hitos clave</legend>{milestones.map((milestone, index) => <label key={milestone.id}><Flag size={15} /><input value={milestone.title} onChange={(event) => setMilestones((current) => current.map((item) => item.id === milestone.id ? { ...item, title: event.target.value } : item))} placeholder={`Hito ${index + 1}`} /><button type="button" aria-label={`Eliminar hito ${index + 1}`} onClick={() => setMilestones((current) => current.filter((item) => item.id !== milestone.id))}><Trash2 size={15} /></button></label>)}<Button type="button" variant="secondary" onClick={() => setMilestones((current) => [...current, { id: crypto.randomUUID(), title: "" }])}><Plus size={15} /> Añadir hito</Button></fieldset>}
+        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={closeCreate}>Cancelar</Button><Button type="submit">Crear meta</Button></div>
+      </form>}
     </Modal>
   </div>;
 }

@@ -2,13 +2,16 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Save, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Plus, Save, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
+import { Modal } from "@/src/components/ui/Modal";
 
 const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane];
+const customCategories = ["Salud", "Físico", "Relaciones", "Trabajo", "Profesional", "Personal", "Espiritual", "Crecimiento", "Finanzas", "Hogar", "Experiencias", "Otro"];
 
 export function VisionPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
@@ -20,6 +23,10 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
   const [imageDataUrl, setImageDataUrl] = useState(selected?.imageDataUrl);
   const [currentScore, setCurrentScore] = useState(selected?.currentScore ?? 6);
   const [desiredScore, setDesiredScore] = useState(selected?.desiredScore ?? 8);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customSavedId, setCustomSavedId] = useState<string | null>(null);
+  const [custom, setCustom] = useState({ name: "", category: "Personal", dream: "", vision: "", currentScore: "", desiredScore: "" });
+  const [customImage, setCustomImage] = useState<string>();
 
   const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active).map((area) => ({
     area: area.name.split(" ")[0],
@@ -60,6 +67,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
                 </button>
               );
             })}
+            <button className="vision-card vision-card--create" onClick={() => { setCustomSavedId(null); setCustomOpen(true); }}><span className="vision-card__visual"><Plus size={30} /></span><Badge tone="neutral">Tu propia categoría</Badge><h2>Crear una tarjeta personalizada</h2><p>Añade una visión que no encaje en las tarjetas iniciales.</p></button>
           </section>
           {selected && (
             <Card className="vision-editor">
@@ -72,7 +80,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
                 <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
               </div>
-              <Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl })}><Save size={16} /> Guardar Dream Life</Button>
+              <div className="vision-editor-actions"><Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl })}><Save size={16} /> Guardar mi visión</Button>{(vision.trim() || dream.trim()) && <Link className="button button--secondary" to="/app/goals" state={{ openGoal: true, areaId: selected.id, title: dream || vision.split(".")[0], reason: vision || dream }}>Convertir esto en una meta <ArrowRight size={16} /></Link>}</div>
             </Card>
           )}
         </div>
@@ -98,6 +106,23 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
           </div>
         </div>
       )}
+      <Modal open={customOpen} title={customSavedId ? "Visión guardada" : "Crear tarjeta personalizada"} description={customSavedId ? "Esta parte de tu visión ya puede convertirse en una meta cuando quieras." : "Elige solo los campos que te ayuden. Nada aquí es obligatorio salvo el nombre."} onClose={() => setCustomOpen(false)}>
+        {customSavedId ? <div className="goal-success"><span><CheckIcon /></span><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Mi Visión.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim()) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
+          <label className="form-field"><span>Nombre</span><input required value={custom.name} onChange={(event) => setCustom({ ...custom, name: event.target.value })} placeholder="Ej. Mi vida creativa" /></label>
+          <label className="form-field"><span>Categoría</span><select value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}>{customCategories.map((category) => <option key={category}>{category}</option>)}</select></label>
+          <label className="form-field form-field--full"><span>Mi sueño</span><input value={custom.dream} onChange={(event) => setCustom({ ...custom, dream: event.target.value })} placeholder="Una frase que nombre lo que deseas" /></label>
+          <label className="form-field form-field--full"><span>Mi visión</span><textarea rows={5} value={custom.vision} onChange={(event) => setCustom({ ...custom, vision: event.target.value })} placeholder="¿Cómo se ve tu mejor versión aquí?" /></label>
+          <label className="form-field"><span>Estado actual · opcional</span><input type="number" min="1" max="10" value={custom.currentScore} onChange={(event) => setCustom({ ...custom, currentScore: event.target.value })} /></label>
+          <label className="form-field"><span>Estado deseado · opcional</span><input type="number" min="1" max="10" value={custom.desiredScore} onChange={(event) => setCustom({ ...custom, desiredScore: event.target.value })} /></label>
+          <label className="button button--secondary form-field--full">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !imageUploadSchema.safeParse({ type: file.type, size: file.size }).success) return; const reader = new FileReader(); reader.onload = () => setCustomImage(String(reader.result)); reader.readAsDataURL(file); }} /></label>
+          {customImage && <img className="vision-upload-preview form-field--full" src={customImage} alt="Vista previa de la tarjeta" />}
+          <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setCustomOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarjeta</Button></div>
+        </form>}
+      </Modal>
     </div>
   );
+}
+
+function CheckIcon() {
+  return <Sparkles size={22} />;
 }

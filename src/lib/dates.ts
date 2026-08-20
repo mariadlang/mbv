@@ -1,4 +1,4 @@
-import { addDays, format, startOfWeek, subDays } from "date-fns";
+import { addDays, differenceInCalendarDays, format, getWeek, getWeekYear, isValid, parseISO, startOfWeek, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 export function toLocalDateKey(date: Date): string {
@@ -21,4 +21,36 @@ export function formatLongDate(date: Date): string {
 
 export function formatShortDay(date: Date): string {
   return format(date, "EEE", { locale: es }).replace(".", "");
+}
+
+export function formatDateKey(dateKey: string): string {
+  const date = parseISO(dateKey);
+  return isValid(date) ? format(date, "d 'de' MMMM 'de' yyyy", { locale: es }) : dateKey;
+}
+
+export function getInclusiveDateCount(startDate: string, endDate: string): number {
+  const start = parseISO(startDate);
+  const end = parseISO(endDate);
+  if (!isValid(start) || !isValid(end) || end < start) return 0;
+  return differenceInCalendarDays(end, start) + 1;
+}
+
+export function isDateKeyWithinRange(date: string, startDate: string, endDate?: string): boolean {
+  return date >= startDate && (!endDate || date <= endDate);
+}
+
+export function getReviewPeriodKey(
+  type: "daily" | "weekly" | "monthly" | "quarterly" | "annual",
+  date: Date,
+  weekStartsOn: 0 | 1 = 1,
+): string {
+  if (type === "daily") return format(date, "yyyy-MM-dd");
+  if (type === "monthly") return format(date, "yyyy-MM");
+  if (type === "quarterly") return `${format(date, "yyyy")}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+  if (type === "annual") return format(date, "yyyy");
+
+  const weekOptions = { weekStartsOn, firstWeekContainsDate: 4 as const };
+  const weekYear = getWeekYear(date, weekOptions);
+  const week = String(getWeek(date, weekOptions)).padStart(2, "0");
+  return `${weekYear}-W${week}`;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateDebtBalance, calculateFinanceSummary, calculateFundBalance } from "@/src/domain/financeRules";
+import { calculateDebtBalance, calculateFinanceSummary, calculateFundBalance, mergeDefaultFinanceCategories } from "@/src/domain/financeRules";
 import { createEmptySnapshot } from "@/src/domain/planner";
 
 const now = "2026-08-10T12:00:00.000Z";
@@ -44,5 +44,14 @@ describe("finance rules", () => {
     ];
     expect(calculateFundBalance(snapshot, "fund")).toBe(2_500);
     expect(calculateDebtBalance(snapshot, "debt")).toBe(6_500);
+  });
+
+  it("adds missing default categories without duplicating existing names", () => {
+    const existing = [{ id: "home", name: "Hogar", type: "expense" as const, active: true, createdAt: now, updatedAt: now }];
+    let sequence = 0;
+    const merged = mergeDefaultFinanceCategories(existing, () => `new-${sequence++}`, now);
+    expect(merged.filter((category) => category.name === "Hogar")).toHaveLength(1);
+    expect(merged.some((category) => category.name === "Transporte")).toBe(true);
+    expect(merged.some((category) => category.name === "Pago de deuda")).toBe(true);
   });
 });
