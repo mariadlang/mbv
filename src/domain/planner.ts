@@ -209,6 +209,15 @@ export interface CascadePlan {
   priority: string;
   objectives: string[];
   activities: PlanActivity[];
+  areaIds?: string[];
+  details?: Record<string, string>;
+  reflection?: {
+    advanced?: string;
+    pending?: string;
+    next?: string;
+  };
+  completedObjectiveIndexes?: number[];
+  status?: "draft" | "active" | "closed";
   suggestion?: string;
   createdAt: string;
   updatedAt: string;

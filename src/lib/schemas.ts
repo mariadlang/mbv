@@ -117,10 +117,14 @@ export const cascadePlanFormSchema = z.object({
   horizon: z.enum(["pathways", "three_years", "annual", "six_months", "quarterly", "monthly", "weekly", "daily"]),
   periodKey: z.string().min(1),
   parentPlanId: optionalId,
-  intention: z.string().trim().min(2),
-  priority: z.string().trim().min(2),
+  intention: z.string().trim(),
+  priority: z.string().trim(),
   objectives: z.array(z.string().trim()).default([]),
   activities: z.array(z.object({ title: z.string().trim().min(2), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })).default([]),
+  areaIds: z.array(z.string()).default([]),
+  details: z.record(z.string(), z.string()).optional(),
+  reflection: z.object({ advanced: z.string().optional(), pending: z.string().optional(), next: z.string().optional() }).optional(),
+  status: z.enum(["draft", "active", "closed"]).optional(),
 });
 
 export const brainDumpFormSchema = z.object({
@@ -264,6 +268,10 @@ const cascadePlanSchema = z.object({
   id: z.string(), horizon: z.enum(["pathways", "three_years", "annual", "six_months", "quarterly", "monthly", "weekly", "daily"]),
   periodKey: z.string(), parentPlanId: optionalId, intention: z.string(), priority: z.string(), objectives: z.array(z.string()),
   activities: z.array(z.object({ id: z.string(), title: z.string(), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })),
+  areaIds: z.array(z.string()).optional(), details: z.record(z.string(), z.string()).optional(),
+  reflection: z.object({ advanced: z.string().optional(), pending: z.string().optional(), next: z.string().optional() }).optional(),
+  completedObjectiveIndexes: z.array(z.number().int().min(0)).optional(),
+  status: z.enum(["draft", "active", "closed"]).optional(),
   suggestion: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

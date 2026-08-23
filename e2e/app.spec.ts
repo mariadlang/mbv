@@ -52,6 +52,8 @@ test("creates a goal with manual progress and writes a journal entry", async ({ 
   await page.getByRole("button", { name: "Crear meta" }).click();
   await page.getByLabel("¿Qué quieres lograr?").fill("Publicar la versión beta");
   await page.getByLabel("¿Por qué importa para ti?").fill("Quiero validar una experiencia útil y serena.");
+  await page.getByRole("radio", { name: "Fecha exacta" }).click();
+  await page.getByLabel("Fecha exacta").fill("2027-06-15");
   await page.getByPlaceholder("Hito 1").fill("Publicar la portada");
   await page.getByRole("dialog", { name: "Crear una meta" }).getByRole("button", { name: "Crear meta", exact: true }).click();
   await expect(page.getByRole("heading", { name: "¿Qué significaría avanzar este mes?" })).toBeVisible();
@@ -95,11 +97,25 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await completeOnboarding(page);
   await page.goto("/app/planning");
   await expect(page.getByRole("heading", { name: "Planificación" })).toBeVisible();
-  await page.getByLabel("Intención de este nivel").fill("Construir una base serena y sostenible");
-  await page.getByLabel("Prioridad principal").fill("Publicar la primera versión");
-  await page.getByLabel(/Objetivos/).fill("Validar el producto\nCuidar mi energía");
-  await page.getByRole("button", { name: /Guardar 1 año/ }).click();
-  await expect(page.getByText("Nivel guardado y conectado")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aún no has creado ningún mes para este año" })).toBeVisible();
+  await page.getByRole("button", { name: "Definir visión" }).click();
+  const longTermDialog = page.getByRole("dialog", { name: "Mi vida en 5 años" });
+  await longTermDialog.getByLabel("¿Cómo se ve y se siente esa vida?").fill("Vivo con energía, estabilidad y tiempo para las personas que amo.");
+  await longTermDialog.getByPlaceholder("Prioridad 1").fill("Cuidar mi bienestar");
+  await longTermDialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("Vivo con energía, estabilidad y tiempo para las personas que amo.")).toBeVisible();
+
+  await page.getByRole("button", { name: /Agregar mes/ }).first().click();
+  const monthDialog = page.getByRole("dialog", { name: "Agregar mes" });
+  await monthDialog.getByLabel("Enfoque del mes (opcional)").fill("Construir una base serena y sostenible");
+  await monthDialog.getByPlaceholder("Prioridad 1").fill("Publicar la primera versión");
+  await monthDialog.getByPlaceholder("Prioridad 2").fill("Cuidar mi energía");
+  await monthDialog.getByRole("button", { name: "Crear mes" }).click();
+  await expect(page.getByRole("heading", { name: "Construir una base serena y sostenible" })).toBeVisible();
+  await page.getByRole("button", { name: /Ver mes/ }).click();
+  await expect(page.getByRole("heading", { name: "Lo que importa en este mes" })).toBeVisible();
+  await page.getByRole("button", { name: "Publicar la primera versión" }).click();
+  await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
 
   await page.goto("/app/life-hub");
   await expect(page.getByRole("heading", { name: "Mi espacio" })).toBeVisible();

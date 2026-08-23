@@ -190,6 +190,10 @@ export function usePlanner() {
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
     saveCascadePlan: (input: CascadePlanFormInput) =>
       commit((service) => service.saveCascadePlan(input)),
+    deleteCascadePlan: (planId: string) =>
+      commit((service) => service.deleteCascadePlan(planId)),
+    toggleCascadeObjective: (planId: string, objectiveIndex: number) =>
+      commit((service) => service.toggleCascadeObjective(planId, objectiveIndex)),
     createBrainDumpItem: (input: BrainDumpFormInput) =>
       commit((service) => service.createBrainDumpItem(input)),
     updateBrainDumpItem: (itemId: string, input: { status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string }) =>

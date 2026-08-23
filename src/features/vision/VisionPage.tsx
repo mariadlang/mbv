@@ -27,6 +27,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
   const [customSavedId, setCustomSavedId] = useState<string | null>(null);
   const [custom, setCustom] = useState({ name: "", category: "Personal", dream: "", vision: "", currentScore: "", desiredScore: "" });
   const [customImage, setCustomImage] = useState<string>();
+  const [imageError, setImageError] = useState("");
 
   const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active).map((area) => ({
     area: area.name.split(" ")[0],
@@ -40,8 +41,23 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
     setVision(area?.vision ?? "");
     setDream(area?.dream ?? "");
     setImageDataUrl(area?.imageDataUrl);
+    setImageError("");
     setCurrentScore(area?.currentScore ?? 6);
     setDesiredScore(area?.desiredScore ?? 8);
+  };
+
+  const readImage = (file: File | undefined, onReady: (value: string) => void) => {
+    if (!file) return;
+    const parsed = imageUploadSchema.safeParse({ type: file.type, size: file.size });
+    if (!parsed.success) {
+      setImageError("Usa una imagen JPG, PNG o WebP de hasta 1.5 MB.");
+      return;
+    }
+    setImageError("");
+    const reader = new FileReader();
+    reader.onerror = () => setImageError("No pudimos leer esta imagen. Prueba con otro archivo.");
+    reader.onload = () => onReady(String(reader.result));
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -67,7 +83,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
                 </button>
               );
             })}
-            <button className="vision-card vision-card--create" onClick={() => { setCustomSavedId(null); setCustomOpen(true); }}><span className="vision-card__visual"><Plus size={30} /></span><Badge tone="neutral">Tu propia categoría</Badge><h2>Crear una tarjeta personalizada</h2><p>Añade una visión que no encaje en las tarjetas iniciales.</p></button>
+            <button className="vision-card vision-card--create" onClick={() => { setCustomSavedId(null); setImageError(""); setCustomOpen(true); }}><span className="vision-card__visual"><Plus size={30} /></span><Badge tone="neutral">Tu propia categoría</Badge><h2>Crear una tarjeta personalizada</h2><p>Añade una visión que no encaje en las tarjetas iniciales.</p></button>
           </section>
           {selected && (
             <Card className="vision-editor">
@@ -75,7 +91,9 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
               <h2>¿Cómo se ve tu mejor versión aquí?</h2>
               <label className="form-field"><span>Mi sueño</span><input value={dream} onChange={(event) => setDream(event.target.value)} placeholder="Ej. Vivir con energía y calma" /></label>
               <label className="form-field"><span>Mi visión</span><textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" /></label>
-              <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !imageUploadSchema.safeParse({ type: file.type, size: file.size }).success) return; const reader = new FileReader(); reader.onload = () => setImageDataUrl(String(reader.result)); reader.readAsDataURL(file); }} /></label>
+              <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImage(event.target.files?.[0], setImageDataUrl)} /></label>
+              {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt={`Vista previa de ${selected.name}`} /><figcaption>Esta imagen aparecerá en tu tarjeta de Dream Life.</figcaption></figure>}
+              {imageError && <p className="form-error" role="alert">{imageError}</p>}
               <div className="score-pair">
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
                 <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
@@ -93,7 +111,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
                 <RadarChart data={radarData} outerRadius="72%">
                   <PolarGrid stroke="var(--color-border)" />
                   <PolarAngleAxis dataKey="area" tick={{ fill: "var(--color-text-primary)", fontSize: 12 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 10]} tickCount={6} tick={{ fill: "var(--color-text-secondary)", fontSize: 10 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tickCount={6} tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }} />
                   <Radar name="Actual" dataKey="actual" stroke="var(--color-accent-sand)" fill="var(--color-accent-sand)" fillOpacity={0.22} />
                   <Radar name="Deseada" dataKey="deseada" stroke="var(--color-brand-strong)" fill="var(--color-brand)" fillOpacity={0.24} />
                 </RadarChart>
@@ -114,8 +132,9 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
           <label className="form-field form-field--full"><span>Mi visión</span><textarea rows={5} value={custom.vision} onChange={(event) => setCustom({ ...custom, vision: event.target.value })} placeholder="¿Cómo se ve tu mejor versión aquí?" /></label>
           <label className="form-field"><span>Estado actual · opcional</span><input type="number" min="1" max="10" value={custom.currentScore} onChange={(event) => setCustom({ ...custom, currentScore: event.target.value })} /></label>
           <label className="form-field"><span>Estado deseado · opcional</span><input type="number" min="1" max="10" value={custom.desiredScore} onChange={(event) => setCustom({ ...custom, desiredScore: event.target.value })} /></label>
-          <label className="button button--secondary form-field--full">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !imageUploadSchema.safeParse({ type: file.type, size: file.size }).success) return; const reader = new FileReader(); reader.onload = () => setCustomImage(String(reader.result)); reader.readAsDataURL(file); }} /></label>
+          <label className="button button--secondary form-field--full">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImage(event.target.files?.[0], setCustomImage)} /></label>
           {customImage && <img className="vision-upload-preview form-field--full" src={customImage} alt="Vista previa de la tarjeta" />}
+          {imageError && <p className="form-error form-field--full" role="alert">{imageError}</p>}
           <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setCustomOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarjeta</Button></div>
         </form>}
       </Modal>

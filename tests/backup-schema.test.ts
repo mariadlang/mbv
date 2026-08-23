@@ -86,4 +86,33 @@ describe("backup validation", () => {
     expect(imageUploadSchema.safeParse({ type: "image/svg+xml", size: 1_000 }).success).toBe(false);
     expect(imageUploadSchema.safeParse({ type: "image/jpeg", size: 2_000_000 }).success).toBe(false);
   });
+
+  it("preserves the extended monthly planning fields in a backup", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.cascadePlans.push({
+      id: "month-2026-09",
+      horizon: "monthly",
+      periodKey: "2026-09",
+      parentPlanId: "three-year-plan",
+      intention: "Construir una base sostenible",
+      priority: "Preparar el lanzamiento",
+      objectives: ["Preparar el lanzamiento", "Cuidar mi energía"],
+      activities: [{ id: "activity-1", title: "Revisar la propuesta", type: "activity" }],
+      areaIds: ["career"],
+      details: { linkedThreeYearPriority: "Consolidar mi proyecto" },
+      reflection: { advanced: "Validé el alcance", pending: "Ordenar fechas", next: "Planificar la primera semana" },
+      completedObjectiveIndexes: [0],
+      status: "active",
+      createdAt: "2026-08-22T12:00:00.000Z",
+      updatedAt: "2026-08-22T12:00:00.000Z",
+    });
+
+    const parsed = backupEnvelopeSchema.parse({ schemaVersion: 3, exportedAt: "2026-08-22T12:00:00.000Z", data: snapshot });
+    expect(parsed.data.cascadePlans[0]).toMatchObject({
+      areaIds: ["career"],
+      completedObjectiveIndexes: [0],
+      status: "active",
+      reflection: { advanced: "Validé el alcance" },
+    });
+  });
 });

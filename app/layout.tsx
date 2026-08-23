@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { Nunito_Sans } from "next/font/google";
 import "./globals.css";
+
+const nunitoSans = Nunito_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-nunito-sans",
+});
 
 export const viewport: Viewport = {
   colorScheme: "light dark",
@@ -39,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" className={nunitoSans.variable} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
