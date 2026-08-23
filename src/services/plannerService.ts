@@ -25,7 +25,7 @@ import type {
   TransactionFormInput,
   WorkoutFormInput,
 } from "@/src/lib/schemas";
-import { parseBackupEnvelope, plannerSnapshotSchema } from "@/src/lib/schemas";
+import { cascadePlanFormSchema, parseBackupEnvelope, plannerSnapshotSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository } from "@/src/repositories/local/IndexedDbPlannerRepository";
 import { createSnapshotWriteQueue } from "@/src/services/snapshotWriteQueue";
@@ -696,19 +696,25 @@ export const plannerService = {
 
   saveCascadePlan(input: CascadePlanFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
+      const validated = cascadePlanFormSchema.parse(input);
       const now = nowIso();
       const existing = snapshot.cascadePlans.find(
-        (item) => item.horizon === input.horizon && item.periodKey === input.periodKey,
+        (item) => item.horizon === validated.horizon && item.periodKey === validated.periodKey,
       );
       const plan = {
         id: existing?.id ?? id(),
-        horizon: input.horizon,
-        periodKey: input.periodKey,
-        parentPlanId: input.parentPlanId || undefined,
-        intention: input.intention.trim(),
-        priority: input.priority.trim(),
-        objectives: (input.objectives ?? []).map((item) => item.trim()).filter(Boolean),
-        activities: (input.activities ?? []).map((item) => ({ ...item, id: id(), date: item.date || undefined })),
+        horizon: validated.horizon,
+        periodKey: validated.periodKey,
+        parentPlanId: validated.parentPlanId || undefined,
+        intention: validated.intention,
+        priority: validated.priority,
+        objectives: validated.objectives.filter(Boolean),
+        activities: validated.activities.map((item) => ({ ...item, id: id(), date: item.date || undefined })),
+        areaIds: validated.areaIds,
+        details: validated.details ?? existing?.details,
+        reflection: validated.reflection ?? existing?.reflection,
+        completedObjectiveIndexes: (existing?.completedObjectiveIndexes ?? []).filter((index) => index < validated.objectives.filter(Boolean).length),
+        status: validated.status ?? existing?.status ?? "active" as const,
         suggestion: existing?.suggestion,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
@@ -973,6 +979,28 @@ export const plannerService = {
           : item),
       };
     });
+  },
+
+  deleteCascadePlan(planId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      cascadePlans: snapshot.cascadePlans
+        .filter((plan) => plan.id !== planId)
+        .map((plan) => plan.parentPlanId === planId ? { ...plan, parentPlanId: undefined, updatedAt: nowIso() } : plan),
+    }));
+  },
+
+  toggleCascadeObjective(planId: string, objectiveIndex: number): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      cascadePlans: snapshot.cascadePlans.map((plan) => {
+        if (plan.id !== planId || objectiveIndex < 0 || objectiveIndex >= plan.objectives.length) return plan;
+        const completed = new Set(plan.completedObjectiveIndexes ?? []);
+        if (completed.has(objectiveIndex)) completed.delete(objectiveIndex);
+        else completed.add(objectiveIndex);
+        return { ...plan, completedObjectiveIndexes: [...completed].sort((a, b) => a - b), updatedAt: nowIso() };
+      }),
+    }));
   },
 
   createPendingPurchase(input: PendingPurchaseFormInput): Promise<PlannerSnapshot> {

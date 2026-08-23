@@ -51,7 +51,7 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
     <SectionHeading eyebrow={formatLongDate(today)} title="Hoy" description="Una vista tranquila para decidir, actuar y ajustar sin repensar todo el día." action={<Badge tone="sage"><SunMedium size={15} /> Día abierto</Badge>} />
 
     <Card className="today-state-card">
-      <div><p className="eyebrow">Mi estado</p><h2>¿Cómo llego hoy?</h2></div>
+      <div><p className="eyebrow">Mi estado</p><h2>¿Cómo me siento hoy?</h2></div>
       <div className="mood-selector mood-selector--wrap">{moodOptions.map((option) => <button key={option.name} aria-pressed={mood?.mood === option.name} className={mood?.mood === option.name ? "mood-option is-selected" : "mood-option"} onClick={() => saveMood(option.name)}><span>{option.symbol}</span><small>{option.name}</small></button>)}</div>
       <label className="energy-quick"><span>Energía</span><select value={mood?.energy ?? 3} onChange={(event) => saveMood(mood?.mood ?? "Calmada", Number(event.target.value))} aria-label="Nivel de energía"><option value="1">1 · Muy baja</option><option value="2">2 · Baja</option><option value="3">3 · Media</option><option value="4">4 · Buena</option><option value="5">5 · Alta</option></select></label>
       {(mood?.energy ?? 3) <= 2 && <Button variant="secondary" onClick={() => setMinimumMode(true)}>Activar modo mínimo</Button>}

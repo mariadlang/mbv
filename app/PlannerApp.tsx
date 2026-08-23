@@ -90,8 +90,8 @@ export default function PlannerApp() {
             <Route path="/app/dashboard" element={<DashboardPage planner={planner} />} />
             <Route path="/app/vision" element={<VisionPage planner={planner} />} />
             <Route path="/app/planning" element={<PlanningPage planner={planner} />} />
-            <Route path="/app/planning/long-term" element={<PlanningPage planner={planner} initialView="year" />} />
-            <Route path="/app/planning/monthly" element={<PlanningPage planner={planner} initialView="month" />} />
+            <Route path="/app/planning/long-term" element={<Navigate to="/app/planning" replace />} />
+            <Route path="/app/planning/monthly" element={<Navigate to="/app/planning" replace />} />
             <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} initialView="week" />} />
             <Route path="/app/today" element={<TodayPage planner={planner} />} />
             <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
