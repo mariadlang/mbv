@@ -22,12 +22,22 @@ import {
 } from "lucide-react";
 import type { BrainDumpType } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { toLocalDateKey } from "@/src/lib/dates";
+import { formatDateKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { useSearchParams } from "react-router-dom";
+import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
 
-type HubTab = "lists" | "routines" | "fitness" | "vision" | "events";
+type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
+
+const hubTabs: Array<{ id: HubTab; label: string }> = [
+  { id: "lists", label: "Listas" },
+  { id: "routines", label: "Rutinas" },
+  { id: "fitness", label: "Fitness Hub" },
+  { id: "challenges", label: "Retos" },
+  { id: "vision", label: "Vision board" },
+  { id: "events", label: "Eventos y tareas" },
+];
 
 const listLabels: Record<BrainDumpType, string> = {
   wishlist: "Deseos",
@@ -61,9 +71,9 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const [tab, setTab] = useState<HubTab>((["lists", "routines", "fitness", "vision", "events"] as HubTab[]).includes(requestedTab as HubTab) ? requestedTab as HubTab : "lists");
+  const tab = hubTabs.some((item) => item.id === requestedTab) ? requestedTab as HubTab : "lists";
   const [message, setMessage] = useState("");
   const [listTitle, setListTitle] = useState("");
   const [listType, setListType] = useState<BrainDumpType>("want_to_do");
@@ -80,6 +90,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const [eventDate, setEventDate] = useState(today);
   const [eventTime, setEventTime] = useState("");
   const [eventCategory, setEventCategory] = useState<keyof typeof eventLabels>("personal");
+  const [fitnessDate, setFitnessDate] = useState(today);
   const [exercise, setExercise] = useState("");
   const [sets, setSets] = useState(3);
   const [reps, setReps] = useState(10);
@@ -89,10 +100,40 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const [protein, setProtein] = useState(0);
   const [carbs, setCarbs] = useState(0);
   const [fat, setFat] = useState(0);
-  const [bodyWeight, setBodyWeight] = useState(0);
-  const [waist, setWaist] = useState(0);
-  const [hip, setHip] = useState(0);
-  const [bodyPhoto, setBodyPhoto] = useState<string | undefined>();
+  const initialBodyCheckIn = snapshot.bodyCheckIns.find((item) => item.date === today);
+  const [bodyWeight, setBodyWeight] = useState(initialBodyCheckIn?.weight ?? 0);
+  const [waist, setWaist] = useState(initialBodyCheckIn?.measurements.cintura ?? 0);
+  const [hip, setHip] = useState(initialBodyCheckIn?.measurements.cadera ?? 0);
+  const [bodyPhoto, setBodyPhoto] = useState<string | undefined>(initialBodyCheckIn?.photoDataUrl);
+
+  const selectedWorkout = snapshot.workoutLogs.find((item) => item.date === fitnessDate);
+  const selectedNutrition = snapshot.nutritionLogs.find((item) => item.date === fitnessDate);
+  const selectedBodyCheckIn = snapshot.bodyCheckIns.find((item) => item.date === fitnessDate);
+  const fitnessWeek = useMemo(() => getWeekDates(new Date(`${fitnessDate}T12:00:00`), snapshot.profile?.weekStartsOn ?? 1), [fitnessDate, snapshot.profile?.weekStartsOn]);
+  const fitnessWeekStart = toLocalDateKey(fitnessWeek[0]);
+  const fitnessWeekEnd = toLocalDateKey(fitnessWeek[6]);
+  const weeklyWorkoutLogs = snapshot.workoutLogs.filter((item) => item.date >= fitnessWeekStart && item.date <= fitnessWeekEnd);
+  const weeklyExerciseCount = weeklyWorkoutLogs.reduce((total, log) => total + log.exercises.length, 0);
+  const dailyMacros = (selectedNutrition?.meals ?? []).reduce((total, meal) => ({
+    calories: total.calories + (meal.calories ?? 0),
+    protein: total.protein + (meal.protein ?? 0),
+    carbs: total.carbs + (meal.carbs ?? 0),
+    fat: total.fat + (meal.fat ?? 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const selectTab = (nextTab: HubTab) => {
+    setSearchParams(nextTab === "lists" ? {} : { tab: nextTab });
+  };
+
+  const selectFitnessDate = (nextDate: string) => {
+    const resolvedDate = nextDate || today;
+    const checkIn = snapshot.bodyCheckIns.find((item) => item.date === resolvedDate);
+    setFitnessDate(resolvedDate);
+    setBodyWeight(checkIn?.weight ?? 0);
+    setWaist(checkIn?.measurements.cintura ?? 0);
+    setHip(checkIn?.measurements.cadera ?? 0);
+    setBodyPhoto(checkIn?.photoDataUrl);
+  };
 
   const groupedLists = useMemo(() => (Object.keys(listLabels) as BrainDumpType[]).map((type) => ({
     type,
@@ -159,19 +200,19 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const addWorkout = async (event: FormEvent) => {
     event.preventDefault();
     if (!exercise.trim()) return;
-    await planner.saveWorkout({ date: today, exercise, sets, reps, weight, goal: "Progreso semanal" });
+    await planner.saveWorkout({ date: fitnessDate, exercise, sets, reps, weight, goal: "Progreso semanal" });
     setExercise("");
   };
 
   const addMeal = async (event: FormEvent) => {
     event.preventDefault();
-    await planner.saveMeal({ date: today, name: mealName, calories, protein, carbs, fat });
-    setMealName(`Comida ${(snapshot.nutritionLogs.find((item) => item.date === today)?.meals.length ?? 0) + 2}`);
+    await planner.saveMeal({ date: fitnessDate, name: mealName, calories, protein, carbs, fat });
+    setMealName(`Comida ${(selectedNutrition?.meals.length ?? 0) + 2}`);
   };
 
   const saveBody = async (event: FormEvent) => {
     event.preventDefault();
-    await planner.saveBodyCheckIn({ date: today, weight: bodyWeight || undefined, waist: waist || undefined, hip: hip || undefined, photoDataUrl: bodyPhoto });
+    await planner.saveBodyCheckIn({ date: fitnessDate, weight: bodyWeight || undefined, waist: waist || undefined, hip: hip || undefined, photoDataUrl: bodyPhoto });
     setMessage("Check-in corporal guardado de forma local y privada.");
   };
 
@@ -184,7 +225,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   return (
     <div className="page-stack life-hub-page">
       <SectionHeading eyebrow="PAUSA EL RUIDO" title="Mi espacio" description="Un lugar para capturar ideas, cuidar tus rutinas y recordar la vida que estás construyendo." />
-      <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{(["lists", "routines", "fitness", "vision", "events"] as HubTab[]).map((item) => <button key={item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "lists" ? "Listas" : item === "routines" ? "Rutinas" : item === "fitness" ? "Fitness Hub" : item === "vision" ? "Vision board" : "Eventos y Tareas"}</button>)}</nav>
+      <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{hubTabs.map((item) => <button type="button" key={item.id} className={tab === item.id ? "is-active" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => selectTab(item.id)}>{item.label}</button>)}</nav>
       {message && <div className="inline-message" role="status">{message}</div>}
 
       {tab === "lists" && <>
@@ -197,13 +238,21 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
       {tab === "fitness" && !snapshot.profile?.fitnessEnabled && <Card className="fitness-gate"><span><Dumbbell size={29} /></span><p className="eyebrow">Cuando te sirva</p><h1>Fitness Hub</h1><p>¿Quieres acompañar tu entrenamiento con más detalle? Puedes registrar ejercicios, comidas, macros, medidas y fotos semanales, y ocultarlo cuando prefieras una vista más ligera.</p><Button onClick={() => planner.updateProfileSettings({ fitnessEnabled: true })}>Quiero usar Fitness Hub</Button></Card>}
 
       {tab === "fitness" && snapshot.profile?.fitnessEnabled && <>
-        <div className="fitness-header"><div><p className="eyebrow">Fitness Hub · semana actual</p><h2>Progreso sin ruido</h2></div><Button variant="ghost" onClick={() => planner.updateProfileSettings({ fitnessEnabled: false })}>Ocultar por ahora</Button></div>
+        <div className="fitness-header"><div><p className="eyebrow">Fitness Hub · seguimiento flexible</p><h2>Tu progreso, semana a semana</h2><p>Semana del {formatDateKey(fitnessWeekStart)} al {formatDateKey(fitnessWeekEnd)}</p></div><div className="fitness-header__actions"><label className="form-field"><span>Fecha del registro</span><input type="date" value={fitnessDate} onChange={(event) => selectFitnessDate(event.target.value)} /></label>{fitnessDate !== today && <Button variant="secondary" onClick={() => selectFitnessDate(today)}>Volver a hoy</Button>}<Button variant="ghost" onClick={() => planner.updateProfileSettings({ fitnessEnabled: false })}>Ocultar por ahora</Button></div></div>
+        <div className="fitness-summary" aria-label="Resumen de Fitness Hub">
+          <Card><span>Sesiones esta semana</span><strong>{weeklyWorkoutLogs.length}</strong><small>Solo cuenta lo que registraste</small></Card>
+          <Card><span>Ejercicios esta semana</span><strong>{weeklyExerciseCount}</strong><small>Puedes ajustar tu ritmo</small></Card>
+          <Card><span>Comidas del día</span><strong>{selectedNutrition?.meals.length ?? 0}</strong><small>{dailyMacros.calories} kcal registradas</small></Card>
+          <Card><span>Último check-in</span><strong>{selectedBodyCheckIn?.weight ? `${selectedBodyCheckIn.weight} kg` : "—"}</strong><small>{formatDateKey(fitnessDate)}</small></Card>
+        </div>
         <div className="fitness-grid">
-          <Card className="hub-form-card"><Dumbbell size={22} /><h2>Ejercicios</h2><form onSubmit={addWorkout}><label className="form-field"><span>Ejercicio</span><input value={exercise} onChange={(event) => setExercise(event.target.value)} placeholder="Sentadilla" /></label><div className="mini-field-grid"><label className="form-field"><span>Series</span><input type="number" min="1" value={sets} onChange={(event) => setSets(Number(event.target.value))} /></label><label className="form-field"><span>Reps</span><input type="number" min="1" value={reps} onChange={(event) => setReps(Number(event.target.value))} /></label><label className="form-field"><span>Peso kg</span><input type="number" min="0" step="0.5" value={weight} onChange={(event) => setWeight(Number(event.target.value))} /></label></div><Button type="submit">Añadir ejercicio</Button></form>{snapshot.workoutLogs.flatMap((log) => log.exercises.map((item) => <div className="workout-row" key={item.id}><strong>{item.name}</strong><span>{item.sets} × {item.reps} · {item.weight} kg</span></div>))}</Card>
-          <Card className="hub-form-card"><Utensils size={22} /><h2>Comidas y macros</h2><form onSubmit={addMeal}><label className="form-field"><span>Comida</span><input value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="mini-field-grid"><label className="form-field"><span>Kcal</span><input type="number" min="0" value={calories} onChange={(event) => setCalories(Number(event.target.value))} /></label><label className="form-field"><span>Proteína</span><input type="number" min="0" value={protein} onChange={(event) => setProtein(Number(event.target.value))} /></label><label className="form-field"><span>Carbs</span><input type="number" min="0" value={carbs} onChange={(event) => setCarbs(Number(event.target.value))} /></label><label className="form-field"><span>Grasa</span><input type="number" min="0" value={fat} onChange={(event) => setFat(Number(event.target.value))} /></label></div><Button type="submit">Agregar otra comida</Button></form><div className="meal-total">{snapshot.nutritionLogs.find((item) => item.date === today)?.meals.map((meal) => <p key={meal.id}><span>{meal.name}</span><strong>{meal.calories ?? 0} kcal · P {meal.protein ?? 0}g</strong></p>)}</div></Card>
+          <Card className="hub-form-card fitness-log-card"><div className="fitness-card-heading"><span><Dumbbell size={22} /></span><div><p className="eyebrow">Entrenamiento</p><h2>Ejercicios</h2></div></div><form onSubmit={addWorkout}><label className="form-field"><span>Ejercicio</span><input value={exercise} onChange={(event) => setExercise(event.target.value)} placeholder="Sentadilla" /></label><div className="mini-field-grid"><label className="form-field"><span>Series</span><input type="number" min="1" value={sets} onChange={(event) => setSets(Number(event.target.value))} /></label><label className="form-field"><span>Reps</span><input type="number" min="1" value={reps} onChange={(event) => setReps(Number(event.target.value))} /></label><label className="form-field"><span>Peso kg</span><input type="number" min="0" step="0.5" value={weight} onChange={(event) => setWeight(Number(event.target.value))} /></label></div><Button type="submit">Añadir ejercicio</Button></form><div className="fitness-log-list">{selectedWorkout?.exercises.map((item) => <div className="workout-row" key={item.id}><strong>{item.name}</strong><span>{item.sets} × {item.reps} · {item.weight} kg</span></div>)}{!selectedWorkout?.exercises.length && <p className="fitness-empty">Aún no hay ejercicios en esta fecha.</p>}</div></Card>
+          <Card className="hub-form-card fitness-log-card"><div className="fitness-card-heading"><span><Utensils size={22} /></span><div><p className="eyebrow">Nutrición opcional</p><h2>Comidas y macros</h2></div></div><form onSubmit={addMeal}><label className="form-field"><span>Comida</span><input value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="mini-field-grid mini-field-grid--four"><label className="form-field"><span>Kcal</span><input type="number" min="0" value={calories} onChange={(event) => setCalories(Number(event.target.value))} /></label><label className="form-field"><span>Proteína</span><input type="number" min="0" value={protein} onChange={(event) => setProtein(Number(event.target.value))} /></label><label className="form-field"><span>Carbs</span><input type="number" min="0" value={carbs} onChange={(event) => setCarbs(Number(event.target.value))} /></label><label className="form-field"><span>Grasa</span><input type="number" min="0" value={fat} onChange={(event) => setFat(Number(event.target.value))} /></label></div><Button type="submit">Agregar otra comida</Button></form><div className="macro-summary"><span>{dailyMacros.calories} kcal</span><span>P {dailyMacros.protein} g</span><span>C {dailyMacros.carbs} g</span><span>G {dailyMacros.fat} g</span></div><div className="meal-total">{selectedNutrition?.meals.map((meal) => <p key={meal.id}><span>{meal.name}</span><strong>{meal.calories ?? 0} kcal · P {meal.protein ?? 0}g</strong></p>)}{!selectedNutrition?.meals.length && <p className="fitness-empty">Esta parte es opcional; úsala solo si te aporta claridad.</p>}</div></Card>
           <Card className="hub-form-card"><Camera size={22} /><h2>Check-in semanal</h2><form onSubmit={saveBody}><div className="mini-field-grid"><label className="form-field"><span>Peso kg</span><input type="number" min="0" step="0.1" value={bodyWeight || ""} onChange={(event) => setBodyWeight(Number(event.target.value))} /></label><label className="form-field"><span>Cintura cm</span><input type="number" min="0" step="0.1" value={waist || ""} onChange={(event) => setWaist(Number(event.target.value))} /></label><label className="form-field"><span>Cadera cm</span><input type="number" min="0" step="0.1" value={hip || ""} onChange={(event) => setHip(Number(event.target.value))} /></label></div><label className="upload-tile"><Camera size={20} /><span>{bodyPhoto ? "Foto lista para guardar" : "Añadir foto opcional"}</span><input className="sr-only" type="file" accept="image/*" onChange={bodyPhotoChange} /></label><Button type="submit">Guardar check-in privado</Button></form>{snapshot.bodyCheckIns.slice(0, 4).map((item) => <p className="body-history" key={item.id}><span>{item.date}</span><strong>{item.weight ? `${item.weight} kg` : "Sin peso"}</strong></p>)}</Card>
         </div>
       </>}
+
+      {tab === "challenges" && <ChallengesPage planner={planner} embedded />}
 
       {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addVisionItem}><label className="form-field"><span>Frase</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder="La vida que quiero también se construye hoy." /></label><label className="button button--secondary"><ImagePlus size={16} /> {visionImage ? "Cambiar imagen" : "Elegir imagen"}<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label>{visionImage && <figure className="vision-upload-preview"><img src={visionImage} alt="Vista previa del elemento" /><figcaption>Imagen lista para confirmar</figcaption></figure>}<label className="vision-reminder-control"><input type="checkbox" checked={visionReminder} onChange={(event) => setVisionReminder(event.target.checked)} /> Quiero recibir recordatorios</label>{visionReminder && <label className="form-field"><span>Frecuencia</span><select value={visionFrequency} onChange={(event) => setVisionFrequency(event.target.value as typeof visionFrequency)} aria-label="Frecuencia de recordatorios"><option value="daily">Diaria</option><option value="weekly">Semanal</option><option value="monthly">Mensual</option><option value="quarterly">Cada 3 meses</option></select></label>}<Button type="submit"><Plus size={16} /> Añadir al Vision Board</Button></form>{visionReminder && <Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> Permitir notificaciones</Button>}</Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type !== "quote" ? <><img src={item.content} alt={item.caption || "Imagen de vision board"} />{item.caption && <blockquote>“{item.caption}”</blockquote>}</> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || "Mi visión"}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? `Recordar · ${item.reminderFrequency ?? "semanal"}` : "Sin recordatorio"}</button></footer></Card>)}</div></>}
 

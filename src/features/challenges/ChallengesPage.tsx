@@ -57,7 +57,7 @@ function ChallengeIcon({ type, size = 22 }: { type: ChallengeType; size?: number
   return <Icon size={size} aria-hidden="true" />;
 }
 
-export function ChallengesPage({ planner }: { planner: PlannerController }) {
+export function ChallengesPage({ planner, embedded = false }: { planner: PlannerController; embedded?: boolean }) {
   const today = toLocalDateKey(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const form = useForm<ChallengeFormInput>({
@@ -81,7 +81,7 @@ export function ChallengesPage({ planner }: { planner: PlannerController }) {
   const completedChallenges = planner.snapshot.challenges.filter((challenge) => challenge.status === "completed");
 
   return (
-    <div className="page-stack challenges-page">
+    <div className={`page-stack challenges-page ${embedded ? "challenges-page--embedded" : ""}`}>
       <SectionHeading
         eyebrow="Curiosidad antes que presión"
         title="Retos"
