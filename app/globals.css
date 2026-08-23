@@ -1383,11 +1383,29 @@ body { font-size: 16px; background: var(--color-background); }
 .fitness-gate { display: grid; max-width: 720px; place-items: center; gap: 10px; margin: 5vh auto; padding: 50px; text-align: center; }
 .fitness-gate > span { display: grid; width: 68px; height: 68px; place-items: center; border-radius: 50%; background: var(--blush); color: var(--rose-deep); }
 .fitness-gate > p:last-of-type { max-width: 560px; color: var(--taupe); font-size: .75rem; }
-.fitness-header { display: flex; align-items: center; justify-content: space-between; }
-.fitness-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; align-items: start; }
+.fitness-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.fitness-header h2 { margin-bottom: 4px; }
+.fitness-header > div:first-child > p:last-child { margin: 0; color: var(--taupe); font-size: .875rem; }
+.fitness-header__actions { display: flex; align-items: end; justify-content: flex-end; gap: 8px; }
+.fitness-header__actions .form-field { min-width: 176px; }
+.fitness-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.fitness-summary > .card { display: grid; min-height: 126px; align-content: center; gap: 5px; padding: 18px; }
+.fitness-summary span, .fitness-summary small { color: var(--taupe); font-size: .75rem; }
+.fitness-summary strong { color: var(--charcoal); font-size: 1.75rem; line-height: 1.1; }
+.fitness-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: start; }
+.fitness-grid > .card:last-child { grid-column: 1 / -1; }
+.fitness-card-heading { display: flex; align-items: center; gap: 11px; }
+.fitness-card-heading > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; background: var(--blush); color: var(--rose-deep); }
+.fitness-card-heading h2, .fitness-card-heading p { margin: 0; }
+.fitness-log-card { min-height: 100%; }
 .mini-field-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+.mini-field-grid--four { grid-template-columns: repeat(4,minmax(0,1fr)); }
 .workout-row, .body-history { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; border-top: 1px solid var(--border); padding: 10px 0; font-size: .75rem; }
 .workout-row span, .body-history span { color: var(--taupe); }
+.fitness-log-list { display: grid; }
+.fitness-empty { margin: 0; border-top: 1px solid var(--border); padding: 14px 0 2px; color: var(--taupe); font-size: .8125rem; line-height: 1.5; }
+.macro-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
+.macro-summary span { border-radius: 8px; background: var(--cream); padding: 8px 5px; color: var(--taupe); font-size: .75rem; text-align: center; }
 .meal-total { display: grid; }
 .meal-total p { display: flex; align-items: center; justify-content: space-between; margin: 0; border-top: 1px solid var(--border); padding: 9px 0; font-size: .75rem; }
 .upload-tile { display: flex; min-height: 58px; align-items: center; justify-content: center; gap: 8px; border: 1px dashed var(--rose); border-radius: 10px; color: var(--rose-deep); font-size: .75rem; cursor: pointer; }
@@ -1443,11 +1461,13 @@ body { font-size: 16px; background: var(--color-background); }
 .completed-challenge-card > span { color: var(--rose-deep); }
 .completed-challenge-card > div { flex: 1; }
 .completed-challenge-card p { margin: 3px 0 0; color: var(--taupe); font-size: .75rem; }
+.challenges-page--embedded { padding-top: 4px; }
 
 @media (max-width: 1180px) {
   .cascade-map { grid-template-columns: repeat(4,1fr); }
   .weekly-planner-assistant, .fitness-grid { grid-template-columns: 1fr 1fr; }
   .weekly-brain-dump, .fitness-grid > .card:last-child { grid-column: 1 / -1; }
+  .fitness-summary { grid-template-columns: repeat(2,1fr); }
   .hub-capture-card { grid-template-columns: 1fr; }
   .brain-lists-grid { grid-template-columns: repeat(2,1fr); }
 }
@@ -1457,6 +1477,8 @@ body { font-size: 16px; background: var(--color-background); }
   .cascade-map { grid-template-columns: repeat(2,1fr); }
   .cascade-fields, .weekly-planner-assistant, .daily-schedule-layout, .hub-two-column, .fitness-grid, .challenge-presets, .active-challenges, .challenge-form { grid-template-columns: 1fr; }
   .cascade-editor > header, .cascade-editor > footer, .fitness-header { align-items: stretch; flex-direction: column; }
+  .fitness-header__actions { align-items: stretch; flex-wrap: wrap; justify-content: flex-start; }
+  .fitness-header__actions .form-field { min-width: min(100%, 220px); }
   .cascade-editor > header { display: flex; }
   .cascade-editor > header aside { max-width: none; }
   .hub-capture-card form { grid-template-columns: 1fr; }
@@ -1469,6 +1491,7 @@ body { font-size: 16px; background: var(--color-background); }
 @media (max-width: 430px) {
   .cascade-map button { min-height: 82px; }
   .mini-field-grid { grid-template-columns: 1fr 1fr; }
+  .mini-field-grid--four, .macro-summary, .fitness-summary { grid-template-columns: 1fr 1fr; }
   .fitness-gate { padding: 30px 18px; }
 }
 

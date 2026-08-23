@@ -1,13 +1,13 @@
 "use client";
 
 import { Link } from "react-router-dom";
-import { Banknote, BarChart3, BookOpen, ChevronRight, Dumbbell, Feather, HeartPulse, LayoutGrid, ListTodo, Mountain, Settings, Sparkles, Target } from "lucide-react";
+import { Banknote, BarChart3, BookOpen, ChevronRight, Feather, HeartPulse, LayoutGrid, ListTodo, Settings, Sparkles, Target } from "lucide-react";
 import { Card, SectionHeading } from "@/src/components/ui/Primitives";
 
 const groups = [
   { title: "PLANIFICAR", links: [["/app/goals", "Metas", "Resultados que orientan tus decisiones.", Target], ["/app/tasks", "Tareas y proyectos", "Acciones, checklist y próximos pasos.", ListTodo]] },
-  { title: "CUIDARME", links: [["/app/life-hub?tab=fitness", "Fitness Hub", "Entrenamiento y check-ins a tu manera.", Dumbbell], ["/app/habits", "Hábitos y bienestar", "Hábitos, ánimo, energía, sueño y enfoque.", HeartPulse], ["/app/challenges", "Retos", "Experimentos personales con intención y flexibilidad.", Mountain]] },
-  { title: "ORGANIZAR", links: [["/app/finance", "Finanzas", "Presupuesto, movimientos y decisiones.", Banknote], ["/app/life-hub", "Mi espacio", "Listas, rutinas, visión y eventos.", LayoutGrid]] },
+  { title: "CUIDARME", links: [["/app/habits", "Hábitos y bienestar", "Hábitos, ánimo, energía, sueño y enfoque.", HeartPulse]] },
+  { title: "ORGANIZAR", links: [["/app/finance", "Finanzas", "Presupuesto, movimientos y decisiones.", Banknote], ["/app/life-hub", "Mi espacio", "Listas, rutinas, Fitness Hub, retos, visión y eventos.", LayoutGrid]] },
   { title: "REFLEXIONAR", links: [["/app/progress", "Tu progreso", "Reconoce el ritmo que has construido.", BarChart3], ["/app/journal", "Mi diario", "Un lugar para volver a ti.", Feather]] },
   { title: "APOYO", links: [["/app/help", "Desbloquearme", "Convierte el ruido en una acción pequeña.", Sparkles], ["/app/learn", "Aprende", "Ideas breves para usar mejor tu planner.", BookOpen], ["/app/settings", "Ajustes", "Preferencias, privacidad y respaldo.", Settings]] },
 ] as const;

@@ -123,8 +123,13 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await page.getByRole("button", { name: "Capturar" }).click();
   await expect(page.getByText("Aprender fotografía")).toBeVisible();
   await page.getByRole("button", { name: "Fitness Hub" }).click();
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=fitness$/);
   await page.getByRole("button", { name: "Quiero usar Fitness Hub" }).click();
   await expect(page.getByRole("heading", { name: "Ejercicios" })).toBeVisible();
+  await expect(page.getByText("Tu progreso, semana a semana")).toBeVisible();
+  await page.getByRole("button", { name: "Retos" }).click();
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=challenges$/);
+  await expect(page.getByRole("heading", { name: "Retos", exact: true })).toBeVisible();
 });
 
 test("exports, deletes and restores a validated local backup", async ({ page }) => {
@@ -221,6 +226,8 @@ test("help routes expose the configured support resources", async ({ page }) => 
 test("creates a gentle challenge and records today", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app/challenges");
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=challenges$/);
+  await expect(page.getByRole("heading", { name: "Mi espacio" })).toBeVisible();
   await page.getByRole("button", { name: "Elegir este reto" }).first().click();
   await page.getByLabel("Nombre del reto").fill("Dar un paso valiente");
   await page.getByRole("button", { name: "Guardar reto" }).click();

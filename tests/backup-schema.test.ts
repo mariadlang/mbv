@@ -108,6 +108,7 @@ describe("backup validation", () => {
     });
 
     const parsed = backupEnvelopeSchema.parse({ schemaVersion: 3, exportedAt: "2026-08-22T12:00:00.000Z", data: snapshot });
+    if (parsed.schemaVersion !== 3) throw new Error("Expected a version 3 backup");
     expect(parsed.data.cascadePlans[0]).toMatchObject({
       areaIds: ["career"],
       completedObjectiveIndexes: [0],
