@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function completeOnboarding(page: Page, name = "María") {
-  await page.goto("/");
+  await page.goto("/app/dashboard");
   await expect(page.getByRole("heading", { name: /Life, but more you/ })).toBeVisible();
   await page.getByRole("button", { name: /Crear mi espacio/ }).click();
   await page.getByRole("button", { name: "Salud y bienestar" }).click();

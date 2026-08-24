@@ -83,7 +83,7 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
         <h1>Life, but <em>more you.</em></h1>
         <div className="splash-divider"><span /><Heart size={17} /><span /></div>
         <p>Convierte la vida que quieres construir<br /><em>en decisiones que caben en hoy.</em></p>
-        <div className="splash-illustration"><Leaf size={84} strokeWidth={1} /><span className="splash-notebook">MBV</span></div>
+        <div className="splash-illustration splash-logo-illustration" aria-label="Logo oficial de My Best Version"><BrandMark iconOnly /></div>
         <Button onClick={() => setStage(1)}>Crear mi espacio <ArrowRight size={18} /></Button>
         <span className="signed-session"><Check size={14} /> Tus datos se guardan localmente en este dispositivo</span>
         <input ref={fileRef} className="sr-only" type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} />

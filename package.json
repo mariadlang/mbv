@@ -16,11 +16,12 @@
     "start:vinext": "vinext start",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
+    "@supabase/supabase-js": "^2.112.3",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.4",
     "lucide-react": "^1.31.0",
