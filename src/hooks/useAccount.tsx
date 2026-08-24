@@ -14,6 +14,8 @@ interface AccountContextValue {
   refreshAccess(): Promise<void>;
   signUp(input: { name: string; email: string; password: string }): Promise<{ emailVerificationRequired: boolean }>;
   signIn(input: { email: string; password: string }): Promise<void>;
+  signInWithGoogle(): Promise<void>;
+  signInWithMagicLink(email: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   signOut(): Promise<void>;
 }
@@ -53,6 +55,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     refreshAccess: async () => loadForUser(user),
     signUp: (input) => authService.signUp(input),
     signIn: (input) => authService.signIn(input),
+    signInWithGoogle: () => authService.signInWithGoogle(),
+    signInWithMagicLink: (email) => authService.signInWithMagicLink(email),
     requestPasswordReset: (email) => authService.requestPasswordReset(email),
     signOut: async () => { await authService.signOut(); setUser(null); setAccess(null); },
   }), [access, configured, error, loadForUser, loading, user]);

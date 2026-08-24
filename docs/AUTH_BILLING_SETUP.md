@@ -12,10 +12,11 @@
 
 1. Crea o selecciona un proyecto de Supabase.
 2. Ejecuta `supabase/migrations/202608230001_accounts_access.sql` en el editor SQL o mediante Supabase CLI.
-3. En Authentication, activa Email/Password y exige confirmación de correo.
-4. Agrega las URLs de la app y de previews a Redirect URLs. Las rutas usadas son `/verify-email` y `/login?reset=1`.
-5. Copia la URL pública y la anon key en las variables descritas por `.env.example`.
-6. Nunca expongas la service-role key en el navegador, GitHub o Vercel.
+3. En Authentication, activa Email/Password y exige confirmación de correo. El enlace mágico utiliza el mismo proveedor de correo.
+4. Activa Google en Authentication → Providers y configura el Client ID y Client Secret de Google Cloud. Añade a Google la callback URL que muestra Supabase.
+5. Agrega las URLs de la app y de previews a Redirect URLs. Las rutas usadas son `/verify-email`, `/login?reset=1` y `/app/dashboard`.
+6. Copia la URL pública y la publishable/anon key en las variables descritas por `.env.example`.
+7. Nunca expongas la secret/service-role key en el navegador, GitHub o Vercel.
 
 La migración reconoce `maria.delosangelesgtg@gmail.com` sólo dentro de la función segura de creación de perfiles. El frontend nunca usa el correo para autorizar el panel; `/admin` y las operaciones RPC comprueban el rol almacenado por el servidor.
 
@@ -38,7 +39,8 @@ No hay webhook falso. Para automatizar Mercado Pago en una siguiente fase, imple
 Configura en cada entorno:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferida para proyectos nuevos)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (compatibilidad con proyectos antiguos)
 - `NEXT_PUBLIC_MERCADO_PAGO_URL` (opcional si se usa el enlace predeterminado)
 
 Después de configurar variables, vuelve a desplegar y valida registro → correo verificado → primer acceso → trial → upgrade.

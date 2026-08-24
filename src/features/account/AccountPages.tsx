@@ -49,7 +49,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     event.preventDefault(); setError(""); setMessage("");
     const parsed = (mode === "signup" ? signupSchema : credentialsSchema).safeParse(form);
     if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? "Revisa los datos."); return; }
-    if (!account.configured) { setError("La autenticación todavía no está conectada en este entorno. Configura Supabase para habilitar el acceso real."); return; }
+    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
     setSaving(true);
     try {
       if (mode === "signup") {
@@ -63,14 +63,35 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     } finally { setSaving(false); }
   };
 
-  return <PublicFrame><section className="auth-card"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{mode === "signup" ? "CREA TU ESPACIO" : "QUÉ BUENO VERTE"}</p><h1>{mode === "signup" ? "Empieza una vida más tuya." : "Vuelve a tu planner."}</h1><p>{mode === "signup" ? "Tendrás 15 días para explorar la experiencia base después de verificar tu correo." : "Continúa desde donde lo dejaste."}</p><form onSubmit={submit}>{mode === "signup" && <label><span>Nombre</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>Correo</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>Contraseña</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{error}</p>}{message && <p className="inline-message" role="status">{message}</p>}<Button type="submit" disabled={saving} onClick={() => { if (mode === "signup") analyticsService.track("signup_started"); }}>{saving ? "Un momento…" : mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}</Button></form>{mode === "login" && <Link to="/forgot-password">Olvidé mi contraseña</Link>}<p>{mode === "signup" ? "¿Ya tienes cuenta?" : "¿Todavía no tienes cuenta?"} <Link to={mode === "signup" ? "/login" : "/signup"}>{mode === "signup" ? "Iniciar sesión" : "Crear cuenta"}</Link></p></section></PublicFrame>;
+  const continueWithGoogle = async () => {
+    setError(""); setMessage("");
+    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
+    setSaving(true);
+    try { await account.signInWithGoogle(); }
+    catch { setError("No pudimos abrir el acceso con Google. Inténtalo de nuevo."); setSaving(false); }
+  };
+
+  const sendMagicLink = async () => {
+    setError(""); setMessage("");
+    const parsed = z.string().trim().email("Escribe un correo válido.").safeParse(form.email);
+    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? "Escribe un correo válido."); return; }
+    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
+    setSaving(true);
+    try {
+      await account.signInWithMagicLink(parsed.data);
+      setMessage("Te enviamos un enlace seguro. Revisa tu correo para continuar.");
+    } catch { setError("No pudimos enviar el enlace. Inténtalo de nuevo."); }
+    finally { setSaving(false); }
+  };
+
+  return <PublicFrame><section className="auth-card"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{mode === "signup" ? "CREA TU ESPACIO" : "QUÉ BUENO VERTE"}</p><h1>{mode === "signup" ? "Empieza una vida más tuya." : "Vuelve a tu planner."}</h1><p>{mode === "signup" ? "Tendrás 15 días para explorar la experiencia base después de verificar tu correo." : "Continúa desde donde lo dejaste."}</p><div className="auth-options"><Button type="button" variant="outline" disabled={saving} onClick={continueWithGoogle}><span className="google-mark" aria-hidden="true">G</span> Continuar con Google</Button></div><div className="auth-divider"><span>o continúa con tu correo</span></div><form onSubmit={submit}>{mode === "signup" && <label><span>Nombre</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>Correo</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>Contraseña</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{error}</p>}{message && <p className="inline-message" role="status">{message}</p>}<Button type="submit" disabled={saving} onClick={() => { if (mode === "signup") analyticsService.track("signup_started"); }}>{saving ? "Un momento…" : mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}</Button>{mode === "login" && <Button type="button" variant="secondary" disabled={saving} onClick={sendMagicLink}><Mail size={17} aria-hidden="true" /> Enviarme un enlace de acceso</Button>}</form>{mode === "login" && <Link to="/forgot-password">Olvidé mi contraseña</Link>}<p>{mode === "signup" ? "¿Ya tienes cuenta?" : "¿Todavía no tienes cuenta?"} <Link to={mode === "signup" ? "/login" : "/signup"}>{mode === "signup" ? "Iniciar sesión" : "Crear cuenta"}</Link></p></section></PublicFrame>;
 }
 
 export function VerifyEmailPage() { return <PublicFrame><section className="auth-card auth-card--message"><span className="auth-card__icon"><Mail size={22} /></span><h1>Revisa tu correo.</h1><p>Te enviamos un enlace para verificar tu cuenta. Tu prueba empezará cuando confirmes el correo y entres por primera vez.</p><Link className="button button--primary" to="/login">Ir a iniciar sesión</Link></section></PublicFrame>; }
 
 export function ForgotPasswordPage() {
   const account = useAccount(); const [email, setEmail] = useState(""); const [status, setStatus] = useState("");
-  const submit = async (event: FormEvent) => { event.preventDefault(); const parsed = z.string().email().safeParse(email); if (!parsed.success) return setStatus("Escribe un correo válido."); if (!account.configured) return setStatus("La recuperación estará disponible cuando Supabase esté configurado."); try { await account.requestPasswordReset(email); setStatus("Si existe una cuenta con ese correo, recibirá un enlace de recuperación."); } catch { setStatus("No pudimos enviar el enlace. Inténtalo de nuevo."); } };
+  const submit = async (event: FormEvent) => { event.preventDefault(); const parsed = z.string().email().safeParse(email); if (!parsed.success) return setStatus("Escribe un correo válido."); if (!account.configured) return setStatus("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); try { await account.requestPasswordReset(email); setStatus("Si existe una cuenta con ese correo, recibirá un enlace de recuperación."); } catch { setStatus("No pudimos enviar el enlace. Inténtalo de nuevo."); } };
   return <PublicFrame><section className="auth-card"><h1>Recupera tu acceso.</h1><p>Te enviaremos un enlace seguro para crear una nueva contraseña.</p><form onSubmit={submit}><label><span>Correo</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>{status && <p role="status">{status}</p>}<Button type="submit">Enviar enlace</Button></form><Link to="/login">Volver</Link></section></PublicFrame>;
 }
 

@@ -10,6 +10,8 @@ export class E2EAuthRepository implements AuthRepository {
   onAuthChange() { return () => undefined; }
   async signUp() { return { emailVerificationRequired: false }; }
   async signIn() {}
+  async signInWithGoogle() {}
+  async signInWithMagicLink() {}
   async signOut() {}
   async requestPasswordReset() {}
   async getOrStartAccess() { return access; }

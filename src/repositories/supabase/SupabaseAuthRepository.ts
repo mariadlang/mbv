@@ -8,7 +8,7 @@ function toAccountUser(user: User | null): AccountUser | null {
   return {
     id: user.id,
     email: user.email,
-    displayName: String(user.user_metadata?.full_name ?? user.email.split("@")[0]),
+    displayName: String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email.split("@")[0]),
     emailVerified: Boolean(user.email_confirmed_at),
   };
 }
@@ -51,6 +51,24 @@ export class SupabaseAuthRepository implements AuthRepository {
   async signIn(input: { email: string; password: string }) {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { error } = await this.client.auth.signInWithPassword(input);
+    if (error) throw error;
+  }
+
+  async signInWithGoogle() {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { error } = await this.client.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callbackUrl("/app/dashboard") },
+    });
+    if (error) throw error;
+  }
+
+  async signInWithMagicLink(email: string) {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { error } = await this.client.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: callbackUrl("/app/dashboard"), shouldCreateUser: true },
+    });
     if (error) throw error;
   }
 
