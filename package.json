@@ -12,7 +12,7 @@
     "build:vercel": "next build",
     "start": "next start",
     "dev:vinext": "vinext dev",
-    "build:vinext": "vinext build",
+    "build:vinext": "node scripts/build-vinext.mjs",
     "start:vinext": "vinext start",
     "test": "vitest run",
     "test:e2e": "playwright test",
