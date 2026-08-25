@@ -3,16 +3,19 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, LockKeyhole, MoonStar, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, Languages, LockKeyhole, LogOut, MoonStar, PlayCircle, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { imageUploadSchema } from "@/src/lib/schemas";
+import { LanguageSwitcher } from "@/src/components/ui/LanguageSwitcher";
+import { useAccount } from "@/src/hooks/useAccount";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
-export function SettingsPage({ planner }: { planner: PlannerController }) {
+export function SettingsPage({ planner, onReplayTutorial, onRequestLogout }: { planner: PlannerController; onReplayTutorial: () => void; onRequestLogout: () => void }) {
+  const account = useAccount();
   const colorMode = useUiStore((state) => state.colorMode);
   const setColorMode = useUiStore((state) => state.setColorMode);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -63,7 +66,10 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
     <SectionHeading eyebrow="Tu planner, tus reglas" title="Ajustes y datos" description="Personaliza tu experiencia y administra tu información." action={<Badge tone="sage"><LockKeyhole size={14} /> Local-first</Badge>} />
     {message && <div className="inline-message" role="status">{message}</div>}
     <div className="settings-reference-layout">
-      <Card className="settings-list-card">
+      <Card id="account-settings" className="settings-list-card">
+        <section><div><strong><Languages size={16} /> Idioma</strong><small>Selecciona el idioma de la aplicación.</small></div><LanguageSwitcher onChange={(locale) => void account.updatePreferences({ locale })} /></section>
+        <section><div><strong><PlayCircle size={16} /> Repetir tutorial</strong><small>Vuelve a recorrer las secciones principales cuando lo necesites.</small></div><Button variant="secondary" onClick={onReplayTutorial}>Repetir tutorial</Button></section>
+        <section><div><strong><LogOut size={16} /> Cerrar sesión</strong><small>Tu información seguirá guardada para cuando vuelvas.</small></div><Button variant="danger" onClick={onRequestLogout}>Cerrar sesión</Button></section>
         <section><div><strong>Foto de perfil</strong><small>Se guarda de forma privada en este navegador.</small></div><div className="profile-photo-setting">{avatarDataUrl ? <img src={avatarDataUrl} alt="Vista previa de perfil" /> : <span>{name.slice(0, 1).toUpperCase()}</span>}<input ref={avatarInput} className="sr-only" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; const parsed = imageUploadSchema.safeParse({ type: file.type, size: file.size }); if (!parsed.success) return setMessage(parsed.error.issues[0]?.message ?? "Revisa la imagen."); const reader = new FileReader(); reader.onload = () => setAvatarDataUrl(String(reader.result)); reader.readAsDataURL(file); }} /><Button variant="secondary" onClick={() => avatarInput.current?.click()}>Elegir foto</Button>{avatarDataUrl && <Button variant="ghost" onClick={() => setAvatarDataUrl(undefined)}>Quitar foto</Button>}</div></section>
         <section><div><strong>Perfil</strong><small>Nombre del perfil</small></div><input value={name} onChange={(event)=>setName(event.target.value)} aria-label="Nombre del perfil" /></section>
         <section><div><strong>Para qué lo quiero usar</strong><small>Tu razón para volver a este espacio.</small></div><textarea aria-label="Para qué quiero usar mi planner" rows={3} value={usePurpose} onChange={(event) => setUsePurpose(event.target.value)} /></section>
@@ -79,7 +85,7 @@ export function SettingsPage({ planner }: { planner: PlannerController }) {
         <section><div><strong>Restaurar datos de demostración</strong><small>Carga contenido ficticio para explorar la aplicación.</small></div><Button variant="secondary" onClick={async()=>{await planner.loadDemo();setMessage("Los datos ficticios de ejemplo están listos.");}}><RefreshCw size={16}/> Restaurar</Button></section>
         <section className="delete-setting"><div><strong>Eliminar todos los datos</strong><small>Esta acción no se puede deshacer.</small></div><Button variant="danger" onClick={()=>setDeleteOpen(true)}><Trash2 size={16}/> Eliminar</Button></section>
       </Card>
-      <aside className="settings-aside"><Card><ShieldCheck size={24}/><p className="eyebrow">Aviso de privacidad</p><h2>El control es tuyo</h2><p>Tus metas, hábitos, finanzas y reflexiones se guardan únicamente en tu navegador. No se conectan cuentas bancarias.</p></Card><Card><LockKeyhole size={24}/><p className="eyebrow">Privacidad local</p><h2>Este dispositivo guarda tu planner</h2><p>La app no tiene inicio de sesión ni sincronización entre dispositivos. Exporta un respaldo para conservar o trasladar tus datos.</p><Button variant="secondary" onClick={async () => { await planner.downloadBackup(); setMessage("Tu respaldo se descargó correctamente."); }}><Download size={16} /> Exportar respaldo</Button></Card><Card><HelpCircle size={24}/><h2>¿Necesitas ayuda?</h2><p>Aprende los conceptos clave o reinicia el recorrido guiado.</p><Link className="button button--secondary" to="/app/help">Ir al centro de ayuda</Link></Card></aside>
+      <aside className="settings-aside"><Card><ShieldCheck size={24}/><p className="eyebrow">Aviso de privacidad</p><h2>El control es tuyo</h2><p>Tus metas, hábitos, finanzas y reflexiones se guardan en este navegador. No se conectan cuentas bancarias.</p></Card><Card><LockKeyhole size={24}/><p className="eyebrow">Privacidad local</p><h2>Tu cuenta protege el acceso</h2><p>Los datos detallados del planner permanecen en este dispositivo. Exporta un respaldo para conservarlos o trasladarlos.</p><Button variant="secondary" onClick={async () => { await planner.downloadBackup(); setMessage("Tu respaldo se descargó correctamente."); }}><Download size={16} /> Exportar respaldo</Button></Card><Card><HelpCircle size={24}/><h2>¿Necesitas ayuda?</h2><p>Aprende los conceptos clave o reinicia el recorrido guiado.</p><Link className="button button--secondary" to="/app/help">Ir al centro de ayuda</Link></Card></aside>
     </div>
 
     <Card className="area-settings"><header><div><p className="eyebrow">Estructura transversal</p><h2>Áreas de vida</h2><p>Renombra, activa o reordena. Las metas y registros vinculados conservan su conexión.</p></div></header><div>{[...planner.snapshot.lifeAreas].sort((a,b) => a.order - b.order).map((area, index, all) => <div key={area.id}><input defaultValue={area.name} aria-label={`Nombre de ${area.name}`} onBlur={(event) => planner.updateLifeAreaSettings(area.id, { name: event.target.value })}/><label><input type="checkbox" checked={area.active} onChange={(event) => planner.updateLifeAreaSettings(area.id, { active: event.target.checked })}/> Activa</label><button disabled={index === 0} aria-label={`Subir ${area.name}`} onClick={() => planner.updateLifeAreaSettings(area.id, { direction: "up" })}><ArrowUp size={15}/></button><button disabled={index === all.length - 1} aria-label={`Bajar ${area.name}`} onClick={() => planner.updateLifeAreaSettings(area.id, { direction: "down" })}><ArrowDown size={15}/></button></div>)}</div></Card>

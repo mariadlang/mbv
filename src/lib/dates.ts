@@ -1,5 +1,8 @@
 import { addDays, differenceInCalendarDays, format, getWeek, getWeekYear, isValid, parseISO, startOfWeek, subDays } from "date-fns";
-import { es } from "date-fns/locale";
+import { enUS, es } from "date-fns/locale";
+import { useUiStore } from "@/src/stores/useUiStore";
+
+export function getDateFnsLocale() { return useUiStore.getState().language === "en" ? enUS : es; }
 
 export function toLocalDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -15,17 +18,17 @@ export function getRecentDates(total: number, endDate = new Date()): Date[] {
 }
 
 export function formatLongDate(date: Date): string {
-  const value = format(date, "EEEE, d 'de' MMMM", { locale: es });
+  const value = format(date, useUiStore.getState().language === "en" ? "EEEE, MMMM d" : "EEEE, d 'de' MMMM", { locale: getDateFnsLocale() });
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export function formatShortDay(date: Date): string {
-  return format(date, "EEE", { locale: es }).replace(".", "");
+  return format(date, "EEE", { locale: getDateFnsLocale() }).replace(".", "");
 }
 
 export function formatDateKey(dateKey: string): string {
   const date = parseISO(dateKey);
-  return isValid(date) ? format(date, "d 'de' MMMM 'de' yyyy", { locale: es }) : dateKey;
+  return isValid(date) ? format(date, useUiStore.getState().language === "en" ? "MMMM d, yyyy" : "d 'de' MMMM 'de' yyyy", { locale: getDateFnsLocale() }) : dateKey;
 }
 
 export function getInclusiveDateCount(startDate: string, endDate: string): number {

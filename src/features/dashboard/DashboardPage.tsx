@@ -20,10 +20,12 @@ import { getDailyTopThree, getNextStep } from "@/src/domain/guidanceRules";
 import { calculateGoalProgress, isHabitScheduledOn } from "@/src/domain/rules";
 import { weeklyPlanningInsight } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
+import { toLocalDateKey } from "@/src/lib/dates";
 import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 export function DashboardPage({ planner }: { planner: PlannerController }) {
+  const { t, locale, formatDate } = useI18n();
   const { snapshot } = planner;
   const todayKey = toLocalDateKey(new Date());
   const mood = snapshot.moodLogs.find((item) => item.date === todayKey);
@@ -41,8 +43,10 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
   const financeProfile = snapshot.financialProfiles[0];
   const currency = financeProfile?.baseCurrency ?? snapshot.profile?.baseCurrency ?? "COP";
   const privacy = financeProfile?.privacyMode ?? snapshot.profile?.financePrivacy ?? false;
-  const money = (value: number) => privacy ? "••••" : new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+  const money = (value: number) => privacy ? "••••" : new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
   const insight = weeklyPlanningInsight(snapshot);
+  const completedTasks = todayTasks.filter((task) => task.status === "completed").length;
+  const emptyInsight = insight.summary.startsWith("Aún no hay") || insight.summary.startsWith("Todavía no hay");
   const setupSteps = [
     { label: "Define una dirección", done: snapshot.lifeAreas.some((area) => Boolean(area.vision || area.dream)), href: "/app/vision" },
     { label: "Crea tu primera meta", done: snapshot.goals.length > 0, href: "/app/goals" },
@@ -54,7 +58,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
 
   return <div className="page-stack story-dashboard">
     <header className="dashboard-greeting story-dashboard__header">
-      <div><p className="eyebrow">MY BEST VERSION</p><h1>Buenos días, {snapshot.profile?.name ?? "María"}</h1><p>{formatLongDate(new Date())} · Life, but more you.</p></div>
+      <div><p className="eyebrow">MY BEST VERSION</p><h1>{t("Buenos días, {name}", { name: snapshot.profile?.name ?? "María" })}</h1><p>{formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })} · Life, but more you.</p></div>
       <Link className="button button--secondary" to="/app/today">Abrir mi día <ArrowRight size={16} /></Link>
     </header>
 
@@ -80,12 +84,12 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
     </Card>
 
     <section className="rhythm-section"><header><p className="eyebrow">Tu ritmo</p><h2>Señales simples, no otro dashboard</h2></header><div className="rhythm-grid">
-      <Card><HeartPulse size={20} /><span>Hábitos de hoy</span><strong>{completedHabits}/{activeHabits.length}</strong><Link to="/app/habits">Registrar</Link></Card>
-      <Card><ListTodo size={20} /><span>Tareas completas</span><strong>{todayTasks.filter((task) => task.status === "completed").length}/{todayTasks.length}</strong><Link to="/app/today">Ver día</Link></Card>
-      <Card><Landmark size={20} /><span>Ahorro registrado</span><strong>{money(finance.savingsContributions)}</strong><Link to="/app/finance">Abrir finanzas</Link></Card>
+      <Card><HeartPulse size={21} /><span>Hábitos de hoy</span>{activeHabits.length ? <strong>{completedHabits} de {activeHabits.length} hábitos</strong> : <small className="rhythm-empty">Aún no tienes hábitos</small>}<Link to="/app/habits">{activeHabits.length ? "Registrar" : "Crear hábito"}</Link></Card>
+      <Card><ListTodo size={21} /><span>Tareas de hoy</span>{todayTasks.length ? <strong>{completedTasks} de {todayTasks.length} tareas</strong> : <small className="rhythm-empty">Todavía no hay tareas</small>}<Link to="/app/today">{todayTasks.length ? "Ver día" : "Agregar tarea"}</Link></Card>
+      <Card><Landmark size={21} /><span>Ahorro registrado</span>{finance.savingsContributions > 0 ? <strong>{money(finance.savingsContributions)} ahorrados</strong> : <small className="rhythm-empty">Aún no registras ahorros</small>}<Link to="/app/finance">{finance.savingsContributions > 0 ? "Abrir finanzas" : "Ir a finanzas"}</Link></Card>
     </div></section>
 
-    <Card className="dashboard-insight"><span><Sparkles size={21} /></span><div><p className="eyebrow">Lo que estamos notando</p><h2>{insight.summary}</h2><p>{insight.suggestion}</p></div><Link className="button button--secondary" to="/app/planning/weekly">Ajustar mi semana</Link></Card>
+    <Card className="dashboard-insight"><span><Sparkles size={21} /></span><div><p className="eyebrow">Lo que estamos notando</p><h2>{emptyInsight ? "Todavía estamos conociendo tu ritmo." : insight.summary}</h2><p>{emptyInsight ? "Con algunos registros más, podremos mostrarte tus avances." : insight.suggestion}</p></div><Link className="button button--secondary" to="/app/planning/weekly">Ajustar mi semana</Link></Card>
 
     <Card className="dashboard-review-story"><CalendarDays size={24} /><div><p className="eyebrow">Cierra el ciclo</p><h2>Weekly Reset</h2><p>Celebra, observa, suelta, ajusta y elige la próxima semana en un solo flujo.</p></div><Link className="button button--primary" to="/app/planning/weekly?reset=1">Iniciar Weekly Reset</Link></Card>
 

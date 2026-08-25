@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useState, useSyncExternalStore, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { BookOpen, HeartPulse, Landmark, Plus, Smile } from "lucide-react";
 import { usePlanner } from "@/src/hooks/usePlanner";
@@ -14,6 +14,10 @@ import { accessLabel } from "@/src/domain/access";
 import { ForgotPasswordPage, LandingPage, LoginPage, SignupPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
 import { FeedHubPage } from "@/src/features/feed/FeedHubPage";
 import { AdminPage } from "@/src/features/admin/AdminPage";
+import { I18nProvider } from "@/src/i18n/I18nProvider";
+import { GuidedTutorial } from "@/src/features/tutorial/GuidedTutorial";
+import { useUiStore } from "@/src/stores/useUiStore";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -31,19 +35,30 @@ const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
 const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
 
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // The BrowserRouter and IndexedDB planner are client-only.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+  return mounted;
+}
+
 function ProtectedPlannerApp() {
   const account = useAccount();
   const navigate = useNavigate();
   const planner = usePlanner();
-  const mounted = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
+  const mounted = useMounted();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickTask, setQuickTask] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMode, setHelpMode] = useState<"overwhelmed" | "start" | "energy" | null>(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const tutorialReplayNonce = useUiStore((state) => state.tutorialReplayNonce);
+  const replayTutorial = useUiStore((state) => state.replayTutorial);
+  const { t } = useI18n();
 
   if (account.loading) {
     return <main className="brand-loading" aria-label="Comprobando tu acceso"><BrandMark /><span className="brand-loading__ring" /><p>Preparando tu espacio…</p></main>;
@@ -101,7 +116,7 @@ function ProtectedPlannerApp() {
         isSuperadmin={account.access.role === "superadmin"}
         onQuickAdd={() => setQuickAddOpen(true)}
         onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }}
-        onSignOut={async () => { await account.signOut(); navigate("/"); }}
+        onSignOut={() => setLogoutOpen(true)}
       >
         {planner.error && <div className="inline-message inline-message--error" role="alert">{planner.error}</div>}
         <Suspense fallback={<div className="route-loading" role="status">Abriendo tu espacio…</div>}>
@@ -124,7 +139,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
-            <Route path="/app/settings" element={<SettingsPage planner={planner} />} />
+            <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} />} />
             <Route path="/app/help" element={<HelpPage planner={planner} />} />
             <Route path="/app/learn" element={<LearnPage planner={planner} />} />
             <Route path="/app/feed" element={<FeedHubPage access={account.access} />} />
@@ -134,6 +149,7 @@ function ProtectedPlannerApp() {
           </Routes>
         </Suspense>
       </AppShell>
+      <GuidedTutorial completed={Boolean(account.preferences?.tutorialCompleted)} loading={account.preferencesLoading} replayNonce={tutorialReplayNonce} onComplete={() => account.updatePreferences({ tutorialCompleted: true })} />
       <Modal open={quickAddOpen} title="Capturar una tarea" description="Guárdala ahora. Puedes decidir la fecha y la meta más adelante." onClose={() => setQuickAddOpen(false)}>
         <form className="quick-task-form" onSubmit={addQuickTask}>
           <label className="form-field"><span>Tarea</span><input value={quickTask} onChange={(event) => setQuickTask(event.target.value)} placeholder="Ej. Pedir cita de control" /></label>
@@ -150,18 +166,17 @@ function ProtectedPlannerApp() {
       <Modal open={helpOpen} title="¿Qué necesitas ahora?" description="Elige lo que se parece más a este momento. Te mostraremos un paso breve." onClose={() => setHelpOpen(false)}>
         {!helpMode ? <div className="unblock-options"><Button variant="secondary" onClick={() => setHelpMode("overwhelmed")}>Estoy abrumada</Button><Button variant="secondary" onClick={() => setHelpMode("start")}>No sé empezar</Button><Button variant="secondary" onClick={() => setHelpMode("energy")}>Tengo poca energía</Button><Link className="button button--ghost" to="/app/help" onClick={() => setHelpOpen(false)}>Ver todas las herramientas</Link></div> : <div className="minimum-mode"><p className="eyebrow">{helpMode === "energy" ? "Modo mínimo" : "Desbloquearme"}</p><h2>{helpMode === "overwhelmed" ? "Reduce el campo de visión" : helpMode === "start" ? "Haz visible el primer movimiento" : "Hoy también cuenta en pequeño"}</h2><ol><li>{helpMode === "overwhelmed" ? "Elige solo una de tus tres prioridades." : helpMode === "start" ? "Abre la tarea y escribe el primer verbo." : "Elige una tarea de menos de 10 minutos."}</li><li>Pon un temporizador de 10 minutos.</li><li>Al terminar, decide con calma si continúas o paras.</li></ol><Link className="button button--primary" to="/app/today" onClick={() => setHelpOpen(false)}>Ver mi próximo paso</Link></div>}
       </Modal>
+      <Modal open={logoutOpen} title={t("¿Quieres cerrar tu sesión?")} description={t("Tu información seguirá guardada para cuando vuelvas.")} onClose={() => { if (!loggingOut) setLogoutOpen(false); }}>
+        <div className="logout-confirm"><div className="modal__actions"><Button variant="ghost" disabled={loggingOut} onClick={() => setLogoutOpen(false)}>{t("Cancelar")}</Button><Button variant="danger" disabled={loggingOut} onClick={async () => { setLoggingOut(true); await account.signOut(); navigate("/login", { replace: true }); navigate("/login"); setLoggingOut(false); }}>{loggingOut ? t("Un momento…") : t("Cerrar sesión")}</Button></div></div>
+      </Modal>
     </>
   );
 }
 
 export default function PlannerApp() {
-  const mounted = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
+  const mounted = useMounted();
   if (!mounted) return <main className="brand-loading" aria-label="Cargando My Best Version"><BrandMark /><span className="brand-loading__ring" /><p>Preparando una vida más tuya…</p></main>;
-  return <BrowserRouter><AccountProvider><Routes>
+  return <I18nProvider><BrowserRouter><AccountProvider><Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/trial" element={<TrialPage />} />
     <Route path="/signup" element={<SignupPage />} />
@@ -170,5 +185,5 @@ export default function PlannerApp() {
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/upgrade" element={<UpgradePage />} />
     <Route path="*" element={<ProtectedPlannerApp />} />
-  </Routes></AccountProvider></BrowserRouter>;
+  </Routes></AccountProvider></BrowserRouter></I18nProvider>;
 }

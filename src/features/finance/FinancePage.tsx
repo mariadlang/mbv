@@ -12,6 +12,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { transactionFormSchema } from "@/src/lib/schemas";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 type FinanceTab = "summary" | "budget" | "movements" | "accounts" | "purchases" | "funds" | "debts" | "recurring" | "review";
 
@@ -29,6 +30,7 @@ const transactionLabels: Record<TransactionType, string> = {
 };
 
 export function FinancePage({ planner }: { planner: PlannerController }) {
+  const { locale } = useI18n();
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
   const currentMonth = today.slice(0, 7);
@@ -51,7 +53,7 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
 
   const money = (value: number) => privacy
     ? "••••••"
-    : new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+    : new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
 
   const submitMovement = async (event: FormEvent) => {
     event.preventDefault();

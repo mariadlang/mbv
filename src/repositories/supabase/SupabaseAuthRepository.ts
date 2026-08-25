@@ -1,7 +1,7 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import type { UserAccess } from "@/src/domain/access";
 import { hasSupabaseConfig, publicConfig } from "@/src/lib/publicConfig";
-import type { AccountUser, AuthRepository } from "@/src/repositories/interfaces/AuthRepository";
+import type { AccountPreferences, AccountUser, AuthRepository } from "@/src/repositories/interfaces/AuthRepository";
 
 function toAccountUser(user: User | null): AccountUser | null {
   if (!user?.email) return null;
@@ -101,5 +101,24 @@ export class SupabaseAuthRepository implements AuthRepository {
       trialEndsAt: row.trial_ends_at,
       serverNow: row.server_now,
     };
+  }
+
+  async getPreferences(): Promise<AccountPreferences> {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { data, error } = await this.client.rpc("get_account_preferences");
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { locale: row?.locale === "en" ? "en" : "es", tutorialCompleted: Boolean(row?.tutorial_completed) };
+  }
+
+  async updatePreferences(input: Partial<AccountPreferences>): Promise<AccountPreferences> {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { data, error } = await this.client.rpc("update_account_preferences", {
+      next_locale: input.locale ?? null,
+      next_tutorial_completed: input.tutorialCompleted ?? null,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { locale: row?.locale === "en" ? "en" : "es", tutorialCompleted: Boolean(row?.tutorial_completed) };
   }
 }

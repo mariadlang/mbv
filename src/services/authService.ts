@@ -16,4 +16,6 @@ export const authService = {
   signOut: () => repository.signOut(),
   requestPasswordReset: (email: string) => repository.requestPasswordReset(email),
   getOrStartAccess: () => repository.getOrStartAccess(),
+  getPreferences: () => repository.getPreferences(),
+  updatePreferences: (input: Parameters<AuthRepository["updatePreferences"]>[0]) => repository.updatePreferences(input),
 };

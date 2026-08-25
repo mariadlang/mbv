@@ -1,10 +1,16 @@
 import type { UserAccess } from "@/src/domain/access";
+import type { Language } from "@/src/stores/useUiStore";
 
 export interface AccountUser {
   id: string;
   email: string;
   displayName: string;
   emailVerified: boolean;
+}
+
+export interface AccountPreferences {
+  locale: Language;
+  tutorialCompleted: boolean;
 }
 
 export interface AuthRepository {
@@ -18,4 +24,6 @@ export interface AuthRepository {
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   getOrStartAccess(): Promise<UserAccess>;
+  getPreferences(): Promise<AccountPreferences>;
+  updatePreferences(input: Partial<AccountPreferences>): Promise<AccountPreferences>;
 }
