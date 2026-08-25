@@ -1906,3 +1906,60 @@ html[data-theme="dark"] .intention-quote blockquote { color: var(--color-text-pr
   .rhythm-grid { grid-template-columns: 1fr; }
   .rhythm-grid .card:nth-child(3) { grid-column: auto; }
 }
+
+/* Mis meses · calendario anual interactivo */
+.created-month-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.created-month-card { position: relative; min-height: 268px; overflow: hidden; padding: 0; }
+.created-month-card.is-current { border-color: color-mix(in srgb, var(--color-brand) 74%, var(--color-border)); background: color-mix(in srgb, var(--color-brand-soft) 24%, var(--color-surface-elevated)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-brand) 18%, transparent); }
+.month-card-main { display: grid; width: 100%; flex: 1; align-content: start; gap: 13px; border: 0; background: transparent; color: var(--color-text-primary); padding: 19px; text-align: left; cursor: pointer; }
+.month-card-main:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-brand) 42%, transparent); outline-offset: -4px; }
+.month-card-main > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.month-card-main > header > div { display: flex; align-items: baseline; gap: 7px; }
+.month-card-main > header span:first-child { font-size: 1.08rem; font-weight: 750; }
+.month-card-main > header strong { color: var(--color-text-secondary); font-size: .8rem; font-weight: 500; }
+.month-card-summary { display: grid; gap: 10px; }
+.month-card-summary > small { color: var(--color-text-secondary); font-size: .78rem; }
+.month-card-summary h3 { margin: 0; font-size: 1rem; line-height: 1.35; }
+.month-card-summary ol { display: grid; gap: 4px; margin: 0; padding-left: 19px; font-size: .84rem; line-height: 1.4; }
+.month-next-date { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: var(--color-text-secondary); font-size: .78rem; line-height: 1.4; }
+.month-next-date svg { flex: 0 0 auto; margin-top: 2px; color: var(--color-brand-strong); }
+.month-progress-copy { margin: -3px 0 0; color: var(--color-text-secondary); font-size: .75rem; }
+.created-month-card > footer { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: auto; border-top: 1px solid var(--color-border); padding: 10px 14px; }
+.month-card--empty { min-height: 218px; }
+.month-card-empty-action { height: 100%; align-content: stretch; }
+.month-card-empty-copy { display: grid; min-height: 126px; place-items: center; align-content: center; gap: 9px; text-align: center; }
+.month-card-empty-copy svg { color: var(--color-brand-strong); }
+.month-card-empty-copy h3 { max-width: 220px; margin: 0; font-size: .96rem; font-weight: 600; line-height: 1.45; }
+.month-card-empty-copy > span { display: inline-flex; align-items: center; gap: 4px; color: var(--color-brand-strong); font-size: .84rem; font-weight: 700; }
+.month-period-summary { display: flex; align-items: center; gap: 9px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-muted); padding: 12px 14px; color: var(--color-text-primary); }
+.month-period-summary svg { color: var(--color-brand-strong); }
+.month-area-goals { display: grid; gap: 9px; }
+.month-area-goals > div { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr); align-items: center; gap: 10px; }
+.month-area-goals label { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 8px 11px; }
+.month-area-goals input[type="checkbox"] { width: 17px; min-height: 17px; accent-color: var(--color-brand); }
+.month-entry-list { display: grid; gap: 9px; }
+.month-entry-list > div { display: grid; grid-template-columns: minmax(0, 1fr) 152px; gap: 8px; }
+.month-entry-list > .button { width: max-content; }
+.month-area-goal-list { display: grid; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+.month-area-goal-list li { display: grid; gap: 2px; border-top: 1px solid var(--color-border); padding-top: 8px; }
+.month-area-goal-list span { color: var(--color-text-secondary); font-size: .85rem; }
+.short-term-tools { justify-content: flex-end; }
+
+@media (max-width: 1280px) {
+  .created-month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 980px) {
+  .created-month-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .created-month-grid { grid-template-columns: 1fr; gap: 12px; }
+  .created-month-card, .month-card--empty { min-height: 0; }
+  .month-card-main { padding: 16px; }
+  .month-card-empty-copy { min-height: 116px; }
+  .month-area-goals > div, .month-entry-list > div { grid-template-columns: 1fr; }
+  .month-entry-list > .button { width: 100%; }
+  .my-months-header > div:last-child { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .my-months-header > div:last-child .button { align-self: end; }
+}

@@ -271,7 +271,29 @@ const en: Record<string, string> = {
   "Ver meta": "View goal",
   "Eliminar meta": "Delete goal",
   "Mis meses": "My months",
+  "Organiza tu año, mes a mes.": "Organize your year, month by month.",
   "Año": "Year",
+  "Ver mes actual": "View current month",
+  "Mes actual": "Current month",
+  "Plan guardado": "Saved plan",
+  "Borrador": "Draft",
+  "¿Qué quieres avanzar este mes?": "What do you want to move forward this month?",
+  "Añadir plan": "Add plan",
+  "Guardar plan": "Save plan",
+  "Completa solo lo que hoy tenga sentido. Podrás editarlo después.": "Complete only what makes sense today. You can edit it later.",
+  "¿Qué es lo más importante que quieres avanzar?": "What is the most important thing you want to move forward?",
+  "Enfoque principal del mes": "Main focus for the month",
+  "Prioridades principales (hasta 3)": "Main priorities (up to 3)",
+  "Vincular con una meta a 3 años (opcional)": "Link to a 3-year goal (optional)",
+  "Objetivos por área (opcionales)": "Goals by area (optional)",
+  "Acciones o tareas (opcionales)": "Actions or tasks (optional)",
+  "Acción del mes": "Monthly action",
+  "Añadir acción": "Add action",
+  "Fechas importantes (opcionales)": "Important dates (optional)",
+  "Evento, viaje, reunión, entrega o cita": "Event, trip, meeting, deadline, or appointment",
+  "Añadir fecha": "Add date",
+  "Avance de prioridades": "Priority progress",
+  "Añade al menos un enfoque, prioridad, objetivo por área, acción o fecha importante.": "Add at least a focus, priority, area goal, action, or important date.",
   "Agregar mes": "Add month",
   "Crear mes": "Create month",
   "Editar mes": "Edit month",
@@ -525,6 +547,10 @@ export function translateLegacyText(language: Language, source: string): string 
       .replace(/^Prioridad (\d+)$/, "Priority $1")
       .replace(/^Energía (\d+)\/5$/, "Energy $1/5")
       .replace(/^Paso (\d+) de (\d+)$/, "Step $1 of $2")
+      .replace(/^Planificar (.+) (\d{4})$/, "Plan $1 $2")
+      .replace(/^Editar (.+) (\d{4})$/, "Edit $1 $2")
+      .replace(/^(\d+) de (\d+) prioridades completadas$/, "$1 of $2 priorities completed")
+      .replace(/^Objetivo para (.+)$/, "Goal for $1")
       .replace(/^Relacionado con:/, "Related to:");
   }
   return `${leading}${translated}${trailing}`;
