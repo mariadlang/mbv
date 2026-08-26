@@ -26,12 +26,50 @@ export function LandingPage() {
     <section className="hero-section"><div className="hero-copy"><p className="eyebrow">PLANEACIÓN PERSONAL · HÁBITOS · BIENESTAR</p><h1>Una vida más tuya,<br /><span>un paso posible a la vez.</span></h1><p>Convierte tu visión en decisiones claras para tus próximos años, meses, semanas y días, sin llenar tu agenda de culpa.</p><div className="hero-actions"><Link className="button button--primary" to="/signup">Comenzar prueba gratis <ArrowRight size={17} /></Link><Link className="button button--secondary" to="/trial">Ver qué incluye</Link></div><small><Check size={15} /> 15 días para explorar · sin pago automático</small></div><div className="hero-visual" aria-label="Vista previa del planner"><img src="/brand-icon.svg" alt="Logo de My Best Version" /><Card><span>Tu dirección</span><strong>De la visión a una semana posible</strong><div className="hero-progress"><i /><i /><i /></div></Card><Card><span>Hoy</span><strong>3 prioridades con espacio para respirar</strong></Card></div></section>
     <section id="como-funciona" className="marketing-section"><p className="eyebrow">CÓMO FUNCIONA</p><h2>Tu visión se convierte en un camino que sí puedes recorrer.</h2><div className="marketing-grid">{[["01","Mira hacia adelante","Define tu Dream Life y tus horizontes de 3 años."],["02","Baja a lo concreto","Conecta año, trimestre, mes, semana y día."],["03","Observa con calma","Reconoce hábitos, energía y progreso sin castigos."]].map(([n,title,text]) => <Card key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p></Card>)}</div></section>
     <section className="marketing-cta"><Heart size={24} /><h2>Empieza con lo que hoy tiene sentido.</h2><p>Tu prueba comienza después de verificar tu correo y entrar por primera vez.</p><Link className="button button--primary" to="/signup">Crear mi cuenta</Link></section>
-    <footer className="marketing-footer"><BrandMark compact /><span>© 2026 My Best Version</span><Link to="/login">Acceso</Link></footer>
+    <footer className="marketing-footer"><BrandMark compact /><span>© 2026 My Best Version</span><Link to="/privacy">Privacidad</Link><Link to="/terms">Términos</Link><Link to="/login">Acceso</Link></footer>
   </main>;
 }
 
 export function TrialPage() {
   return <PublicFrame><section className="trial-page"><p className="eyebrow">PRUEBA DE 15 DÍAS</p><h1>Explora el sistema completo, con dos horizontes reservados para Premium.</h1><p className="lead">No necesitas registrar una tarjeta. La prueba empieza con tu primer acceso después de verificar el correo.</p><div className="trial-comparison"><Card><span>Durante tu prueba</span><h2>Base completa</h2><ul>{["Visión y objetivos","Planificación hasta 3 meses","Plan mensual, semanal y diario","Hábitos, finanzas, fitness y diario","Progreso, rutinas, proyectos y retos"].map((item) => <li key={item}><Check size={16} />{item}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>Con Premium</span><h2>Horizonte ampliado</h2><ul><li><Check size={16} /> Todo lo incluido en la prueba</li><li><Check size={16} /> Planificación a 5 años</li><li><Check size={16} /> Feed Hub</li></ul></Card></div><Link className="button button--primary" to="/signup">Comenzar mi prueba</Link></section></PublicFrame>;
+}
+
+export function PrivacyPage() {
+  return <PublicFrame><article className="legal-page">
+    <p className="eyebrow">INFORMACIÓN LEGAL</p>
+    <h1>Política de Privacidad</h1>
+    <p className="legal-page__updated">Última actualización: 26 de agosto de 2026</p>
+    <p className="lead">En My Best Version tratamos tu información con respeto y usamos únicamente los datos necesarios para darte acceso a tu planner.</p>
+
+    <section><h2>1. Información que recopilamos</h2><p>Al crear una cuenta podemos recibir tu nombre, correo electrónico y, si eliges iniciar sesión con Google, tu nombre, dirección de correo y foto de perfil. Google no nos entrega tu contraseña.</p></section>
+    <section><h2>2. Datos de tu planner</h2><p>Tu visión, metas, hábitos, tareas, journal, finanzas, registros de bienestar, fotos y demás contenido personal se guardan localmente en el navegador de tu dispositivo. No presentamos información de demostración como si fuera tuya y no conectamos cuentas bancarias.</p></section>
+    <section><h2>3. Cómo usamos la información</h2><p>Usamos la información de cuenta para autenticarte, proteger el acceso, mantener tus preferencias y habilitar las funciones correspondientes a tu plan. No vendemos tus datos personales ni los utilizamos para publicidad personalizada.</p></section>
+    <section><h2>4. Inicio de sesión con Google</h2><p>El acceso con Google solicita únicamente los permisos básicos de identidad necesarios para iniciar sesión: perfil, nombre y correo electrónico. No solicitamos acceso a Google Drive, Contactos, Calendario ni Gmail.</p><p>El uso y la transferencia de información recibida de las APIs de Google cumplen la Política de Datos del Usuario de los Servicios API de Google, incluidos sus requisitos de Uso Limitado.</p></section>
+    <section><h2>5. Proveedores</h2><p>Utilizamos Supabase para la autenticación y Vercel para publicar la aplicación. Estos proveedores procesan información técnica necesaria para prestar el servicio de acuerdo con sus propias obligaciones de seguridad y privacidad.</p></section>
+    <section><h2>6. Conservación y control</h2><p>Los datos locales permanecen en el dispositivo hasta que los elimines desde la aplicación, borres los datos del navegador o desinstales el navegador. Puedes exportar un respaldo para trasladarlos a otro dispositivo o dominio. Cerrar sesión no elimina la información guardada.</p></section>
+    <section><h2>7. Seguridad</h2><p>Aplicamos medidas razonables para proteger el acceso a la cuenta. Ningún sistema es completamente infalible, por lo que te recomendamos mantener protegido tu dispositivo y no compartir tus credenciales.</p></section>
+    <section><h2>8. Tus derechos y contacto</h2><p>Puedes solicitar acceso, corrección o eliminación de la información asociada a tu cuenta mediante el correo de asistencia indicado en la pantalla de consentimiento de Google. También puedes gestionar y eliminar los datos locales desde Ajustes y datos dentro de la aplicación.</p></section>
+    <section><h2>9. Cambios a esta política</h2><p>Si esta política cambia de forma relevante, actualizaremos la fecha indicada al inicio y comunicaremos el cambio dentro de la aplicación cuando corresponda.</p></section>
+  </article></PublicFrame>;
+}
+
+export function TermsPage() {
+  return <PublicFrame><article className="legal-page">
+    <p className="eyebrow">INFORMACIÓN LEGAL</p>
+    <h1>Términos del Servicio</h1>
+    <p className="legal-page__updated">Última actualización: 26 de agosto de 2026</p>
+    <p className="lead">Estos términos explican las condiciones para utilizar My Best Version. Al crear una cuenta o usar la aplicación, aceptas estas condiciones.</p>
+
+    <section><h2>1. Propósito del servicio</h2><p>My Best Version es una herramienta de organización personal para conectar visión, metas, planificación, hábitos, bienestar, finanzas y reflexión. La aplicación ofrece apoyo para organizar información, pero no sustituye asesoría médica, psicológica, nutricional, financiera o legal.</p></section>
+    <section><h2>2. Tu cuenta</h2><p>Debes proporcionar información correcta, proteger tus credenciales y notificarnos si sospechas de un acceso no autorizado. Eres responsable del uso realizado desde tu cuenta y dispositivo.</p></section>
+    <section><h2>3. Tus datos y respaldos</h2><p>El contenido detallado del planner se guarda localmente en tu navegador. Eres responsable de exportar respaldos cuando quieras conservar o trasladar esa información. Cambiar de dispositivo, navegador o dominio puede requerir importar un respaldo.</p></section>
+    <section><h2>4. Prueba y funciones Premium</h2><p>La aplicación puede ofrecer un periodo de prueba y funciones reservadas para planes de pago. Antes de cualquier compra se mostrarán las condiciones, el precio y el proveedor de pago aplicable. No se realiza un cobro automático sin una acción explícita.</p></section>
+    <section><h2>5. Uso permitido</h2><p>No debes usar la aplicación para vulnerar cuentas, interferir con el servicio, distribuir software malicioso, infringir derechos de terceros ni realizar actividades ilegales.</p></section>
+    <section><h2>6. Bienestar y emergencias</h2><p>Las sugerencias de bienestar son informativas. Si atraviesas una emergencia o situación de riesgo, contacta de inmediato los servicios de emergencia o una línea profesional de apoyo disponible en tu país.</p></section>
+    <section><h2>7. Disponibilidad</h2><p>Trabajamos para ofrecer una experiencia estable y segura, pero pueden existir interrupciones por mantenimiento, actualizaciones o causas fuera de nuestro control.</p></section>
+    <section><h2>8. Suspensión o cierre</h2><p>Podemos limitar el acceso cuando exista uso abusivo, fraude, riesgo de seguridad o incumplimiento de estos términos. La información local permanecerá bajo el control del dispositivo salvo que la elimines.</p></section>
+    <section><h2>9. Cambios</h2><p>Podemos actualizar estos términos para reflejar mejoras del producto o requisitos legales. Cuando el cambio sea relevante, lo comunicaremos dentro de la aplicación.</p></section>
+  </article></PublicFrame>;
 }
 
 export function LoginPage() { return <AuthForm mode="login" />; }
@@ -101,4 +139,4 @@ export function UpgradePage() {
   return <PublicFrame><section className="upgrade-page"><p className="eyebrow">MY BEST VERSION PREMIUM</p><h1>Amplía tu horizonte cuando estés lista.</h1><p>Premium desbloquea el plan a cinco años y Feed Hub, además de conservar todo tu sistema personal.</p><Card><Sparkles size={28} /><h2>Premium</h2><ul><li><Check size={17} /> Planificación completa, incluido el horizonte a 5 años</li><li><Check size={17} /> Feed Hub</li><li><Check size={17} /> Todo tu planner actual</li></ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.track("upgrade_opened")}>Continuar en Mercado Pago <ArrowRight size={16} /></a><small>El pago ocurre en Mercado Pago. Volver aquí no activa Premium automáticamente; la activación debe confirmarse de forma segura.</small></Card></section></PublicFrame>;
 }
 
-export function PublicFrame({ children }: { children: React.ReactNode }) { return <main className="public-frame"><header><Link to="/"><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">Prueba</Link><Link to="/login">Iniciar sesión</Link></nav></header>{children}</main>; }
+export function PublicFrame({ children }: { children: React.ReactNode }) { return <main className="public-frame"><header><Link to="/"><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">Prueba</Link><Link to="/privacy">Privacidad</Link><Link to="/terms">Términos</Link><Link to="/login">Iniciar sesión</Link></nav></header>{children}</main>; }

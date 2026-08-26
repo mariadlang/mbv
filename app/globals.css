@@ -412,6 +412,21 @@
 .journal-entry img { width: min(100%, 480px); max-height: 280px; object-fit: cover; border-radius: var(--radius-md); }
 .privacy-note { color: var(--color-text-secondary); font-size: var(--text-xs); text-align: center; }
 
+.legal-page { width: min(780px, calc(100% - 32px)); margin: 48px auto 80px; padding: 40px; border: 1px solid var(--border); border-radius: 24px; background: var(--surface, #fff); box-shadow: var(--shadow-sm); }
+.legal-page > h1 { margin: 8px 0 6px; font-size: clamp(2rem, 5vw, 3.15rem); line-height: 1.12; }
+.legal-page__updated { margin: 0 0 28px; color: var(--color-text-secondary); font-size: var(--text-sm); }
+.legal-page .lead { margin-bottom: 34px; color: var(--color-text-secondary); font-size: 1.05rem; line-height: 1.7; }
+.legal-page section { padding: 22px 0; border-top: 1px solid var(--border); }
+.legal-page section h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.legal-page section p { margin: 0; color: var(--color-text-secondary); line-height: 1.7; }
+.legal-page section p + p { margin-top: 12px; }
+
+@media (max-width: 640px) {
+  .legal-page { width: min(100% - 24px, 780px); margin: 24px auto 48px; padding: 24px 20px; border-radius: 18px; }
+  .public-frame > header nav a[href="/privacy"],
+  .public-frame > header nav a[href="/terms"] { display: none; }
+}
+
 .more-page { max-width: 1000px; margin-inline: auto; }
 .more-group { display: grid; gap: 10px; }
 .more-group > h2 { color: var(--color-text-secondary); font-family: var(--font-nunito-sans), sans-serif; font-size: var(--text-xs); letter-spacing: .16em; }

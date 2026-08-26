@@ -11,7 +11,7 @@ import { Onboarding } from "@/src/features/onboarding/Onboarding";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
 import { accessLabel } from "@/src/domain/access";
-import { ForgotPasswordPage, LandingPage, LoginPage, SignupPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
+import { ForgotPasswordPage, LandingPage, LoginPage, PrivacyPage, SignupPage, TermsPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
 import { FeedHubPage } from "@/src/features/feed/FeedHubPage";
 import { AdminPage } from "@/src/features/admin/AdminPage";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
@@ -179,6 +179,8 @@ export default function PlannerApp() {
   return <I18nProvider><BrowserRouter><AccountProvider><Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/trial" element={<TrialPage />} />
+    <Route path="/privacy" element={<PrivacyPage />} />
+    <Route path="/terms" element={<TermsPage />} />
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />
