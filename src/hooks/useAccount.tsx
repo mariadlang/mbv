@@ -15,7 +15,7 @@ interface AccountContextValue {
   preferencesLoading: boolean;
   error: string | null;
   refreshAccess(): Promise<void>;
-  signUp(input: { name: string; email: string; password: string }): Promise<{ emailVerificationRequired: boolean }>;
+  signUp(input: { name: string; email: string; password: string; legalAcceptedAt: string; legalVersion: string }): Promise<{ emailVerificationRequired: boolean }>;
   signIn(input: { email: string; password: string }): Promise<void>;
   signInWithGoogle(): Promise<void>;
   signInWithMagicLink(email: string): Promise<void>;

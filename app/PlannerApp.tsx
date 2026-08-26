@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
+import NextLink from "next/link";
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { BookOpen, HeartPulse, Landmark, Plus, Smile } from "lucide-react";
 import { usePlanner } from "@/src/hooks/usePlanner";
@@ -11,7 +12,7 @@ import { Onboarding } from "@/src/features/onboarding/Onboarding";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
 import { accessLabel } from "@/src/domain/access";
-import { ForgotPasswordPage, LandingPage, LoginPage, PrivacyPage, SignupPage, TermsPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
+import { CookiesPage, DataDeletionPage, ForgotPasswordPage, LandingPage, LegalCenterPage, LegalNoticesPage, LoginPage, PrivacyPage, SignupPage, TermsPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
 import { FeedHubPage } from "@/src/features/feed/FeedHubPage";
 import { AdminPage } from "@/src/features/admin/AdminPage";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
@@ -175,12 +176,22 @@ function ProtectedPlannerApp() {
 
 export default function PlannerApp() {
   const mounted = useMounted();
-  if (!mounted) return <main className="brand-loading" aria-label="Cargando My Best Version"><BrandMark /><span className="brand-loading__ring" /><p>Preparando una vida más tuya…</p></main>;
+  if (!mounted) return <main className="brand-loading" aria-label="My Best Version">
+    <BrandMark />
+    <h1>My Best Version</h1>
+    <p>Aplicación de planificación personal para convertir tu visión de vida en metas, planes, hábitos y acciones sostenibles.</p>
+    <nav className="brand-loading__legal" aria-label="Información pública"><NextLink href="/privacy">Política de Privacidad</NextLink><NextLink href="/terms">Términos del Servicio</NextLink><NextLink href="/legal">Centro Legal</NextLink></nav>
+    <span className="brand-loading__ring" aria-hidden="true" />
+  </main>;
   return <I18nProvider><BrowserRouter><AccountProvider><Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/trial" element={<TrialPage />} />
     <Route path="/privacy" element={<PrivacyPage />} />
     <Route path="/terms" element={<TermsPage />} />
+    <Route path="/legal" element={<LegalCenterPage />} />
+    <Route path="/cookies" element={<CookiesPage />} />
+    <Route path="/data-deletion" element={<DataDeletionPage />} />
+    <Route path="/legal-notices" element={<LegalNoticesPage />} />
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />

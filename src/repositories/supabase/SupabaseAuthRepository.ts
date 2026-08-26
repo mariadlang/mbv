@@ -37,12 +37,12 @@ export class SupabaseAuthRepository implements AuthRepository {
     return () => data.subscription.unsubscribe();
   }
 
-  async signUp(input: { name: string; email: string; password: string }) {
+  async signUp(input: { name: string; email: string; password: string; legalAcceptedAt: string; legalVersion: string }) {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { data, error } = await this.client.auth.signUp({
       email: input.email,
       password: input.password,
-      options: { data: { full_name: input.name }, emailRedirectTo: callbackUrl("/verify-email") },
+      options: { data: { full_name: input.name, legal_accepted_at: input.legalAcceptedAt, legal_version: input.legalVersion }, emailRedirectTo: callbackUrl("/verify-email") },
     });
     if (error) throw error;
     return { emailVerificationRequired: !data.session };
@@ -67,7 +67,7 @@ export class SupabaseAuthRepository implements AuthRepository {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { error } = await this.client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: callbackUrl("/app/dashboard"), shouldCreateUser: true },
+      options: { emailRedirectTo: callbackUrl("/app/dashboard"), shouldCreateUser: false },
     });
     if (error) throw error;
   }

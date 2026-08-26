@@ -234,6 +234,20 @@ test("help routes expose the configured support resources", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Línea Púrpura" })).toBeVisible();
 });
 
+test("public legal resources and signup consent are available", async ({ page }) => {
+  await page.goto("/legal");
+  await expect(page.getByRole("heading", { name: "Centro Legal" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Política de Privacidad" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Términos del Servicio" })).toBeVisible();
+
+  await page.goto("/cookies");
+  await expect(page.getByRole("heading", { name: "Cookies y almacenamiento local" })).toBeVisible();
+  await page.goto("/data-deletion");
+  await expect(page.getByRole("heading", { name: "Control y eliminación de datos" })).toBeVisible();
+  await page.goto("/legal-notices");
+  await expect(page.getByRole("heading", { name: "Uso responsable de la aplicación" })).toBeVisible();
+});
+
 test("creates a gentle challenge and records today", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app/challenges");

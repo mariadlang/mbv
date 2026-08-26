@@ -17,7 +17,7 @@ export interface AuthRepository {
   isConfigured(): boolean;
   getCurrentUser(): Promise<AccountUser | null>;
   onAuthChange(callback: (user: AccountUser | null) => void): () => void;
-  signUp(input: { name: string; email: string; password: string }): Promise<{ emailVerificationRequired: boolean }>;
+  signUp(input: { name: string; email: string; password: string; legalAcceptedAt: string; legalVersion: string }): Promise<{ emailVerificationRequired: boolean }>;
   signIn(input: { email: string; password: string }): Promise<void>;
   signInWithGoogle(): Promise<void>;
   signInWithMagicLink(email: string): Promise<void>;
