@@ -11,6 +11,7 @@ import type {
   ChallengeFormInput,
   DebtFormInput,
   EventFormInput,
+  FitnessSettingsFormInput,
   FinancialAccountFormInput,
   GoalFormInput,
   HabitFormInput,
@@ -24,8 +25,9 @@ import type {
   TaskFormInput,
   TransactionFormInput,
   WorkoutFormInput,
+  WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
-import { cascadePlanFormSchema, parseBackupEnvelope, plannerSnapshotSchema } from "@/src/lib/schemas";
+import { cascadePlanFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository } from "@/src/repositories/local/IndexedDbPlannerRepository";
 import { createSnapshotWriteQueue } from "@/src/services/snapshotWriteQueue";
@@ -443,26 +445,28 @@ export const plannerService = {
     baseCurrency?: "COP" | "USD" | "EUR" | "MXN";
     financePrivacy?: boolean;
     fitnessEnabled?: boolean;
+    fitnessProfile?: FitnessSettingsFormInput;
     usePurpose?: string;
     avatarDataUrl?: string;
     activationCompleted?: boolean;
   }): Promise<PlannerSnapshot> {
+    const parsedInput = input.fitnessProfile ? { ...input, fitnessProfile: fitnessSettingsFormSchema.parse(input.fitnessProfile) } : input;
     return updateSnapshot((snapshot) => {
       const now = nowIso();
       const financialProfile = snapshot.financialProfiles[0];
       return {
         ...snapshot,
-        profile: snapshot.profile ? { ...snapshot.profile, ...input, updatedAt: now } : null,
+        profile: snapshot.profile ? { ...snapshot.profile, ...parsedInput, updatedAt: now } : null,
         financialProfiles: financialProfile
           ? snapshot.financialProfiles.map((item, index) => index === 0 ? {
               ...item,
-              baseCurrency: input.baseCurrency ?? item.baseCurrency,
-              privacyMode: input.financePrivacy ?? item.privacyMode,
+              baseCurrency: parsedInput.baseCurrency ?? item.baseCurrency,
+              privacyMode: parsedInput.financePrivacy ?? item.privacyMode,
               updatedAt: now,
             } : item)
           : [{
-              id: id(), baseCurrency: input.baseCurrency ?? "COP",
-              privacyMode: input.financePrivacy ?? false, monthStartsOn: 1,
+              id: id(), baseCurrency: parsedInput.baseCurrency ?? "COP",
+              privacyMode: parsedInput.financePrivacy ?? false, monthStartsOn: 1,
               status: "active", createdAt: now, updatedAt: now,
             }],
       };
@@ -853,21 +857,129 @@ export const plannerService = {
     });
   },
 
-  saveMeal(input: MealFormInput): Promise<PlannerSnapshot> {
+  saveWorkoutPlan(input: WorkoutPlanFormInput): Promise<PlannerSnapshot> {
+    const parsed = workoutPlanFormSchema.parse(input);
     return updateSnapshot((snapshot) => {
       const now = nowIso();
-      const existing = snapshot.nutritionLogs.find((item) => item.date === input.date);
+      const date = new Date(`${parsed.date}T12:00:00`);
+      const first = new Date(date.getFullYear(), 0, 1);
+      const week = Math.ceil((((date.getTime() - first.getTime()) / 86400000) + first.getDay() + 1) / 7);
+      const weekKey = `${date.getFullYear()}-W${String(week).padStart(2, "0")}`;
+      const existing = snapshot.workoutLogs.find((item) => item.date === parsed.date);
+      const exercises = parsed.exercises.map((exercise) => {
+        const setDetails = exercise.sets.map((set, index) => ({
+          id: set.id ?? id(), setNumber: index + 1, reps: set.reps, weight: set.weight,
+        }));
+        return {
+          id: exercise.id ?? id(), name: exercise.name, sets: setDetails.length,
+          reps: setDetails[0]?.reps ?? 0, weight: setDetails[0]?.weight ?? 0, setDetails,
+        };
+      });
+      const plan = {
+        id: existing?.id ?? id(), date: parsed.date, weekKey, goal: existing?.goal,
+        name: parsed.name, durationMinutes: parsed.durationMinutes, exercises,
+        completedSessions: existing?.completedSessions ?? [], createdAt: existing?.createdAt ?? now, updatedAt: now,
+      };
+      return {
+        ...snapshot,
+        workoutLogs: existing
+          ? snapshot.workoutLogs.map((item) => item.id === existing.id ? plan : item)
+          : [plan, ...snapshot.workoutLogs],
+      };
+    });
+  },
+
+  completeWorkout(date: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const existing = snapshot.workoutLogs.find((item) => item.date === date);
+      if (!existing?.exercises.length) return snapshot;
+      const now = nowIso();
+      const exercises = existing.exercises.map((exercise) => ({
+        id: id(), name: exercise.name,
+        sets: (exercise.setDetails?.length ? exercise.setDetails : Array.from({ length: exercise.sets }, (_, index) => ({
+          id: id(), setNumber: index + 1, reps: exercise.reps, weight: exercise.weight,
+        }))).map((set, index) => ({ ...set, id: id(), setNumber: index + 1 })),
+      }));
+      const session = {
+        id: id(), date, workoutName: existing.name ?? existing.goal ?? "Entrenamiento",
+        durationMinutes: existing.durationMinutes, exercises, completedAt: now,
+      };
+      return {
+        ...snapshot,
+        workoutLogs: snapshot.workoutLogs.map((item) => item.id === existing.id
+          ? { ...item, completedSessions: [...(item.completedSessions ?? []), session], updatedAt: now }
+          : item),
+      };
+    });
+  },
+
+  duplicateWorkout(sourceDate: string, targetDate: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const source = snapshot.workoutLogs.find((item) => item.date === sourceDate);
+      if (!source || sourceDate === targetDate) return snapshot;
+      const now = nowIso();
+      const date = new Date(`${targetDate}T12:00:00`);
+      const first = new Date(date.getFullYear(), 0, 1);
+      const week = Math.ceil((((date.getTime() - first.getTime()) / 86400000) + first.getDay() + 1) / 7);
+      const target = snapshot.workoutLogs.find((item) => item.date === targetDate);
+      const copy = {
+        ...source, id: target?.id ?? id(), date: targetDate,
+        weekKey: `${date.getFullYear()}-W${String(week).padStart(2, "0")}`,
+        exercises: source.exercises.map((exercise) => ({ ...exercise, id: id(), setDetails: exercise.setDetails?.map((set) => ({ ...set, id: id() })) })),
+        completedSessions: target?.completedSessions ?? [], createdAt: target?.createdAt ?? now, updatedAt: now,
+      };
+      return {
+        ...snapshot,
+        workoutLogs: target
+          ? snapshot.workoutLogs.map((item) => item.id === target.id ? copy : item)
+          : [copy, ...snapshot.workoutLogs],
+      };
+    });
+  },
+
+  saveMeal(input: MealFormInput): Promise<PlannerSnapshot> {
+    const parsed = mealFormSchema.parse(input);
+    return updateSnapshot((snapshot) => {
+      const now = nowIso();
+      const existing = snapshot.nutritionLogs.find((item) => item.date === parsed.date);
       const meal = {
-        id: id(), name: input.name.trim(), calories: input.calories,
-        protein: input.protein, carbs: input.carbs, fat: input.fat,
+        id: parsed.mealId ?? id(), name: parsed.name.trim(), calories: parsed.calories,
+        protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat,
+        notes: parsed.notes || undefined, completed: parsed.completed ?? true,
       };
       return {
         ...snapshot,
         nutritionLogs: existing
           ? snapshot.nutritionLogs.map((item) => item.id === existing.id
-              ? { ...item, meals: [...item.meals, meal], updatedAt: now }
+              ? { ...item, meals: parsed.mealId ? item.meals.map((current) => current.id === parsed.mealId ? meal : current) : [...item.meals, meal], updatedAt: now }
               : item)
-          : [{ id: id(), date: input.date, meals: [meal], createdAt: now, updatedAt: now }, ...snapshot.nutritionLogs],
+          : [{ id: id(), date: parsed.date, meals: [meal], createdAt: now, updatedAt: now }, ...snapshot.nutritionLogs],
+      };
+    });
+  },
+
+  deleteMeal(date: string, mealId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      nutritionLogs: snapshot.nutritionLogs.map((item) => item.date === date
+        ? { ...item, meals: item.meals.filter((meal) => meal.id !== mealId), updatedAt: nowIso() }
+        : item),
+    }));
+  },
+
+  copyMeals(sourceDate: string, targetDate: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const source = snapshot.nutritionLogs.find((item) => item.date === sourceDate);
+      if (!source?.meals.length || sourceDate === targetDate) return snapshot;
+      const now = nowIso();
+      const target = snapshot.nutritionLogs.find((item) => item.date === targetDate);
+      const meals = source.meals.map((meal) => ({ ...meal, id: id() }));
+      const next = { id: target?.id ?? id(), date: targetDate, meals, createdAt: target?.createdAt ?? now, updatedAt: now };
+      return {
+        ...snapshot,
+        nutritionLogs: target
+          ? snapshot.nutritionLogs.map((item) => item.id === target.id ? next : item)
+          : [next, ...snapshot.nutritionLogs],
       };
     });
   },

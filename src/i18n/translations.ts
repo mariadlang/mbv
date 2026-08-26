@@ -472,7 +472,7 @@ const en: Record<string, string> = {
   "Recupera tu acceso.": "Recover access to your account.",
   "Te enviaremos un enlace seguro para crear una nueva contraseña.": "We'll send you a secure link to create a new password.",
   "Amplía tu horizonte cuando estés lista.": "Expand your horizon when you're ready.",
-  "Premium desbloquea el plan a cinco años y Feed Hub, además de conservar todo tu sistema personal.": "Premium unlocks the five-year plan and Feed Hub while keeping your entire personal system.",
+  "Premium desbloquea la planificación a cinco años y conserva todo tu sistema personal.": "Premium unlocks five-year planning while keeping your entire personal system.",
   "Continuar en Mercado Pago": "Continue to Mercado Pago",
   "Se guarda de forma privada en este navegador.": "It is stored privately in this browser.",
   "Elegir foto": "Choose photo",

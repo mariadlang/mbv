@@ -152,9 +152,27 @@ export const workoutFormSchema = z.object({
   exercise: z.string().trim().min(2), sets: z.number().int().positive(), reps: z.number().int().positive(), weight: z.number().min(0),
 });
 
+export const workoutSetFormSchema = z.object({
+  id: z.string().optional(), setNumber: z.number().int().positive(), reps: z.number().int().min(0), weight: z.number().min(0),
+});
+
+export const workoutPlanFormSchema = z.object({
+  date: z.string().min(1), name: z.string().trim().min(2), durationMinutes: z.number().int().positive().optional(),
+  exercises: z.array(z.object({
+    id: z.string().optional(), name: z.string().trim().min(2), sets: z.array(workoutSetFormSchema).min(1),
+  })).min(1),
+});
+
+export const fitnessSettingsFormSchema = z.object({
+  physicalGoal: z.string().trim().min(2), dailyCalories: z.number().int().positive(),
+  mealsPerDay: z.number().int().min(1).max(10), workoutsPerWeek: z.number().int().min(1).max(7),
+  trainingDays: z.array(z.number().int().min(0).max(6)).min(1),
+});
+
 export const mealFormSchema = z.object({
-  date: z.string().min(1), name: z.string().trim().min(2), calories: z.number().min(0).optional(),
+  mealId: z.string().optional(), date: z.string().min(1), name: z.string().trim().min(2), calories: z.number().min(0).optional(),
   protein: z.number().min(0).optional(), carbs: z.number().min(0).optional(), fat: z.number().min(0).optional(),
+  notes: z.string().trim().max(500).optional(), completed: z.boolean().optional(),
 });
 
 export const bodyCheckInFormSchema = z.object({
@@ -185,7 +203,8 @@ const profileSchema = z.object({
   priorityAreaIds: z.array(z.string()), mainPriorities: z.array(z.string()).optional(),
   theme: z.enum(["light", "rose", "taupe"]).optional(),
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
-  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(), avatarDataUrl: imageDataUrlSchema.optional(), activationCompleted: z.boolean().optional(), lastBackupAt: z.string().optional(),
+  financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(),
+  fitnessProfile: fitnessSettingsFormSchema.optional(), avatarDataUrl: imageDataUrlSchema.optional(), activationCompleted: z.boolean().optional(), lastBackupAt: z.string().optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -313,12 +332,14 @@ export const backupFileSchema = z.object({
 
 const workoutLogSchema = z.object({
   id: z.string(), date: z.string(), weekKey: z.string(), goal: z.string().optional(),
-  exercises: z.array(z.object({ id: z.string(), name: z.string(), sets: z.number().int(), reps: z.number().int(), weight: z.number() })),
+  name: z.string().optional(), durationMinutes: z.number().int().positive().optional(),
+  exercises: z.array(z.object({ id: z.string(), name: z.string(), sets: z.number().int(), reps: z.number().int(), weight: z.number(), setDetails: z.array(workoutSetFormSchema.extend({ id: z.string() })).optional() })),
+  completedSessions: z.array(z.object({ id: z.string(), date: z.string(), workoutName: z.string(), durationMinutes: z.number().int().positive().optional(), exercises: z.array(z.object({ id: z.string(), name: z.string(), sets: z.array(workoutSetFormSchema.extend({ id: z.string() })) })), completedAt: timestampSchema })).optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
 const nutritionLogSchema = z.object({
-  id: z.string(), date: z.string(), meals: z.array(z.object({ id: z.string(), name: z.string(), calories: z.number().optional(), protein: z.number().optional(), carbs: z.number().optional(), fat: z.number().optional() })),
+  id: z.string(), date: z.string(), meals: z.array(z.object({ id: z.string(), name: z.string(), calories: z.number().optional(), protein: z.number().optional(), carbs: z.number().optional(), fat: z.number().optional(), notes: z.string().optional(), completed: z.boolean().optional() })),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 
@@ -487,6 +508,8 @@ export type BrainDumpFormInput = z.input<typeof brainDumpFormSchema>;
 export type RoutineFormInput = z.infer<typeof routineFormSchema>;
 export type EventFormInput = z.infer<typeof eventFormSchema>;
 export type WorkoutFormInput = z.infer<typeof workoutFormSchema>;
+export type WorkoutPlanFormInput = z.infer<typeof workoutPlanFormSchema>;
+export type FitnessSettingsFormInput = z.infer<typeof fitnessSettingsFormSchema>;
 export type MealFormInput = z.infer<typeof mealFormSchema>;
 export type BodyCheckInFormInput = z.infer<typeof bodyCheckInFormSchema>;
 export type ChallengeFormInput = z.infer<typeof challengeFormSchema>;

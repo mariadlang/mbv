@@ -13,7 +13,6 @@ import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
 import { accessLabel } from "@/src/domain/access";
 import { CookiesPage, DataDeletionPage, ForgotPasswordPage, LandingPage, LegalCenterPage, LegalNoticesPage, LoginPage, PrivacyPage, SignupPage, TermsPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
-import { FeedHubPage } from "@/src/features/feed/FeedHubPage";
 import { AdminPage } from "@/src/features/admin/AdminPage";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { GuidedTutorial } from "@/src/features/tutorial/GuidedTutorial";
@@ -34,6 +33,7 @@ const TasksPage = lazy(() => import("@/src/features/tasks/TasksPage").then((modu
 const HelpPage = lazy(() => import("@/src/features/help/HelpPage").then((module) => ({ default: module.HelpPage })));
 const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then((module) => ({ default: module.FinancePage })));
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
+const FitnessPage = lazy(() => import("@/src/features/fitness/FitnessPage").then((module) => ({ default: module.FitnessPage })));
 const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
 
 function useMounted() {
@@ -137,13 +137,14 @@ function ProtectedPlannerApp() {
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} />} />
+            <Route path="/app/life-hub/fitness" element={<FitnessPage planner={planner} />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} />} />
             <Route path="/app/help" element={<HelpPage planner={planner} />} />
             <Route path="/app/learn" element={<LearnPage planner={planner} />} />
-            <Route path="/app/feed" element={<FeedHubPage access={account.access} />} />
+            <Route path="/app/feed" element={<Navigate to="/app/life-hub/fitness" replace />} />
             <Route path="/app/more" element={<MorePage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

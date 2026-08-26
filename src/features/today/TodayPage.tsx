@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Check, ChevronRight, Circle, Clock3, HeartPulse, Plus, Save, Sparkles, SunMedium } from "lucide-react";
+import { Check, ChevronRight, Circle, Clock3, Dumbbell, HeartPulse, Plus, Save, Sparkles, SunMedium, Utensils } from "lucide-react";
 import type { MoodName, Task } from "@/src/domain/planner";
 import { isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
 import { getDailyTopThree, getNextStep } from "@/src/domain/guidanceRules";
@@ -34,6 +34,9 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
   const habits = snapshot.habits.filter((habit) => habit.status === "active" && isHabitScheduledOn(habit, today));
   const mood = snapshot.moodLogs.find((log) => log.date === todayKey);
   const nextStep = getNextStep(snapshot, todayKey);
+  const todayWorkout = snapshot.workoutLogs.find((item) => item.date === todayKey);
+  const todayNutrition = snapshot.nutritionLogs.find((item) => item.date === todayKey);
+  const todayCalories = (todayNutrition?.meals ?? []).reduce((total, meal) => total + (meal.calories ?? 0), 0);
 
   const addTask = async (event: FormEvent) => {
     event.preventDefault();
@@ -73,6 +76,8 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
 
     <aside className="today-layout__aside page-stack">
       <Card><div className="card-heading"><div><p className="eyebrow">Hábitos y bienestar</p><h2>Registro rápido</h2></div></div><div className="habit-quick-list">{(minimumMode ? habits.slice(0, 1) : habits).map((habit) => { const completed = snapshot.habitLogs.some((log) => log.habitId === habit.id && log.date === todayKey); return <button key={habit.id} className={`habit-quick ${completed ? "is-done" : ""}`} onClick={() => planner.toggleHabit(habit.id, todayKey)}><span className="habit-quick__icon"><Check size={16} /></span><span><strong>{habit.name}</strong><small>{habit.target} {habit.unit}</small></span>{completed ? <Check size={18} /> : <Circle size={18} />}</button>; })}{!habits.length && <p className="support-copy">No tienes hábitos programados hoy.</p>}</div><Link className="button button--text" to="/app/habits">Ver hábitos y bienestar</Link></Card>
+
+      {!minimumMode && <Card className="today-fitness-card"><div className="card-heading"><div><p className="eyebrow">Mi espacio · Fitness</p><h2>Alimentación y entrenamiento</h2></div><Dumbbell size={20} /></div><Link to={`/app/life-hub/fitness?section=training&date=${todayKey}`}><span><Dumbbell size={18} /></span><div><strong>{todayWorkout?.name ?? todayWorkout?.goal ?? "Entrenamiento de hoy"}</strong><small>{todayWorkout?.exercises.length ? `${todayWorkout.exercises.length} ejercicios planificados` : "Aún no hay una rutina para hoy"}</small></div><ChevronRight size={17} /></Link><Link to={`/app/life-hub/fitness?date=${todayKey}`}><span><Utensils size={18} /></span><div><strong>{todayNutrition?.meals.length ?? 0} comidas · {todayCalories} kcal</strong><small>{todayNutrition?.meals.length ? "Ver alimentación del día" : "Registrar alimentación"}</small></div><ChevronRight size={17} /></Link></Card>}
 
       <Card className="next-step-card"><Sparkles size={22} /><div><p className="eyebrow">Tu próximo paso</p><h2>{nextStep.title}</h2><p>Una acción concreta para mantener el día en movimiento.</p></div><Link className="button button--primary" to={nextStep.href}>Empezar <ChevronRight size={16} /></Link></Card>
 

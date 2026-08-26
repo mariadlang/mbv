@@ -133,11 +133,30 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await page.getByLabel("Pensamiento").fill("Aprender fotografía");
   await page.getByRole("button", { name: "Capturar" }).click();
   await expect(page.getByText("Aprender fotografía")).toBeVisible();
-  await page.getByRole("button", { name: "Fitness Hub" }).click();
-  await expect(page).toHaveURL(/\/app\/life-hub\?tab=fitness$/);
-  await page.getByRole("button", { name: "Quiero usar Fitness Hub" }).click();
-  await expect(page.getByRole("heading", { name: "Ejercicios" })).toBeVisible();
-  await expect(page.getByText("Tu progreso, semana a semana")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Fitness/ })).toBeVisible();
+  await page.getByRole("link", { name: /Fitness/ }).click();
+  await expect(page).toHaveURL(/\/app\/life-hub\/fitness/);
+  await expect(page.getByRole("heading", { name: "Alimentación" })).toBeVisible();
+  await page.getByRole("tab", { name: "Entrenamiento" }).click();
+  await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
+  const workoutDialog = page.getByRole("dialog", { name: "Añadir entrenamiento" });
+  await workoutDialog.getByLabel("Nombre del entrenamiento").fill("Glúteos");
+  await workoutDialog.getByRole("button", { name: "Añadir ejercicio" }).click();
+  await workoutDialog.getByLabel("Nombre del ejercicio").fill("Hip Thrust");
+  await workoutDialog.getByLabel("Número de series").fill("2");
+  await workoutDialog.getByLabel("Reps").nth(0).fill("12");
+  await workoutDialog.getByLabel("Peso kg").nth(0).fill("70");
+  await workoutDialog.getByLabel("Reps").nth(1).fill("8");
+  await workoutDialog.getByLabel("Peso kg").nth(1).fill("80");
+  await workoutDialog.getByRole("button", { name: "Guardar rutina" }).click();
+  await expect(page.getByRole("heading", { name: "Glúteos" })).toBeVisible();
+  await expect(page.getByText("70 kg")).toBeVisible();
+  await expect(page.getByText("80 kg")).toBeVisible();
+  await page.getByRole("button", { name: "Guardar sesión realizada" }).click();
+  await page.getByRole("button", { name: "Ver historial de pesos" }).click();
+  await expect(page.getByRole("dialog", { name: "Historial de pesos" }).getByText(/70 kg × 12.*80 kg × 8/)).toBeVisible();
+  await page.getByRole("dialog", { name: "Historial de pesos" }).getByRole("button", { name: "Cerrar", exact: true }).click();
+  await page.getByRole("link", { name: "Volver a Mi espacio" }).click();
   await page.getByRole("button", { name: "Retos" }).click();
   await expect(page).toHaveURL(/\/app\/life-hub\?tab=challenges$/);
   await expect(page.getByRole("heading", { name: "Retos", exact: true })).toBeVisible();
@@ -175,6 +194,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
     ["/app/life-hub", /^Mi espacio$/],
+    ["/app/life-hub/fitness", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
     ["/app/journal", /^Mi diario$/],

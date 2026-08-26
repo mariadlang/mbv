@@ -10,6 +10,7 @@ import type {
   ChallengeFormInput,
   DebtFormInput,
   EventFormInput,
+  FitnessSettingsFormInput,
   FinancialAccountFormInput,
   GoalFormInput,
   HabitFormInput,
@@ -23,6 +24,7 @@ import type {
   TaskFormInput,
   TransactionFormInput,
   WorkoutFormInput,
+  WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
 import { backupFileSchema } from "@/src/lib/schemas";
 
@@ -163,7 +165,7 @@ export function usePlanner() {
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
     createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
       commit((service) => service.createLifeArea(input)),
-    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
+    updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; fitnessProfile?: FitnessSettingsFormInput; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
       commit((service) => service.updateProfileSettings(input)),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
@@ -206,7 +208,12 @@ export function usePlanner() {
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
     saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
+    saveWorkoutPlan: (input: WorkoutPlanFormInput) => commit((service) => service.saveWorkoutPlan(input)),
+    completeWorkout: (date: string) => commit((service) => service.completeWorkout(date)),
+    duplicateWorkout: (sourceDate: string, targetDate: string) => commit((service) => service.duplicateWorkout(sourceDate, targetDate)),
     saveMeal: (input: MealFormInput) => commit((service) => service.saveMeal(input)),
+    deleteMeal: (date: string, mealId: string) => commit((service) => service.deleteMeal(date, mealId)),
+    copyMeals: (sourceDate: string, targetDate: string) => commit((service) => service.copyMeals(sourceDate, targetDate)),
     saveBodyCheckIn: (input: BodyCheckInFormInput) => commit((service) => service.saveBodyCheckIn(input)),
     createChallenge: (input: ChallengeFormInput) => commit((service) => service.createChallenge(input)),
     toggleChallengeDate: (challengeId: string, date: string) => commit((service) => service.toggleChallengeDate(challengeId, date)),

@@ -12,7 +12,7 @@ const desktopGroups = [
   { label: "Mi dirección", items: [["/app/dashboard", "Inicio", LayoutDashboard], ["/app/vision", "Visión y objetivos", Eye], ["/app/goals", "Metas", Target]] },
   { label: "Planeación en cascada", items: [["/app/planning", "Planificación", CalendarDays], ["/app/planning/weekly", "Plan semanal", CalendarDays], ["/app/today", "Hoy", ListTodo]] },
   { label: "Mi día a día", items: [["/app/tasks", "Tareas", Flag], ["/app/habits", "Hábitos y bienestar", HeartPulse], ["/app/finance", "Finanzas", Banknote], ["/app/life-hub", "Mi espacio", Layers3]] },
-  { label: "Reconocer", items: [["/app/progress", "Tu progreso", BarChart3], ["/app/journal", "Mi diario", Feather], ["/app/feed", "Feed Hub", Sparkles], ["/app/help", "¿Necesitas ayuda?", BookOpen], ["/app/settings", "Ajustes", Settings]] },
+  { label: "Reconocer", items: [["/app/progress", "Tu progreso", BarChart3], ["/app/journal", "Mi diario", Feather], ["/app/help", "¿Necesitas ayuda?", BookOpen], ["/app/settings", "Ajustes", Settings]] },
 ] as const;
 const mobileItems = [["/app/dashboard", "Inicio", LayoutDashboard], ["/app/planning/weekly", "Semana", CalendarDays], ["/app/today", "Hoy", Flag], ["/app/progress", "Progreso", BarChart3], ["/app/more", "Más", MoreHorizontal]] as const;
 

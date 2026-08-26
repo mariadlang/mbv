@@ -4,6 +4,7 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Bell,
+  ArrowRight,
   BookHeart,
   CalendarDays,
   Camera,
@@ -25,7 +26,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatDateKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
-import { useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
 
 type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
@@ -33,7 +34,6 @@ type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "even
 const hubTabs: Array<{ id: HubTab; label: string }> = [
   { id: "lists", label: "Listas" },
   { id: "routines", label: "Rutinas" },
-  { id: "fitness", label: "Fitness Hub" },
   { id: "challenges", label: "Retos" },
   { id: "vision", label: "Vision board" },
   { id: "events", label: "Eventos y tareas" },
@@ -115,12 +115,9 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const weeklyWorkoutLogs = snapshot.workoutLogs.filter((item) => item.date >= fitnessWeekStart && item.date <= fitnessWeekEnd);
   const weeklyExerciseCount = weeklyWorkoutLogs.reduce((total, log) => total + log.exercises.length, 0);
   const dailyMacros = (selectedNutrition?.meals ?? []).reduce((total, meal) => ({
-    calories: total.calories + (meal.calories ?? 0),
-    protein: total.protein + (meal.protein ?? 0),
-    carbs: total.carbs + (meal.carbs ?? 0),
-    fat: total.fat + (meal.fat ?? 0),
+    calories: total.calories + (meal.calories ?? 0), protein: total.protein + (meal.protein ?? 0),
+    carbs: total.carbs + (meal.carbs ?? 0), fat: total.fat + (meal.fat ?? 0),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-
   const selectTab = (nextTab: HubTab) => {
     setSearchParams(nextTab === "lists" ? {} : { tab: nextTab });
   };
@@ -128,11 +125,8 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const selectFitnessDate = (nextDate: string) => {
     const resolvedDate = nextDate || today;
     const checkIn = snapshot.bodyCheckIns.find((item) => item.date === resolvedDate);
-    setFitnessDate(resolvedDate);
-    setBodyWeight(checkIn?.weight ?? 0);
-    setWaist(checkIn?.measurements.cintura ?? 0);
-    setHip(checkIn?.measurements.cadera ?? 0);
-    setBodyPhoto(checkIn?.photoDataUrl);
+    setFitnessDate(resolvedDate); setBodyWeight(checkIn?.weight ?? 0); setWaist(checkIn?.measurements.cintura ?? 0);
+    setHip(checkIn?.measurements.cadera ?? 0); setBodyPhoto(checkIn?.photoDataUrl);
   };
 
   const groupedLists = useMemo(() => (Object.keys(listLabels) as BrainDumpType[]).map((type) => ({
@@ -223,12 +217,14 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   };
 
   return (
+    requestedTab === "fitness" ? <Navigate to="/app/life-hub/fitness" replace /> :
     <div className="page-stack life-hub-page">
       <SectionHeading eyebrow="PAUSA EL RUIDO" title="Mi espacio" description="Un lugar para capturar ideas, cuidar tus rutinas y recordar la vida que estás construyendo." />
       <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{hubTabs.map((item) => <button type="button" key={item.id} className={tab === item.id ? "is-active" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => selectTab(item.id)}>{item.label}</button>)}</nav>
       {message && <div className="inline-message" role="status">{message}</div>}
 
       {tab === "lists" && <>
+        <Link className="fitness-entry-link" to="/app/life-hub/fitness"><Card className="fitness-entry-card"><span><Dumbbell size={25} /></span><div><p className="eyebrow">DENTRO DE MI ESPACIO</p><h2>Fitness</h2><p>Tu alimentación, entrenamientos y progreso físico en un solo lugar.</p></div><ArrowRight size={20} /></Card></Link>
         <Card className="hub-capture-card"><div><ListPlus size={23} /><p className="eyebrow">PAUSA EL RUIDO</p><h2>Captura lo que aparece. Decide cuando tengas claridad.</h2><p>La fecha es tentativa y siempre podrás moverla, completarla o liberarla.</p></div><form onSubmit={addListItem}><label className="form-field"><span>Pensamiento</span><input value={listTitle} onChange={(event) => setListTitle(event.target.value)} placeholder="Ej. Tomar un curso de fotografía" /></label><label className="form-field"><span>Lista</span><select value={listType} onChange={(event) => setListType(event.target.value as BrainDumpType)}>{Object.entries(listLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><fieldset className="date-mode-field"><legend>Fecha tentativa</legend><div><label><input type="radio" checked={listDateMode === "flexible"} onChange={() => { setListDateMode("flexible"); setListDate(""); }} /> Flexible</label><label><input type="radio" checked={listDateMode === "month"} onChange={() => { setListDateMode("month"); setListDate(""); }} /> Mes</label><label><input type="radio" checked={listDateMode === "date"} onChange={() => { setListDateMode("date"); setListDate(""); }} /> Fecha exacta</label></div>{listDateMode !== "flexible" && <input type={listDateMode === "month" ? "month" : "date"} value={listDate} onChange={(event) => setListDate(event.target.value)} aria-label={listDateMode === "month" ? "Mes tentativo" : "Fecha tentativa exacta"} />}</fieldset><Button type="submit"><Plus size={16} /> Capturar</Button></form></Card>
         <div className="brain-lists-grid">{groupedLists.map(({ type, items }) => <Card className="brain-list" key={type}><header><span>{type === "shopping" ? <ShoppingBag size={18} /> : type === "want_to_read" ? <BookHeart size={18} /> : <Lightbulb size={18} />}</span><div><h3>{listLabels[type]}</h3><small>{items.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header>{items.map((item) => <div className={`brain-item is-${item.status}`} key={item.id}><button onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate || "Sin fecha · flexible"}</small></div><button onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label="Liberar">×</button></div>)}{!items.length && <p className="brain-empty">Todo lo que aparezca aquí puede quedarse sin decidir por ahora.</p>}</Card>)}</div>
       </>}

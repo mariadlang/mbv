@@ -21,12 +21,21 @@ export interface Profile {
   baseCurrency?: "COP" | "USD" | "EUR" | "MXN";
   financePrivacy?: boolean;
   fitnessEnabled?: boolean;
+  fitnessProfile?: FitnessProfile;
   avatarDataUrl?: string;
   activationCompleted?: boolean;
   lastBackupAt?: string;
   onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FitnessProfile {
+  physicalGoal: string;
+  dailyCalories: number;
+  mealsPerDay: number;
+  workoutsPerWeek: number;
+  trainingDays: number[];
 }
 
 export interface LifeArea {
@@ -288,6 +297,27 @@ export interface WorkoutExercise {
   sets: number;
   reps: number;
   weight: number;
+  setDetails?: WorkoutSet[];
+}
+
+export interface WorkoutSet {
+  id: string;
+  setNumber: number;
+  reps: number;
+  weight: number;
+}
+
+export interface WorkoutSession {
+  id: string;
+  date: string;
+  workoutName: string;
+  durationMinutes?: number;
+  exercises: Array<{
+    id: string;
+    name: string;
+    sets: WorkoutSet[];
+  }>;
+  completedAt: string;
 }
 
 export interface WorkoutLog {
@@ -295,7 +325,10 @@ export interface WorkoutLog {
   date: string;
   weekKey: string;
   goal?: string;
+  name?: string;
+  durationMinutes?: number;
   exercises: WorkoutExercise[];
+  completedSessions?: WorkoutSession[];
   createdAt: string;
   updatedAt: string;
 }
@@ -307,6 +340,8 @@ export interface MealLog {
   protein?: number;
   carbs?: number;
   fat?: number;
+  notes?: string;
+  completed?: boolean;
 }
 
 export interface NutritionLog {
