@@ -12,8 +12,12 @@ import { Onboarding } from "@/src/features/onboarding/Onboarding";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
 import { accessLabel } from "@/src/domain/access";
-import { CookiesPage, DataDeletionPage, ForgotPasswordPage, LandingPage, LegalCenterPage, LegalNoticesPage, LoginPage, PrivacyPage, SignupPage, TermsPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
-import { AdminPage } from "@/src/features/admin/AdminPage";
+import { ForgotPasswordPage, LandingPage, LoginPage, SignupPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
+import { AiPrivacyPage, CookiesPage, DataDeletionPage, DataPolicyPage, LegalCenterPage, LegalNoticesPage, LegalPrivacyPage, PaymentsPage, PqrPage, PrivacyCenterPage, PrivacyPage, ProviderInfoPage, RetractPage, SecurityPage, TermsPage } from "@/src/features/legal/LegalPages";
+import { CookieConsentProvider } from "@/src/features/legal/CookieConsent";
+import { LEGAL_VERSION } from "@/src/lib/legalConfig";
+import { useLegalPrivacy } from "@/src/hooks/useLegalPrivacy";
+import { PlatformPage } from "@/src/features/platform/PlatformPage";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { GuidedTutorial } from "@/src/features/tutorial/GuidedTutorial";
 import { useUiStore } from "@/src/stores/useUiStore";
@@ -35,6 +39,7 @@ const FinancePage = lazy(() => import("@/src/features/finance/FinancePage").then
 const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then((module) => ({ default: module.LifeHubPage })));
 const FitnessPage = lazy(() => import("@/src/features/fitness/FitnessPage").then((module) => ({ default: module.FitnessPage })));
 const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
+const SupportPage = lazy(() => import("@/src/features/support/SupportPage").then((module) => ({ default: module.SupportPage })));
 
 function useMounted() {
   const [mounted, setMounted] = useState(false);
@@ -69,6 +74,8 @@ function ProtectedPlannerApp() {
   if (!account.access) {
     return <main className="error-page"><BrandMark /><h1>No pudimos comprobar tu acceso.</h1><p>{account.error ?? "Vuelve a intentarlo en un momento."}</p><Button onClick={account.refreshAccess}>Intentar de nuevo</Button></main>;
   }
+  const needsLegalAcceptance = account.user.legalVersion !== LEGAL_VERSION || !account.user.termsAcceptedAt || !account.user.dataProcessingAcceptedAt || !account.user.adultDeclaredAt;
+  if (needsLegalAcceptance) return <LegalAcceptanceGate />;
   if (account.access.accessStatus === "expired" || account.access.accessStatus === "blocked") {
     return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>{account.access.accessStatus === "blocked" ? "Este acceso necesita revisión." : "Tu prueba de 15 días terminó."}</h1><p>{account.access.accessStatus === "blocked" ? "Contacta al equipo de soporte para revisar el estado de la cuenta." : "Tus datos locales permanecen en este dispositivo. Puedes continuar con Premium cuando estés lista."}</p><div><Link className="button button--primary" to="/upgrade">Ver Premium</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
   }
@@ -142,11 +149,15 @@ function ProtectedPlannerApp() {
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} />} />
+            <Route path="/app/legal" element={<LegalPrivacyPage />} />
+            <Route path="/app/privacy-center" element={<PrivacyCenterPage planner={planner} />} />
+            <Route path="/app/pqr" element={<Navigate to="/app/privacy-center" replace />} />
             <Route path="/app/help" element={<HelpPage planner={planner} />} />
+            <Route path="/app/support" element={<SupportPage />} />
             <Route path="/app/learn" element={<LearnPage planner={planner} />} />
             <Route path="/app/feed" element={<Navigate to="/app/life-hub/fitness" replace />} />
             <Route path="/app/more" element={<MorePage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<Navigate to="/platform" replace />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
           </Routes>
         </Suspense>
@@ -175,6 +186,32 @@ function ProtectedPlannerApp() {
   );
 }
 
+function LegalAcceptanceGate() {
+  const account = useAccount();
+  const legal = useLegalPrivacy(account.user?.id ?? null);
+  const [terms, setTerms] = useState(false);
+  const [data, setData] = useState(false);
+  const [adult, setAdult] = useState(false);
+  const [marketing, setMarketing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const accept = async () => {
+    if (!terms || !data || !adult) { setError("Confirma por separado los Términos, el tratamiento de datos y que tienes 18 años o más."); return; }
+    const now = new Date().toISOString(); setSaving(true); setError("");
+    try {
+      await account.acceptLegal({ legalVersion: LEGAL_VERSION, termsAcceptedAt: now, dataProcessingAcceptedAt: now, adultDeclaredAt: now, marketingConsent: marketing, marketingAcceptedAt: marketing ? now : null });
+      await Promise.all([
+        legal.recordConsent({ consentType: "terms", method: "oauth_gate", status: "granted" }),
+        legal.recordConsent({ consentType: "data_processing", method: "oauth_gate", status: "granted" }),
+        legal.recordConsent({ consentType: "adult_declaration", method: "oauth_gate", status: "granted" }),
+        ...(marketing ? [legal.recordConsent({ consentType: "marketing" as const, method: "oauth_gate" as const, status: "granted" as const })] : []),
+      ]);
+    } catch { setError("No pudimos guardar tu elección. Inténtalo de nuevo."); }
+    finally { setSaving(false); }
+  };
+  return <main className="legal-gate"><BrandMark /><section><p className="eyebrow">UNA ELECCIÓN CLARA</p><h1>Antes de continuar</h1><p>Revisa y acepta cada documento obligatorio. Las novedades son siempre opcionales.</p><label className="legal-consent"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span>Acepto los <Link to="/terms" target="_blank">Términos y Condiciones</Link>.</span></label><label className="legal-consent"><input type="checkbox" checked={data} onChange={(event) => setData(event.target.checked)} /><span>Autorizo el tratamiento de datos según la <Link to="/data-policy" target="_blank">Política de Tratamiento</Link>.</span></label><label className="legal-consent"><input type="checkbox" checked={adult} onChange={(event) => setAdult(event.target.checked)} /><span>Declaro que tengo 18 años o más.</span></label><label className="legal-consent"><input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} /><span>Quiero recibir novedades. Esta opción es voluntaria y revocable.</span></label>{error && <p className="form-error" role="alert">{error}</p>}<Button loading={saving} onClick={accept}>Guardar y continuar</Button><Button variant="ghost" onClick={() => void account.signOut()}>Cerrar sesión</Button></section></main>;
+}
+
 export default function PlannerApp() {
   const mounted = useMounted();
   if (!mounted) return <main className="brand-loading" aria-label="My Best Version">
@@ -184,20 +221,29 @@ export default function PlannerApp() {
     <nav className="brand-loading__legal" aria-label="Información pública"><NextLink href="/privacy">Política de Privacidad</NextLink><NextLink href="/terms">Términos del Servicio</NextLink><NextLink href="/legal">Centro Legal</NextLink></nav>
     <span className="brand-loading__ring" aria-hidden="true" />
   </main>;
-  return <I18nProvider><BrowserRouter><AccountProvider><Routes>
+  return <I18nProvider><BrowserRouter><CookieConsentProvider><AccountProvider><Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/trial" element={<TrialPage />} />
     <Route path="/privacy" element={<PrivacyPage />} />
     <Route path="/terms" element={<TermsPage />} />
+    <Route path="/data-policy" element={<DataPolicyPage />} />
     <Route path="/legal" element={<LegalCenterPage />} />
     <Route path="/cookies" element={<CookiesPage />} />
     <Route path="/data-deletion" element={<DataDeletionPage />} />
     <Route path="/legal-notices" element={<LegalNoticesPage />} />
+    <Route path="/payments" element={<PaymentsPage />} />
+    <Route path="/retract" element={<RetractPage />} />
+    <Route path="/ai-privacy" element={<AiPrivacyPage />} />
+    <Route path="/provider-info" element={<ProviderInfoPage />} />
+    <Route path="/security" element={<SecurityPage />} />
+    <Route path="/pqr" element={<PqrPage />} />
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/upgrade" element={<UpgradePage />} />
+    <Route path="/platform" element={<PlatformPage />} />
+    <Route path="/admin" element={<Navigate to="/platform" replace />} />
     <Route path="*" element={<ProtectedPlannerApp />} />
-  </Routes></AccountProvider></BrowserRouter></I18nProvider>;
+  </Routes></AccountProvider></CookieConsentProvider></BrowserRouter></I18nProvider>;
 }

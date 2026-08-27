@@ -2,9 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { UserAccess } from "@/src/domain/access";
-import type { AccountPreferences, AccountUser } from "@/src/repositories/interfaces/AuthRepository";
+import type { AccountPreferences, AccountUser, SignupLegalEvidence } from "@/src/repositories/interfaces/AuthRepository";
 import { authService } from "@/src/services/authService";
 import { useUiStore } from "@/src/stores/useUiStore";
+import { productEventNames, type ProductEventName } from "@/src/domain/productAnalytics";
+import { supportService } from "@/src/services/supportService";
 
 interface AccountContextValue {
   configured: boolean;
@@ -15,11 +17,13 @@ interface AccountContextValue {
   preferencesLoading: boolean;
   error: string | null;
   refreshAccess(): Promise<void>;
-  signUp(input: { name: string; email: string; password: string; legalAcceptedAt: string; legalVersion: string }): Promise<{ emailVerificationRequired: boolean }>;
+  getAccessToken(): Promise<string | null>;
+  signUp(input: { name: string; email: string; password: string } & SignupLegalEvidence): Promise<{ emailVerificationRequired: boolean }>;
   signIn(input: { email: string; password: string }): Promise<void>;
   signInWithGoogle(): Promise<void>;
   signInWithMagicLink(email: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
+  acceptLegal(input: SignupLegalEvidence): Promise<void>;
   signOut(): Promise<void>;
   updatePreferences(input: Partial<AccountPreferences>): Promise<void>;
 }
@@ -71,11 +75,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AccountContextValue>(() => ({
     configured, loading, user, access, preferences, preferencesLoading, error,
     refreshAccess: async () => loadForUser(user),
+    getAccessToken: () => authService.getAccessToken(),
     signUp: (input) => authService.signUp(input),
     signIn: (input) => authService.signIn(input),
     signInWithGoogle: () => authService.signInWithGoogle(),
     signInWithMagicLink: (email) => authService.signInWithMagicLink(email),
     requestPasswordReset: (email) => authService.requestPasswordReset(email),
+    acceptLegal: async (input) => { const nextUser = await authService.acceptLegal(input); await loadForUser(nextUser); },
     signOut: async () => { await authService.signOut(); setUser(null); setAccess(null); setPreferences(null); },
     updatePreferences: async (input) => {
       const fallback = { locale: input.locale ?? preferences?.locale ?? useUiStore.getState().language, tutorialCompleted: input.tutorialCompleted ?? preferences?.tutorialCompleted ?? false };
@@ -86,7 +92,36 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       try { setPreferences(await authService.updatePreferences(input)); } catch { /* La preferencia local mantiene la experiencia disponible. */ }
     },
   }), [access, configured, error, loadForUser, loading, preferences, preferencesLoading, user]);
-  return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
+  return <AccountContext.Provider value={value}>{children}<ProductAnalyticsBridge userId={user?.id ?? null} getAccessToken={value.getAccessToken} /></AccountContext.Provider>;
+}
+
+function ProductAnalyticsBridge({ userId, getAccessToken }: { userId: string | null; getAccessToken(): Promise<string | null> }) {
+  useEffect(() => {
+    if (!userId || typeof window === "undefined") return;
+    const sessionKey = "mbv-product-session";
+    const sessionId = window.sessionStorage.getItem(sessionKey) ?? crypto.randomUUID();
+    window.sessionStorage.setItem(sessionKey, sessionId);
+    const send = async (eventName: ProductEventName, feature: string, metadata: Record<string, unknown>, dedupeKey: string) => {
+      const token = await getAccessToken(); if (!token) return;
+      await supportService.trackEvent(token, { eventName, feature, sessionId, dedupeKey, metadata }).catch(() => undefined);
+    };
+    void send("app_session_started", "account", { source: "authenticated_app" }, `session:${sessionId}`);
+    void send("sign_up_completed", "account", { source: "first_authenticated_session" }, `signup:${userId}`);
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<{ event?: string; properties?: Record<string, unknown>; dedupeKey?: string }>).detail;
+      if (!detail?.event || !productEventNames.includes(detail.event as ProductEventName)) return;
+      const feature = featureForEvent(detail.event as ProductEventName);
+      void send(detail.event as ProductEventName, feature, detail.properties ?? {}, detail.dedupeKey ?? `${detail.event}:${crypto.randomUUID()}`);
+    };
+    window.addEventListener("mbv:product-event", listener);
+    return () => window.removeEventListener("mbv:product-event", listener);
+  }, [getAccessToken, userId]);
+  return null;
+}
+
+function featureForEvent(event: ProductEventName) {
+  const featureMap: Partial<Record<ProductEventName, string>> = { goal_created:"goals",annual_plan_updated:"annual_planning",monthly_plan_updated:"monthly_planning",week_planned:"weekly_planning",task_created:"tasks",task_completed:"tasks",today_view_opened:"today",journal_entry_created:"journal",progress_review_created:"progress",routine_created:"routines",workout_completed:"fitness",meal_logged:"nutrition",settings_updated:"settings",suggestion_submitted:"support",bug_report_submitted:"support",support_request_submitted:"support" };
+  return featureMap[event] ?? "onboarding";
 }
 
 export function useAccount() {

@@ -27,6 +27,8 @@ import type {
   WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
 import { backupFileSchema } from "@/src/lib/schemas";
+import { analyticsService } from "@/src/services/analyticsService";
+import type { ProductEventName } from "@/src/domain/productAnalytics";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
 
@@ -114,6 +116,12 @@ export function usePlanner() {
     URL.revokeObjectURL(url);
   }, []);
 
+  const commitTracked = useCallback(async (event: ProductEventName, operation: (service: PlannerService) => Promise<PlannerSnapshot>, properties: Record<string, string | number | boolean> = {}) => {
+    const next = await commit(operation);
+    analyticsService.track(event, properties);
+    return next;
+  }, [commit]);
+
   const importBackup = useCallback(
     async (file: File) => {
       backupFileSchema.parse({ type: file.type, size: file.size });
@@ -137,26 +145,26 @@ export function usePlanner() {
     retry: load,
     completeOnboarding: (
       input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[] },
-    ) => commit((service) => service.completeOnboarding(input)),
+    ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed" }),
     loadDemo: () => commit((service) => service.loadDemo()),
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
     toggleHabit: (habitId: string, date: string) =>
       commit((service) => service.toggleHabit(habitId, date)),
     createTask: (title: string, date?: string, focusPriority?: 1 | 2 | 3) =>
-      commit((service) => service.createTask(title, date, focusPriority)),
+      commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" }),
     createTaskDetailed: (input: TaskFormInput) =>
-      commit((service) => service.createTaskDetailed(input)),
+      commitTracked("task_created", (service) => service.createTaskDetailed(input), { source: "task_form" }),
     assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
       commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
-    toggleTask: (taskId: string) => commit((service) => service.toggleTask(taskId)),
+    toggleTask: async (taskId: string) => { const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") analyticsService.track("task_completed", { source: "task_toggle" }); return next; },
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
     saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
       commit((service) => service.saveMood(mood, energy, factors, note, sleep, concentration)),
     createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
-      commit((service) => service.createGoal(input, milestoneTitles)),
+      commitTracked("goal_created", (service) => service.createGoal(input, milestoneTitles)),
     updateGoalStatus: (goalId: string, status: EntityStatus) =>
       commit((service) => service.updateGoalStatus(goalId, status)),
     updateGoalProgress: (goalId: string, value: number) =>
@@ -166,19 +174,19 @@ export function usePlanner() {
     createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
       commit((service) => service.createLifeArea(input)),
     updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; fitnessProfile?: FitnessSettingsFormInput; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
-      commit((service) => service.updateProfileSettings(input)),
+      commitTracked("settings_updated", (service) => service.updateProfileSettings(input), { section: "profile" }),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
       commit((service) => service.updateLifeAreaSettings(lifeAreaId, input)),
     toggleMilestone: (milestoneId: string) =>
       commit((service) => service.toggleMilestone(milestoneId)),
     saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string; imageDataUrl?: string } = {}) =>
-      commit((service) => service.saveJournal(text, options)),
+      commitTracked("journal_entry_created", (service) => service.saveJournal(text, options)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
-      commit((service) => service.saveReview(type, summary, decisions)),
+      commitTracked("progress_review_created", (service) => service.saveReview(type, summary, decisions), { period: type }),
     saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = []) =>
-      commit((service) => service.saveStructuredReview(type, responses, decisions)),
+      commitTracked("progress_review_created", (service) => service.saveStructuredReview(type, responses, decisions), { period: type }),
     saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
       commit((service) => service.saveMonthlyBudget(input)),
     createTransaction: (input: TransactionFormInput) =>
@@ -190,8 +198,10 @@ export function usePlanner() {
       commit((service) => service.createRecurringItem(input)),
     saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
-    saveCascadePlan: (input: CascadePlanFormInput) =>
-      commit((service) => service.saveCascadePlan(input)),
+    saveCascadePlan: (input: CascadePlanFormInput) => {
+      const event = input.horizon === "annual" ? "annual_plan_updated" : input.horizon === "monthly" ? "monthly_plan_updated" : input.horizon === "weekly" ? "week_planned" : null;
+      return event ? commitTracked(event, (service) => service.saveCascadePlan(input), { period: input.horizon }) : commit((service) => service.saveCascadePlan(input));
+    },
     deleteCascadePlan: (planId: string) =>
       commit((service) => service.deleteCascadePlan(planId)),
     toggleCascadeObjective: (planId: string, objectiveIndex: number) =>
@@ -202,16 +212,16 @@ export function usePlanner() {
       commit((service) => service.updateBrainDumpItem(itemId, input)),
     scheduleBrainDumpItem: (itemId: string, date: string) =>
       commit((service) => service.scheduleBrainDumpItem(itemId, date)),
-    createRoutine: (input: RoutineFormInput) => commit((service) => service.createRoutine(input)),
+    createRoutine: (input: RoutineFormInput) => commitTracked("routine_created", (service) => service.createRoutine(input)),
     createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
     createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
     saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
     saveWorkoutPlan: (input: WorkoutPlanFormInput) => commit((service) => service.saveWorkoutPlan(input)),
-    completeWorkout: (date: string) => commit((service) => service.completeWorkout(date)),
+    completeWorkout: (date: string) => commitTracked("workout_completed", (service) => service.completeWorkout(date)),
     duplicateWorkout: (sourceDate: string, targetDate: string) => commit((service) => service.duplicateWorkout(sourceDate, targetDate)),
-    saveMeal: (input: MealFormInput) => commit((service) => service.saveMeal(input)),
+    saveMeal: (input: MealFormInput) => commitTracked("meal_logged", (service) => service.saveMeal(input)),
     deleteMeal: (date: string, mealId: string) => commit((service) => service.deleteMeal(date, mealId)),
     copyMeals: (sourceDate: string, targetDate: string) => commit((service) => service.copyMeals(sourceDate, targetDate)),
     saveBodyCheckIn: (input: BodyCheckInFormInput) => commit((service) => service.saveBodyCheckIn(input)),

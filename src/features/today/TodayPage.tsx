@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronRight, Circle, Clock3, Dumbbell, HeartPulse, Plus, Save, Sparkles, SunMedium, Utensils } from "lucide-react";
 import type { MoodName, Task } from "@/src/domain/planner";
@@ -9,6 +9,7 @@ import { getDailyTopThree, getNextStep } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatLongDate, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
+import { analyticsService } from "@/src/services/analyticsService";
 
 const moodOptions: { name: MoodName; symbol: string }[] = [
   { name: "Calmada", symbol: "◡" }, { name: "Enfocada", symbol: "◎" },
@@ -20,6 +21,7 @@ export function TodayPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
   const today = new Date();
   const todayKey = toLocalDateKey(today);
+  useEffect(() => { analyticsService.track("today_view_opened", { route: "/app/today" }, `today:${todayKey}`); }, [todayKey]);
   const savedIntention = snapshot.journalEntries.find((entry) => entry.date === todayKey && entry.title === "Intención del día")?.text ?? "";
   const [intention, setIntention] = useState(savedIntention);
   const [newTask, setNewTask] = useState("");

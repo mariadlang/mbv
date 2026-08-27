@@ -12,6 +12,8 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Button, Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { useAccount } from "@/src/hooks/useAccount";
+import { useLegalPrivacy } from "@/src/hooks/useLegalPrivacy";
 
 type FitnessSection = "nutrition" | "training";
 type WorkoutDraftExercise = { id?: string; name: string; sets: Array<{ id?: string; setNumber: number; reps: number; weight: number }> };
@@ -31,6 +33,9 @@ const defaultSettings = {
 };
 
 export function FitnessPage({ planner }: { planner: PlannerController }) {
+  const account = useAccount();
+  const legal = useLegalPrivacy(account.user?.id ?? null);
+  const [consentSaving, setConsentSaving] = useState(false);
   const { snapshot } = planner;
   const [searchParams, setSearchParams] = useSearchParams();
   const section: FitnessSection = searchParams.get("section") === "training" ? "training" : "nutrition";
@@ -131,6 +136,9 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     setSettingsOpen(false); setMessage("Tu contexto de Fitness quedó guardado.");
   };
 
+  if (legal.loading) return <div className="route-loading" role="status">Preparando tus controles de privacidad…</div>;
+  if (!legal.hasConsent("sensitive_wellness")) return <div className="page-stack sensitive-consent-page"><Card><span className="fitness-round-icon"><Target size={22} /></span><p className="eyebrow">TU ELECCIÓN ES VOLUNTARIA</p><h1>Antes de usar Alimentación y Entrenamiento</h1><p>Esta función puede contener datos sensibles como objetivos físicos, comidas, peso, medidas, ejercicios, repeticiones y cargas. Se guardan localmente en este dispositivo y no se usan para publicidad personalizada.</p><ul><li>No tienes obligación de entregar estos datos.</li><li>Puedes retirar la autorización desde el Centro de Privacidad.</li><li>Negarte no limita las demás funciones de My Best Version.</li><li>Esta herramienta no sustituye orientación médica o nutricional profesional.</li></ul><div><Button loading={consentSaving} onClick={async () => { setConsentSaving(true); try { await legal.recordConsent({ consentType: "sensitive_wellness", method: "feature_gate", status: "granted" }); } finally { setConsentSaving(false); } }}>Autorizar y continuar</Button><Link className="button button--ghost" to="/app/life-hub">Ahora no</Link><Link className="button button--secondary" to="/data-policy">Leer política de datos</Link></div></Card></div>;
+
   return <div className="page-stack fitness-page">
     <header className="fitness-page__header">
       <Link className="back-link" to="/app/life-hub"><ArrowLeft size={18} /> Volver a Mi espacio</Link>
@@ -177,6 +185,7 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     </>}
 
     <Card className="fitness-quote"><span>☆</span><p>Pequeñas decisiones hoy, grandes cambios siempre.</p><span>♡</span></Card>
+    <details className="wellness-disclaimer"><summary>Información importante sobre bienestar</summary><p>Estos registros son de autoobservación y no constituyen diagnóstico ni tratamiento. Detén el ejercicio ante dolor o síntomas inusuales y consulta profesionales cualificados para cambios relevantes en salud o alimentación.</p></details>
 
     <Modal open={mealOpen} title={editingMealId ? "Editar comida" : "Añadir comida"} description="Registra manualmente solo la información que quieras observar." onClose={() => setMealOpen(false)}>
       <form className="fitness-form" onSubmit={saveMeal}><label className="form-field"><span>Nombre</span><input required minLength={2} value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="fitness-form-grid"><NumberField label="Calorías" value={mealCalories} onChange={setMealCalories} /><NumberField label="Proteína (g)" value={mealProtein} onChange={setMealProtein} /><NumberField label="Carbohidratos (g)" value={mealCarbs} onChange={setMealCarbs} /><NumberField label="Grasas (g)" value={mealFat} onChange={setMealFat} /></div><label className="form-field"><span>Notas opcionales</span><textarea rows={3} value={mealNotes} onChange={(event) => setMealNotes(event.target.value)} /></label><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setMealOpen(false)}>Cancelar</Button><Button type="submit">Guardar comida</Button></div></form>

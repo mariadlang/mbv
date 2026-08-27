@@ -3,7 +3,7 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, Languages, LockKeyhole, LogOut, MoonStar, PlayCircle, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, Languages, LifeBuoy, LockKeyhole, LogOut, Mail, MoonStar, PlayCircle, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
@@ -11,6 +11,7 @@ import { useUiStore } from "@/src/stores/useUiStore";
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { LanguageSwitcher } from "@/src/components/ui/LanguageSwitcher";
 import { useAccount } from "@/src/hooks/useAccount";
+import { MarketingPreferenceControl } from "@/src/features/support/SupportPage";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
@@ -68,6 +69,9 @@ export function SettingsPage({ planner, onReplayTutorial, onRequestLogout }: { p
     <div className="settings-reference-layout">
       <Card id="account-settings" className="settings-list-card">
         <section><div><strong><Languages size={16} /> Idioma</strong><small>Selecciona el idioma de la aplicación.</small></div><LanguageSwitcher onChange={(locale) => void account.updatePreferences({ locale })} /></section>
+        <section><div><strong><ShieldCheck size={16} /> Legal y privacidad</strong><small>Consulta documentos, autorizaciones, solicitudes y control de datos.</small></div><Link className="button button--secondary" to="/app/legal">Abrir centro</Link></section>
+        <section><div><strong><LifeBuoy size={16} /> Ayuda y soporte</strong><small>Envía una sugerencia, reporta un problema o contacta al equipo.</small></div><Link className="button button--secondary" to="/app/support">Abrir soporte</Link></section>
+        <section><div><strong><Mail size={16} /> Comunicaciones</strong><small>Decide si quieres recibir novedades y ofertas.</small></div><MarketingPreferenceControl /></section>
         <section><div><strong><PlayCircle size={16} /> Repetir tutorial</strong><small>Vuelve a recorrer las secciones principales cuando lo necesites.</small></div><Button variant="secondary" onClick={onReplayTutorial}>Repetir tutorial</Button></section>
         <section><div><strong><LogOut size={16} /> Cerrar sesión</strong><small>Tu información seguirá guardada para cuando vuelvas.</small></div><Button variant="danger" onClick={onRequestLogout}>Cerrar sesión</Button></section>
         <section><div><strong>Foto de perfil</strong><small>Se guarda de forma privada en este navegador.</small></div><div className="profile-photo-setting">{avatarDataUrl ? <img src={avatarDataUrl} alt="Vista previa de perfil" /> : <span>{name.slice(0, 1).toUpperCase()}</span>}<input ref={avatarInput} className="sr-only" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; const parsed = imageUploadSchema.safeParse({ type: file.type, size: file.size }); if (!parsed.success) return setMessage(parsed.error.issues[0]?.message ?? "Revisa la imagen."); const reader = new FileReader(); reader.onload = () => setAvatarDataUrl(String(reader.result)); reader.readAsDataURL(file); }} /><Button variant="secondary" onClick={() => avatarInput.current?.click()}>Elegir foto</Button>{avatarDataUrl && <Button variant="ghost" onClick={() => setAvatarDataUrl(undefined)}>Quitar foto</Button>}</div></section>

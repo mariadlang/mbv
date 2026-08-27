@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function completeOnboarding(page: Page, name = "María") {
   await page.goto("/app/dashboard");
+  const necessaryCookies = page.getByRole("button", { name: "Solo necesarias" });
+  if (await necessaryCookies.waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) await necessaryCookies.click();
   await expect(page.getByRole("heading", { name: /Life, but more you/ })).toBeVisible();
   await page.getByRole("button", { name: /Crear mi espacio/ }).click();
   await page.getByRole("button", { name: "Salud y bienestar" }).click();
@@ -12,6 +14,11 @@ async function completeOnboarding(page: Page, name = "María") {
   await page.getByPlaceholder("Ej. María").fill(name);
   await page.getByRole("button", { name: /Crear mi espacio/ }).click();
   await expect(page.getByRole("heading", { name: new RegExp(`Buenos días, ${name}`) })).toBeVisible();
+}
+
+async function authorizeFitnessIfNeeded(page: Page) {
+  const authorize = page.getByRole("button", { name: "Autorizar y continuar" });
+  if (await authorize.waitFor({ state: "visible", timeout: 5000 }).then(() => true).catch(() => false)) await authorize.click();
 }
 
 test("onboarding creates an empty planner and activation journey", async ({ page }) => {
@@ -94,6 +101,7 @@ test("budget, savings fund and movement update the finance summary", async ({ pa
 });
 
 test("cascade planning and optional life modules persist locally", async ({ page }) => {
+  test.setTimeout(60_000);
   await completeOnboarding(page);
   await page.goto("/app/planning");
   await expect(page.getByRole("heading", { name: "Planificación" })).toBeVisible();
@@ -136,7 +144,8 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("link", { name: /Fitness/ })).toBeVisible();
   await page.getByRole("link", { name: /Fitness/ }).click();
   await expect(page).toHaveURL(/\/app\/life-hub\/fitness/);
-  await expect(page.getByRole("heading", { name: "Alimentación" })).toBeVisible();
+  await authorizeFitnessIfNeeded(page);
+  await expect(page.getByRole("heading", { name: "Alimentación", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Entrenamiento" }).click();
   await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
   const workoutDialog = page.getByRole("dialog", { name: "Añadir entrenamiento" });
@@ -199,14 +208,17 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/progress", /Tu progreso/],
     ["/app/journal", /^Mi diario$/],
     ["/app/settings", /Ajustes y datos/],
+    ["/app/legal", /Legal y privacidad/],
+    ["/app/privacy-center", /Centro de Privacidad/],
   ] as const;
 
   for (const [route, heading] of routes) {
     await page.goto(route);
+    if (route === "/app/life-hub/fitness") await authorizeFitnessIfNeeded(page);
     await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
   }
   await page.reload();
-  await expect(page.getByRole("heading", { name: /Ajustes y datos/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Centro de Privacidad/ })).toBeVisible();
 });
 
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
@@ -256,16 +268,20 @@ test("help routes expose the configured support resources", async ({ page }) => 
 
 test("public legal resources and signup consent are available", async ({ page }) => {
   await page.goto("/legal");
-  await expect(page.getByRole("heading", { name: "Centro Legal" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Política de Privacidad" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Términos del Servicio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Centro Legal y de Privacidad" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Política de Tratamiento de Datos/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Términos y Condiciones/ })).toBeVisible();
 
   await page.goto("/cookies");
-  await expect(page.getByRole("heading", { name: "Cookies y almacenamiento local" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Política de Cookies y tecnologías similares" })).toBeVisible();
   await page.goto("/data-deletion");
-  await expect(page.getByRole("heading", { name: "Control y eliminación de datos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Exportación y eliminación de datos" })).toBeVisible();
   await page.goto("/legal-notices");
-  await expect(page.getByRole("heading", { name: "Uso responsable de la aplicación" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Centro Legal y de Privacidad" })).toBeVisible();
+  await page.goto("/data-policy");
+  await expect(page.getByRole("heading", { name: "Política de Tratamiento de Datos Personales" })).toBeVisible();
+  await page.goto("/pqr");
+  await expect(page.getByRole("heading", { name: "Peticiones, quejas y reclamos" })).toBeVisible();
 });
 
 test("creates a gentle challenge and records today", async ({ page }) => {
@@ -279,4 +295,49 @@ test("creates a gentle challenge and records today", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Dar un paso valiente" })).toBeVisible();
   await page.getByRole("button", { name: "Registrar hoy" }).click();
   await expect(page.getByRole("button", { name: "Quitar registro de hoy" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("support accepts suggestions, bug reports and account messages", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/support");
+  await expect(page.getByRole("heading", { name: "Ayuda y soporte" })).toBeVisible();
+
+  await page.getByLabel("Categoría").selectOption({ label: "Diseño y experiencia" });
+  await page.getByLabel("Título").fill("Mejorar la lectura semanal");
+  await page.getByLabel("Descripción de la sugerencia").fill("Sería útil ver una síntesis más compacta al terminar la semana.");
+  await page.getByRole("button", { name: "Enviar sugerencia" }).click();
+  await expect(page.getByText(/Tu sugerencia fue enviada correctamente/)).toBeVisible();
+
+  await page.getByRole("tab", { name: /Reportar un problema/ }).click();
+  await page.getByLabel("Sección donde ocurrió").fill("Planificación");
+  await page.getByLabel("¿Qué estabas intentando hacer?").fill("Guardar mi semana");
+  await page.getByLabel("Descripción del problema").fill("El botón no respondió después de organizar las tareas.");
+  await page.getByRole("button", { name: "Enviar reporte" }).click();
+  await expect(page.getByText(/Recibimos tu reporte/)).toBeVisible();
+
+  await page.getByRole("tab", { name: /Contactar a soporte/ }).click();
+  await page.getByLabel("Asunto").fill("Consulta de mi cuenta");
+  await page.getByLabel("Mensaje").fill("Necesito orientación para actualizar una preferencia de mi cuenta.");
+  await page.getByRole("button", { name: "Enviar mensaje" }).click();
+  await expect(page.getByText(/Te responderemos lo antes posible/)).toBeVisible();
+});
+
+test("marketing consent can be granted and withdrawn", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/settings");
+  const consent = page.getByLabel(/Quiero recibir novedades, recursos y ofertas/);
+  await consent.check();
+  await expect(page.getByText("Preferencia guardada.")).toBeVisible();
+  await consent.uncheck();
+  await expect(page.getByText(/Dejaste de recibir comunicaciones comerciales/)).toBeVisible();
+});
+
+test("platform rejects a normal user and allows an authenticated superadmin", async ({ page }) => {
+  await page.goto("/platform");
+  await expect(page).toHaveURL(/\/app\/dashboard/);
+
+  await page.goto("/platform?e2e-admin=1");
+  await expect(page.getByText("PLATAFORMA PRIVADA")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resumen" })).toBeVisible();
+  await expect(page.getByText("Acceso protegido")).toBeVisible();
 });
