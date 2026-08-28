@@ -2,7 +2,7 @@
 
 import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import NextLink from "next/link";
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, HeartPulse, Landmark, Plus, Smile } from "lucide-react";
 import { usePlanner } from "@/src/hooks/usePlanner";
 import { AppShell } from "@/src/components/layout/AppShell";
@@ -51,9 +51,16 @@ function useMounted() {
   return mounted;
 }
 
+function useBrowserRouteLocation() {
+  const routerLocation = useLocation();
+  if (typeof window === "undefined") return routerLocation;
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
 function ProtectedPlannerApp() {
   const account = useAccount();
   const navigate = useNavigate();
+  const routeLocation = useBrowserRouteLocation();
   const planner = usePlanner();
   const mounted = useMounted();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -128,7 +135,7 @@ function ProtectedPlannerApp() {
       >
         {planner.error && <div className="inline-message inline-message--error" role="alert">{planner.error}</div>}
         <Suspense fallback={<div className="route-loading" role="status">Abriendo tu espacio…</div>}>
-          <Routes>
+          <Routes location={routeLocation}>
             <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app/dashboard" element={<DashboardPage planner={planner} />} />
@@ -221,7 +228,12 @@ export default function PlannerApp() {
     <nav className="brand-loading__legal" aria-label="Información pública"><NextLink href="/privacy">Política de Privacidad</NextLink><NextLink href="/terms">Términos del Servicio</NextLink><NextLink href="/legal">Centro Legal</NextLink></nav>
     <span className="brand-loading__ring" aria-hidden="true" />
   </main>;
-  return <I18nProvider><BrowserRouter><CookieConsentProvider><AccountProvider><Routes>
+  return <I18nProvider><BrowserRouter><CookieConsentProvider><AccountProvider><RootRoutes /></AccountProvider></CookieConsentProvider></BrowserRouter></I18nProvider>;
+}
+
+function RootRoutes() {
+  const routeLocation = useBrowserRouteLocation();
+  return <Routes location={routeLocation}>
     <Route path="/" element={<LandingPage />} />
     <Route path="/trial" element={<TrialPage />} />
     <Route path="/privacy" element={<PrivacyPage />} />
@@ -245,5 +257,5 @@ export default function PlannerApp() {
     <Route path="/platform" element={<PlatformPage />} />
     <Route path="/admin" element={<Navigate to="/platform" replace />} />
     <Route path="*" element={<ProtectedPlannerApp />} />
-  </Routes></AccountProvider></CookieConsentProvider></BrowserRouter></I18nProvider>;
+  </Routes>;
 }

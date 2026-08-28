@@ -1,6 +1,6 @@
-import { createClient, type User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import type { UserAccess } from "@/src/domain/access";
-import { hasSupabaseConfig, publicConfig } from "@/src/lib/publicConfig";
+import { getSupabaseBrowserClient } from "@/src/lib/supabaseBrowserClient";
 import type { AccountPreferences, AccountUser, AuthRepository, SignupLegalEvidence } from "@/src/repositories/interfaces/AuthRepository";
 
 function toAccountUser(user: User | null): AccountUser | null {
@@ -23,9 +23,7 @@ function callbackUrl(path: string): string {
 }
 
 export class SupabaseAuthRepository implements AuthRepository {
-  private client = hasSupabaseConfig ? createClient(publicConfig.supabaseUrl, publicConfig.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-  }) : null;
+  private client = getSupabaseBrowserClient();
 
   isConfigured() { return Boolean(this.client); }
 

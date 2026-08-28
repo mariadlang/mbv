@@ -1,7 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import type { CookiePreferences, LegalConsent, PrivacyRequest } from "@/src/domain/legal";
 import { addBusinessDays } from "@/src/domain/legalRules";
-import { hasSupabaseConfig, publicConfig } from "@/src/lib/publicConfig";
+import { getSupabaseBrowserClient } from "@/src/lib/supabaseBrowserClient";
 import type { CreatePrivacyRequestInput, LegalPrivacyRepository, RecordConsentInput } from "@/src/repositories/interfaces/LegalPrivacyRepository";
 
 const STORAGE_KEY = "mbv-legal-privacy-v1";
@@ -29,7 +28,7 @@ function toRequest(row: Record<string, unknown>): PrivacyRequest {
 }
 
 export class SupabaseLegalPrivacyRepository implements LegalPrivacyRepository {
-  private client = hasSupabaseConfig ? createClient(publicConfig.supabaseUrl, publicConfig.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
+  private client = getSupabaseBrowserClient();
 
   async listConsents(userId: string) {
     if (this.client) {

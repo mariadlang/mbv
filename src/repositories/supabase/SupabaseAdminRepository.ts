@@ -1,9 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
-import { hasSupabaseConfig, publicConfig } from "@/src/lib/publicConfig";
+import { getSupabaseBrowserClient } from "@/src/lib/supabaseBrowserClient";
 import type { AdminAccountRow, AdminRepository } from "@/src/repositories/interfaces/AdminRepository";
 
 export class SupabaseAdminRepository implements AdminRepository {
-  private client = hasSupabaseConfig ? createClient(publicConfig.supabaseUrl, publicConfig.supabaseAnonKey) : null;
+  private client = getSupabaseBrowserClient();
 
   async listAccounts(): Promise<AdminAccountRow[]> {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
