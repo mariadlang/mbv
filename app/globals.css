@@ -1557,6 +1557,78 @@ body { font-size: 16px; background: var(--color-background); }
   .today-macros { grid-template-columns: 1fr; }
 }
 
+/* Hoy: composición editorial inspirada en el tablero de referencia. */
+.today-command-center { max-width: 1380px; }
+.today-command-center > .section-heading { margin-bottom: 2px; }
+.today-command-center > .section-heading .eyebrow { letter-spacing: .24em; }
+.today-summary-grid { grid-template-columns: minmax(280px, .9fr) minmax(390px, 1.15fr) minmax(260px, .75fr); }
+.today-summary-grid .card, .today-work-grid .card, .today-closing-grid .card { border-color: color-mix(in srgb, var(--color-border) 82%, transparent); box-shadow: 0 10px 30px rgba(72, 55, 47, .045); }
+.today-intention-card > header, .today-wellbeing-card--summary > header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.today-intention-card > header h2, .today-wellbeing-card--summary h2 { margin: 3px 0 0; font-size: 1.18rem; }
+.today-intention-card > .button { align-self: flex-start; }
+.today-wellbeing-card--summary { display: grid; align-content: start; gap: 12px; }
+.today-wellbeing-card--summary .mood-selector { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.today-wellbeing-card--summary .mood-option { min-width: 0; min-height: 64px; }
+.today-energy-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; }
+.today-energy-row > span { font-weight: 650; }
+.today-energy-row > strong { color: var(--color-text-secondary); font-size: var(--text-sm); }
+.today-progress-card { min-height: 100%; }
+.today-progress-visual { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 18px; }
+.today-progress-ring { display: grid; width: 112px; height: 112px; place-items: center; border-radius: 50%; background: conic-gradient(var(--color-brand-strong) var(--progress), var(--color-surface-muted) 0); }
+.today-progress-ring::before { content: ""; grid-area: 1 / 1; width: 84px; height: 84px; border-radius: 50%; background: var(--color-surface-elevated); }
+.today-progress-ring span { z-index: 1; grid-area: 1 / 1; font-size: 1.65rem; font-weight: 750; }
+.today-progress-visual > div:last-child { display: grid; gap: 4px; }
+.today-progress-visual > div:last-child > strong { font-size: 1.05rem; }
+.today-work-grid { display: grid; grid-template-columns: minmax(270px, .88fr) minmax(430px, 1.18fr) minmax(270px, .88fr); gap: 14px; align-items: stretch; }
+.today-work-grid > .card { min-width: 0; padding: 21px; }
+.today-work-grid .day-timeline-card { padding: 21px; }
+.today-work-grid .today-priority-add { grid-template-columns: 1fr; }
+.today-work-grid .today-priority-add .button { justify-self: stretch; }
+.today-habits-card > header, .today-nutrition-card > header { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.today-habits-card > header h2, .today-nutrition-card > header h2 { margin: 3px 0 0; font-size: 1.2rem; }
+.today-habits-card > header a, .today-nutrition-card > header a { display: inline-flex; align-items: center; gap: 3px; color: var(--color-brand-strong); font-size: var(--text-xs); text-decoration: none; }
+.today-closing-grid { display: grid; grid-template-columns: minmax(340px, 1.05fr) minmax(340px, 1.05fr) minmax(250px, .72fr); gap: 14px; align-items: stretch; }
+.today-closing-grid > .card { min-width: 0; padding: 21px; }
+.today-closing-grid .today-macros { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.today-closing-grid .today-meals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.today-closing-grid .today-meals > span { border: 0; border-radius: 0; border-bottom: 1px solid var(--color-border); }
+.today-closing-grid .daily-close-card form { grid-template-columns: 1fr; gap: 10px; }
+.today-closing-grid .daily-close-card textarea { min-height: 76px; background: var(--color-brand-soft); }
+.today-closing-grid .daily-close-card .button { width: 100%; }
+.today-closing-grid .weekly-review-prompt { display: grid; align-content: start; justify-items: start; gap: 14px; }
+.today-closing-grid .weekly-review-prompt > svg { width: 54px; height: 54px; border-radius: 50%; background: var(--color-brand-soft); padding: 13px; color: var(--color-brand-strong); }
+.today-closing-grid .weekly-review-prompt h2 { margin: 3px 0 7px; font-size: 1.18rem; }
+.today-closing-grid .weekly-review-prompt p { margin: 0; color: var(--color-text-secondary); line-height: 1.55; }
+.today-closing-grid .weekly-review-prompt .button { align-self: end; width: 100%; }
+.today-quote { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 15px 22px; background: linear-gradient(90deg, var(--color-surface-elevated), var(--color-brand-soft)); }
+.today-quote > span { color: var(--color-brand-strong); font-size: 1.8rem; line-height: 1; }
+.today-quote p { margin: 0; }
+.today-quote small { color: var(--color-text-secondary); }
+
+@media (max-width: 1180px) {
+  .today-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-progress-card { grid-column: 1 / -1; }
+  .today-work-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-work-grid .day-timeline-card { grid-row: span 2; }
+  .today-closing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-closing-grid .weekly-review-prompt { grid-column: 1 / -1; grid-template-columns: auto 1fr auto; align-items: center; }
+}
+
+@media (max-width: 760px) {
+  .today-command-center > .section-heading .eyebrow { letter-spacing: .14em; }
+  .today-summary-grid, .today-work-grid, .today-closing-grid { grid-template-columns: 1fr; }
+  .today-progress-card, .today-work-grid .day-timeline-card, .today-closing-grid .weekly-review-prompt { grid-column: auto; grid-row: auto; }
+  .today-closing-grid .weekly-review-prompt { grid-template-columns: 1fr; }
+  .today-summary-grid .card, .today-work-grid > .card, .today-closing-grid > .card { padding: 16px; }
+  .today-progress-visual { grid-template-columns: 92px 1fr; }
+  .today-progress-ring { width: 92px; height: 92px; }
+  .today-progress-ring::before { width: 68px; height: 68px; }
+  .today-wellbeing-card--summary .mood-option small { display: none; }
+  .today-closing-grid .today-macros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-quote { grid-template-columns: auto 1fr; }
+  .today-quote small { grid-column: 2; }
+}
+
 /* Onboarding */
 .splash-page { position: relative; display: grid; min-height: 100vh; place-items: center; overflow: hidden; background: #fff; padding: 24px; }
 .splash-orb { position: absolute; border-radius: 50%; background: rgba(255,255,255,.55); }
