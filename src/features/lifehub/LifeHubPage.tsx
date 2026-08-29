@@ -28,6 +28,7 @@ import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primiti
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
 
@@ -219,6 +220,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   return (
     requestedTab === "fitness" ? <Navigate to="/app/life-hub/fitness" replace /> :
     <div className="page-stack life-hub-page">
+      <SectionNavigation section="space" />
       <SectionHeading eyebrow="PAUSA EL RUIDO" title="Mi espacio" description="Un lugar para capturar ideas, cuidar tus rutinas y recordar la vida que estás construyendo." />
       <nav className="life-hub-tabs" aria-label="Secciones de Mi espacio">{hubTabs.map((item) => <button type="button" key={item.id} className={tab === item.id ? "is-active" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => selectTab(item.id)}>{item.label}</button>)}</nav>
       {message && <div className="inline-message" role="status">{message}</div>}

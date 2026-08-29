@@ -7,6 +7,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatShortDay, getRecentDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Link } from "react-router-dom";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 export function ProgressPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
@@ -27,6 +28,7 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
 
   return (
     <div className="page-stack">
+      <SectionNavigation section="progress" />
       <SectionHeading
         eyebrow="EN MOVIMIENTO"
         title="Tu progreso"

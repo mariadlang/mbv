@@ -197,7 +197,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
   const routes = [
     ["/app", /Buenos días/],
     ["/app/dashboard", /Buenos días/],
-    ["/app/today", /^Hoy$/],
+    ["/app/today", /Buenos días/],
     ["/app/tasks", /Tareas y proyectos/],
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
@@ -221,28 +221,36 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
   await expect(page.getByRole("heading", { name: /Centro de Privacidad/ })).toBeVisible();
 });
 
+test("information architecture separates overview from daily execution", async ({ page }) => {
+  await completeOnboarding(page);
+  const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
+  await expect(navigation.getByRole("link")).toHaveCount(5);
+  await expect(navigation).toContainText("Inicio");
+  await expect(navigation).toContainText("Hoy");
+  await expect(navigation).toContainText("Plan");
+  await expect(navigation).toContainText("Progreso");
+  await expect(navigation).toContainText("Mi espacio");
+  await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+
+  await navigation.getByRole("link", { name: "Hoy", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Qué hago ahora" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Tareas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cierre del día" })).toBeVisible();
+});
+
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
-  const isMobile = test.info().project.name === "mobile";
-
-  if (isMobile) {
-    await page.getByRole("link", { name: "Más", exact: true }).click();
-    await page.getByRole("link", { name: /Tareas y proyectos/ }).click();
-  } else {
-    await page.getByRole("link", { name: "Tareas", exact: true }).click();
-  }
+  await page.getByRole("link", { name: "Plan", exact: true }).click();
+  await page.getByRole("link", { name: "Tareas y proyectos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
 
-  if (isMobile) {
-    await page.getByRole("link", { name: "Más", exact: true }).click();
-    await page.getByRole("link", { name: /Mi diario/ }).click();
-  } else {
-    await page.getByRole("link", { name: "Mi diario", exact: true }).click();
-  }
+  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await page.getByRole("link", { name: "Diario y notas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
-  const historySteps = isMobile ? 2 : 1;
+  const historySteps = 2;
   for (let step = 0; step < historySteps; step += 1) await page.goBack();
   await expect(page).toHaveURL(/\/app\/tasks$/);
   await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
@@ -250,12 +258,8 @@ test("browser history and responsive navigation work in the production runtime",
   await expect(page).toHaveURL(/\/app\/journal$/);
   await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
-  if (isMobile) {
-    await page.getByRole("link", { name: "Más", exact: true }).click();
-    await page.getByRole("link", { name: /Tareas/ }).click();
-  } else {
-    await page.getByRole("link", { name: "Tareas" }).click();
-  }
+  await page.getByRole("link", { name: "Plan", exact: true }).click();
+  await page.getByRole("link", { name: "Tareas y proyectos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
 });
 

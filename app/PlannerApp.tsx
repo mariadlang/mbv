@@ -156,6 +156,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} />} />
+            <Route path="/app/profile" element={<Navigate to="/app/settings" replace />} />
             <Route path="/app/legal" element={<LegalPrivacyPage />} />
             <Route path="/app/privacy-center" element={<PrivacyCenterPage planner={planner} />} />
             <Route path="/app/pqr" element={<Navigate to="/app/privacy-center" replace />} />

@@ -9,6 +9,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 const prompts = ["¿Qué fue lo mejor de hoy?", "¿Qué aprendí sobre mí esta semana?", "¿Qué puedo soltar para avanzar más ligera?"];
 const typeLabels: Record<JournalEntry["type"], string> = { free: "Reflexión", gratitude: "Gratitud", weekly_review: "Semanal", monthly_reset: "Mensual" };
@@ -48,6 +49,7 @@ export function JournalPage({ planner }: { planner: PlannerController }) {
   };
 
   return <div className="page-stack journal-page-new">
+    <SectionNavigation section="space" />
     <SectionHeading eyebrow="MI ESPACIO" title="Mi diario" description="Un lugar para volver a ti." action={<Button variant="secondary" onClick={() => setShowReflections(!showReflections)}>{showReflections ? "Volver a mis páginas" : "Ver reflexiones"}</Button>} />
     {message && <p className="inline-message" role="status">{message}</p>}
 

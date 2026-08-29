@@ -8,6 +8,7 @@ import { calculateProjectProgress, projectNextSuggestion } from "@/src/domain/ca
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
 
@@ -64,6 +65,7 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   };
 
   return <div className="page-stack tasks-page">
+    <SectionNavigation section="plan" />
     <SectionHeading eyebrow="Ejecuta lo que sí importa" title="Tareas y proyectos" description="Captura acciones y agrúpalas en entregables concretos." action={<Button onClick={() => setAdvancedOpen(!advancedOpen)}><Plus size={17} /> Nueva tarea</Button>} />
     <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Inbox" : item === "today" ? "Hoy" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}

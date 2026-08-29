@@ -14,6 +14,7 @@ import { Button, Card, EmptyState, ProgressBar } from "@/src/components/ui/Primi
 import { Modal } from "@/src/components/ui/Modal";
 import { useAccount } from "@/src/hooks/useAccount";
 import { useLegalPrivacy } from "@/src/hooks/useLegalPrivacy";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 type FitnessSection = "nutrition" | "training";
 type WorkoutDraftExercise = { id?: string; name: string; sets: Array<{ id?: string; setNumber: number; reps: number; weight: number }> };
@@ -140,6 +141,7 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
   if (!legal.hasConsent("sensitive_wellness")) return <div className="page-stack sensitive-consent-page"><Card><span className="fitness-round-icon"><Target size={22} /></span><p className="eyebrow">TU ELECCIÓN ES VOLUNTARIA</p><h1>Antes de usar Alimentación y Entrenamiento</h1><p>Esta función puede contener datos sensibles como objetivos físicos, comidas, peso, medidas, ejercicios, repeticiones y cargas. Se guardan localmente en este dispositivo y no se usan para publicidad personalizada.</p><ul><li>No tienes obligación de entregar estos datos.</li><li>Puedes retirar la autorización desde el Centro de Privacidad.</li><li>Negarte no limita las demás funciones de My Best Version.</li><li>Esta herramienta no sustituye orientación médica o nutricional profesional.</li></ul><div><Button loading={consentSaving} onClick={async () => { setConsentSaving(true); try { await legal.recordConsent({ consentType: "sensitive_wellness", method: "feature_gate", status: "granted" }); } finally { setConsentSaving(false); } }}>Autorizar y continuar</Button><Link className="button button--ghost" to="/app/life-hub">Ahora no</Link><Link className="button button--secondary" to="/data-policy">Leer política de datos</Link></div></Card></div>;
 
   return <div className="page-stack fitness-page">
+    <SectionNavigation section="space" />
     <header className="fitness-page__header">
       <Link className="back-link" to="/app/life-hub"><ArrowLeft size={18} /> Volver a Mi espacio</Link>
       <div><span className="fitness-page__title-icon">{section === "nutrition" ? <Utensils size={27} /> : <Dumbbell size={27} />}</span><div><p className="eyebrow">MI ESPACIO · FITNESS</p><h1>{section === "nutrition" ? "Alimentación" : "Entrenamiento"}</h1></div></div>

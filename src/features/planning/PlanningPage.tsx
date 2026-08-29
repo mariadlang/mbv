@@ -13,6 +13,7 @@ import { cascadePlanFormSchema } from "@/src/lib/schemas";
 import { buildYearMonthSlots, monthPeriodKey, parseAreaGoals, serializeAreaGoals } from "@/src/domain/monthPlanning";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { UserAccess } from "@/src/domain/access";
 import { canAccessFeature } from "@/src/domain/access";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
@@ -215,6 +216,7 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
   };
 
   return <div className="page-stack cascade-page planning-v2">
+    <SectionNavigation section="plan" />
     {view === "year" && <PlanningOverview access={access} snapshot={snapshot} fiveYearPlan={fiveYearPlan} threeYearPlan={threeYearPlan} monthSlots={monthSlots} selectedYear={selectedYear} availableYears={availableYears} todayKey={todayKey} onYearChange={setSelectedYear} onAddPlan={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onEditLongTerm={openLongTerm} onOpenMonth={openMonthDetail} onEditMonth={openEditMonth} onOpenWeek={() => setView("week")} onOpenDay={() => setView("day")} onOpenReset={() => setView("reset")} />}
 
     {view === "month" && selectedMonthPlan && <MonthDetail plan={selectedMonthPlan} snapshot={snapshot} todayKey={todayKey} anchorDate={anchorDate} calendarDates={calendarDates} monthMode={monthMode} reflection={reflection} reflectionSaved={reflectionSaved} onBack={() => { setView("year"); setSelectedMonthId(null); }} onEdit={() => openEditMonth(selectedMonthPlan)} onDelete={async () => { if (!window.confirm(`¿Eliminar ${format(monthDate(selectedMonthPlan.periodKey), "MMMM yyyy", { locale: es })}? Esta acción no elimina tus tareas ni eventos.`)) return; await planner.deleteCascadePlan(selectedMonthPlan.id); setSelectedMonthId(null); setView("year"); }} onMonthMode={setMonthMode} onSelectDay={(key) => { setSelectedDate(key); setView("day"); }} onTogglePriority={(index) => planner.toggleCascadeObjective(selectedMonthPlan.id, index)} onReflectionChange={(next) => { setReflection(next); setReflectionSaved(false); }} onSaveReflection={saveReflection} onPlanWeek={() => setView("week")} />}

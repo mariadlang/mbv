@@ -9,6 +9,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { Modal } from "@/src/components/ui/Modal";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane];
 const customCategories = ["Salud", "Físico", "Relaciones", "Trabajo", "Profesional", "Personal", "Espiritual", "Crecimiento", "Finanzas", "Hogar", "Experiencias", "Otro"];
@@ -62,6 +63,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
 
   return (
     <div className="page-stack">
+      <SectionNavigation section="plan" />
       <SectionHeading
         eyebrow="Tu visión, sin límites"
         title={view === "dream" ? "Dream Life" : "Rueda de vida"}

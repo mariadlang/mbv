@@ -13,6 +13,7 @@ import { goalFormSchema, type GoalFormInput } from "@/src/lib/schemas";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 type GoalFilter = "active" | "paused" | "completed" | "all";
 type DateMode = "date" | "month" | "flexible";
@@ -96,6 +97,7 @@ export function GoalsPage({ planner }: { planner: PlannerController }) {
     const next = linkedTasks.find((task) => task.status !== "completed" && task.status !== "cancelled")
       ?? getNextStep(snapshot, toLocalDateKey(new Date()));
     return <div className="page-stack goal-detail-page">
+      <SectionNavigation section="plan" />
       <button className="back-link" onClick={() => setSelectedGoalId(null)}><ArrowLeft size={16} /> Volver a metas</button>
       <header className="goal-detail-hero"><span className="goal-detail-icon"><Target size={29} /></span><div><Badge tone="rose">{area?.name ?? "Personal"}</Badge><h1>{selectedGoal.title}</h1><p><CalendarDays size={15} /> {selectedGoal.targetDate ? `Fecha objetivo: ${selectedGoal.targetDate}` : selectedGoal.targetMonth ? `Mes deseado: ${selectedGoal.targetMonth}` : "Ritmo flexible"} · En progreso</p></div><div className="goal-detail-progress"><strong>{progress}%</strong><span>completado</span><ProgressBar value={progress} label="Progreso de la meta" /></div></header>
       <div className="goal-status-actions"><Badge tone="neutral">{selectedGoal.progressType === "numeric" ? "Progreso numérico" : selectedGoal.progressType === "tasks" ? "Por tareas" : selectedGoal.progressType === "manual" ? "Progreso manual" : "Por hitos"}</Badge><Button variant="secondary" onClick={() => planner.updateGoalStatus(selectedGoal.id, selectedGoal.status === "paused" ? "active" : "paused")}>{selectedGoal.status === "paused" ? "Reanudar" : "Pausar"}</Button><Button variant="ghost" onClick={() => planner.updateGoalStatus(selectedGoal.id, "completed")}>Marcar completa</Button></div>
@@ -107,6 +109,7 @@ export function GoalsPage({ planner }: { planner: PlannerController }) {
   }
 
   return <div className="page-stack">
+    <SectionNavigation section="plan" />
     <SectionHeading eyebrow="Tu dirección" title="Metas" description="Resultados que conectan la vida que quieres con lo que eliges hacer ahora." action={<Button onClick={() => setOpen(true)}><Plus size={17} /> Crear meta</Button>} />
     <div className="filter-row" role="group" aria-label="Filtrar metas">
       {(["active", "paused", "completed", "all"] as GoalFilter[]).map((item) => <button key={item} className={`filter-chip ${filter === item ? "is-active" : ""}`} onClick={() => setFilter(item)}>{item === "active" ? "Activas" : item === "paused" ? "Pausadas" : item === "completed" ? "Completadas" : "Todas"}</button>)}

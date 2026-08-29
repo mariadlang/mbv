@@ -12,6 +12,7 @@ import { habitFormSchema, type HabitFormInput } from "@/src/lib/schemas";
 import { Badge, Button, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { MoodPage } from "@/src/features/mood/MoodPage";
+import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 const dayOptions = [
   [1, "L"], [2, "M"], [3, "X"], [4, "J"], [5, "V"], [6, "S"], [0, "D"],
@@ -69,6 +70,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
 
   return (
     <div className="page-stack">
+      <SectionNavigation section="progress" />
       <SectionHeading
         eyebrow="Constancia sin perfección"
         title="Hábitos"
