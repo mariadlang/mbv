@@ -70,7 +70,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
 
   return (
     <div className="page-stack">
-      <SectionNavigation section="progress" />
+      <SectionNavigation section="space" />
       <SectionHeading
         eyebrow="Constancia sin perfección"
         title="Hábitos"

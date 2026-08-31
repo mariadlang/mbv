@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
+import { BRAND_NAME, BRAND_SLOGAN } from "@/src/lib/brand";
 
-export const alt = "My Best Version · Life, but more you.";
+export const alt = `${BRAND_NAME} · ${BRAND_SLOGAN}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -18,7 +19,7 @@ export default function OpenGraphImage() {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-          <span style={{ fontSize: 77, lineHeight: 1.05 }}>Life, but more you.</span>
+          <span style={{ fontSize: 77, lineHeight: 1.05 }}>{BRAND_SLOGAN}</span>
           <span style={{ marginTop: 22, fontFamily: "Nunito Sans, sans-serif", fontSize: 28, lineHeight: 1.4, color: "#6F625C" }}>Convierte tu visión en planes, hábitos y acciones sostenibles.</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, fontFamily: "Nunito Sans, sans-serif", fontSize: 20, color: "#6F625C" }}><span style={{ width: 74, height: 5, borderRadius: 99, background: "#E88A7E" }} /> Planeación en cascada · bienestar · finanzas · progreso</div>

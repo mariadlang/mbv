@@ -892,7 +892,7 @@ export const plannerService = {
   completeWorkout(date: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const existing = snapshot.workoutLogs.find((item) => item.date === date);
-      if (!existing?.exercises.length) return snapshot;
+      if (!existing) return snapshot;
       const now = nowIso();
       const exercises = existing.exercises.map((exercise) => ({
         id: id(), name: exercise.name,

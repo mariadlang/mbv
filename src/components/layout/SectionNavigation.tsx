@@ -13,8 +13,6 @@ const sections = {
       ["/app/planning", "Año y meses"],
       ["/app/planning/weekly", "Semana"],
       ["/app/life-hub?tab=events", "Calendario"],
-      ["/app/tasks", "Tareas y proyectos"],
-      ["/app/life-hub?tab=routines", "Rutinas"],
     ],
   },
   progress: {
@@ -22,18 +20,16 @@ const sections = {
     items: [
       ["/app/progress", "Resumen"],
       ["/app/goals", "Metas"],
-      ["/app/habits", "Consistencia"],
-      ["/app/habits?checkin=1", "Bienestar"],
       ["/app/progress#statistics", "Estadísticas"],
     ],
   },
   space: {
     label: "Secciones de Mi espacio",
     items: [
-      ["/app/journal", "Diario y notas"],
       ["/app/life-hub", "Braindump"],
-      ["/app/finance", "Finanzas"],
-      ["/app/learn", "Recursos"],
+      ["/app/habits", "Hábitos"],
+      ["/app/journal", "Diario y notas"],
+      ["/app/tasks", "Proyectos y tareas"],
       ["/app/life-hub?tab=routines", "Más herramientas"],
     ],
   },

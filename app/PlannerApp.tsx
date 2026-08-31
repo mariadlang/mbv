@@ -151,7 +151,8 @@ function ProtectedPlannerApp() {
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} />} />
-            <Route path="/app/life-hub/fitness" element={<FitnessPage planner={planner} />} />
+            <Route path="/app/health" element={<FitnessPage planner={planner} />} />
+            <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
@@ -163,7 +164,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/help" element={<HelpPage planner={planner} />} />
             <Route path="/app/support" element={<SupportPage />} />
             <Route path="/app/learn" element={<LearnPage planner={planner} />} />
-            <Route path="/app/feed" element={<Navigate to="/app/life-hub/fitness" replace />} />
+            <Route path="/app/feed" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/more" element={<MorePage />} />
             <Route path="/admin" element={<Navigate to="/platform" replace />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

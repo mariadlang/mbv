@@ -65,8 +65,8 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   };
 
   return <div className="page-stack tasks-page">
-    <SectionNavigation section="plan" />
-    <SectionHeading eyebrow="Ejecuta lo que sí importa" title="Tareas y proyectos" description="Captura acciones y agrúpalas en entregables concretos." action={<Button onClick={() => setAdvancedOpen(!advancedOpen)}><Plus size={17} /> Nueva tarea</Button>} />
+    <SectionNavigation section="space" />
+    <SectionHeading eyebrow="De la idea a la acción" title="Proyectos y tareas" description="Define primero tus entregables y organiza debajo las acciones que los hacen avanzar." action={<Button onClick={() => setAdvancedOpen(!advancedOpen)}><Plus size={17} /> Nueva tarea</Button>} />
     <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Inbox" : item === "today" ? "Hoy" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
     {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}

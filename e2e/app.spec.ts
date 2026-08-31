@@ -4,8 +4,10 @@ async function completeOnboarding(page: Page, name = "María") {
   await page.goto("/app/dashboard");
   const necessaryCookies = page.getByRole("button", { name: "Solo necesarias" });
   if (await necessaryCookies.waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) await necessaryCookies.click();
-  await expect(page.getByRole("heading", { name: /Life, but more you/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible();
   await page.getByRole("button", { name: /Crear mi espacio/ }).click();
+  await page.getByRole("radio", { name: /Diseñar mi mes/ }).click();
+  await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Salud y bienestar" }).click();
   await page.getByRole("button", { name: "Carrera / profesional" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -13,6 +15,7 @@ async function completeOnboarding(page: Page, name = "María") {
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByPlaceholder("Ej. María").fill(name);
   await page.getByRole("button", { name: /Crear mi espacio/ }).click();
+  await page.goto("/app/dashboard");
   await expect(page.getByRole("heading", { name: new RegExp(`Buenos días, ${name}`) })).toBeVisible();
 }
 
@@ -141,23 +144,22 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await page.getByLabel("Pensamiento").fill("Aprender fotografía");
   await page.getByRole("button", { name: "Capturar" }).click();
   await expect(page.getByText("Aprender fotografía")).toBeVisible();
-  await expect(page.getByRole("link", { name: /Fitness/ })).toBeVisible();
-  await page.getByRole("link", { name: /Fitness/ }).click();
-  await expect(page).toHaveURL(/\/app\/life-hub\/fitness/);
+  await page.goto("/app/health");
+  await expect(page).toHaveURL(/\/app\/health/);
   await authorizeFitnessIfNeeded(page);
   await expect(page.getByRole("heading", { name: "Alimentación", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Entrenamiento" }).click();
   await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
   const workoutDialog = page.getByRole("dialog", { name: "Añadir entrenamiento" });
   await workoutDialog.getByLabel("Nombre del entrenamiento").fill("Glúteos");
-  await workoutDialog.getByRole("button", { name: "Añadir ejercicio" }).click();
+  await workoutDialog.getByRole("button", { name: "Añadir ejercicio opcional" }).click();
   await workoutDialog.getByLabel("Nombre del ejercicio").fill("Hip Thrust");
   await workoutDialog.getByLabel("Número de series").fill("2");
   await workoutDialog.getByLabel("Reps").nth(0).fill("12");
   await workoutDialog.getByLabel("Peso kg").nth(0).fill("70");
   await workoutDialog.getByLabel("Reps").nth(1).fill("8");
   await workoutDialog.getByLabel("Peso kg").nth(1).fill("80");
-  await workoutDialog.getByRole("button", { name: "Guardar rutina" }).click();
+  await workoutDialog.getByRole("button", { name: "Guardar entrenamiento" }).click();
   await expect(page.getByRole("heading", { name: "Glúteos" })).toBeVisible();
   await expect(page.getByText("70 kg")).toBeVisible();
   await expect(page.getByText("80 kg")).toBeVisible();
@@ -165,8 +167,7 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await page.getByRole("button", { name: "Ver historial de pesos" }).click();
   await expect(page.getByRole("dialog", { name: "Historial de pesos" }).getByText(/70 kg × 12.*80 kg × 8/)).toBeVisible();
   await page.getByRole("dialog", { name: "Historial de pesos" }).getByRole("button", { name: "Cerrar", exact: true }).click();
-  await page.getByRole("link", { name: "Volver a Mi espacio" }).click();
-  await page.getByRole("button", { name: "Retos" }).click();
+  await page.goto("/app/life-hub?tab=challenges");
   await expect(page).toHaveURL(/\/app\/life-hub\?tab=challenges$/);
   await expect(page.getByRole("heading", { name: "Retos", exact: true })).toBeVisible();
 });
@@ -183,7 +184,7 @@ test("exports, deletes and restores a validated local backup", async ({ page }) 
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await page.getByLabel("Confirmación para eliminar todos los datos").fill("ELIMINAR");
   await page.getByRole("button", { name: "Eliminar todo" }).click();
-  await expect(page.getByRole("heading", { name: /Life, but more you/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible();
 
   await page.locator('input[type="file"][accept="application/json"]').setInputFiles(backupPath!);
   await expect(page.getByLabel("Nombre del perfil")).toHaveValue("Valeria");
@@ -198,12 +199,12 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app", /Buenos días/],
     ["/app/dashboard", /Buenos días/],
     ["/app/today", /Buenos días/],
-    ["/app/tasks", /Tareas y proyectos/],
+    ["/app/tasks", /Proyectos y tareas/],
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
     ["/app/life-hub", /^Mi espacio$/],
-    ["/app/life-hub/fitness", /^Alimentación$/],
+    ["/app/health", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
     ["/app/journal", /^Mi diario$/],
@@ -214,7 +215,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 
   for (const [route, heading] of routes) {
     await page.goto(route);
-    if (route === "/app/life-hub/fitness") await authorizeFitnessIfNeeded(page);
+    if (route === "/app/health") await authorizeFitnessIfNeeded(page);
     await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
   }
   await page.reload();
@@ -224,12 +225,16 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 test("information architecture separates overview from daily execution", async ({ page }) => {
   await completeOnboarding(page);
   const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await expect(navigation.getByRole("link")).toHaveCount(5);
+  await expect(navigation.getByRole("link")).toHaveCount(test.info().project.name === "mobile" ? 5 : 7);
   await expect(navigation).toContainText("Inicio");
   await expect(navigation).toContainText("Hoy");
   await expect(navigation).toContainText("Plan");
   await expect(navigation).toContainText("Progreso");
   await expect(navigation).toContainText("Mi espacio");
+  if (test.info().project.name !== "mobile") {
+    await expect(navigation).toContainText("Salud");
+    await expect(navigation).toContainText("Finanzas");
+  }
   await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
@@ -242,9 +247,9 @@ test("information architecture separates overview from daily execution", async (
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
-  await page.getByRole("link", { name: "Plan", exact: true }).click();
-  await page.getByRole("link", { name: "Tareas y proyectos", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
+  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 
   await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
   await page.getByRole("link", { name: "Diario y notas", exact: true }).click();
@@ -253,14 +258,14 @@ test("browser history and responsive navigation work in the production runtime",
   const historySteps = 2;
   for (let step = 0; step < historySteps; step += 1) await page.goBack();
   await expect(page).toHaveURL(/\/app\/tasks$/);
-  await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
   for (let step = 0; step < historySteps; step += 1) await page.goForward();
   await expect(page).toHaveURL(/\/app\/journal$/);
   await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Plan", exact: true }).click();
-  await page.getByRole("link", { name: "Tareas y proyectos", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Tareas y proyectos" })).toBeVisible();
+  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 });
 
 test("help routes expose the configured support resources", async ({ page }) => {
@@ -344,4 +349,35 @@ test("platform rejects a normal user and allows an authenticated superadmin", as
   await expect(page.getByText("PLATAFORMA PRIVADA")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Resumen" })).toBeVisible();
   await expect(page.getByText("Acceso protegido")).toBeVisible();
+});
+
+test("fitness saves cardio without individual exercises", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/health?section=training");
+  await authorizeFitnessIfNeeded(page);
+  await page.getByRole("tab", { name: "Entrenamiento" }).click();
+  await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Añadir entrenamiento" });
+  await dialog.getByLabel("Nombre del entrenamiento").fill("Cardio caminata");
+  await dialog.getByLabel("Duración estimada (min)").fill("45");
+  await dialog.getByRole("button", { name: "Guardar entrenamiento" }).click();
+  await expect(page.getByRole("heading", { name: "Cardio caminata" })).toBeVisible();
+  await expect(page.getByText("0 ejercicios")).toBeVisible();
+  await expect(page.getByText("Actividad sin series ni repeticiones")).toBeVisible();
+  await page.getByRole("button", { name: "Guardar sesión realizada" }).click();
+  await expect(page.getByText("Sesión realizada guardada en tu historial.")).toBeVisible();
+});
+
+test("quick actions close with Escape and outside click", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/health");
+  await authorizeFitnessIfNeeded(page);
+  const opener = page.getByRole("button", { name: "Abrir acciones rápidas" });
+  await opener.click();
+  await expect(page.getByRole("link", { name: "Chat de soporte" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("link", { name: "Chat de soporte" })).toBeHidden();
+  await opener.click();
+  await page.getByRole("heading", { name: "Alimentación", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Chat de soporte" })).toBeHidden();
 });

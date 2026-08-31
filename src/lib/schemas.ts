@@ -160,7 +160,7 @@ export const workoutPlanFormSchema = z.object({
   date: z.string().min(1), name: z.string().trim().min(2), durationMinutes: z.number().int().positive().optional(),
   exercises: z.array(z.object({
     id: z.string().optional(), name: z.string().trim().min(2), sets: z.array(workoutSetFormSchema).min(1),
-  })).min(1),
+  })).default([]),
 });
 
 export const fitnessSettingsFormSchema = z.object({

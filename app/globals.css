@@ -1128,6 +1128,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .fab { position: fixed; z-index: 50; right: 28px; bottom: 28px; display: flex; width: 54px; height: 54px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: var(--rose); color: white; box-shadow: 0 12px 30px rgba(169,99,99,.3); cursor: pointer; }
 .fab:hover { background: var(--rose-deep); }
+.fab-cluster { position: fixed; z-index: 50; right: 28px; bottom: 28px; display: grid; justify-items: end; gap: 10px; }
+.fab-cluster .fab { position: static; transition: transform .2s ease, background .2s ease; }
+.fab-cluster.is-open .fab { background: var(--rose-deep); transform: rotate(45deg); }
+.fab-menu { display: grid; gap: 8px; visibility: hidden; opacity: 0; transform: translateY(10px); transition: opacity .18s ease, transform .18s ease, visibility .18s; pointer-events: none; }
+.fab-cluster:not(.is-open) .fab-menu { display: none; }
+.fab-cluster.is-open .fab-menu { visibility: visible; opacity: 1; transform: none; pointer-events: auto; }
+.fab-menu a, .fab-menu button { display: flex; min-height: 42px; align-items: center; gap: 9px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface-elevated); color: var(--color-text-primary); box-shadow: var(--shadow-md); padding: 8px 14px; font: inherit; font-size: .84rem; font-weight: 700; text-decoration: none; cursor: pointer; }
+.fab-menu :where(a,button):hover { border-color: var(--color-brand); color: var(--color-brand-strong); }
 .mobile-nav { display: none; }
 
 .brand-loading, .error-page { display: grid; min-height: 100vh; place-items: center; align-content: center; gap: 18px; padding: 30px; text-align: center; }
@@ -1751,6 +1759,12 @@ body { font-size: 16px; background: var(--color-background); }
 .onboarding-page--reference .onboarding-header, .onboarding-page--reference .onboarding-progress { width: min(760px,100%); }
 .onboarding-back { display: grid; width: 38px; height: 38px; place-items: center; border: 0; background: transparent; cursor: pointer; }
 .onboarding-panel--reference { width: min(620px,100%); margin-top: 4vh; text-align: center; }
+.onboarding-start-grid { display: grid; gap: 10px; margin: 0 0 22px; }
+.onboarding-start-grid button { position: relative; display: grid; grid-template-columns: 1fr; gap: 5px; min-height: 92px; border: 1px solid var(--border); border-radius: 14px; background: white; color: var(--charcoal); padding: 17px 44px 17px 18px; text-align: left; cursor: pointer; }
+.onboarding-start-grid button.is-selected { border-color: var(--rose); background: var(--blush); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rose) 18%, transparent); }
+.onboarding-start-grid .area-check { position: absolute; right: 14px; top: 14px; }
+.onboarding-start-grid strong { font-size: 1rem; }
+.onboarding-start-grid small { color: var(--taupe); font-size: .82rem; line-height: 1.45; }
 .onboarding-panel--reference h1 { max-width: none; font-size: var(--text-3xl); }.onboarding-panel--reference h1 em { display: block; color: var(--rose); font-weight: 700; }
 .onboarding-panel--reference > p, .onboarding-panel--reference form > p { margin: 0 auto 25px; color: var(--taupe); }
 .onboarding-symbol { display: grid; width: 55px; height: 55px; margin: 0 auto 23px; place-items: center; border-radius: 50%; background: #fae8e5; color: var(--rose); }
@@ -1909,6 +1923,9 @@ body { font-size: 16px; background: var(--color-background); }
 .brain-list > header > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: var(--blush); color: var(--rose-deep); }
 .brain-list h3, .brain-list small { margin: 0; }
 .brain-list small { color: var(--taupe); font-size: .75rem; }
+.brain-card-add { display: grid; grid-template-columns: minmax(0,1fr) 36px; gap: 7px; margin: 10px 0 12px; }
+.brain-card-add input { min-width: 0; min-height: 38px; border: 1px solid var(--border); border-radius: 9px; background: #fffdfa; padding: 0 10px; font: inherit; font-size: .82rem; }
+.brain-card-add button { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 9px; background: var(--blush); color: var(--rose-deep); cursor: pointer; }
 .brain-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; min-height: 54px; border-top: 1px solid var(--border); }
 .brain-item button { display: grid; width: 26px; height: 26px; place-items: center; border: 0; background: transparent; color: var(--taupe); cursor: pointer; }
 .brain-item > div { display: grid; }
@@ -2107,6 +2124,14 @@ body { font-size: 16px; background: var(--color-background); }
 .topbar__profile { color: var(--color-text-primary); }
 .page-content { min-width: 0; }
 .page-stack, .page-stack > * { min-width: 0; }
+.tasks-page > .section-navigation { order: 0; }
+.tasks-page > .section-heading { order: 1; }
+.tasks-page > .projects-section { order: 2; }
+.tasks-page > .project-database { order: 3; }
+.tasks-page > .task-tabs, .tasks-page > .decision-alert, .tasks-page > .task-resistance-card { order: 4; }
+.tasks-page > .advanced-task-card { order: 5; }
+.tasks-page > .task-manager-card { order: 6; }
+.tasks-page > .task-footer-metrics { order: 7; }
 .page-content > * { animation: page-enter 260ms ease both; }
 
 .section-heading { align-items: flex-end; }
@@ -2308,6 +2333,10 @@ html[data-theme="dark"] .app-shell :where(.segmented-control, .planning-tabs, .j
 .workout-builder__sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 9px; margin-top: 14px; }
 .workout-builder__sets > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-radius: 12px; background: #fbf8f6; padding: 10px; }
 .workout-builder__sets > div > strong { grid-column: 1 / -1; }
+.workout-without-exercises { display: flex; align-items: flex-start; gap: 12px; border: 1px dashed color-mix(in srgb, var(--fitness-accent) 45%, var(--border)); border-radius: 14px; background: #fff9f9; padding: 16px; }
+.workout-without-exercises > svg { flex: 0 0 auto; color: var(--fitness-accent); }
+.workout-without-exercises p { margin: 4px 0 0; color: var(--text-muted); font-size: .84rem; line-height: 1.5; }
+.form-help--positive { margin: 0; border-radius: 10px; background: color-mix(in srgb, var(--sage) 22%, white); padding: 11px 13px; color: var(--charcoal); }
 .training-day-picker { display: flex; flex-wrap: wrap; gap: 10px 16px; }
 .training-day-picker legend { width: 100%; }
 .training-day-picker label { display: flex; align-items: center; gap: 6px; }
@@ -2528,6 +2557,7 @@ html[data-theme="dark"] .intention-quote blockquote { color: var(--color-text-pr
   .mobile-nav { min-height: calc(72px + env(safe-area-inset-bottom)); height: auto; padding: 7px 5px calc(7px + env(safe-area-inset-bottom)); }
   .mobile-nav__item { min-height: 54px; font-size: .6875rem; line-height: 1; }
   .fab { right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); width: 48px; height: 48px; }
+  .fab-cluster { right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 359px) {

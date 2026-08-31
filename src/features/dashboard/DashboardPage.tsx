@@ -63,7 +63,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
     <section className="quick-access-section"><header><p className="eyebrow">Accesos rápidos</p><h2>Ir directo a lo que necesitas</h2></header><div className="quick-access-grid">
       <Link to="/app/tasks"><ListPlus size={20} /><span>Nueva tarea</span></Link>
       <Link to="/app/habits"><Check size={20} /><span>Registrar hábito</span></Link>
-      <Link to="/app/life-hub/fitness"><Utensils size={20} /><span>Añadir comida</span></Link>
+      <Link to="/app/health"><Utensils size={20} /><span>Añadir comida</span></Link>
       <Link to="/app/journal"><Feather size={20} /><span>Escribir en mi diario</span></Link>
       <Link to="/app/life-hub?tab=events"><CalendarDays size={20} /><span>Abrir calendario</span></Link>
     </div></section>

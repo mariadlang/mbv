@@ -4,7 +4,6 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Bell,
-  ArrowRight,
   BookHeart,
   CalendarDays,
   Camera,
@@ -26,7 +25,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { formatDateKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
@@ -80,6 +79,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   const [listType, setListType] = useState<BrainDumpType>("want_to_do");
   const [listDate, setListDate] = useState("");
   const [listDateMode, setListDateMode] = useState<"flexible" | "month" | "date">("flexible");
+  const [listDrafts, setListDrafts] = useState<Partial<Record<BrainDumpType, string>>>({});
   const [routineName, setRoutineName] = useState("Rutina AM");
   const [routinePeriod, setRoutinePeriod] = useState<"am" | "afternoon" | "pm">("am");
   const [routineSteps, setRoutineSteps] = useState("");
@@ -192,6 +192,14 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     setEventTitle("");
   };
 
+  const addListItemToCard = async (event: FormEvent, type: BrainDumpType) => {
+    event.preventDefault();
+    const title = listDrafts[type]?.trim();
+    if (!title) return;
+    await planner.createBrainDumpItem({ title, type, priority: type === "must_do" ? "high" : "medium" });
+    setListDrafts((current) => ({ ...current, [type]: "" }));
+  };
+
   const addWorkout = async (event: FormEvent) => {
     event.preventDefault();
     if (!exercise.trim()) return;
@@ -218,7 +226,7 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
   };
 
   return (
-    requestedTab === "fitness" ? <Navigate to="/app/life-hub/fitness" replace /> :
+    requestedTab === "fitness" ? <Navigate to="/app/health" replace /> :
     <div className="page-stack life-hub-page">
       <SectionNavigation section="space" />
       <SectionHeading eyebrow="PAUSA EL RUIDO" title="Mi espacio" description="Un lugar para capturar ideas, cuidar tus rutinas y recordar la vida que estás construyendo." />
@@ -226,9 +234,8 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
       {message && <div className="inline-message" role="status">{message}</div>}
 
       {tab === "lists" && <>
-        <Link className="fitness-entry-link" to="/app/life-hub/fitness"><Card className="fitness-entry-card"><span><Dumbbell size={25} /></span><div><p className="eyebrow">DENTRO DE MI ESPACIO</p><h2>Fitness</h2><p>Tu alimentación, entrenamientos y progreso físico en un solo lugar.</p></div><ArrowRight size={20} /></Card></Link>
         <Card className="hub-capture-card"><div><ListPlus size={23} /><p className="eyebrow">PAUSA EL RUIDO</p><h2>Captura lo que aparece. Decide cuando tengas claridad.</h2><p>La fecha es tentativa y siempre podrás moverla, completarla o liberarla.</p></div><form onSubmit={addListItem}><label className="form-field"><span>Pensamiento</span><input value={listTitle} onChange={(event) => setListTitle(event.target.value)} placeholder="Ej. Tomar un curso de fotografía" /></label><label className="form-field"><span>Lista</span><select value={listType} onChange={(event) => setListType(event.target.value as BrainDumpType)}>{Object.entries(listLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><fieldset className="date-mode-field"><legend>Fecha tentativa</legend><div><label><input type="radio" checked={listDateMode === "flexible"} onChange={() => { setListDateMode("flexible"); setListDate(""); }} /> Flexible</label><label><input type="radio" checked={listDateMode === "month"} onChange={() => { setListDateMode("month"); setListDate(""); }} /> Mes</label><label><input type="radio" checked={listDateMode === "date"} onChange={() => { setListDateMode("date"); setListDate(""); }} /> Fecha exacta</label></div>{listDateMode !== "flexible" && <input type={listDateMode === "month" ? "month" : "date"} value={listDate} onChange={(event) => setListDate(event.target.value)} aria-label={listDateMode === "month" ? "Mes tentativo" : "Fecha tentativa exacta"} />}</fieldset><Button type="submit"><Plus size={16} /> Capturar</Button></form></Card>
-        <div className="brain-lists-grid">{groupedLists.map(({ type, items }) => <Card className="brain-list" key={type}><header><span>{type === "shopping" ? <ShoppingBag size={18} /> : type === "want_to_read" ? <BookHeart size={18} /> : <Lightbulb size={18} />}</span><div><h3>{listLabels[type]}</h3><small>{items.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header>{items.map((item) => <div className={`brain-item is-${item.status}`} key={item.id}><button onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate || "Sin fecha · flexible"}</small></div><button onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label="Liberar">×</button></div>)}{!items.length && <p className="brain-empty">Todo lo que aparezca aquí puede quedarse sin decidir por ahora.</p>}</Card>)}</div>
+        <div className="brain-lists-grid">{groupedLists.map(({ type, items }) => <Card className="brain-list" key={type}><header><span>{type === "shopping" ? <ShoppingBag size={18} /> : type === "want_to_read" ? <BookHeart size={18} /> : <Lightbulb size={18} />}</span><div><h3>{listLabels[type]}</h3><small>{items.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header><form className="brain-card-add" onSubmit={(event) => addListItemToCard(event, type)}><input value={listDrafts[type] ?? ""} onChange={(event) => setListDrafts((current) => ({ ...current, [type]: event.target.value }))} placeholder={`Añadir a ${listLabels[type].toLowerCase()}`} aria-label={`Añadir a ${listLabels[type]}`} /><button type="submit" aria-label={`Guardar en ${listLabels[type]}`}><Plus size={15} /></button></form>{items.map((item) => <div className={`brain-item is-${item.status}`} key={item.id}><button onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate || "Sin fecha · flexible"}</small></div><button onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label="Liberar">×</button></div>)}{!items.length && <p className="brain-empty">Todo lo que aparezca aquí puede quedarse sin decidir por ahora.</p>}</Card>)}</div>
       </>}
 
       {tab === "routines" && <div className="hub-two-column"><Card className="hub-form-card"><Sun size={24} /><p className="eyebrow">Nueva rutina</p><h2>Diseña una secuencia que te cuide</h2><form onSubmit={addRoutine}><label className="form-field"><span>Nombre</span><input value={routineName} onChange={(event) => setRoutineName(event.target.value)} /></label><label className="form-field"><span>Momento</span><select value={routinePeriod} onChange={(event) => setRoutinePeriod(event.target.value as typeof routinePeriod)}><option value="am">AM · mañana</option><option value="afternoon">Tarde</option><option value="pm">PM · noche</option></select></label><label className="form-field"><span>Pasos · uno por línea</span><textarea rows={7} value={routineSteps} onChange={(event) => setRoutineSteps(event.target.value)} placeholder={"Agua y luz natural\nEscribir mis Top 3"} /></label><Button type="submit">Guardar rutina</Button></form></Card><div className="routine-grid">{snapshot.routines.map((routine) => <Card className="routine-card" key={routine.id}><span>{routine.period === "am" ? <Sun size={20} /> : routine.period === "pm" ? <MoonStar size={20} /> : <Sparkles size={20} />}</span><Badge tone="rose">{routine.period === "am" ? "AM" : routine.period === "pm" ? "PM" : "Tarde"}</Badge><h2>{routine.name}</h2>{routine.steps.map((step, index) => <p key={step.id}><i>{index + 1}</i>{step.title}</p>)}</Card>)}</div></div>}

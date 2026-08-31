@@ -13,7 +13,6 @@ import { toLocalDateKey } from "@/src/lib/dates";
 import { transactionFormSchema } from "@/src/lib/schemas";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { useI18n } from "@/src/i18n/I18nProvider";
-import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 
 type FinanceTab = "summary" | "budget" | "movements" | "accounts" | "purchases" | "funds" | "debts" | "recurring" | "review";
 
@@ -83,7 +82,6 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
   };
 
   return <div className="finance-page page-stack">
-    <SectionNavigation section="space" />
     <SectionHeading
       eyebrow="Tu dinero también cuenta tu historia"
       title="Finanzas"
