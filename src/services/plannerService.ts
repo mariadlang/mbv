@@ -393,7 +393,7 @@ export const plannerService = {
 
   updateLifeArea(
     lifeAreaId: string,
-    input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string },
+    input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string; category?: string },
   ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
@@ -887,6 +887,13 @@ export const plannerService = {
           : [plan, ...snapshot.workoutLogs],
       };
     });
+  },
+
+  deleteWorkoutPlan(date: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      workoutLogs: snapshot.workoutLogs.filter((item) => item.date !== date),
+    }));
   },
 
   completeWorkout(date: string): Promise<PlannerSnapshot> {

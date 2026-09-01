@@ -90,7 +90,7 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
 
       <div className="progress-bottom-grid">
         <Card><div className="card-heading"><div><p className="eyebrow">ÁREAS DE VIDA</p><h2>Cómo se sienten hoy</h2><p>Estas cifras expresan satisfacción actual, no porcentaje de progreso.</p></div></div><div className="life-area-score-list">{snapshot.lifeAreas.filter((area) => area.active).map((area) => <div key={area.id}><span>{area.name}</span><strong>{area.currentScore ?? "—"}/10</strong></div>)}</div></Card>
-        <Card className="weekly-review-cta"><Sparkles size={24} /><p className="eyebrow">LO QUE ESTAMOS NOTANDO</p><h2>{completedTasks ? "Tus acciones ya están dejando evidencia." : "Tu ritmo puede empezar con una sola acción."}</h2><p>{completedTasks ? `Has completado ${completedTasks} tareas. Usa el Weekly Reset para decidir cuáles sí merecen seguir.` : "Prepara una semana pequeña y posible; después podrás observar el patrón."}</p><Link className="button button--secondary" to="/app/planning/weekly?reset=1">Iniciar Weekly Reset</Link></Card>
+        <Card className="weekly-review-cta"><Sparkles size={24} /><p className="eyebrow">LO QUE ESTAMOS NOTANDO</p><h2>{completedTasks ? "Tus acciones ya están dejando evidencia." : "Tu ritmo puede empezar con una sola acción."}</h2><p>{completedTasks ? `Has completado ${completedTasks} tareas. Usa la revisión semanal para decidir cuáles sí merecen seguir.` : "Prepara una semana pequeña y posible; después podrás observar el patrón."}</p><Link className="button button--secondary" to="/app/planning/weekly?reset=1">Iniciar revisión semanal</Link></Card>
       </div>
     </div>
   );

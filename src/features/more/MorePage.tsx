@@ -5,7 +5,7 @@ import { Banknote, BarChart3, BookOpen, ChevronRight, Feather, HeartPulse, Layou
 import { Card, SectionHeading } from "@/src/components/ui/Primitives";
 
 const groups = [
-  { title: "PLANIFICAR", links: [["/app/goals", "Metas", "Resultados que orientan tus decisiones.", Target], ["/app/tasks", "Tareas y proyectos", "Acciones, checklist y próximos pasos.", ListTodo]] },
+  { title: "PLANIFICAR", links: [["/app/goals", "Metas", "Resultados que orientan tus decisiones.", Target], ["/app/tasks", "Tareas y proyectos", "Acciones, lista de pasos y próximos movimientos.", ListTodo]] },
   { title: "CUIDARME", links: [["/app/habits", "Hábitos y bienestar", "Hábitos, ánimo, energía, sueño y enfoque.", HeartPulse]] },
   { title: "ORGANIZAR", links: [["/app/finance", "Finanzas", "Presupuesto, movimientos y decisiones.", Banknote], ["/app/life-hub", "Mi espacio", "Listas, rutinas, Fitness, retos, visión y eventos.", LayoutGrid]] },
   { title: "REFLEXIONAR", links: [["/app/progress", "Tu progreso", "Reconoce el ritmo que has construido.", BarChart3], ["/app/journal", "Mi diario", "Un lugar para volver a ti.", Feather]] },

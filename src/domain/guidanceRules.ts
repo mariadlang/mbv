@@ -48,7 +48,7 @@ export function getNextStep(snapshot: PlannerSnapshot, date: string) {
   const urgent = snapshot.tasks.find((task) => task.date && task.date <= date && task.status !== "completed" && task.status !== "cancelled");
   if (urgent) return { title: urgent.title, href: "/app/tasks" };
 
-  if (!snapshot.lifeAreas.some((area) => area.vision || area.dream)) return { title: "Define una dirección en tu Dream Life", href: "/app/vision" };
+  if (!snapshot.lifeAreas.some((area) => area.vision || area.dream)) return { title: "Define una dirección en tu Vida soñada", href: "/app/vision" };
   if (!snapshot.goals.some((goal) => goal.status === "active")) return { title: "Convierte tu visión en una meta", href: "/app/goals" };
   if (!snapshot.moodLogs.some((log) => log.date === date)) return { title: "Registra cómo llegas a este día", href: "/app/habits?checkin=1" };
   return topThree.length ? { title: "Reconoce lo que ya completaste", href: "/app/progress" } : { title: "Elige una prioridad concreta para hoy", href: "/app/today" };

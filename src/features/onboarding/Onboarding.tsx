@@ -39,7 +39,7 @@ const areas = [
 export function Onboarding({ planner }: { planner: PlannerController }) {
   const navigate = useNavigate();
   const [stage, setStage] = useState<0 | 1 | 2 | 3 | 4>(0);
-  const [startPath, setStartPath] = useState("/app/planning");
+  const [startPath, setStartPath] = useState("/app/planning?view=year&create=month");
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [difference, setDifference] = useState("");
   const [name, setName] = useState("");
@@ -112,9 +112,9 @@ export function Onboarding({ planner }: { planner: PlannerController }) {
         <p>Elige el horizonte que más te sirva hoy. Podrás usar los demás cuando quieras.</p>
         <div className="onboarding-start-grid" role="radiogroup" aria-label="Forma de empezar">
           {[
-            ["/app/planning?view=year", "Diseñar mi mes", "Empieza por prioridades y acciones cercanas."],
-            ["/app/planning", "Diseñar mi año", "Organiza los próximos meses con una dirección clara."],
-            ["/app/vision", "Diseñar mi plan de vida", "Comienza por Dream Life y la rueda de vida con acompañamiento."],
+            ["/app/planning?view=year&create=month", "Diseña tu mes", "Abre directamente el plan del mes actual para elegir un enfoque cercano."],
+            ["/app/planning?view=year", "Diseña tu año", "Muestra el año completo para organizar tus meses con una dirección clara."],
+            ["/app/vision?guided=1", "Diseña tu plan de vida con acompañamiento", "Comienza en Vida soñada y continúa por la rueda de vida y tus metas."],
           ].map(([path, title, copy]) => <button type="button" role="radio" aria-checked={startPath === path} className={startPath === path ? "is-selected" : ""} onClick={() => setStartPath(path)} key={path}><span className="area-check">{startPath === path && <Check size={14} />}</span><strong>{title}</strong><small>{copy}</small></button>)}
         </div>
         <Button className="onboarding-primary" onClick={() => setStage(2)}>Continuar</Button>

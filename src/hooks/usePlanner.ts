@@ -169,7 +169,7 @@ export function usePlanner() {
       commit((service) => service.updateGoalStatus(goalId, status)),
     updateGoalProgress: (goalId: string, value: number) =>
       commit((service) => service.updateGoalProgress(goalId, value)),
-    updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string }) =>
+    updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string; category?: string }) =>
       commit((service) => service.updateLifeArea(lifeAreaId, input)),
     createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
       commit((service) => service.createLifeArea(input)),
@@ -219,6 +219,7 @@ export function usePlanner() {
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
     saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
     saveWorkoutPlan: (input: WorkoutPlanFormInput) => commit((service) => service.saveWorkoutPlan(input)),
+    deleteWorkoutPlan: (date: string) => commit((service) => service.deleteWorkoutPlan(date)),
     completeWorkout: (date: string) => commitTracked("workout_completed", (service) => service.completeWorkout(date)),
     duplicateWorkout: (sourceDate: string, targetDate: string) => commit((service) => service.duplicateWorkout(sourceDate, targetDate)),
     saveMeal: (input: MealFormInput) => commitTracked("meal_logged", (service) => service.saveMeal(input)),

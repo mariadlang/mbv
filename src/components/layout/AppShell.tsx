@@ -28,7 +28,7 @@ const utilityItems = [
 function isPrimaryActive(href: string, pathname: string) {
   if (href === "/app/dashboard") return pathname === href;
   if (href === "/app/today") return pathname === href;
-  if (href === "/app/planning") return ["/app/vision", "/app/goals", "/app/planning", "/app/tasks"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  if (href === "/app/planning") return ["/app/vision", "/app/goals", "/app/planning"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
   if (href === "/app/life-hub") return ["/app/life-hub", "/app/journal", "/app/habits", "/app/tasks", "/app/learn"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
   if (href === "/app/health") return pathname === "/app/health";
   if (href === "/app/finance") return pathname === "/app/finance";

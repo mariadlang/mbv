@@ -175,7 +175,7 @@ function ProtectedPlannerApp() {
       <Modal open={quickAddOpen} title="Capturar una tarea" description="Guárdala ahora. Puedes decidir la fecha y la meta más adelante." onClose={() => setQuickAddOpen(false)}>
         <form className="quick-task-form" onSubmit={addQuickTask}>
           <label className="form-field"><span>Tarea</span><input value={quickTask} onChange={(event) => setQuickTask(event.target.value)} placeholder="Ej. Pedir cita de control" /></label>
-          <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setQuickAddOpen(false)}>Ahora no</Button><Button type="submit"><Plus size={17} /> Guardar en Inbox</Button></div>
+          <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setQuickAddOpen(false)}>Ahora no</Button><Button type="submit"><Plus size={17} /> Guardar en la bandeja</Button></div>
           <div className="quick-add-options" aria-label="Otros registros rápidos">
             <span>También puedes registrar</span>
             <Link to="/app/habits" onClick={() => setQuickAddOpen(false)}><HeartPulse size={16} /> Hábito</Link>

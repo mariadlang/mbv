@@ -349,7 +349,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
       id: id(),
       horizon: "pathways",
       periodKey: "vision",
-      intention: "Elegir los caminos que acercan mi vida diaria a mi Dream Life.",
+      intention: "Elegir los caminos que acercan mi vida diaria a mi Vida soñada.",
       priority: "Bienestar, libertad y un proyecto con propósito",
       objectives: ["Cuidar mi energía", "Crear con constancia", "Construir libertad financiera"],
       activities: [],
@@ -458,7 +458,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
   ];
 
   const routines: PlannerSnapshot["routines"] = [
-    { id: id(), name: "Rutina AM", period: "am", scheduledDays: [1, 2, 3, 4, 5], steps: [{ id: id(), title: "Agua y luz natural" }, { id: id(), title: "Escribir mis Top 3" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
+    { id: id(), name: "Rutina AM", period: "am", scheduledDays: [1, 2, 3, 4, 5], steps: [{ id: id(), title: "Agua y luz natural" }, { id: id(), title: "Escribir mis tres prioridades" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
     { id: id(), name: "Pausa de la tarde", period: "afternoon", scheduledDays: [1, 2, 3, 4, 5], steps: [{ id: id(), title: "Caminar diez minutos" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
     { id: id(), name: "Rutina PM", period: "pm", scheduledDays: [0, 1, 2, 3, 4, 5, 6], steps: [{ id: id(), title: "Preparar mañana" }, { id: id(), title: "Leer sin pantalla" }], status: "active", createdAt: timestamp, updatedAt: timestamp },
   ];

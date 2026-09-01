@@ -64,7 +64,7 @@ export function SettingsPage({ planner, onReplayTutorial, onRequestLogout }: { p
   };
 
   return <div className="page-stack settings-reference">
-    <SectionHeading eyebrow="Tu planner, tus reglas" title="Ajustes y datos" description="Personaliza tu experiencia y administra tu información." action={<Badge tone="sage"><LockKeyhole size={14} /> Local-first</Badge>} />
+    <SectionHeading eyebrow="Tu planner, tus reglas" title="Ajustes y datos" description="Personaliza tu experiencia y administra tu información." action={<Badge tone="sage"><LockKeyhole size={14} /> Datos locales</Badge>} />
     {message && <div className="inline-message" role="status">{message}</div>}
     <div className="settings-reference-layout">
       <Card id="account-settings" className="settings-list-card">

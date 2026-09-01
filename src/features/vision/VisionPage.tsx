@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Plus, Save, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import type { PlannerController } from "@/src/hooks/usePlanner";
@@ -15,6 +15,8 @@ const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, 
 
 export function VisionPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
+  const [searchParams] = useSearchParams();
+  const guided = searchParams.get("guided") === "1";
   const [view, setView] = useState<"dream" | "wheel">("dream");
   const [selectedId, setSelectedId] = useState(snapshot.lifeAreas[0]?.id ?? "");
   const selected = snapshot.lifeAreas.find((area) => area.id === selectedId) ?? snapshot.lifeAreas[0];
@@ -23,13 +25,15 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
   const [imageDataUrl, setImageDataUrl] = useState(selected?.imageDataUrl);
   const [currentScore, setCurrentScore] = useState(selected?.currentScore ?? 6);
   const [desiredScore, setDesiredScore] = useState(selected?.desiredScore ?? 8);
+  const [selectedCategory, setSelectedCategory] = useState(selected?.category ?? selected?.name ?? "");
   const [customOpen, setCustomOpen] = useState(false);
   const [customSavedId, setCustomSavedId] = useState<string | null>(null);
-  const [custom, setCustom] = useState({ name: "", category: "Personal", dream: "", vision: "", currentScore: "", desiredScore: "" });
+  const [custom, setCustom] = useState({ name: "", category: "", dream: "", vision: "", currentScore: "", desiredScore: "" });
   const [customImage, setCustomImage] = useState<string>();
   const [imageError, setImageError] = useState("");
 
-  const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active).map((area) => ({
+  const lifeAreaOptions = snapshot.lifeAreas.filter((area) => area.active && !area.custom);
+  const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active && !area.custom).map((area) => ({
     area: area.name.split(" ")[0],
     actual: area.currentScore ?? 6,
     deseada: area.desiredScore ?? 8,
@@ -44,6 +48,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
     setImageError("");
     setCurrentScore(area?.currentScore ?? 6);
     setDesiredScore(area?.desiredScore ?? 8);
+    setSelectedCategory(area?.category ?? area?.name ?? "");
   };
 
   const readImage = (file: File | undefined, onReady: (value: string) => void) => {
@@ -65,10 +70,12 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
       <SectionNavigation section="plan" />
       <SectionHeading
         eyebrow="Tu visión, sin límites"
-        title={view === "dream" ? "Dream Life" : "Rueda de vida"}
+        title={view === "dream" ? "Vida soñada" : "Rueda de vida"}
         description={view === "dream" ? "Explora la vida que quieres construir por áreas." : "Evalúa dónde estás y visualiza hacia dónde quieres avanzar."}
-        action={<div className="segmented-control"><button className={view === "dream" ? "is-active" : ""} onClick={() => setView("dream")}>Dream Life</button><button className={view === "wheel" ? "is-active" : ""} onClick={() => setView("wheel")}>Rueda de vida</button></div>}
+        action={<div className="segmented-control"><button className={view === "dream" ? "is-active" : ""} onClick={() => setView("dream")}>Vida soñada</button><button className={view === "wheel" ? "is-active" : ""} onClick={() => setView("wheel")}>Rueda de vida</button></div>}
       />
+
+      {guided && <Card className="vision-guided-start"><Sparkles size={22} /><div><p className="eyebrow">Tu punto de partida</p><h2>Diseña primero una imagen de la vida que quieres</h2><p>Elige un área, escribe una visión breve y después observa la Rueda de vida. Desde aquí podrás convertir lo importante en una meta.</p></div><Button variant="secondary" onClick={() => setView("wheel")}>Ver mi Rueda de vida <ArrowRight size={16} /></Button></Card>}
 
       {view === "dream" ? (
         <div className="vision-layout">
@@ -78,28 +85,29 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
               return (
                 <button key={area.id} className={`vision-card ${selected?.id === area.id ? "is-selected" : ""}`} onClick={() => chooseArea(area.id)}>
                   <span className={`vision-card__visual vision-card__visual--${area.color}`}>{area.imageDataUrl ? <img src={area.imageDataUrl} alt="" /> : <Icon size={30} strokeWidth={1.35} />}</span>
-                  <Badge tone="neutral">{area.name}</Badge>
+                  <Badge tone="neutral">{area.custom ? area.category : area.name}</Badge>
                   <h2>{area.vision ? area.vision.split(".")[0] : `Diseñar mi visión de ${area.name.toLowerCase()}`}</h2>
                   <p>{area.vision || "Describe cómo se siente esta área cuando está alineada contigo."}</p>
                 </button>
               );
             })}
-            <button className="vision-card vision-card--create" onClick={() => { setCustomSavedId(null); setImageError(""); setCustomOpen(true); }}><span className="vision-card__visual"><Plus size={30} /></span><Badge tone="neutral">Tu propia categoría</Badge><h2>Crear una tarjeta personalizada</h2><p>Añade una visión que no encaje en las tarjetas iniciales.</p></button>
+            <button className="vision-card vision-card--create" onClick={() => { setCustomSavedId(null); setCustom({ name: "", category: "", dream: "", vision: "", currentScore: "", desiredScore: "" }); setCustomImage(undefined); setImageError(""); setCustomOpen(true); }}><span className="vision-card__visual"><Plus size={30} /></span><Badge tone="neutral">Tarjeta personalizada</Badge><h2>Crear una tarjeta personalizada</h2><p>Añade una visión y conéctala con una de tus áreas de vida.</p></button>
           </section>
           {selected && (
             <Card className="vision-editor">
               <p className="eyebrow">Reflexión · {selected.name}</p>
               <h2>¿Cómo se ve tu mejor versión aquí?</h2>
+              {selected.custom && <label className="form-field"><span>Área de vida</span><select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id}>{area.name}</option>)}</select><small>Las opciones son las mismas de tu Rueda de vida.</small></label>}
               <label className="form-field"><span>Mi sueño</span><input value={dream} onChange={(event) => setDream(event.target.value)} placeholder="Ej. Vivir con energía y calma" /></label>
               <label className="form-field"><span>Mi visión</span><textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" /></label>
               <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImage(event.target.files?.[0], setImageDataUrl)} /></label>
-              {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt={`Vista previa de ${selected.name}`} /><figcaption>Esta imagen aparecerá en tu tarjeta de Dream Life.</figcaption></figure>}
+              {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt={`Vista previa de ${selected.name}`} /><figcaption>Esta imagen aparecerá en tu tarjeta de Vida soñada.</figcaption></figure>}
               {imageError && <p className="form-error" role="alert">{imageError}</p>}
               <div className="score-pair">
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
                 <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
               </div>
-              <div className="vision-editor-actions"><Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl })}><Save size={16} /> Guardar mi visión</Button>{(vision.trim() || dream.trim()) && <Link className="button button--secondary" to="/app/goals" state={{ openGoal: true, areaId: selected.id, title: dream || vision.split(".")[0], reason: vision || dream }}>Convertir esto en una meta <ArrowRight size={16} /></Link>}</div>
+              <div className="vision-editor-actions"><Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl, ...(selected.custom ? { category: selectedCategory || selected.category } : {}) })}><Save size={16} /> Guardar mi visión</Button>{(vision.trim() || dream.trim()) && <Link className="button button--secondary" to="/app/goals" state={{ openGoal: true, areaId: selected.id, title: dream || vision.split(".")[0], reason: vision || dream }}>Convertir esto en una meta <ArrowRight size={16} /></Link>}</div>
             </Card>
           )}
         </div>
@@ -126,9 +134,9 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         </div>
       )}
       <Modal open={customOpen} title={customSavedId ? "Visión guardada" : "Crear tarjeta personalizada"} description={customSavedId ? "Esta parte de tu visión ya puede convertirse en una meta cuando quieras." : "Elige solo los campos que te ayuden. Nada aquí es obligatorio salvo el nombre."} onClose={() => setCustomOpen(false)}>
-        {customSavedId ? <div className="goal-success"><span><CheckIcon /></span><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Mi Visión.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim()) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
+        {customSavedId ? <div className="goal-success"><span><CheckIcon /></span><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Mi Visión y está conectada con {custom.category}.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim() || !custom.category) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
           <label className="form-field"><span>Nombre</span><input required value={custom.name} onChange={(event) => setCustom({ ...custom, name: event.target.value })} placeholder="Ej. Mi vida creativa" /></label>
-          <label className="form-field"><span>Área de vida</span><select value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}>{Array.from(new Set([...snapshot.lifeAreas.filter((area) => area.active).map((area) => area.name), "Otra área"])).map((category) => <option value={category} key={category}>{category}</option>)}</select><small>Usamos las mismas áreas de tu Rueda de vida para mantener todo conectado.</small></label>
+          <label className="form-field"><span>Área de vida</span><select required value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}><option value="">Elige un área</option>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id}>{area.name}</option>)}</select><small>Usamos las mismas áreas de tu Rueda de vida para mantener todo conectado.</small></label>
           <label className="form-field form-field--full"><span>Mi sueño</span><input value={custom.dream} onChange={(event) => setCustom({ ...custom, dream: event.target.value })} placeholder="Una frase que nombre lo que deseas" /></label>
           <label className="form-field form-field--full"><span>Mi visión</span><textarea rows={5} value={custom.vision} onChange={(event) => setCustom({ ...custom, vision: event.target.value })} placeholder="¿Cómo se ve tu mejor versión aquí?" /></label>
           <label className="form-field"><span>Estado actual · opcional</span><input type="number" min="1" max="10" value={custom.currentScore} onChange={(event) => setCustom({ ...custom, currentScore: event.target.value })} /></label>

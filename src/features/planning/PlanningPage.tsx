@@ -41,6 +41,11 @@ type MonthEntryDraft = { title: string; date: string };
 
 const emptyEntry = (): MonthEntryDraft => ({ title: "", date: "" });
 const emptyMonthDraft = (date = new Date()): MonthDraft => ({ month: String(date.getMonth() + 1), year: String(date.getFullYear()), focus: "", priorities: ["", "", ""], linkedPriority: "", areaIds: [], areaGoals: {}, actions: [emptyEntry()], importantDates: [emptyEntry()], status: "active" });
+const monthDraftFromPlan = (plan: CascadePlan): MonthDraft => {
+  const actions = plan.activities.filter((activity) => activity.type !== "event").map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
+  const importantDates = plan.activities.filter((activity) => activity.type === "event").map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
+  return { month: String(Number(plan.periodKey.slice(5, 7))), year: plan.periodKey.slice(0, 4), focus: plan.intention, priorities: [...plan.objectives.slice(0, 3), "", ""].slice(0, 3), linkedPriority: plan.details?.linkedThreeYearPriority ?? "", areaIds: plan.areaIds ?? [], areaGoals: parseAreaGoals(plan.details?.areaGoals), actions: actions.length ? actions : [emptyEntry()], importantDates: importantDates.length ? importantDates : [emptyEntry()], status: plan.status ?? "active" };
+};
 const monthDate = (periodKey: string) => new Date(`${periodKey}-01T12:00:00`);
 const monthProgress = (plan: CascadePlan) => plan.objectives.length ? Math.round(((plan.completedObjectiveIndexes?.length ?? 0) / plan.objectives.length) * 100) : 0;
 
@@ -57,15 +62,24 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
   const location = useLocation();
   const todayKey = toLocalDateKey(new Date());
   const requestedView = new URLSearchParams(location.search).get("view") as PlanningView | null;
+  const createMonthRequested = new URLSearchParams(location.search).get("create") === "month";
+  const requestedGoalId = new URLSearchParams(location.search).get("goal");
+  const requestedGoal = snapshot.goals.find((goal) => goal.id === requestedGoalId);
+  const requestedMonthPlan = snapshot.cascadePlans.find((plan) => plan.horizon === "monthly" && plan.periodKey === todayKey.slice(0, 7));
   const firstView = requestedView && ["year", "month", "week", "day", "reset"].includes(requestedView) ? requestedView : initialView === "month" ? "year" : initialView;
   const [view, setView] = useState<PlanningView>(firstView);
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [selectedMonthId, setSelectedMonthId] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [monthModalOpen, setMonthModalOpen] = useState(false);
-  const [editingMonthId, setEditingMonthId] = useState<string | null>(null);
-  const [monthDraft, setMonthDraft] = useState<MonthDraft>(() => emptyMonthDraft());
+  const [monthModalOpen, setMonthModalOpen] = useState(createMonthRequested);
+  const [editingMonthId, setEditingMonthId] = useState<string | null>(createMonthRequested ? requestedMonthPlan?.id ?? null : null);
+  const [monthDraft, setMonthDraft] = useState<MonthDraft>(() => {
+    if (createMonthRequested && requestedMonthPlan) return monthDraftFromPlan(requestedMonthPlan);
+    const draft = emptyMonthDraft();
+    if (requestedGoal) { draft.focus = requestedGoal.title; draft.priorities[0] = requestedGoal.title; }
+    return draft;
+  });
   const [monthError, setMonthError] = useState("");
   const [longTermMode, setLongTermMode] = useState<LongTermMode | null>(null);
   const [longTermSummary, setLongTermSummary] = useState("");
@@ -80,6 +94,7 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
   const [weeklyResetOpen, setWeeklyResetOpen] = useState(new URLSearchParams(location.search).get("reset") === "1");
   const [weeklyReset, setWeeklyReset] = useState({ celebrate: "", release: "", adjust: "", priorities: ["", "", ""] });
   const [weeklyResetSaved, setWeeklyResetSaved] = useState(false);
+  const [weekDetailsOpen, setWeekDetailsOpen] = useState(false);
   const [reflection, setReflection] = useState({ advanced: "", pending: "", next: "" });
   const [reflectionSaved, setReflectionSaved] = useState(false);
 
@@ -142,9 +157,7 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
 
   const openEditMonth = (plan: CascadePlan) => {
     setEditingMonthId(plan.id);
-    const actions = plan.activities.filter((activity) => activity.type !== "event").map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
-    const importantDates = plan.activities.filter((activity) => activity.type === "event").map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
-    setMonthDraft({ month: String(Number(plan.periodKey.slice(5, 7))), year: plan.periodKey.slice(0, 4), focus: plan.intention, priorities: [...plan.objectives.slice(0, 3), "", ""].slice(0, 3), linkedPriority: plan.details?.linkedThreeYearPriority ?? "", areaIds: plan.areaIds ?? [], areaGoals: parseAreaGoals(plan.details?.areaGoals), actions: actions.length ? actions : [emptyEntry()], importantDates: importantDates.length ? importantDates : [emptyEntry()], status: plan.status ?? "active" });
+    setMonthDraft(monthDraftFromPlan(plan));
     setMonthError("");
     setMonthModalOpen(true);
   };
@@ -167,9 +180,12 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
       setMonthError("Añade al menos un enfoque, prioridad, objetivo por área, acción o fecha importante.");
       return;
     }
+    const existingDetails = editingMonthId ? monthPlans.find((plan) => plan.id === editingMonthId)?.details : undefined;
     const details = {
+      ...(existingDetails?.sourceGoalId ? { sourceGoalId: existingDetails.sourceGoalId, sourceGoalTitle: existingDetails.sourceGoalTitle ?? "" } : {}),
       ...(monthDraft.linkedPriority ? { linkedThreeYearPriority: monthDraft.linkedPriority } : {}),
       ...(areaGoals ? { areaGoals } : {}),
+      ...(requestedGoal ? { sourceGoalId: requestedGoal.id, sourceGoalTitle: requestedGoal.title } : {}),
     };
     const parsed = cascadePlanFormSchema.safeParse({ horizon: "monthly", periodKey, parentPlanId: threeYearPlan?.id, intention: monthDraft.focus, priority: priorities[0] ?? "", objectives: priorities, activities, areaIds: monthDraft.areaIds, details, status: monthDraft.status });
     if (!parsed.success) { setMonthError("Revisa los datos del mes e inténtalo de nuevo."); return; }
@@ -189,7 +205,7 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
     const occupied = focusPriority && snapshot.tasks.find((task) => task.date === selectedDate && task.focusPriority === focusPriority && task.status !== "completed" && task.status !== "cancelled");
     if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return;
     await planner.createTaskDetailed({ title: taskTitle, date: selectedDate, time: taskTime || undefined, priority: "medium", focusPriority });
-    setTaskTitle(""); setTaskTime(""); setTaskFocusPriority("");
+    setTaskTitle(""); setTaskTime(""); setTaskFocusPriority(""); setWeekDetailsOpen(false);
   };
 
   const saveReflection = async (event: FormEvent) => {
@@ -225,8 +241,8 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
     {view === "week" && <>
       <PlanningSubheader title="Plan semanal" description="Elige tus prioridades y ubícalas en días reales, con margen para ajustar." onBack={() => setView("year")} />
       <div className="weekly-planner-assistant"><Card><p className="eyebrow">Así te fue la semana pasada</p><strong>{weeklyInsight.completionRate}% completado</strong><p>{weeklyInsight.summary}</p></Card><Card><Sparkles size={20} /><p className="eyebrow">Sugerencia para esta semana</p><strong>{weeklyInsight.suggestion}</strong></Card><Card className="weekly-brain-dump"><p className="eyebrow">Ubica tus ideas pendientes</p>{snapshot.brainDumpItems.filter((item) => item.status === "idea").slice(0, 3).map((item, index) => { const target = weekDates[Math.min(index + 1, 6)]; return <div key={item.id}><span>{item.title}</span><Button type="button" variant="secondary" onClick={() => planner.scheduleBrainDumpItem(item.id, toLocalDateKey(target))}>Poner {formatShortDay(target)}</Button></div>; })}{!snapshot.brainDumpItems.some((item) => item.status === "idea") && <p>No hay ideas pendientes por ubicar.</p>}</Card></div>
-      <Card className="week-context-card"><p className="eyebrow">Lo que llega desde el mes</p>{monthlyContext ? <><h2>{monthlyContext.priority || monthlyContext.intention || "Un mes con espacio"}</h2><p>{monthlyContext.intention}</p><ul>{monthlyContext.objectives.slice(0, 3).map((objective) => <li key={objective}>{objective}</li>)}</ul></> : <p>Este mes todavía no tiene una prioridad definida. Puedes preparar la semana y completar el mes después.</p>}<div><span><strong>{snapshot.goals.filter((goal) => goal.status === "active").length}</strong> metas activas</span><span><strong>{snapshot.events.filter((event) => weekDates.some((date) => event.startDate === toLocalDateKey(date))).length}</strong> eventos</span><span><strong>{snapshot.tasks.filter((task) => task.date && weekDates.some((date) => task.date === toLocalDateKey(date)) && task.status !== "completed").length}</strong> pendientes</span></div></Card>
-      <form className="planning-add" onSubmit={addTask}><Plus size={19} /><input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="¿Qué quieres hacer esta semana?" aria-label="Nueva tarea semanal" /><select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} aria-label="Día de la tarea">{weekDates.map((date) => <option value={toLocalDateKey(date)} key={date.toISOString()}>{formatShortDay(date)} {date.getDate()}</option>)}</select><input type="time" value={taskTime} onChange={(event) => setTaskTime(event.target.value)} aria-label="Hora opcional" /><select value={taskFocusPriority} onChange={(event) => setTaskFocusPriority(event.target.value as typeof taskFocusPriority)} aria-label="Prioridad de enfoque"><option value="">No prioritario</option><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select><Button type="submit">Añadir</Button></form>
+      <Card className="week-context-card"><header><div><p className="eyebrow">Lo que llega desde el mes</p><h2>Esto es lo que tu mes está enviando a esta semana</h2></div><CalendarDays size={22} /></header>{monthlyContext ? <div className="week-context-focus"><strong>{monthlyContext.priority || monthlyContext.intention || "Un mes con espacio"}</strong><p>{monthlyContext.intention}</p><ul>{monthlyContext.objectives.slice(0, 3).map((objective) => <li key={objective}>{objective}</li>)}</ul></div> : <p>Este mes todavía no tiene una prioridad definida. Puedes preparar la semana y completar el mes después.</p>}<div className="week-context-metrics"><article><strong>{snapshot.goals.filter((goal) => goal.status === "active").length}</strong><span>Metas activas</span><small>Direcciones abiertas</small></article><article><strong>{snapshot.events.filter((event) => weekDates.some((date) => event.startDate === toLocalDateKey(date))).length}</strong><span>Eventos</span><small>Compromisos de esta semana</small></article><article><strong>{snapshot.tasks.filter((task) => task.date && weekDates.some((date) => task.date === toLocalDateKey(date)) && task.status !== "completed").length}</strong><span>Pendientes</span><small>Acciones ya ubicadas</small></article></div></Card>
+      <form className={`planning-add ${weekDetailsOpen ? "is-expanded" : ""}`} onSubmit={addTask}><Plus size={19} /><input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="¿Qué quieres hacer esta semana?" aria-label="Nueva tarea semanal" /><Button type="submit">Añadir</Button><button type="button" className="planning-add__details" aria-expanded={weekDetailsOpen} onClick={() => setWeekDetailsOpen((current) => !current)}>{weekDetailsOpen ? "Ocultar detalles" : "Añadir detalles"}</button>{weekDetailsOpen && <div className="planning-add__options"><label><span>Día</span><select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} aria-label="Día de la tarea">{weekDates.map((date) => <option value={toLocalDateKey(date)} key={date.toISOString()}>{formatShortDay(date)} {date.getDate()}</option>)}</select></label><label><span>Hora opcional</span><input type="time" value={taskTime} onChange={(event) => setTaskTime(event.target.value)} aria-label="Hora opcional" /></label><label><span>Enfoque</span><select value={taskFocusPriority} onChange={(event) => setTaskFocusPriority(event.target.value as typeof taskFocusPriority)} aria-label="Prioridad de enfoque"><option value="">No prioritario</option><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label></div>}</form>
       <div className="mobile-week-selector" role="tablist" aria-label="Días de la semana">{weekDates.map((date) => { const key = toLocalDateKey(date); return <button type="button" role="tab" aria-selected={selectedDate === key} className={selectedDate === key ? "is-active" : ""} key={key} onClick={() => setSelectedDate(key)}><span>{formatShortDay(date)}</span><strong>{date.getDate()}</strong></button>; })}</div>
       <section className="week-board">{weekDates.map((date) => { const key = toLocalDateKey(date); const tasks = snapshot.tasks.filter((task) => task.date === key && task.status !== "cancelled"); return <Card className={`day-column ${key === todayKey ? "is-today" : ""} ${key === selectedDate ? "is-selected" : ""}`} key={key}><header className="day-column__header"><div><span>{formatShortDay(date)}</span><strong>{date.getDate()}</strong></div>{key === todayKey && <Badge tone="rose">Hoy</Badge>}</header><div className="day-column__tasks">{tasks.map((task) => <button type="button" className={`week-task ${task.status === "completed" ? "is-complete" : ""}`} key={task.id} onClick={() => planner.toggleTask(task.id)}>{task.status === "completed" ? <Check size={15} /> : <Circle size={14} />}<span>{task.title}</span>{task.time && <small>{task.time}</small>}</button>)}{!tasks.length && <p className="day-column__empty">Espacio disponible</p>}</div></Card>; })}</section>
       <Card className="weekly-reset-card"><div><p className="eyebrow">Revisión semanal · un solo flujo</p><h2>{weeklyResetSaved ? "Tu semana está lista." : "Prepara una semana que se sienta posible"}</h2><p>Este mismo reset se abre desde Inicio, Semana, Tu progreso y Mi diario.</p></div>{!weeklyResetOpen && !weeklyResetSaved ? <Button onClick={() => setWeeklyResetOpen(true)}>Iniciar revisión semanal</Button> : weeklyResetOpen ? <form className="weekly-reset-form" onSubmit={async (event) => { event.preventDefault(); await planner.saveStructuredReview("weekly", { celebrate: weeklyReset.celebrate, observe: weeklyInsight.summary, release: weeklyReset.release, adjust: weeklyReset.adjust, priority1: weeklyReset.priorities[0], priority2: weeklyReset.priorities[1], priority3: weeklyReset.priorities[2] }, weeklyReset.priorities); setWeeklyResetOpen(false); setWeeklyResetSaved(true); }}><label><span>1. Celebra · ¿Qué sí avanzó?</span><textarea required rows={2} value={weeklyReset.celebrate} onChange={(event) => setWeeklyReset({ ...weeklyReset, celebrate: event.target.value })} /></label><div className="weekly-observation"><strong>2. Observa</strong><span>{weeklyInsight.summary}</span><span>{completedHabitSummary(snapshot)}</span><span>Balance del mes disponible en Finanzas.</span></div><label><span>3. Suelta · ¿Qué ya no importa?</span><textarea rows={2} value={weeklyReset.release} onChange={(event) => setWeeklyReset({ ...weeklyReset, release: event.target.value })} /></label><label><span>4. Ajusta · ¿Qué quieres mover o cambiar?</span><textarea rows={2} value={weeklyReset.adjust} onChange={(event) => setWeeklyReset({ ...weeklyReset, adjust: event.target.value })} /></label><fieldset><legend>5. Elige tus tres prioridades de la próxima semana</legend>{weeklyReset.priorities.map((value, index) => <input key={index} value={value} onChange={(event) => setWeeklyReset({ ...weeklyReset, priorities: weeklyReset.priorities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder={`Prioridad ${index + 1}`} />)}</fieldset><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setWeeklyResetOpen(false)}>Ahora no</Button><Button type="submit">Guardar revisión semanal</Button></div></form> : null}<Link className="button button--secondary" to="/app/today">Ver mi lunes</Link></Card>
@@ -241,6 +257,7 @@ export function PlanningPage({ planner, access, initialView = "year" }: { planne
     <Modal open={monthModalOpen} title={`${editingMonthId ? "Editar" : "Planificar"} ${monthNames[Number(monthDraft.month) - 1]} ${monthDraft.year}`} description="Completa solo lo que hoy tenga sentido. Podrás editarlo después." onClose={() => setMonthModalOpen(false)}>
       <form className="form-grid month-create-form" onSubmit={saveMonth}>
         <div className="month-period-summary form-field--full" aria-label={`Plan de ${monthNames[Number(monthDraft.month) - 1]} ${monthDraft.year}`}><CalendarDays size={19} /><strong>{monthNames[Number(monthDraft.month) - 1]} {monthDraft.year}</strong></div>
+        {requestedGoal && <Card className="month-goal-context form-field--full"><Check size={17} /><div><p className="eyebrow">Meta que quieres acercar</p><strong>{requestedGoal.title}</strong><small>El enfoque mensual queda preparado con esta meta; puedes ajustarlo antes de guardar.</small></div></Card>}
         <label className="form-field form-field--full"><span>¿Qué es lo más importante que quieres avanzar?</span><input value={monthDraft.focus} onChange={(event) => setMonthDraft({ ...monthDraft, focus: event.target.value })} placeholder="Enfoque principal del mes" /></label>
         <fieldset className="form-field form-field--full priority-stack"><legend>Prioridades principales (hasta 3)</legend>{monthDraft.priorities.map((value, index) => <input key={index} value={value} onChange={(event) => setMonthDraft({ ...monthDraft, priorities: monthDraft.priorities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder={`Prioridad ${index + 1}`} />)}</fieldset>
         {threeYearPlan?.objectives.length ? <label className="form-field form-field--full"><span>Vincular con una meta a 3 años (opcional)</span><select value={monthDraft.linkedPriority} onChange={(event) => setMonthDraft({ ...monthDraft, linkedPriority: event.target.value })}><option value="">Sin conexión por ahora</option>{threeYearPlan.objectives.map((priority) => <option key={priority} value={priority}>{priority}</option>)}</select></label> : null}

@@ -40,7 +40,7 @@ export function SectionNavigation({ section }: { section: Section }) {
   const current = `${location.pathname}${location.search}${location.hash}`;
   const isActive = (href: string) => {
     if (href.includes("?") || href.includes("#")) return current === href;
-    if (href === "/app/planning") return location.pathname === href && !location.search;
+    if (href === "/app/planning") return location.pathname === href && new URLSearchParams(location.search).get("view") !== "week";
     if (href === "/app/life-hub") return location.pathname === href && !location.search;
     return location.pathname === href;
   };
