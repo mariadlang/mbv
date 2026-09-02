@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, Wrench, X } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, HeartPulse, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, WalletCards, Wrench, X } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { useI18n } from "@/src/i18n/I18nProvider";
@@ -18,6 +18,13 @@ const primaryItems = [
 
 const mobileItems = primaryItems;
 
+const desktopItems = [
+  ...primaryItems.slice(0, 4),
+  ["/app/health", "Bienestar", HeartPulse],
+  ["/app/finance", "Finanzas", WalletCards],
+  primaryItems[4],
+] as const;
+
 const utilityItems = [
   ["/app/help", "Centro de ayuda", CircleHelp],
   ["/app/settings", "Ajustes", Settings],
@@ -27,14 +34,16 @@ function isPrimaryActive(href: string, pathname: string) {
   if (href === "/app/dashboard") return pathname === href;
   if (href === "/app/today") return pathname === href;
   if (href === "/app/planning") return ["/app/vision", "/app/goals", "/app/planning"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  if (href === "/app/life-hub") return ["/app/life-hub", "/app/journal", "/app/habits", "/app/tasks", "/app/learn", "/app/health", "/app/finance", "/app/more"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  if (href === "/app/life-hub") return ["/app/life-hub", "/app/journal", "/app/habits", "/app/tasks", "/app/learn", "/app/more"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  if (href === "/app/health") return pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/app/finance") return pathname === href || pathname.startsWith(`${href}/`);
   return pathname === "/app/progress";
 }
 
 export function AppShell({ children, userName, userAvatar, saving, theme, accessText, isSuperadmin = false, onQuickAdd, onNeedHelp, onSignOut }: { children: ReactNode; userName: string; userAvatar?: string; saving: boolean; theme: "light" | "rose" | "taupe"; accessText?: string; isSuperadmin?: boolean; onQuickAdd: () => void; onNeedHelp: () => void; onSignOut?: () => void }) {
   const { pathname } = useLocation();
   const isToday = pathname === "/app/today";
-  const desktopPrimaryItems = primaryItems;
+  const desktopPrimaryItems = desktopItems;
   const desktopUtilityItems = utilityItems;
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);

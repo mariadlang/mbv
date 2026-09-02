@@ -343,16 +343,33 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 test("information architecture separates overview from daily execution", async ({ page }) => {
   await completeOnboarding(page);
   const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await expect(navigation.getByRole("link")).toHaveCount(5);
+  await expect(navigation.getByRole("link")).toHaveCount(test.info().project.name === "mobile" ? 5 : 7);
   await expect(navigation).toContainText("Inicio");
   await expect(navigation).toContainText("Mi día");
   await expect(navigation).toContainText("Planificar");
   await expect(navigation).toContainText("Progreso");
   await expect(navigation).toContainText("Mi espacio");
-  await expect(navigation).not.toContainText("Bienestar");
-  await expect(navigation).not.toContainText("Finanzas");
+  if (test.info().project.name === "mobile") {
+    await expect(navigation).not.toContainText("Bienestar");
+    await expect(navigation).not.toContainText("Finanzas");
+  } else {
+    await expect(navigation).toContainText("Bienestar");
+    await expect(navigation).toContainText("Finanzas");
+  }
   await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+
+  if (test.info().project.name === "desktop") {
+    const wellbeingLink = navigation.getByRole("link", { name: "Bienestar", exact: true });
+    await wellbeingLink.click();
+    await expect(page).toHaveURL(/\/app\/health/);
+    await expect(wellbeingLink).toHaveAttribute("aria-current", "page");
+
+    const financeLink = navigation.getByRole("link", { name: "Finanzas", exact: true });
+    await financeLink.click();
+    await expect(page).toHaveURL(/\/app\/finance/);
+    await expect(financeLink).toHaveAttribute("aria-current", "page");
+  }
 
   await navigation.getByRole("link", { name: "Mi día", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Qué hago ahora" })).toBeVisible();
