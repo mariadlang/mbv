@@ -29,7 +29,7 @@ const sections = {
       ["/app/habits", "Hábitos"],
       ["/app/tasks", "Proyectos y tareas"],
       ["/app/journal", "Diario y notas"],
-      ["/app/life-hub", "Brain Dump"],
+      ["/app/life-hub", "Bandeja"],
       ["/app/more", "Más herramientas"],
     ],
   },

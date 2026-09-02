@@ -7,8 +7,9 @@ import { weeklyPlanningInsight } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 
-export function DashboardPage({ planner }: { planner: PlannerController }) {
+export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { t, formatDate } = useI18n();
   const { snapshot } = planner;
   const summary = buildDashboardSummary(snapshot);
@@ -35,7 +36,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
     </section>
 
     {snapshot.profile?.activationCompleted === false && <Card className="activation-card overview-activation">
-      <div className="activation-card__intro"><span><Sparkles size={22} /></span><div><p className="eyebrow">Tu espacio está listo</p><h2>Construyamos solo lo necesario</h2><p>Avanza por estas cuatro piezas cuando tenga sentido para ti.</p></div></div>
+      <div className="activation-card__intro"><span><Sparkles size={22} /></span><div><p className="eyebrow">Configura lo esencial</p><h2>Construyamos solo lo necesario</h2><p>Avanza por estas cuatro piezas cuando tenga sentido para ti.</p></div></div>
       <ProgressBar value={setupDone / setupSteps.length * 100} label="Progreso de configuración inicial" />
       <div className="activation-steps">{setupSteps.map((step, index) => <Link key={step.label} to={step.href} className={step.done ? "is-done" : ""}><span>{step.done ? <Check size={15} /> : index + 1}</span><strong>{step.label}</strong><ArrowRight size={15} /></Link>)}</div>
       <button className="text-button" onClick={() => planner.updateProfileSettings({ activationCompleted: true })}>Prefiero explorar por mi cuenta</button>
@@ -57,7 +58,7 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
     </section>
 
     <section className="quick-access-section"><header><p className="eyebrow">Accesos rápidos</p><h2>Ir directo a lo que necesitas</h2></header><div className="quick-access-grid">
-      <Link to="/app/tasks"><ListPlus size={20} /><span>Nueva tarea</span></Link>
+      <button type="button" onClick={() => onQuickCapture({ source: "dashboard" })}><ListPlus size={20} /><span>Nueva tarea</span></button>
       <Link to="/app/habits"><Check size={20} /><span>Registrar hábito</span></Link>
       <Link to="/app/health"><Utensils size={20} /><span>Añadir comida</span></Link>
       <Link to="/app/journal"><Feather size={20} /><span>Escribir en mi diario</span></Link>

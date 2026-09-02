@@ -17,6 +17,7 @@ export const authService = {
   signOut: () => repository.signOut(),
   requestPasswordReset: (email: string) => repository.requestPasswordReset(email),
   acceptLegal: (input: Parameters<AuthRepository["acceptLegal"]>[0]) => repository.acceptLegal(input),
+  markOnboardingCompleted: () => repository.markOnboardingCompleted(),
   getOrStartAccess: () => repository.getOrStartAccess(),
   getPreferences: () => repository.getPreferences(),
   updatePreferences: (input: Parameters<AuthRepository["updatePreferences"]>[0]) => repository.updatePreferences(input),

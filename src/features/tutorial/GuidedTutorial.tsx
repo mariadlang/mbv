@@ -7,13 +7,11 @@ import { Button } from "@/src/components/ui/Primitives";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
 interface GuidedTutorialProps {
-  completed: boolean;
-  loading: boolean;
   replayNonce: number;
   onComplete(): Promise<void> | void;
 }
 
-export function GuidedTutorial({ completed, loading, replayNonce, onComplete }: GuidedTutorialProps) {
+export function GuidedTutorial({ replayNonce, onComplete }: GuidedTutorialProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,7 +23,7 @@ export function GuidedTutorial({ completed, loading, replayNonce, onComplete }: 
   const steps = useMemo(() => [
     { title: "Bienvenida", text: "Este es tu espacio para organizar lo que quieres lograr y convertirlo en acciones que sí caben en tu vida.", path: "/app/dashboard", selector: ".story-dashboard__header" },
     { title: "Inicio", text: "Aquí encuentras un resumen de tus hábitos, tareas y avances. Es una forma rápida de entender cómo vas.", path: "/app/dashboard", selector: ".rhythm-section" },
-    { title: "Hoy", text: "En esta sección organizas lo que necesitas hacer hoy y registras los hábitos que quieres construir.", path: "/app/today", selector: "#main-content h1" },
+    { title: "Mi día", text: "En esta sección organizas lo que necesitas hacer hoy y registras los hábitos que quieres construir.", path: "/app/today", selector: "#main-content h1" },
     { title: "Semana", text: "Planifica tu semana con una visión clara de tus prioridades, pendientes y compromisos.", path: "/app/planning/weekly", selector: "#main-content h1" },
     { title: "Metas", text: "Define tus objetivos y conviértelos en pasos concretos para cada mes y cada semana.", path: "/app/goals", selector: "#main-content h1" },
     { title: "Bienestar", text: "Organiza tus rutinas de ejercicio, tu alimentación y los hábitos que apoyan tu bienestar.", path: "/app/habits", selector: "#main-content h1" },
@@ -42,9 +40,8 @@ export function GuidedTutorial({ completed, loading, replayNonce, onComplete }: 
     return () => window.clearTimeout(timer);
   }, [replayNonce]);
 
-  const mandatory = !loading && !completed;
-  const manual = manualOpen && !mandatory;
-  const open = mandatory || manualOpen;
+  const manual = manualOpen;
+  const open = manualOpen;
   const final = step === steps.length;
   useEffect(() => {
     if (!open || final) return;
@@ -104,7 +101,6 @@ export function GuidedTutorial({ completed, loading, replayNonce, onComplete }: 
       {!final ? <>
         <p className="eyebrow">{t("Paso {step} de {total}", { step: step + 1, total: steps.length })}</p>
         <h2>{t(steps[step].title)}</h2><p>{t(steps[step].text)}</p>
-        {!manual && step === 0 && <small>{t("Este recorrido es obligatorio la primera vez para que siempre sepas dónde empezar.")}</small>}
         <div className="guided-tour__progress" aria-hidden="true"><span style={{ width: `${(step + 1) / steps.length * 100}%` }} /></div>
         <Button onClick={() => setStep((value) => value + 1)}>{step === 0 ? t("Empezar") : t("Siguiente")} <ArrowRight size={16} /></Button>
       </> : <>

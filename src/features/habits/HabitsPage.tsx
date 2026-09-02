@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { Check, Flame, Plus, Sprout } from "lucide-react";
+import { Check, ChevronDown, Flame, Plus, Sprout } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { calculateHabitConsistency, isHabitScheduledOn } from "@/src/domain/rules";
@@ -23,6 +23,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
   const [searchParams] = useSearchParams();
   const wellbeingRef = useRef<HTMLElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const weekDates = getWeekDates(new Date(), snapshot.profile?.weekStartsOn ?? 1);
   const recentDates = useMemo(() => getRecentDates(30), []);
 
@@ -54,6 +55,7 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
   const onSubmit = form.handleSubmit(async (values) => {
     await planner.createHabit(values);
     form.reset();
+    setPersonalizeOpen(false);
     setDialogOpen(false);
   });
 
@@ -188,35 +190,6 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
             <input placeholder="Ej. Leer antes de dormir" {...form.register("name")} />
             {form.formState.errors.name && <small className="form-error">{form.formState.errors.name.message}</small>}
           </label>
-          <label className="form-field">
-            <span>Tipo de registro</span>
-            <select {...form.register("type")}>
-              <option value="boolean">Sí / no</option>
-              <option value="quantity">Cantidad</option>
-              <option value="duration">Duración</option>
-            </select>
-          </label>
-          <label className="form-field">
-            <span>Área de vida</span>
-            <select {...form.register("lifeAreaId")}>
-              <option value="">Sin área</option>
-              {snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}
-            </select>
-          </label>
-          <label className="form-field">
-            <span>Objetivo</span>
-            <input type="number" min="1" {...form.register("target", { valueAsNumber: true })} />
-            {form.formState.errors.target && <small className="form-error">{form.formState.errors.target.message}</small>}
-          </label>
-          <label className="form-field form-field--full">
-            <span>¿Cómo llega este hábito a tu vida?</span>
-            <select {...form.register("origin")}><option value="established">Ya lo tengo y quiero sostenerlo</option><option value="experiment">Quiero probarlo durante 14 días</option></select>
-          </label>
-          <label className="form-field">
-            <span>Unidad</span>
-            <input placeholder="min, pasos, sesión" {...form.register("unit")} />
-            {form.formState.errors.unit && <small className="form-error">{form.formState.errors.unit.message}</small>}
-          </label>
           <fieldset className="form-field form-field--full">
             <legend>Días programados</legend>
             <div className="day-picker">
@@ -232,6 +205,14 @@ export function HabitsPage({ planner }: { planner: PlannerController }) {
             </div>
             {form.formState.errors.scheduledDays && <small className="form-error">{form.formState.errors.scheduledDays.message}</small>}
           </fieldset>
+          <button type="button" className="habit-personalize-toggle form-field--full" aria-expanded={personalizeOpen} onClick={() => setPersonalizeOpen((current) => !current)}><span><strong>Personalizar</strong><small>Tipo de registro, área, objetivo y unidad</small></span><ChevronDown size={18} /></button>
+          {personalizeOpen && <div className="habit-personalize-fields form-field--full">
+            <label className="form-field"><span>Tipo de registro</span><select {...form.register("type")}><option value="boolean">Sí / no</option><option value="quantity">Cantidad</option><option value="duration">Duración</option></select></label>
+            <label className="form-field"><span>Área de vida</span><select {...form.register("lifeAreaId")}><option value="">Sin área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select></label>
+            <label className="form-field"><span>Objetivo</span><input type="number" min="1" {...form.register("target", { valueAsNumber: true })} />{form.formState.errors.target && <small className="form-error">{form.formState.errors.target.message}</small>}</label>
+            <label className="form-field"><span>Unidad</span><input placeholder="min, pasos, sesión" {...form.register("unit")} />{form.formState.errors.unit && <small className="form-error">{form.formState.errors.unit.message}</small>}</label>
+            <label className="form-field form-field--full"><span>Modo de inicio</span><select {...form.register("origin")}><option value="established">Ya lo tengo y quiero sostenerlo</option><option value="experiment">Quiero probarlo durante 14 días</option></select></label>
+          </div>}
           <div className="modal__actions form-field--full">
             <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Ahora no</Button>
             <Button type="submit">Guardar hábito</Button>

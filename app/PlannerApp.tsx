@@ -1,9 +1,8 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, HeartPulse, Landmark, Plus, Smile } from "lucide-react";
 import { usePlanner } from "@/src/hooks/usePlanner";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Primitives";
@@ -22,6 +21,8 @@ import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { GuidedTutorial } from "@/src/features/tutorial/GuidedTutorial";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import { QuickCaptureDrawer, type QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -63,15 +64,52 @@ function ProtectedPlannerApp() {
   const routeLocation = useBrowserRouteLocation();
   const planner = usePlanner();
   const mounted = useMounted();
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [quickTask, setQuickTask] = useState("");
+  const [quickCapture, setQuickCapture] = useState<QuickCaptureDefaults | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMode, setHelpMode] = useState<"overwhelmed" | "start" | "energy" | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [onboardingRecoveryError, setOnboardingRecoveryError] = useState(false);
+  const [onboardingRecoveryNonce, setOnboardingRecoveryNonce] = useState(0);
+  const onboardingRecoveryStarted = useRef(false);
+  const [locallyClearedAccountId, setLocallyClearedAccountId] = useState<string | null>(null);
   const tutorialReplayNonce = useUiStore((state) => state.tutorialReplayNonce);
   const replayTutorial = useUiStore((state) => state.replayTutorial);
   const { t } = useI18n();
+
+  const accountLoading = account.loading;
+  const markOnboardingCompleted = account.markOnboardingCompleted;
+  const plannerLoading = planner.loading;
+  const resumeExistingSpace = planner.resumeExistingSpace;
+  const accountUserId = account.user?.id;
+  const accountDisplayName = account.user?.displayName ?? "";
+  const accountOnboardingCompleted = account.user?.onboardingCompleted === true;
+  const localOnboardingCompleted = planner.snapshot.profile?.onboardingCompleted === true;
+  const establishedAccount = accountOnboardingCompleted
+    || (!publicConfig.e2eAccess && account.preferences?.tutorialCompleted === true);
+
+  useEffect(() => {
+    if (!mounted || plannerLoading || accountLoading || !accountUserId) return;
+
+    if (localOnboardingCompleted) {
+      if (!accountOnboardingCompleted && !onboardingRecoveryStarted.current) {
+        onboardingRecoveryStarted.current = true;
+        void markOnboardingCompleted().finally(() => {
+          onboardingRecoveryStarted.current = false;
+        });
+      }
+      return;
+    }
+
+    if (!establishedAccount || locallyClearedAccountId === accountUserId || onboardingRecoveryStarted.current) return;
+    onboardingRecoveryStarted.current = true;
+    void resumeExistingSpace(accountDisplayName)
+      .then(() => markOnboardingCompleted())
+      .catch(() => setOnboardingRecoveryError(true))
+      .finally(() => {
+        onboardingRecoveryStarted.current = false;
+      });
+  }, [accountDisplayName, accountLoading, accountOnboardingCompleted, accountUserId, establishedAccount, localOnboardingCompleted, locallyClearedAccountId, markOnboardingCompleted, mounted, onboardingRecoveryNonce, plannerLoading, resumeExistingSpace]);
 
   if (account.loading) {
     return <main className="brand-loading" aria-label="Comprobando tu acceso"><BrandMark /><span className="brand-loading__ring" /><p>Preparando tu espacio…</p></main>;
@@ -108,28 +146,31 @@ function ProtectedPlannerApp() {
     );
   }
 
-  if (!planner.snapshot.profile?.onboardingCompleted) {
-    return <Onboarding planner={planner} />;
+  if (!localOnboardingCompleted && establishedAccount && locallyClearedAccountId !== accountUserId) {
+    if (onboardingRecoveryError) {
+      return <main className="error-page"><BrandMark /><h1>No pudimos abrir tu espacio.</h1><p>Tus datos no se modificaron. Intenta cargarlo nuevamente.</p><Button onClick={() => { onboardingRecoveryStarted.current = false; setOnboardingRecoveryError(false); setOnboardingRecoveryNonce((value) => value + 1); }}>Intentar de nuevo</Button></main>;
+    }
+    return <main className="brand-loading" aria-label="Recuperando tu espacio"><BrandMark /><span className="brand-loading__ring" /><p>Abriendo el espacio que ya creaste…</p></main>;
   }
 
-  const addQuickTask = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!quickTask.trim()) return;
-    await planner.createTask(quickTask);
-    setQuickTask("");
-    setQuickAddOpen(false);
-  };
+  if (!localOnboardingCompleted) {
+    return <Onboarding planner={planner} onCompleted={markOnboardingCompleted} defaultName={accountDisplayName} />;
+  }
+
+  const profile = planner.snapshot.profile;
+  if (!profile) return null;
+  const openQuickCapture = (defaults: QuickCaptureDefaults) => setQuickCapture(defaults);
 
   return (
     <>
       <AppShell
-        userName={planner.snapshot.profile.name}
-        userAvatar={planner.snapshot.profile.avatarDataUrl}
+        userName={profile.name}
+        userAvatar={profile.avatarDataUrl}
         saving={planner.saving}
-        theme={planner.snapshot.profile.theme ?? "light"}
+        theme={profile.theme ?? "light"}
         accessText={accessLabel(account.access)}
         isSuperadmin={account.access.role === "superadmin"}
-        onQuickAdd={() => setQuickAddOpen(true)}
+        onQuickAdd={() => openQuickCapture({ source: "global" })}
         onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }}
         onSignOut={() => setLogoutOpen(true)}
       >
@@ -138,25 +179,25 @@ function ProtectedPlannerApp() {
           <Routes location={routeLocation}>
             <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="/app/dashboard" element={<DashboardPage planner={planner} />} />
+            <Route path="/app/dashboard" element={<DashboardPage planner={planner} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/vision" element={<VisionPage planner={planner} />} />
-            <Route path="/app/planning" element={<PlanningPage planner={planner} access={account.access} />} />
+            <Route path="/app/planning" element={<PlanningPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/planning/long-term" element={<Navigate to="/app/planning" replace />} />
             <Route path="/app/planning/monthly" element={<Navigate to="/app/planning" replace />} />
-            <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} access={account.access} initialView="week" />} />
-            <Route path="/app/today" element={<TodayPage planner={planner} />} />
-            <Route path="/app/tasks" element={<TasksPage planner={planner} />} />
+            <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} access={account.access} initialView="week" onQuickCapture={openQuickCapture} />} />
+            <Route path="/app/today" element={<TodayPage planner={planner} onQuickCapture={openQuickCapture} onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }} />} />
+            <Route path="/app/tasks" element={<TasksPage planner={planner} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
             <Route path="/app/challenges" element={<Navigate to="/app/life-hub?tab=challenges" replace />} />
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
-            <Route path="/app/life-hub" element={<LifeHubPage planner={planner} />} />
+            <Route path="/app/life-hub" element={<LifeHubPage planner={planner} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/health" element={<FitnessPage planner={planner} />} />
             <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
-            <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} />} />
+            <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} onLocalDataCleared={() => setLocallyClearedAccountId(accountUserId ?? null)} />} />
             <Route path="/app/profile" element={<Navigate to="/app/settings" replace />} />
             <Route path="/app/legal" element={<LegalPrivacyPage />} />
             <Route path="/app/privacy-center" element={<PrivacyCenterPage planner={planner} />} />
@@ -171,20 +212,8 @@ function ProtectedPlannerApp() {
           </Routes>
         </Suspense>
       </AppShell>
-      <GuidedTutorial completed={Boolean(account.preferences?.tutorialCompleted)} loading={account.preferencesLoading} replayNonce={tutorialReplayNonce} onComplete={() => account.updatePreferences({ tutorialCompleted: true })} />
-      <Modal open={quickAddOpen} title="Capturar una tarea" description="Guárdala ahora. Puedes decidir la fecha y la meta más adelante." onClose={() => setQuickAddOpen(false)}>
-        <form className="quick-task-form" onSubmit={addQuickTask}>
-          <label className="form-field"><span>Tarea</span><input value={quickTask} onChange={(event) => setQuickTask(event.target.value)} placeholder="Ej. Pedir cita de control" /></label>
-          <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setQuickAddOpen(false)}>Ahora no</Button><Button type="submit"><Plus size={17} /> Guardar en la bandeja</Button></div>
-          <div className="quick-add-options" aria-label="Otros registros rápidos">
-            <span>También puedes registrar</span>
-            <Link to="/app/habits" onClick={() => setQuickAddOpen(false)}><HeartPulse size={16} /> Hábito</Link>
-            <Link to="/app/habits?checkin=1" onClick={() => setQuickAddOpen(false)}><Smile size={16} /> Ánimo</Link>
-            <Link to="/app/journal" onClick={() => setQuickAddOpen(false)}><BookOpen size={16} /> Nota</Link>
-            <Link to="/app/finance" onClick={() => setQuickAddOpen(false)}><Landmark size={16} /> Movimiento</Link>
-          </div>
-        </form>
-      </Modal>
+      <GuidedTutorial replayNonce={tutorialReplayNonce} onComplete={() => account.updatePreferences({ tutorialCompleted: true })} />
+      <QuickCaptureDrawer open={Boolean(quickCapture)} defaults={quickCapture ?? { source: "global" }} planner={planner} onClose={() => setQuickCapture(null)} />
       <Modal open={helpOpen} title="¿Qué necesitas ahora?" description="Elige lo que se parece más a este momento. Te mostraremos un paso breve." onClose={() => setHelpOpen(false)}>
         {!helpMode ? <div className="unblock-options"><Button variant="secondary" onClick={() => setHelpMode("overwhelmed")}>Estoy abrumada</Button><Button variant="secondary" onClick={() => setHelpMode("start")}>No sé empezar</Button><Button variant="secondary" onClick={() => setHelpMode("energy")}>Tengo poca energía</Button><Link className="button button--ghost" to="/app/help" onClick={() => setHelpOpen(false)}>Ver todas las herramientas</Link></div> : <div className="minimum-mode"><p className="eyebrow">{helpMode === "energy" ? "Modo mínimo" : "Desbloquearme"}</p><h2>{helpMode === "overwhelmed" ? "Reduce el campo de visión" : helpMode === "start" ? "Haz visible el primer movimiento" : "Hoy también cuenta en pequeño"}</h2><ol><li>{helpMode === "overwhelmed" ? "Elige solo una de tus tres prioridades." : helpMode === "start" ? "Abre la tarea y escribe el primer verbo." : "Elige una tarea de menos de 10 minutos."}</li><li>Pon un temporizador de 10 minutos.</li><li>Al terminar, decide con calma si continúas o paras.</li></ol><Link className="button button--primary" to="/app/today" onClick={() => setHelpOpen(false)}>Ver mi próximo paso</Link></div>}
       </Modal>

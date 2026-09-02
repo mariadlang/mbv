@@ -24,6 +24,7 @@ interface AccountContextValue {
   signInWithMagicLink(email: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   acceptLegal(input: SignupLegalEvidence): Promise<void>;
+  markOnboardingCompleted(): Promise<void>;
   signOut(): Promise<void>;
   updatePreferences(input: Partial<AccountPreferences>): Promise<void>;
 }
@@ -72,6 +73,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     return () => { active = false; unsubscribe(); };
   }, [loadForUser]);
 
+  const markOnboardingCompleted = useCallback(async () => {
+    setUser((current) => current ? { ...current, onboardingCompleted: true } : current);
+    try {
+      const updatedUser = await authService.markOnboardingCompleted();
+      setUser((current) => current?.id === updatedUser.id ? updatedUser : current);
+    } catch {
+      // El perfil local sigue dando acceso; se volverá a intentar en una sesión posterior.
+    }
+  }, []);
+
   const value = useMemo<AccountContextValue>(() => ({
     configured, loading, user, access, preferences, preferencesLoading, error,
     refreshAccess: async () => loadForUser(user),
@@ -82,6 +93,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     signInWithMagicLink: (email) => authService.signInWithMagicLink(email),
     requestPasswordReset: (email) => authService.requestPasswordReset(email),
     acceptLegal: async (input) => { const nextUser = await authService.acceptLegal(input); await loadForUser(nextUser); },
+    markOnboardingCompleted,
     signOut: async () => { await authService.signOut(); setUser(null); setAccess(null); setPreferences(null); },
     updatePreferences: async (input) => {
       const fallback = { locale: input.locale ?? preferences?.locale ?? useUiStore.getState().language, tutorialCompleted: input.tutorialCompleted ?? preferences?.tutorialCompleted ?? false };
@@ -91,7 +103,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       if (!user) return;
       try { setPreferences(await authService.updatePreferences(input)); } catch { /* La preferencia local mantiene la experiencia disponible. */ }
     },
-  }), [access, configured, error, loadForUser, loading, preferences, preferencesLoading, user]);
+  }), [access, configured, error, loadForUser, loading, markOnboardingCompleted, preferences, preferencesLoading, user]);
   return <AccountContext.Provider value={value}>{children}<ProductAnalyticsBridge userId={user?.id ?? null} getAccessToken={value.getAccessToken} /></AccountContext.Provider>;
 }
 

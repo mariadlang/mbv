@@ -15,6 +15,7 @@ function toAccountUser(user: User | null): AccountUser | null {
     dataProcessingAcceptedAt: typeof user.user_metadata?.data_processing_accepted_at === "string" ? user.user_metadata.data_processing_accepted_at : null,
     adultDeclaredAt: typeof user.user_metadata?.adult_declared_at === "string" ? user.user_metadata.adult_declared_at : null,
     marketingConsent: user.user_metadata?.marketing_consent === true,
+    onboardingCompleted: user.user_metadata?.onboarding_completed === true,
   };
 }
 
@@ -96,6 +97,15 @@ export class SupabaseAuthRepository implements AuthRepository {
   async acceptLegal(input: SignupLegalEvidence) {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { data, error } = await this.client.auth.updateUser({ data: { legal_version: input.legalVersion, terms_accepted_at: input.termsAcceptedAt, data_processing_accepted_at: input.dataProcessingAcceptedAt, adult_declared_at: input.adultDeclaredAt, marketing_consent: input.marketingConsent, marketing_accepted_at: input.marketingAcceptedAt } });
+    if (error) throw error;
+    const user = toAccountUser(data.user);
+    if (!user) throw new Error("ACCOUNT_NOT_AVAILABLE");
+    return user;
+  }
+
+  async markOnboardingCompleted() {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { data, error } = await this.client.auth.updateUser({ data: { onboarding_completed: true } });
     if (error) throw error;
     const user = toAccountUser(data.user);
     if (!user) throw new Error("ACCOUNT_NOT_AVAILABLE");

@@ -9,14 +9,14 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
+import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
 
-export function TasksPage({ planner }: { planner: PlannerController }) {
+export function TasksPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
   const [tab, setTab] = useState<TaskTab>("today");
-  const [title, setTitle] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
   const [projectComposerOpen, setProjectComposerOpen] = useState(false);
@@ -31,12 +31,6 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
   }), [snapshot.tasks, tab, today]);
   const overdue = snapshot.tasks.filter((task) => isTaskOverdue(task, today));
 
-  const add = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!title.trim()) return;
-    await planner.createTask(title, tab === "today" ? today : undefined);
-    setTitle("");
-  };
 
   const addDetailed = async (event: FormEvent) => {
     event.preventDefault();
@@ -74,7 +68,7 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
     <ProjectIntelligence planner={planner} />
 
     <section className="tasks-section"><header><div><p className="eyebrow">Después, las acciones</p><h2>Tareas</h2><span>Acciones ejecutables, vinculadas a un proyecto cuando corresponde.</span></div><Button onClick={() => setAdvancedOpen((current) => !current)} aria-expanded={advancedOpen}><Plus size={17} /> {advancedOpen ? "Cerrar" : "Nueva tarea"}</Button></header>
-    <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Bandeja" : item === "today" ? "Hoy" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
+    <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Bandeja" : item === "today" ? "Mi día" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
     {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
 
@@ -96,7 +90,7 @@ export function TasksPage({ planner }: { planner: PlannerController }) {
       <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setAdvancedOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarea</Button></div>
     </form></Card>}
 
-    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Hoy" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><form className="task-manager-add" onSubmit={add}><Plus size={18} /><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Añadir una tarea…" aria-label="Nueva tarea en el gestor" /><Button type="submit" variant="secondary">Añadir</Button></form><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; return <button key={task.id} className={task.status === "completed" ? "is-complete" : ""} onClick={() => planner.toggleTask(task.id)}><span className="managed-task__check">{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</span><span><strong>{task.title}</strong><small>{task.date === today ? "Hoy" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." />}</div></Card>
+    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; return <button key={task.id} className={task.status === "completed" ? "is-complete" : ""} onClick={() => planner.toggleTask(task.id)}><span className="managed-task__check">{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</span><span><strong>{task.title}</strong><small>{task.date === today ? "Mi día" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." action={<Button onClick={() => onQuickCapture({ source: "empty", date: tab === "today" ? today : undefined })}>Añadir una tarea</Button>} />}</div></Card>
     <div className="task-footer-metrics"><Card><span>Tareas completas hoy</span><strong>{snapshot.tasks.filter((task) => task.date === today && task.status === "completed").length}/{snapshot.tasks.filter((task) => task.date === today).length}</strong></Card><Card><span>Tiempo estimado</span><strong>{Math.round(tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0) / 60)}h {tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0) % 60}m</strong></Card></div>
     </section>
   </div>;

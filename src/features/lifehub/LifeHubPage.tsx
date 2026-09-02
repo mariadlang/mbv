@@ -4,17 +4,14 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Bell,
-  BookHeart,
   CalendarDays,
   Camera,
   Check,
   Circle,
   Dumbbell,
   ImagePlus,
-  Lightbulb,
   MoonStar,
   Plus,
-  ShoppingBag,
   Sparkles,
   Sun,
   Pencil,
@@ -30,6 +27,7 @@ import { imageUploadSchema } from "@/src/lib/schemas";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
+import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 
 type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
 type ListDateMode = "flexible" | "month" | "date";
@@ -40,7 +38,7 @@ const hubTabs: Array<{ id: HubTab; label: string }> = [
   { id: "routines", label: "Rutinas" },
   { id: "challenges", label: "Retos" },
   { id: "vision", label: "Tablero de visión" },
-  { id: "events", label: "Eventos y tareas" },
+  { id: "events", label: "Calendario" },
 ];
 
 const listLabels: Record<BrainDumpType, string> = {
@@ -72,14 +70,14 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function LifeHubPage({ planner }: { planner: PlannerController }) {
+export function LifeHubPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const tab = hubTabs.some((item) => item.id === requestedTab) ? requestedTab as HubTab : "lists";
   const [message, setMessage] = useState("");
-  const [listDrafts, setListDrafts] = useState<Partial<Record<BrainDumpType, ListDraft>>>({});
+  const [listFilter, setListFilter] = useState<"all" | BrainDumpType>("all");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ListDraft & { type: BrainDumpType }>({ title: "", dateMode: "flexible", date: "", type: "want_to_do" });
   const [routineName, setRoutineName] = useState("Rutina AM");
@@ -132,10 +130,8 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     setHip(checkIn?.measurements.cadera ?? 0); setBodyPhoto(checkIn?.photoDataUrl);
   };
 
-  const groupedLists = useMemo(() => (Object.keys(listLabels) as BrainDumpType[]).map((type) => ({
-    type,
-    items: snapshot.brainDumpItems.filter((item) => item.type === type),
-  })), [snapshot.brainDumpItems]);
+  const visibleBrainItems = snapshot.brainDumpItems.filter((item) => listFilter === "all" || item.type === listFilter);
+  const inboxTasks = snapshot.tasks.filter((task) => task.status === "inbox");
 
   const addRoutine = async (event: FormEvent) => {
     event.preventDefault();
@@ -187,20 +183,6 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     setEventTitle("");
   };
 
-  const addListItemToCard = async (event: FormEvent, type: BrainDumpType) => {
-    event.preventDefault();
-    const draft = listDrafts[type] ?? { title: "", dateMode: "flexible", date: "" };
-    const title = draft.title.trim();
-    if (!title) return;
-    await planner.createBrainDumpItem({ title, type, tentativeDate: draft.dateMode === "flexible" ? undefined : draft.date || undefined, priority: type === "must_do" ? "high" : "medium" });
-    setListDrafts((current) => ({ ...current, [type]: { title: "", dateMode: "flexible", date: "" } }));
-  };
-
-  const updateListDraft = (type: BrainDumpType, update: Partial<ListDraft>) => setListDrafts((current) => ({
-    ...current,
-    [type]: { title: "", dateMode: "flexible", date: "", ...current[type], ...update },
-  }));
-
   const openItemEditor = (itemId: string) => {
     const item = snapshot.brainDumpItems.find((candidate) => candidate.id === itemId);
     if (!item) return;
@@ -244,28 +226,24 @@ export function LifeHubPage({ planner }: { planner: PlannerController }) {
     requestedTab === "fitness" ? <Navigate to="/app/health" replace /> :
     <div className="page-stack life-hub-page">
       <SectionNavigation section="space" />
-      <SectionHeading eyebrow={tab === "lists" ? "PAUSA EL RUIDO" : "MÁS HERRAMIENTAS"} title={tab === "lists" ? "Brain Dump" : "Organiza a tu manera"} description={tab === "lists" ? "Captura cada idea en su lista. La fecha puede esperar o quedar conectada con tu planificación." : "Rutinas, retos, visión y eventos están disponibles cuando los necesites."} />
+      <SectionHeading eyebrow={tab === "lists" ? "PAUSA EL RUIDO" : "MÁS HERRAMIENTAS"} title={tab === "lists" ? "Bandeja" : "Organiza a tu manera"} description={tab === "lists" ? "Guarda lo que tienes en la cabeza. Puedes organizarlo después." : "Rutinas, retos, visión y calendario están disponibles cuando los necesites."} action={tab === "lists" ? <Button onClick={() => onQuickCapture({ source: "inbox" })}><Plus size={16} /> Captura rápida</Button> : undefined} />
       {tab !== "lists" && <nav className="life-hub-tabs" aria-label="Más herramientas">{hubTabs.filter((item) => item.id !== "lists").map((item) => <button type="button" key={item.id} className={tab === item.id ? "is-active" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => selectTab(item.id)}>{item.label}</button>)}</nav>}
       {message && <div className="inline-message" role="status">{message}</div>}
 
       {tab === "lists" && <>
-        <div className="brain-lists-grid">{groupedLists.map(({ type, items }) => {
-          const draft = listDrafts[type] ?? { title: "", dateMode: "flexible" as const, date: "" };
-          return <Card className="brain-list" key={type}><header><span>{type === "shopping" ? <ShoppingBag size={18} /> : type === "want_to_read" ? <BookHeart size={18} /> : <Lightbulb size={18} />}</span><div><h3>{listLabels[type]}</h3><small>{items.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header>
-            <form className="brain-card-add" onSubmit={(event) => addListItemToCard(event, type)}><div className="brain-card-add__primary"><input value={draft.title} onChange={(event) => updateListDraft(type, { title: event.target.value })} placeholder={`Añadir a ${listLabels[type].toLowerCase()}`} aria-label={`Añadir a ${listLabels[type]}`} /><button type="submit" aria-label={`Guardar en ${listLabels[type]}`}><Plus size={15} /></button></div><DateChoice mode={draft.dateMode} date={draft.date} label={listLabels[type]} onMode={(dateMode) => updateListDraft(type, { dateMode, date: "" })} onDate={(date) => updateListDraft(type, { date })} /></form>
-            {items.map((item) => editingItemId === item.id ? <form className="brain-item-editor" key={item.id} onSubmit={saveItemEdit}><input value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} aria-label="Editar idea" /><select value={editDraft.type} onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value as BrainDumpType })} aria-label="Mover a otra lista">{Object.entries(listLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><DateChoice mode={editDraft.dateMode} date={editDraft.date} label={item.title} onMode={(dateMode) => setEditDraft({ ...editDraft, dateMode, date: "" })} onDate={(date) => setEditDraft({ ...editDraft, date })} /><div><button type="submit"><Save size={14} /> Guardar</button><button type="button" onClick={() => setEditingItemId(null)}><X size={14} /> Cancelar</button></div></form> : <div className={`brain-item is-${item.status}`} key={item.id}><button onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })} aria-label={item.status === "completed" ? `Reabrir ${item.title}` : `Completar ${item.title}`}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{item.tentativeDate ? `${item.tentativeDate.length === 7 ? "Mes" : "Fecha"}: ${item.tentativeDate}` : "Sin fecha · flexible"}</small></div><button onClick={() => openItemEditor(item.id)} aria-label={`Editar ${item.title}`}><Pencil size={14} /></button><button onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label={`Liberar ${item.title}`}>×</button></div>)}
-            {!items.length && <p className="brain-empty">Todo lo que aparezca aquí puede quedarse sin decidir por ahora.</p>}
-          </Card>;
-        })}</div>
+        <Card className="brain-universal-capture"><div><p className="eyebrow">ENTRADA UNIVERSAL</p><h2>Escribe antes de organizar</h2><p>Solo el nombre es obligatorio. Se guardará sin fecha en tu Bandeja.</p></div><Button onClick={() => onQuickCapture({ source: "inbox" })}><Plus size={16} /> Escribe algo para recordarlo…</Button></Card>
+        {inboxTasks.length > 0 && <Card className="brain-list brain-inbox-list"><header><div><h3>Sin clasificar</h3><small>{inboxTasks.length} en Bandeja</small></div></header>{inboxTasks.map((task) => <div className="brain-item" key={task.id}><button type="button" onClick={() => planner.toggleTask(task.id)} aria-label={`Completar ${task.title}`}><Circle size={14} /></button><div><strong>{task.title}</strong><small>Sin fecha · organiza cuando quieras</small></div></div>)}</Card>}
+        <nav className="brain-filters" aria-label="Filtrar ideas guardadas">{(["all", ...Object.keys(listLabels)] as Array<"all" | BrainDumpType>).map((type) => <button type="button" key={type} className={listFilter === type ? "is-active" : ""} aria-pressed={listFilter === type} onClick={() => setListFilter(type)}>{type === "all" ? "Todas" : listLabels[type]}</button>)}</nav>
+        <Card className="brain-list brain-legacy-list"><header><div><h3>{listFilter === "all" ? "Ideas organizadas" : listLabels[listFilter]}</h3><small>{visibleBrainItems.filter((item) => item.status !== "completed" && item.status !== "released").length} abiertas</small></div></header>{visibleBrainItems.map((item) => editingItemId === item.id ? <form className="brain-item-editor" key={item.id} onSubmit={saveItemEdit}><input value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} aria-label="Editar idea" /><select value={editDraft.type} onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value as BrainDumpType })} aria-label="Mover a otra lista">{Object.entries(listLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><DateChoice mode={editDraft.dateMode} date={editDraft.date} label={item.title} onMode={(dateMode) => setEditDraft({ ...editDraft, dateMode, date: "" })} onDate={(date) => setEditDraft({ ...editDraft, date })} /><div><button type="submit"><Save size={14} /> Guardar</button><button type="button" onClick={() => setEditingItemId(null)}><X size={14} /> Cancelar</button></div></form> : <div className={`brain-item is-${item.status}`} key={item.id}><button type="button" onClick={() => planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })} aria-label={item.status === "completed" ? `Reabrir ${item.title}` : `Completar ${item.title}`}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{listLabels[item.type]} · {item.tentativeDate ? `${item.tentativeDate.length === 7 ? "Mes" : "Fecha"}: ${item.tentativeDate}` : "Sin fecha"}</small></div><button type="button" onClick={() => openItemEditor(item.id)} aria-label={`Editar ${item.title}`}><Pencil size={14} /></button><button type="button" onClick={() => planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label={`Liberar ${item.title}`}>×</button></div>)}{!visibleBrainItems.length && <p className="brain-empty">Todavía no hay ideas organizadas en esta vista.</p>}</Card>
       </>}
 
       {tab === "routines" && <div className="hub-two-column"><Card className="hub-form-card"><Sun size={24} /><p className="eyebrow">Nueva rutina</p><h2>Diseña una secuencia que te cuide</h2><form onSubmit={addRoutine}><label className="form-field"><span>Nombre</span><input value={routineName} onChange={(event) => setRoutineName(event.target.value)} /></label><label className="form-field"><span>Momento</span><select value={routinePeriod} onChange={(event) => setRoutinePeriod(event.target.value as typeof routinePeriod)}><option value="am">AM · mañana</option><option value="afternoon">Tarde</option><option value="pm">PM · noche</option></select></label><label className="form-field"><span>Pasos · uno por línea</span><textarea rows={7} value={routineSteps} onChange={(event) => setRoutineSteps(event.target.value)} placeholder={"Agua y luz natural\nEscribir mis tres prioridades"} /></label><Button type="submit">Guardar rutina</Button></form></Card><div className="routine-grid">{snapshot.routines.map((routine) => <Card className="routine-card" key={routine.id}><span>{routine.period === "am" ? <Sun size={20} /> : routine.period === "pm" ? <MoonStar size={20} /> : <Sparkles size={20} />}</span><Badge tone="rose">{routine.period === "am" ? "AM" : routine.period === "pm" ? "PM" : "Tarde"}</Badge><h2>{routine.name}</h2>{routine.steps.map((step, index) => <p key={step.id}><i>{index + 1}</i>{step.title}</p>)}</Card>)}</div></div>}
 
-      {tab === "fitness" && !snapshot.profile?.fitnessEnabled && <Card className="fitness-gate"><span><Dumbbell size={29} /></span><p className="eyebrow">Cuando te sirva</p><h1>Fitness Hub</h1><p>¿Quieres acompañar tu entrenamiento con más detalle? Puedes registrar ejercicios, comidas, macros, medidas y fotos semanales, y ocultarlo cuando prefieras una vista más ligera.</p><Button onClick={() => planner.updateProfileSettings({ fitnessEnabled: true })}>Quiero usar Fitness Hub</Button></Card>}
+      {tab === "fitness" && !snapshot.profile?.fitnessEnabled && <Card className="fitness-gate"><span><Dumbbell size={29} /></span><p className="eyebrow">Cuando te sirva</p><h1>Bienestar</h1><p>¿Quieres acompañar tu entrenamiento con más detalle? Puedes registrar ejercicios, comidas, macros, medidas y fotos semanales, y ocultarlo cuando prefieras una vista más ligera.</p><Button onClick={() => planner.updateProfileSettings({ fitnessEnabled: true })}>Quiero usar Bienestar</Button></Card>}
 
       {tab === "fitness" && snapshot.profile?.fitnessEnabled && <>
-        <div className="fitness-header"><div><p className="eyebrow">Fitness Hub · seguimiento flexible</p><h2>Tu progreso, semana a semana</h2><p>Semana del {formatDateKey(fitnessWeekStart)} al {formatDateKey(fitnessWeekEnd)}</p></div><div className="fitness-header__actions"><label className="form-field"><span>Fecha del registro</span><input type="date" value={fitnessDate} onChange={(event) => selectFitnessDate(event.target.value)} /></label>{fitnessDate !== today && <Button variant="secondary" onClick={() => selectFitnessDate(today)}>Volver a hoy</Button>}<Button variant="ghost" onClick={() => planner.updateProfileSettings({ fitnessEnabled: false })}>Ocultar por ahora</Button></div></div>
-        <div className="fitness-summary" aria-label="Resumen de Fitness Hub">
+        <div className="fitness-header"><div><p className="eyebrow">Bienestar · seguimiento flexible</p><h2>Tu progreso, semana a semana</h2><p>Semana del {formatDateKey(fitnessWeekStart)} al {formatDateKey(fitnessWeekEnd)}</p></div><div className="fitness-header__actions"><label className="form-field"><span>Fecha del registro</span><input type="date" value={fitnessDate} onChange={(event) => selectFitnessDate(event.target.value)} /></label>{fitnessDate !== today && <Button variant="secondary" onClick={() => selectFitnessDate(today)}>Volver a Mi día</Button>}<Button variant="ghost" onClick={() => planner.updateProfileSettings({ fitnessEnabled: false })}>Ocultar por ahora</Button></div></div>
+        <div className="fitness-summary" aria-label="Resumen de Bienestar">
           <Card><span>Sesiones esta semana</span><strong>{weeklyWorkoutLogs.length}</strong><small>Solo cuenta lo que registraste</small></Card>
           <Card><span>Ejercicios esta semana</span><strong>{weeklyExerciseCount}</strong><small>Puedes ajustar tu ritmo</small></Card>
           <Card><span>Comidas del día</span><strong>{selectedNutrition?.meals.length ?? 0}</strong><small>{dailyMacros.calories} kcal registradas</small></Card>

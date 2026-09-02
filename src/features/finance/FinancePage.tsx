@@ -18,7 +18,7 @@ type FinanceTab = "summary" | "budget" | "movements" | "accounts" | "purchases" 
 
 const tabs: { id: FinanceTab; label: string }[] = [
   { id: "summary", label: "Resumen" }, { id: "budget", label: "Presupuesto" },
-  { id: "movements", label: "Movimientos" }, { id: "funds", label: "Fondos" },
+  { id: "movements", label: "Ingreso o gasto" }, { id: "funds", label: "Fondos" },
   { id: "accounts", label: "Bancos" }, { id: "purchases", label: "Compras pendientes" },
   { id: "debts", label: "Deudas" }, { id: "recurring", label: "Recurrentes" },
   { id: "review", label: "Revisión" },
@@ -67,7 +67,7 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
     if (!parsed.success) return setFeedback("Revisa el valor y la fecha antes de guardar.");
     await planner.createTransaction(parsed.data);
     setMovement({ ...movement, amount: "", note: "" });
-    setFeedback("Movimiento guardado. Los totales ya fueron actualizados.");
+    setFeedback("Ingreso o gasto guardado. Tu resumen ya está actualizado.");
   };
 
   const saveBudget = async (event: FormEvent) => {
@@ -147,7 +147,7 @@ export function FinancePage({ planner }: { planner: PlannerController }) {
         <label className="form-field form-field--full"><span>Nota</span><input value={movement.note} onChange={(event) => setMovement({ ...movement, note: event.target.value })} placeholder="Una descripción breve" /></label>
         <Button type="submit">Guardar movimiento</Button>
       </form></Card>
-      <Card className="finance-panel"><header><div><p className="eyebrow">Detalle</p><h2>Movimientos del mes</h2></div><ReceiptText size={22} /></header><div className="movement-list">{snapshot.transactions.filter((item) => item.date.startsWith(currentMonth) && item.status === "active").map((item) => { const category = snapshot.financeCategories.find((entry) => entry.id === item.categoryId); const account = snapshot.financialAccounts.find((entry) => entry.id === item.accountId); return <div key={item.id}><span className={`movement-icon movement-icon--${item.type}`}>{item.type === "income" ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}</span><div><strong>{item.note || category?.name || transactionLabels[item.type]}</strong><small>{item.date} · {transactionLabels[item.type]} · {category?.name ?? "Sin categoría"}{account ? ` · ${account.name}` : ""}</small></div><b>{money(item.amount)}</b></div>; })}{!snapshot.transactions.some((item) => item.date.startsWith(currentMonth)) && <EmptyState title="Aún no hay movimientos" text="Registra el primero para comenzar tu resumen." />}</div></Card>
+      <Card className="finance-panel"><header><div><p className="eyebrow">Detalle</p><h2>Ingresos y gastos del mes</h2></div><ReceiptText size={22} /></header><div className="movement-list">{snapshot.transactions.filter((item) => item.date.startsWith(currentMonth) && item.status === "active").map((item) => { const category = snapshot.financeCategories.find((entry) => entry.id === item.categoryId); const account = snapshot.financialAccounts.find((entry) => entry.id === item.accountId); return <div key={item.id}><span className={`movement-icon movement-icon--${item.type}`}>{item.type === "income" ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}</span><div><strong>{item.note || category?.name || transactionLabels[item.type]}</strong><small>{item.date} · {transactionLabels[item.type]} · {category?.name ?? "Sin categoría"}{account ? ` · ${account.name}` : ""}</small></div><b>{money(item.amount)}</b></div>; })}{!snapshot.transactions.some((item) => item.date.startsWith(currentMonth)) && <EmptyState title="Aún no hay ingresos ni gastos" text="Registra el primero para comenzar tu resumen." />}</div></Card>
     </div>}
 
     {tab === "funds" && <FundsPanel planner={planner} money={money} />}

@@ -11,6 +11,7 @@ export interface AccountUser {
   dataProcessingAcceptedAt: string | null;
   adultDeclaredAt: string | null;
   marketingConsent: boolean;
+  onboardingCompleted: boolean;
 }
 
 export interface SignupLegalEvidence {
@@ -39,6 +40,7 @@ export interface AuthRepository {
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   acceptLegal(input: SignupLegalEvidence): Promise<AccountUser>;
+  markOnboardingCompleted(): Promise<AccountUser>;
   getOrStartAccess(): Promise<UserAccess>;
   getPreferences(): Promise<AccountPreferences>;
   updatePreferences(input: Partial<AccountPreferences>): Promise<AccountPreferences>;

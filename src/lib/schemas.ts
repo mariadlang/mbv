@@ -46,6 +46,12 @@ export const goalFormSchema = z.object({
   }
 });
 
+export const onboardingOutcomeSchema = z.object({
+  focus: z.enum(["today", "goal", "week", "habit"]),
+  result: z.string().trim().min(3, "Escribe un resultado concreto para comenzar."),
+  action: z.string().trim().min(2, "Escribe una primera acción pequeña."),
+});
+
 export const taskFormSchema = z.object({
   title: z.string().trim().min(2, "Escribe una tarea concreta."),
   description: z.string().trim().optional(),

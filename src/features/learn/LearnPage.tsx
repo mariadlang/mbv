@@ -22,7 +22,7 @@ export function LearnPage({ planner }: { planner: PlannerController }) {
   return <div className="page-stack learn-page">
     <SectionNavigation section="space" />
     <SectionHeading eyebrow="Ideas que aterrizan" title="Aprende" description="Tips breves para organizarte con más claridad, sin convertir tu planner en otro pendiente." />
-    <div className="learn-grid">{tips.map(([category, tip, action]) => <Card key={category} className="learn-card"><span><BookOpen size={21} /></span><p className="eyebrow">{category}</p><h2>{tip}</h2><Button variant="secondary" onClick={async () => { await planner.createTask(action, toLocalDateKey(new Date())); setSaved(category); }}>Aplicar a mi día <ChevronRight size={16} /></Button>{saved === category && <small role="status">Añadido a Hoy como tarea no prioritaria.</small>}</Card>)}</div>
+    <div className="learn-grid">{tips.map(([category, tip, action]) => <Card key={category} className="learn-card"><span><BookOpen size={21} /></span><p className="eyebrow">{category}</p><h2>{tip}</h2><Button variant="secondary" onClick={async () => { await planner.createTask(action, toLocalDateKey(new Date())); setSaved(category); }}>Aplicar a Mi día <ChevronRight size={16} /></Button>{saved === category && <small role="status">Añadido a Mi día como tarea no prioritaria.</small>}</Card>)}</div>
     <Card className="learn-note"><Sparkles size={22} /><div><h2>Una idea a la vez</h2><p>Cuando exista una guía externa verificada, este espacio podrá enlazarla. No mostramos enlaces inventados.</p></div><Link className="button button--text" to="/app/today">Ver mi día</Link></Card>
   </div>;
 }

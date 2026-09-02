@@ -56,7 +56,7 @@ export const plannerService = {
   },
 
   async completeOnboarding(
-    input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[] },
+    input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[]; focus?: "today" | "goal" | "week" | "habit"; result?: string; action?: string },
   ): Promise<PlannerSnapshot> {
     const now = new Date().toISOString();
     const colors = ["rose", "sage", "taupe", "blush", "charcoal"] as const;
@@ -77,6 +77,10 @@ export const plannerService = {
       id: id(), name, type,
       active: true, createdAt: now, updatedAt: now,
     }));
+    const firstGoalId = input.focus === "goal" && input.result ? id() : undefined;
+    const firstWeeklyPlanId = input.focus === "week" && input.result ? id() : undefined;
+    const firstTaskId = input.action ? id() : undefined;
+    const today = toLocalDateKey(new Date());
     const snapshot: PlannerSnapshot = {
       ...createEmptySnapshot(),
       profile: {
@@ -85,7 +89,7 @@ export const plannerService = {
         intention: input.intention.trim(),
         usePurpose: input.usePurpose.trim(),
         dailyIntention: "",
-        startDate: toLocalDateKey(new Date()),
+        startDate: today,
         weekStartsOn: input.weekStartsOn,
         priorityAreaIds: lifeAreas.filter((area) => selectedNames.has(area.name)).map((area) => area.id),
         mainPriorities: [],
@@ -104,7 +108,23 @@ export const plannerService = {
         status: "active", createdAt: now, updatedAt: now,
       }],
       financeCategories,
-      tasks: [],
+      goals: firstGoalId ? [{
+        id: firstGoalId, title: input.result!.trim(), reason: "Elegida durante la configuración inicial.",
+        progressType: "tasks", priority: "medium", status: "active", createdAt: now, updatedAt: now,
+      }] : [],
+      habits: input.focus === "habit" && input.result ? [{
+        id: id(), name: input.result.trim(), type: "boolean", scheduledDays: [new Date().getDay()],
+        target: 1, unit: "vez", origin: "experiment", status: "active", createdAt: now, updatedAt: now,
+      }] : [],
+      cascadePlans: firstWeeklyPlanId ? [{
+        id: firstWeeklyPlanId, horizon: "weekly", periodKey: getReviewPeriodKey("weekly", new Date(), input.weekStartsOn),
+        intention: input.result!.trim(), priority: input.result!.trim(), objectives: [input.result!.trim()], activities: [],
+        status: "active", createdAt: now, updatedAt: now,
+      }] : [],
+      tasks: firstTaskId ? [{
+        id: firstTaskId, title: input.action!.trim(), date: today, priority: "medium", focusPriority: 1,
+        goalId: firstGoalId, periodPlanId: firstWeeklyPlanId, status: "planned", createdAt: now, updatedAt: now,
+      }] : [],
     };
     return writes.run(async () => {
       await repository.replace(snapshot);
@@ -207,6 +227,43 @@ export const plannerService = {
     });
   },
 
+  resumeExistingSpace(name: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const now = nowIso();
+      const lifeAreas = mergeDefaultLifeAreas(snapshot.lifeAreas, id, now);
+      const profile = snapshot.profile
+        ? { ...snapshot.profile, onboardingCompleted: true, updatedAt: now }
+        : {
+            id: id(),
+            name: name.trim() || "Mi espacio",
+            intention: "",
+            usePurpose: "",
+            dailyIntention: "",
+            startDate: toLocalDateKey(new Date()),
+            weekStartsOn: 1 as const,
+            priorityAreaIds: [],
+            mainPriorities: [],
+            theme: "light" as const,
+            baseCurrency: "COP" as const,
+            financePrivacy: false,
+            fitnessEnabled: false,
+            activationCompleted: false,
+            onboardingCompleted: true,
+            createdAt: now,
+            updatedAt: now,
+          };
+      return {
+        ...snapshot,
+        profile,
+        lifeAreas,
+        financialProfiles: snapshot.financialProfiles.length ? snapshot.financialProfiles : [{
+          id: id(), baseCurrency: "COP", privacyMode: false, monthStartsOn: 1,
+          status: "active", createdAt: now, updatedAt: now,
+        }],
+      };
+    });
+  },
+
   updateHabitName(habitId: string, name: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
@@ -305,6 +362,13 @@ export const plannerService = {
         ),
       };
     });
+  },
+
+  deleteTask(taskId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      tasks: snapshot.tasks.filter((task) => task.id !== taskId),
+    }));
   },
 
   rescheduleTask(taskId: string, date: string): Promise<PlannerSnapshot> {
@@ -753,6 +817,44 @@ export const plannerService = {
           ? snapshot.cascadePlans.map((item) => item.id === existing.id ? plan : item)
           : [...snapshot.cascadePlans, plan],
       };
+    });
+  },
+
+  upsertPlanActions(
+    planId: string,
+    goalId: string | undefined,
+    actions: Array<{ taskId?: string; title: string; date?: string }>,
+  ): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const now = nowIso();
+      const validActions = actions.filter((action) => action.title.trim().length >= 2);
+      const existingIds = new Set(validActions.map((action) => action.taskId).filter(Boolean));
+      const updatedTasks = snapshot.tasks.map((task) => {
+        const action = validActions.find((item) => item.taskId === task.id);
+        if (!action) return task;
+        const date = action.date || undefined;
+        return {
+          ...task,
+          title: action.title.trim(),
+          date,
+          goalId: goalId || undefined,
+          periodPlanId: planId,
+          status: task.status === "completed" ? task.status : date ? "planned" as const : "inbox" as const,
+          updatedAt: now,
+        };
+      });
+      const createdTasks = validActions.filter((action) => !action.taskId || !existingIds.has(action.taskId) || !snapshot.tasks.some((task) => task.id === action.taskId)).map((action) => ({
+        id: id(),
+        title: action.title.trim(),
+        date: action.date || undefined,
+        priority: "medium" as const,
+        goalId: goalId || undefined,
+        periodPlanId: planId,
+        status: action.date ? "planned" as const : "inbox" as const,
+        createdAt: now,
+        updatedAt: now,
+      }));
+      return { ...snapshot, tasks: [...updatedTasks, ...createdTasks] };
     });
   },
 

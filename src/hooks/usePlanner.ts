@@ -137,6 +137,11 @@ export function usePlanner() {
     return service.previewBackup(await file.text());
   }, []);
 
+  const resumeExistingSpace = useCallback(
+    (name: string) => commit((service) => service.resumeExistingSpace(name)),
+    [commit],
+  );
+
   return {
     snapshot,
     loading,
@@ -144,8 +149,9 @@ export function usePlanner() {
     error,
     retry: load,
     completeOnboarding: (
-      input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[] },
+      input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[]; focus?: "today" | "goal" | "week" | "habit"; result?: string; action?: string },
     ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed" }),
+    resumeExistingSpace,
     loadDemo: () => commit((service) => service.loadDemo()),
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
     updateHabitName: (habitId: string, name: string) => commit((service) => service.updateHabitName(habitId, name)),
@@ -162,6 +168,7 @@ export function usePlanner() {
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
     toggleTask: async (taskId: string) => { const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") analyticsService.track("task_completed", { source: "task_toggle" }); return next; },
+    deleteTask: (taskId: string) => commit((service) => service.deleteTask(taskId)),
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
     saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
@@ -205,6 +212,8 @@ export function usePlanner() {
       const event = input.horizon === "annual" ? "annual_plan_updated" : input.horizon === "monthly" ? "monthly_plan_updated" : input.horizon === "weekly" ? "week_planned" : null;
       return event ? commitTracked(event, (service) => service.saveCascadePlan(input), { period: input.horizon }) : commit((service) => service.saveCascadePlan(input));
     },
+    upsertPlanActions: (planId: string, goalId: string | undefined, actions: Array<{ taskId?: string; title: string; date?: string }>) =>
+      commit((service) => service.upsertPlanActions(planId, goalId, actions)),
     deleteCascadePlan: (planId: string) =>
       commit((service) => service.deleteCascadePlan(planId)),
     toggleCascadeObjective: (planId: string, objectiveIndex: number) =>

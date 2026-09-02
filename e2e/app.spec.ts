@@ -1,20 +1,27 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function completeOnboarding(page: Page, name = "María", startChoice: RegExp = /Diseña tu mes/, stayAtDestination = false) {
+async function completeOnboarding(page: Page, name = "María", startChoice: RegExp = /Mi día/, stayAtDestination = false) {
   await page.goto("/app/dashboard");
   const necessaryCookies = page.getByRole("button", { name: "Solo necesarias" });
   if (await necessaryCookies.waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) await necessaryCookies.click();
   await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible();
-  await page.getByRole("button", { name: /Crear mi espacio/ }).click();
+  await page.getByRole("button", { name: /Crear mi primera acción/ }).click();
   await page.getByRole("radio", { name: startChoice }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("button", { name: "Salud y bienestar" }).click();
-  await page.getByRole("button", { name: "Carrera profesional o trabajo" }).click();
+  await page.getByLabel("Resultado").fill("Preparar una semana con dirección");
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByPlaceholder(/Quiero sentir que mi semana/).fill("Moverme con energía y avanzar mi proyecto con calma.");
+  await page.getByLabel("Primera acción").fill("Escribir mi primer paso");
   await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByPlaceholder("Ej. María").fill(name);
-  await page.getByRole("button", { name: /Crear mi espacio/ }).click();
+  await expect(page.getByRole("heading", { name: /Todo listo/ })).toBeVisible();
+  await page.getByRole("button", { name: /Ver mi primera acción/ }).click();
+  await expect(page).toHaveURL(/\/app\/today/);
+  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
+  if (name !== "María") {
+    await page.goto("/app/settings");
+    await page.getByLabel("Nombre del perfil").fill(name);
+    await page.getByRole("button", { name: "Guardar", exact: true }).click();
+    await expect(page.getByText("Tus preferencias quedaron guardadas.")).toBeVisible();
+  }
   if (stayAtDestination) return;
   await page.goto("/app/dashboard");
   await expect(page.getByRole("heading", { name: new RegExp(`Buenos días, ${name}`) })).toBeVisible();
@@ -25,26 +32,63 @@ async function authorizeFitnessIfNeeded(page: Page) {
   if (await authorize.waitFor({ state: "visible", timeout: 5000 }).then(() => true).catch(() => false)) await authorize.click();
 }
 
-test("onboarding creates an empty planner and activation journey", async ({ page }) => {
+test("onboarding creates a real first action and activation journey", async ({ page }) => {
   await completeOnboarding(page);
   await expect(page.getByRole("heading", { name: "Construyamos solo lo necesario" })).toBeVisible();
   await expect(page.getByText("Completar 21K")).toHaveCount(0);
+  await page.getByRole("link", { name: "Ir a Mi día" }).click();
+  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
   await page.goto("/app/habits");
   await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
 });
 
-test("each onboarding starting point opens a distinct existing flow", async ({ browser }) => {
+test("a returning account opens its existing space without repeating onboarding", async ({ page }) => {
+  test.setTimeout(60_000);
+  await completeOnboarding(page);
+  await page.goto("/app/settings");
+  await expect(page.getByRole("heading", { name: "Ajustes y datos" })).toBeVisible();
+
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction("profiles", "readwrite");
+      transaction.objectStore("profiles").clear();
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  });
+
+  await page.getByRole("button", { name: "Cerrar sesión" }).last().click();
+  const logoutDialog = page.getByRole("dialog", { name: "¿Quieres cerrar tu sesión?" });
+  await logoutDialog.getByRole("button", { name: "Cerrar sesión" }).click();
+
+  await page.getByLabel("Correo").fill("e2e@mybestversion.test");
+  await page.getByLabel("Contraseña").fill("prueba-segura-123");
+  await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/app\/dashboard/);
+  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Crear mi espacio/ })).toHaveCount(0);
+});
+
+test("each onboarding starting point creates a first action in Mi día", async ({ browser }) => {
   const choices = [
-    { label: /Diseña tu mes/, url: /\/app\/planning\?view=year&create=month/, heading: /Planificar/ },
-    { label: /Diseña tu año/, url: /\/app\/planning\?view=year$/, heading: /^Planificación$/ },
-    { label: /Diseña tu plan de vida con acompañamiento/, url: /\/app\/vision\?guided=1$/, heading: /Diseña primero una imagen/ },
+    /Mi día/,
+    /Una meta/,
+    /Mi semana/,
+    /Un hábito/,
   ];
-  for (const [index, choice] of choices.entries()) {
+  for (const choice of choices) {
     const context = await browser.newContext({ baseURL: "http://127.0.0.1:3100" });
     const page = await context.newPage();
-    await completeOnboarding(page, `Inicio ${index + 1}`, choice.label, true);
-    await expect(page).toHaveURL(choice.url);
-    await expect(page.getByRole("heading", { name: choice.heading }).first()).toBeVisible();
+    await completeOnboarding(page, "María", choice, true);
+    await expect(page).toHaveURL(/\/app\/today/);
+    await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
     await context.close();
   }
 });
@@ -53,8 +97,9 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await completeOnboarding(page);
 
   await page.goto("/app/tasks");
-  await page.getByLabel("Nueva tarea en el gestor").fill("Preparar propuesta beta");
-  await page.getByRole("button", { name: "Añadir", exact: true }).click();
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  await page.getByLabel("Tarea", { exact: true }).fill("Preparar propuesta beta");
+  await page.getByRole("button", { name: "Guardar tarea" }).click();
   const task = page.getByRole("button", { name: /Preparar propuesta beta/ });
   await expect(task).toBeVisible();
   await task.click();
@@ -64,7 +109,6 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await page.goto("/app/habits");
   await page.getByRole("button", { name: "Crear hábito" }).click();
   await page.getByLabel("Nombre del hábito").fill("Leer con calma");
-  await page.getByLabel("Unidad").fill("min");
   const saveHabitButton = page.getByRole("button", { name: "Guardar hábito" });
   if (test.info().project.name === "mobile") {
     await saveHabitButton.focus();
@@ -159,13 +203,13 @@ test("budget, savings fund and movement update the finance summary", async ({ pa
   await page.getByRole("button", { name: "Crear fondo" }).click();
   await expect(page.getByRole("heading", { name: "Fondo de tranquilidad" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Movimientos" }).click();
+  await page.getByRole("tab", { name: "Ingreso o gasto" }).click();
   await page.getByLabel("Tipo").selectOption("contribution");
   await page.getByLabel("Valor").fill("250000");
   await page.getByLabel("Fondo de ahorro").selectOption({ label: "Fondo de tranquilidad" });
   await page.getByLabel("Nota").fill("Primer aporte");
   await page.getByRole("button", { name: "Guardar movimiento" }).click();
-  await expect(page.getByText("Movimiento guardado. Los totales ya fueron actualizados.")).toBeVisible();
+  await expect(page.getByText("Ingreso o gasto guardado. Tu resumen ya está actualizado.")).toBeVisible();
   await expect(page.getByText("Primer aporte")).toBeVisible();
 });
 
@@ -192,7 +236,8 @@ test("cascade planning and optional life modules persist locally", async ({ page
 
   await page.getByRole("button", { name: /Añadir plan para/ }).first().click();
   const monthDialog = page.getByRole("dialog", { name: /Planificar/ });
-  await monthDialog.getByLabel("¿Qué es lo más importante que quieres avanzar?").fill("Construir una base serena y sostenible");
+  await monthDialog.getByLabel("Resultado concreto del mes").fill("Construir una base serena y sostenible");
+  await monthDialog.getByLabel("Acción 1", { exact: true }).fill("Definir el alcance de la primera versión");
   await monthDialog.getByPlaceholder("Prioridad 1").fill("Publicar la primera versión");
   await monthDialog.getByPlaceholder("Prioridad 2").fill("Cuidar mi energía");
   await monthDialog.getByRole("button", { name: "Guardar plan" }).click();
@@ -206,13 +251,11 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Brain Dump" })).toBeVisible();
-  await page.getByLabel("Añadir a Cosas que quiero hacer").fill("Aprender fotografía");
-  await page.getByLabel("Guardar en Cosas que quiero hacer").click();
-  await expect(page.getByText("Aprender fotografía")).toBeVisible();
-  await page.getByLabel("Añadir a Quiero leer").fill("El camino del artista");
-  await page.getByLabel("Añadir a Quiero leer").press("Enter");
-  await expect(page.getByText("El camino del artista")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bandeja" })).toBeVisible();
+  await page.getByRole("button", { name: "Captura rápida" }).click();
+  await page.getByLabel("Nombre").fill("Aprender fotografía");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(page.locator(".brain-inbox-list").getByText("Aprender fotografía")).toBeVisible();
   await page.goto("/app/health");
   await expect(page).toHaveURL(/\/app\/health/);
   await authorizeFitnessIfNeeded(page);
@@ -256,6 +299,12 @@ test("exports, deletes and restores a validated local backup", async ({ page }) 
   await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible();
 
   await page.locator('input[type="file"][accept="application/json"]').setInputFiles(backupPath!);
+  const importDialog = page.getByRole("dialog", { name: "Revisar respaldo antes de importar" });
+  if (await importDialog.isVisible()) {
+    await expect(importDialog.getByText("Valeria", { exact: true })).toBeVisible();
+    await importDialog.getByRole("button", { name: "Importar y reemplazar" }).click();
+  }
+  await expect(page.getByRole("heading", { name: "Ajustes y datos" })).toBeVisible();
   await expect(page.getByLabel("Nombre del perfil")).toHaveValue("Valeria");
   await page.goto("/app/dashboard");
   await expect(page.getByRole("heading", { name: /Buenos días, Valeria/ })).toBeVisible();
@@ -272,7 +321,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
-    ["/app/life-hub", /^Brain Dump$/],
+    ["/app/life-hub", /^Bandeja$/],
     ["/app/health", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
@@ -294,16 +343,14 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 test("information architecture separates overview from daily execution", async ({ page }) => {
   await completeOnboarding(page);
   const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await expect(navigation.getByRole("link")).toHaveCount(test.info().project.name === "mobile" ? 5 : 7);
+  await expect(navigation.getByRole("link")).toHaveCount(5);
   await expect(navigation).toContainText("Inicio");
   await expect(navigation).toContainText("Mi día");
   await expect(navigation).toContainText("Planificar");
   await expect(navigation).toContainText("Progreso");
   await expect(navigation).toContainText("Mi espacio");
-  if (test.info().project.name !== "mobile") {
-    await expect(navigation).toContainText("Bienestar");
-    await expect(navigation).toContainText("Finanzas");
-  }
+  await expect(navigation).not.toContainText("Bienestar");
+  await expect(navigation).not.toContainText("Finanzas");
   await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
@@ -462,7 +509,7 @@ test("quick actions close with Escape and outside click", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Chat de soporte" })).toBeHidden();
 });
 
-test("updated experiences remain usable across supported mobile widths", async ({ page }) => {
+test("updated experiences remain usable across the required visual matrix", async ({ page }) => {
   test.setTimeout(300_000);
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
@@ -471,16 +518,30 @@ test("updated experiences remain usable across supported mobile widths", async (
   await completeOnboarding(page);
 
   const screens = [
+    { path: "/app/dashboard", locator: () => page.getByRole("heading", { name: /Buenos días/ }) },
+    { path: "/app/today", locator: () => page.getByRole("heading", { name: "Qué hago ahora" }) },
     { path: "/app/tasks", locator: () => page.getByRole("button", { name: "Nuevo proyecto" }) },
-    { path: "/app/life-hub", locator: () => page.getByLabel("Añadir a Cosas que quiero hacer") },
+    { path: "/app/habits", locator: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
+    { path: "/app/life-hub", locator: () => page.getByRole("heading", { name: "Bandeja", exact: true }) },
+    { path: "/app/more", locator: () => page.getByRole("heading", { name: "Más herramientas", exact: true }) },
+    { path: "/app/goals", locator: () => page.getByRole("button", { name: "Crear meta" }) },
     { path: "/app/planning?view=year&create=month", locator: () => page.getByRole("dialog", { name: /Planificar/ }).getByRole("button", { name: "Guardar plan" }) },
+    { path: "/app/planning?view=week", locator: () => page.getByRole("heading", { name: "Plan semanal" }) },
+    { path: "/app/progress", locator: () => page.getByRole("heading", { name: "Tu progreso" }) },
     { path: "/app/vision?guided=1", locator: () => page.getByRole("button", { name: /Crear una tarjeta personalizada/ }) },
-    { path: "/app/health", locator: () => page.getByRole("button", { name: "Autorizar y continuar" }) },
+    { path: "/app/finance", locator: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
+    { path: "/app/health", locator: () => page.getByRole("heading", { name: /Antes de usar Alimentación y Entrenamiento|Alimentación/ }) },
     { path: "/app/challenges", locator: () => page.getByRole("button", { name: "Elegir este reto" }).first() },
   ];
 
-  for (const width of [320, 360, 375, 390, 414, 430]) {
-    await page.setViewportSize({ width, height: 844 });
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+  ];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
     for (const screen of screens) {
       await page.goto(screen.path);
       await expect(screen.locator()).toBeVisible();
@@ -500,14 +561,14 @@ test("updated experiences remain usable across supported mobile widths", async (
           .slice(0, 8)
           .map((element) => ({ className: element.className, parentClass: element.parentElement?.className, tag: element.tagName, text: element.textContent?.trim().slice(0, 36), width: Math.round(element.getBoundingClientRect().width) })),
       }));
-      expect(layout.scrollWidth, `${screen.path} at ${width}px: ${JSON.stringify({ offenders: layout.offenders, taskSection: layout.taskSection })}`).toBeLessThanOrEqual(layout.clientWidth + 1);
+      expect(layout.scrollWidth, `${screen.path} at ${viewport.width}x${viewport.height}: ${JSON.stringify({ offenders: layout.offenders, taskSection: layout.taskSection })}`).toBeLessThanOrEqual(layout.clientWidth + 1);
     }
   }
 
   await page.goto("/app/health?section=training");
   await authorizeFitnessIfNeeded(page);
-  for (const [index, width] of [320, 360, 375, 390, 414, 430].entries()) {
-    await page.setViewportSize({ width, height: 844 });
+  for (const [index, viewport] of viewports.entries()) {
+    await page.setViewportSize(viewport);
 
     await page.goto("/app/health?section=training");
     await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
@@ -541,42 +602,39 @@ test("updated experiences remain usable across supported mobile widths", async (
   expect(consoleErrors).toEqual([]);
 });
 
-test("Brain Dump month ideas and direct Mi día entries remain connected and editable", async ({ page }) => {
-  test.setTimeout(60_000);
+test("a goal connects its monthly result, weekly action, Mi día and Progress", async ({ page }) => {
+  test.setTimeout(90_000);
   await completeOnboarding(page);
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  await page.goto("/app/goals");
+  await page.getByRole("button", { name: "Crear meta" }).click();
+  const goalDialog = page.getByRole("dialog", { name: "Crear una meta" });
+  await goalDialog.getByLabel("¿Qué quieres lograr?").fill("Publicar una guía útil");
+  await goalDialog.getByLabel("¿Por qué importa para ti?").fill("Quiero convertir una idea valiosa en algo que otras personas puedan usar.");
+  await goalDialog.getByRole("button", { name: /Cómo mediremos el avance/ }).click();
+  await goalDialog.getByLabel("Método").selectOption("tasks");
+  await goalDialog.getByRole("button", { name: "Crear meta", exact: true }).click();
+  await page.getByRole("dialog", { name: "Meta creada" }).getByRole("link", { name: /Planificar esta meta/ }).click();
 
-  await page.goto("/app/life-hub");
-  const ideasCard = page.locator(".brain-list").filter({ hasText: "Cosas que quiero hacer" });
-  await ideasCard.getByLabel("Añadir a Cosas que quiero hacer").fill("Preparar una caminata especial");
-  await ideasCard.getByRole("button", { name: "Mes", exact: true }).click();
-  await ideasCard.getByLabel("Mes para Cosas que quiero hacer").fill(currentMonth);
-  await ideasCard.getByLabel("Guardar en Cosas que quiero hacer").click();
-  await expect(ideasCard.getByText("Preparar una caminata especial")).toBeVisible();
+  const monthDialog = page.getByRole("dialog", { name: /Planificar/ });
+  await expect(monthDialog.getByLabel("Meta activa (opcional)")).toHaveValue(/.+/);
+  await monthDialog.getByLabel("Resultado concreto del mes").fill("Terminar el primer borrador de la guía");
+  await monthDialog.getByLabel("Acción 1", { exact: true }).fill("Escribir el esquema de la guía");
+  await monthDialog.getByRole("button", { name: "Guardar plan" }).click();
+  await expect(page.getByRole("heading", { name: "Terminar el primer borrador de la guía" })).toBeVisible();
 
-  await ideasCard.getByLabel("Editar Preparar una caminata especial").click();
-  await ideasCard.getByLabel("Editar idea").fill("Preparar caminata del mes");
-  await ideasCard.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(ideasCard.getByText("Preparar caminata del mes")).toBeVisible();
-
-  await page.goto("/app/planning?view=year");
-  await expect(page.getByText("1 idea vinculada desde Brain Dump")).toBeVisible();
+  await page.goto("/app/planning?view=week");
+  const connectedAction = page.locator(".week-action-groups article").filter({ hasText: "Escribir el esquema de la guía" });
+  await expect(connectedAction).toContainText("Resultado de");
+  await connectedAction.getByRole("button", { name: /Poner/ }).click();
 
   await page.goto("/app/today");
-  await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Entrenamiento" }).click();
-  let composer = page.locator(".day-inline-composer");
-  await composer.getByLabel("Nombre").fill("Caminata consciente");
-  await composer.getByLabel("Duración en minutos").fill("35");
-  await composer.getByRole("button", { name: "Guardar en Mi día" }).click();
-  await expect(page.getByText("Caminata consciente")).toBeVisible();
-  await expect(page.getByText("Actividad general · 35 min")).toBeVisible();
+  await expect(page.getByText("Escribir el esquema de la guía").first()).toBeVisible();
+  await expect(page.getByText("Resultado mensual: Terminar el primer borrador de la guía")).toBeVisible();
+  await page.getByLabel("Completar Escribir el esquema de la guía").click();
 
-  await page.getByLabel("Editar entrenamiento").click();
-  composer = page.locator(".day-inline-composer");
-  await composer.getByLabel("Nombre").fill("Caminata consciente y suave");
-  await composer.getByRole("button", { name: "Guardar en Mi día" }).click();
-  await page.reload();
-  await expect(page.getByText("Caminata consciente y suave")).toBeVisible();
+  await page.goto("/app/progress");
+  const goalProgress = page.locator(".progress-goal-list article").filter({ hasText: "Publicar una guía útil" });
+  await expect(goalProgress).toContainText("100%");
 });
 
 test("English mode covers the updated product flows", async ({ page }) => {
@@ -593,7 +651,7 @@ test("English mode covers the updated product flows", async ({ page }) => {
   await expect(page.getByText("Primero, el resultado", { exact: true })).toHaveCount(0);
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Brain Dump", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inbox", exact: true })).toBeVisible();
 
   await page.goto("/app/planning?view=week");
   await expect(page.getByText("What comes from the month", { exact: true })).toBeVisible();
