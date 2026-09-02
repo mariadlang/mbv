@@ -9,7 +9,7 @@ async function completeOnboarding(page: Page, name = "María", startChoice: RegE
   await page.getByRole("radio", { name: startChoice }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: "Salud y bienestar" }).click();
-  await page.getByRole("button", { name: "Carrera / profesional" }).click();
+  await page.getByRole("button", { name: "Carrera profesional o trabajo" }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByPlaceholder(/Quiero sentir que mi semana/).fill("Moverme con energía y avanzar mi proyecto con calma.");
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -65,7 +65,13 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await page.getByRole("button", { name: "Crear hábito" }).click();
   await page.getByLabel("Nombre del hábito").fill("Leer con calma");
   await page.getByLabel("Unidad").fill("min");
-  await page.getByRole("button", { name: "Guardar hábito" }).click();
+  const saveHabitButton = page.getByRole("button", { name: "Guardar hábito" });
+  if (test.info().project.name === "mobile") {
+    await saveHabitButton.focus();
+    await page.keyboard.press("Enter");
+  } else {
+    await saveHabitButton.click();
+  }
   await expect(page.getByRole("heading", { name: "Leer con calma" })).toBeVisible();
   const firstScheduledCheck = page.locator(".habit-matrix__row .matrix-check:not([disabled])").first();
   await firstScheduledCheck.click();
@@ -107,9 +113,9 @@ test("custom Dream Life cards reuse and can change Wheel of Life areas", async (
   await dialog.getByRole("button", { name: "Guardar tarjeta" }).click();
   await expect(page.getByText(/conectada con Salud y bienestar/)).toBeVisible();
   await page.getByRole("button", { name: "Ahora no" }).click();
-  await page.getByLabel("Área de vida").selectOption({ label: "Carrera / profesional" });
+  await page.getByLabel("Área de vida").selectOption({ label: "Carrera profesional o trabajo" });
   await page.getByRole("button", { name: "Guardar mi visión" }).click();
-  await expect(page.getByRole("button", { name: /Carrera \/ profesional.*mi proyecto de escritura/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Carrera profesional o trabajo.*mi proyecto de escritura/i })).toBeVisible();
 });
 
 test("creates a goal with manual progress and writes a journal entry", async ({ page }) => {
@@ -126,7 +132,7 @@ test("creates a goal with manual progress and writes a journal entry", async ({ 
   await page.getByLabel("Método").selectOption("milestones");
   await page.getByPlaceholder("Hito 1").fill("Publicar la portada");
   await page.getByRole("dialog", { name: "Crear una meta" }).getByRole("button", { name: "Crear meta", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Tu meta ya tiene un camino" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "¿Qué significaría avanzar este mes?" })).toBeVisible();
   await page.getByRole("button", { name: "Ahora no" }).click();
   await expect(page.getByRole("heading", { name: "Publicar la versión beta" })).toBeVisible();
 
@@ -200,9 +206,9 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Mi espacio" })).toBeVisible();
-  await page.getByLabel("Pensamiento").fill("Aprender fotografía");
-  await page.getByRole("button", { name: "Capturar" }).click();
+  await expect(page.getByRole("heading", { name: "Brain Dump" })).toBeVisible();
+  await page.getByLabel("Añadir a Cosas que quiero hacer").fill("Aprender fotografía");
+  await page.getByLabel("Guardar en Cosas que quiero hacer").click();
   await expect(page.getByText("Aprender fotografía")).toBeVisible();
   await page.getByLabel("Añadir a Quiero leer").fill("El camino del artista");
   await page.getByLabel("Añadir a Quiero leer").press("Enter");
@@ -266,7 +272,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
-    ["/app/life-hub", /^Mi espacio$/],
+    ["/app/life-hub", /^Brain Dump$/],
     ["/app/health", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
@@ -290,18 +296,18 @@ test("information architecture separates overview from daily execution", async (
   const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
   await expect(navigation.getByRole("link")).toHaveCount(test.info().project.name === "mobile" ? 5 : 7);
   await expect(navigation).toContainText("Inicio");
-  await expect(navigation).toContainText("Hoy");
-  await expect(navigation).toContainText("Plan");
+  await expect(navigation).toContainText("Mi día");
+  await expect(navigation).toContainText("Planificar");
   await expect(navigation).toContainText("Progreso");
   await expect(navigation).toContainText("Mi espacio");
   if (test.info().project.name !== "mobile") {
-    await expect(navigation).toContainText("Salud");
+    await expect(navigation).toContainText("Bienestar");
     await expect(navigation).toContainText("Finanzas");
   }
   await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
-  await navigation.getByRole("link", { name: "Hoy", exact: true }).click();
+  await navigation.getByRole("link", { name: "Mi día", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Qué hago ahora" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Tareas" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cierre del día" })).toBeVisible();
@@ -360,7 +366,7 @@ test("creates a gentle challenge and records today", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app/challenges");
   await expect(page).toHaveURL(/\/app\/life-hub\?tab=challenges$/);
-  await expect(page.getByRole("heading", { name: "Mi espacio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Organiza a tu manera" })).toBeVisible();
   await page.getByRole("button", { name: "Elegir este reto" }).first().click();
   await page.getByLabel("Nombre del reto").fill("Dar un paso valiente");
   await page.getByRole("button", { name: "Guardar reto" }).click();
@@ -466,7 +472,7 @@ test("updated experiences remain usable across supported mobile widths", async (
 
   const screens = [
     { path: "/app/tasks", locator: () => page.getByRole("button", { name: "Nuevo proyecto" }) },
-    { path: "/app/life-hub", locator: () => page.getByLabel("Pensamiento") },
+    { path: "/app/life-hub", locator: () => page.getByLabel("Añadir a Cosas que quiero hacer") },
     { path: "/app/planning?view=year&create=month", locator: () => page.getByRole("dialog", { name: /Planificar/ }).getByRole("button", { name: "Guardar plan" }) },
     { path: "/app/vision?guided=1", locator: () => page.getByRole("button", { name: /Crear una tarjeta personalizada/ }) },
     { path: "/app/health", locator: () => page.getByRole("button", { name: "Autorizar y continuar" }) },
@@ -535,6 +541,44 @@ test("updated experiences remain usable across supported mobile widths", async (
   expect(consoleErrors).toEqual([]);
 });
 
+test("Brain Dump month ideas and direct Mi día entries remain connected and editable", async ({ page }) => {
+  test.setTimeout(60_000);
+  await completeOnboarding(page);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  await page.goto("/app/life-hub");
+  const ideasCard = page.locator(".brain-list").filter({ hasText: "Cosas que quiero hacer" });
+  await ideasCard.getByLabel("Añadir a Cosas que quiero hacer").fill("Preparar una caminata especial");
+  await ideasCard.getByRole("button", { name: "Mes", exact: true }).click();
+  await ideasCard.getByLabel("Mes para Cosas que quiero hacer").fill(currentMonth);
+  await ideasCard.getByLabel("Guardar en Cosas que quiero hacer").click();
+  await expect(ideasCard.getByText("Preparar una caminata especial")).toBeVisible();
+
+  await ideasCard.getByLabel("Editar Preparar una caminata especial").click();
+  await ideasCard.getByLabel("Editar idea").fill("Preparar caminata del mes");
+  await ideasCard.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(ideasCard.getByText("Preparar caminata del mes")).toBeVisible();
+
+  await page.goto("/app/planning?view=year");
+  await expect(page.getByText("1 idea vinculada desde Brain Dump")).toBeVisible();
+
+  await page.goto("/app/today");
+  await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Entrenamiento" }).click();
+  let composer = page.locator(".day-inline-composer");
+  await composer.getByLabel("Nombre").fill("Caminata consciente");
+  await composer.getByLabel("Duración en minutos").fill("35");
+  await composer.getByRole("button", { name: "Guardar en Mi día" }).click();
+  await expect(page.getByText("Caminata consciente")).toBeVisible();
+  await expect(page.getByText("Actividad general · 35 min")).toBeVisible();
+
+  await page.getByLabel("Editar entrenamiento").click();
+  composer = page.locator(".day-inline-composer");
+  await composer.getByLabel("Nombre").fill("Caminata consciente y suave");
+  await composer.getByRole("button", { name: "Guardar en Mi día" }).click();
+  await page.reload();
+  await expect(page.getByText("Caminata consciente y suave")).toBeVisible();
+});
+
 test("English mode covers the updated product flows", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
@@ -549,7 +593,7 @@ test("English mode covers the updated product flows", async ({ page }) => {
   await expect(page.getByText("Primero, el resultado", { exact: true })).toHaveCount(0);
 
   await page.goto("/app/life-hub");
-  await expect(page.getByText("Capture first. Decide later.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brain Dump", exact: true })).toBeVisible();
 
   await page.goto("/app/planning?view=week");
   await expect(page.getByText("What comes from the month", { exact: true })).toBeVisible();

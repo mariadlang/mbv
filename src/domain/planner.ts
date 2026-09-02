@@ -146,7 +146,7 @@ export interface MoodLog {
   id: string;
   date: string;
   mood: MoodName;
-  energy: 1 | 2 | 3 | 4 | 5;
+  energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
   sleep?: 1 | 2 | 3 | 4 | 5;
   concentration?: 1 | 2 | 3 | 4 | 5;
   factors: string[];

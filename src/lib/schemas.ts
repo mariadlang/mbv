@@ -259,7 +259,7 @@ const milestoneSchema = z.object({
 
 const moodLogSchema = z.object({
   id: z.string(), date: z.string(), mood: z.enum(["Calmada", "Enfocada", "Alegre", "Cansada", "Abrumada"]),
-  energy: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  energy: z.number().int().min(1).max(10),
   sleep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
   concentration: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
   factors: z.array(z.string()), note: z.string().optional(), createdAt: timestampSchema, updatedAt: timestampSchema,

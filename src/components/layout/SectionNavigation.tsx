@@ -26,11 +26,11 @@ const sections = {
   space: {
     label: "Secciones de Mi espacio",
     items: [
-      ["/app/life-hub", "Braindump"],
       ["/app/habits", "Hábitos"],
-      ["/app/journal", "Diario y notas"],
       ["/app/tasks", "Proyectos y tareas"],
-      ["/app/life-hub?tab=routines", "Más herramientas"],
+      ["/app/journal", "Diario y notas"],
+      ["/app/life-hub", "Brain Dump"],
+      ["/app/more", "Más herramientas"],
     ],
   },
 } satisfies Record<Section, { label: string; items: Array<[string, string]> }>;

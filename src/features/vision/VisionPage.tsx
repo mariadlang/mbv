@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane, Plus, Save, Sparkles } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, Coins, Heart, Home, Leaf, Palette, Plane, Plus, Save, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
@@ -134,7 +134,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         </div>
       )}
       <Modal open={customOpen} title={customSavedId ? "Visión guardada" : "Crear tarjeta personalizada"} description={customSavedId ? "Esta parte de tu visión ya puede convertirse en una meta cuando quieras." : "Elige solo los campos que te ayuden. Nada aquí es obligatorio salvo el nombre."} onClose={() => setCustomOpen(false)}>
-        {customSavedId ? <div className="goal-success"><span><CheckIcon /></span><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Mi Visión y está conectada con {custom.category}.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim() || !custom.category) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
+        {customSavedId ? <div className="vision-success"><CheckCircle2 size={28} aria-hidden="true" /><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Mi Visión y está conectada con {custom.category}.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim() || !custom.category) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
           <label className="form-field"><span>Nombre</span><input required value={custom.name} onChange={(event) => setCustom({ ...custom, name: event.target.value })} placeholder="Ej. Mi vida creativa" /></label>
           <label className="form-field"><span>Área de vida</span><select required value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}><option value="">Elige un área</option>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id}>{area.name}</option>)}</select><small>Usamos las mismas áreas de tu Rueda de vida para mantener todo conectado.</small></label>
           <label className="form-field form-field--full"><span>Mi sueño</span><input value={custom.dream} onChange={(event) => setCustom({ ...custom, dream: event.target.value })} placeholder="Una frase que nombre lo que deseas" /></label>
@@ -149,8 +149,4 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
       </Modal>
     </div>
   );
-}
-
-function CheckIcon() {
-  return <Sparkles size={22} />;
 }

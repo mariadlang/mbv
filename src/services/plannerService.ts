@@ -1,9 +1,10 @@
 import { createDemoSnapshot } from "@/src/domain/demo";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { BrainDumpType, EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import { habitRecommendation } from "@/src/domain/cascadeRules";
 import { applyDailyFocusPriority } from "@/src/domain/guidanceRules";
 import { defaultFinanceCategories, mergeDefaultFinanceCategories } from "@/src/domain/financeRules";
+import { defaultLifeAreaNames, mergeDefaultLifeAreas } from "@/src/domain/lifeAreaRules";
 import type {
   BodyCheckInFormInput,
   BrainDumpFormInput,
@@ -27,7 +28,7 @@ import type {
   WorkoutFormInput,
   WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
-import { cascadePlanFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
+import { cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository } from "@/src/repositories/local/IndexedDbPlannerRepository";
 import { createSnapshotWriteQueue } from "@/src/services/snapshotWriteQueue";
@@ -47,8 +48,9 @@ export const plannerService = {
   async load(): Promise<PlannerSnapshot> {
     const snapshot = await repository.load();
     const financeCategories = mergeDefaultFinanceCategories(snapshot.financeCategories, id, nowIso());
-    if (financeCategories.length === snapshot.financeCategories.length) return snapshot;
-    const migrated = { ...snapshot, financeCategories };
+    const lifeAreas = snapshot.profile ? mergeDefaultLifeAreas(snapshot.lifeAreas, id, nowIso()) : snapshot.lifeAreas;
+    if (financeCategories.length === snapshot.financeCategories.length && lifeAreas === snapshot.lifeAreas) return snapshot;
+    const migrated = { ...snapshot, financeCategories, lifeAreas };
     await repository.replace(migrated);
     return migrated;
   },
@@ -58,7 +60,8 @@ export const plannerService = {
   ): Promise<PlannerSnapshot> {
     const now = new Date().toISOString();
     const colors = ["rose", "sage", "taupe", "blush", "charcoal"] as const;
-    const lifeAreas = input.selectedAreaNames.map((name, index) => ({
+    const selectedNames = new Set(input.selectedAreaNames);
+    const lifeAreas = defaultLifeAreaNames.map((name, index) => ({
       id: id(),
       name,
       color: colors[index % colors.length],
@@ -84,7 +87,7 @@ export const plannerService = {
         dailyIntention: "",
         startDate: toLocalDateKey(new Date()),
         weekStartsOn: input.weekStartsOn,
-        priorityAreaIds: lifeAreas.map((area) => area.id),
+        priorityAreaIds: lifeAreas.filter((area) => selectedNames.has(area.name)).map((area) => area.id),
         mainPriorities: [],
         theme: "light",
         baseCurrency: "COP",
@@ -204,6 +207,15 @@ export const plannerService = {
     });
   },
 
+  updateHabitName(habitId: string, name: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      habits: snapshot.habits.map((habit) => habit.id === habitId
+        ? { ...habit, name: name.trim(), recommendation: habitRecommendation(name, habit.origin ?? "established"), updatedAt: nowIso() }
+        : habit),
+    }));
+  },
+
   createTaskDetailed(input: TaskFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
@@ -234,6 +246,18 @@ export const plannerService = {
           ? applyDailyFocusPriority(tasks, taskId, input.date, input.focusPriority)
           : tasks,
       };
+    });
+  },
+
+  updateTask(taskId: string, input: Pick<TaskFormInput, "title" | "date" | "time" | "focusPriority">): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const current = snapshot.tasks.find((task) => task.id === taskId);
+      if (!current) return snapshot;
+      const date = input.date || current.date;
+      const tasks = snapshot.tasks.map((task) => task.id === taskId
+        ? { ...task, title: input.title.trim(), date, time: input.time || undefined, focusPriority: input.focusPriority, updatedAt: nowIso() }
+        : task);
+      return { ...snapshot, tasks: date && input.focusPriority ? applyDailyFocusPriority(tasks, taskId, date, input.focusPriority) : tasks };
     });
   },
 
@@ -296,7 +320,7 @@ export const plannerService = {
 
   saveMood(
     mood: MoodName,
-    energy: 1 | 2 | 3 | 4 | 5,
+    energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
     factors: string[] = [],
     note?: string,
     sleep?: 1 | 2 | 3 | 4 | 5,
@@ -748,12 +772,12 @@ export const plannerService = {
 
   updateBrainDumpItem(
     itemId: string,
-    input: { status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string },
+    input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null },
   ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
       brainDumpItems: snapshot.brainDumpItems.map((item) => item.id === itemId
-        ? { ...item, ...input, tentativeDate: input.tentativeDate || item.tentativeDate, updatedAt: nowIso() }
+        ? { ...item, ...input, title: input.title?.trim() || item.title, tentativeDate: input.tentativeDate === null ? undefined : input.tentativeDate ?? item.tentativeDate, updatedAt: nowIso() }
         : item),
     }));
   },
@@ -887,6 +911,18 @@ export const plannerService = {
           : [plan, ...snapshot.workoutLogs],
       };
     });
+  },
+
+  updateEvent(eventId: string, input: EventFormInput): Promise<PlannerSnapshot> {
+    const parsed = eventFormSchema.parse(input);
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      events: snapshot.events.map((event) => event.id === eventId ? {
+        ...event,
+        title: parsed.title.trim(), startDate: parsed.startDate, endDate: parsed.endDate || undefined,
+        time: parsed.time || undefined, category: parsed.category, notes: parsed.notes || undefined, updatedAt: nowIso(),
+      } : event),
+    }));
   },
 
   deleteWorkoutPlan(date: string): Promise<PlannerSnapshot> {

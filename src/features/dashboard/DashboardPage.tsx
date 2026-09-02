@@ -24,14 +24,14 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
   return <div className="page-stack overview-dashboard">
     <header className="overview-dashboard__header">
       <div><p className="eyebrow">MY BEST VERSION</p><h1>{t("Buenos días, {name}", { name: snapshot.profile?.name ?? "María" })} <span aria-hidden="true">👋</span></h1><p>Aquí tienes un vistazo a cómo estás avanzando.</p></div>
-      <Link className="button button--secondary" to="/app/today">Ir a Hoy <ArrowRight size={16} /></Link>
+      <Link className="button button--secondary" to="/app/today">Ir a Mi día <ArrowRight size={16} /></Link>
     </header>
 
     <section className="overview-kpis" aria-label="Resumen general">
       <Link to="/app/progress"><Card><span><TrendingUp size={20} /></span><small>Avance de metas</small><strong>{summary.averageGoalProgress}%</strong><p>Promedio de metas activas</p></Card></Link>
       <Link to="/app/goals"><Card><span><Target size={20} /></span><small>Metas activas</small><strong>{summary.activeGoals.length}</strong><p>{summary.activeGoals.length ? "En movimiento" : "Aún sin metas activas"}</p></Card></Link>
       <Link to="/app/habits"><Card><span><Check size={20} /></span><small>Consistencia</small><strong>{summary.habitConsistency}%</strong><p>{summary.habitTotals.completed} de {summary.habitTotals.scheduled} días programados</p></Card></Link>
-      <Link to="/app/habits?checkin=1"><Card><span><HeartPulse size={20} /></span><small>Bienestar</small><strong>{summary.wellbeing === null ? "—" : `${summary.wellbeing}/5`}</strong><p>{summary.wellbeing === null ? "Sin registros esta semana" : "Energía media de la semana"}</p></Card></Link>
+      <Link to="/app/habits?checkin=1"><Card><span><HeartPulse size={20} /></span><small>Bienestar</small><strong>{summary.wellbeing === null ? "—" : `${summary.wellbeing}/10`}</strong><p>{summary.wellbeing === null ? "Sin registros esta semana" : "Energía media de la semana"}</p></Card></Link>
     </section>
 
     {snapshot.profile?.activationCompleted === false && <Card className="activation-card overview-activation">
@@ -55,10 +55,6 @@ export function DashboardPage({ planner }: { planner: PlannerController }) {
         {summary.upcomingEvents.length ? <div className="upcoming-event-list">{summary.upcomingEvents.map((event) => <article key={event.id}><time dateTime={event.startDate}>{formatDate(new Date(`${event.startDate}T12:00:00`), { weekday: "short", day: "numeric", month: "short" })}</time><div><strong>{event.title}</strong><small>{event.time || "Todo el día"}</small></div></article>)}</div> : <EmptyState title="Tu calendario tiene espacio" text="Cuando guardes un evento, aparecerá aquí sin llenar tu vista." />}
       </Card>
     </section>
-
-    <Card className="overview-life-areas"><header><div><p className="eyebrow">Áreas de vida</p><h2>Cómo se sienten hoy</h2><p>La escala muestra tu satisfacción actual; no es una calificación ni una meta automática.</p></div><Link to="/app/vision">Ver mi visión <ArrowRight size={15} /></Link></header>
-      {summary.lifeAreas.length ? <div className="overview-area-grid">{summary.lifeAreas.map((area) => <article key={area.id}><div><strong>{area.name}</strong><span>{area.currentScore ?? "—"}/10</span></div><ProgressBar value={(area.currentScore ?? 0) * 10} label={`Satisfacción actual en ${area.name}`} /></article>)}</div> : <EmptyState title="Aún no has elegido tus áreas" text="Tu visión puede empezar con una sola parte de tu vida." action={<Link className="button button--secondary" to="/app/vision">Explorar áreas</Link>} />}
-    </Card>
 
     <section className="quick-access-section"><header><p className="eyebrow">Accesos rápidos</p><h2>Ir directo a lo que necesitas</h2></header><div className="quick-access-grid">
       <Link to="/app/tasks"><ListPlus size={20} /><span>Nueva tarea</span></Link>

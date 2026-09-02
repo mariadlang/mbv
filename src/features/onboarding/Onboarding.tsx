@@ -12,7 +12,6 @@ import {
   Home,
   Leaf,
   Palette,
-  Plane,
   Sparkles,
 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
@@ -25,15 +24,13 @@ import { BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 
 const areas = [
   ["Salud y bienestar", Heart],
-  ["Carrera / profesional", BriefcaseBusiness],
   ["Finanzas", Coins],
-  ["Relaciones", Heart],
-  ["Hogar", Home],
-  ["Crecimiento personal", Leaf],
-  ["Espiritual", Sparkles],
-  ["Proyectos creativos", Palette],
-  ["Experiencias", Plane],
-  ["Otro", Leaf],
+  ["Carrera profesional o trabajo", BriefcaseBusiness],
+  ["Desarrollo personal / Crecimiento", Leaf],
+  ["Familia y amigos", Heart],
+  ["Amor / Pareja", Heart],
+  ["Diversión y ocio", Palette],
+  ["Ambiente físico / Entorno", Home],
 ] as const;
 
 export function Onboarding({ planner }: { planner: PlannerController }) {

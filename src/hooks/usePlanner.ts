@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { BrainDumpType, EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type {
   BodyCheckInFormInput,
   BrainDumpFormInput,
@@ -148,12 +148,15 @@ export function usePlanner() {
     ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed" }),
     loadDemo: () => commit((service) => service.loadDemo()),
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
+    updateHabitName: (habitId: string, name: string) => commit((service) => service.updateHabitName(habitId, name)),
     toggleHabit: (habitId: string, date: string) =>
       commit((service) => service.toggleHabit(habitId, date)),
     createTask: (title: string, date?: string, focusPriority?: 1 | 2 | 3) =>
       commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" }),
     createTaskDetailed: (input: TaskFormInput) =>
       commitTracked("task_created", (service) => service.createTaskDetailed(input), { source: "task_form" }),
+    updateTask: (taskId: string, input: Pick<TaskFormInput, "title" | "date" | "time" | "focusPriority">) =>
+      commit((service) => service.updateTask(taskId, input)),
     assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
       commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
     createProject: (input: ProjectFormInput) =>
@@ -161,7 +164,7 @@ export function usePlanner() {
     toggleTask: async (taskId: string) => { const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") analyticsService.track("task_completed", { source: "task_toggle" }); return next; },
     rescheduleTask: (taskId: string, date: string) =>
       commit((service) => service.rescheduleTask(taskId, date)),
-    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
+    saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
       commit((service) => service.saveMood(mood, energy, factors, note, sleep, concentration)),
     createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
       commitTracked("goal_created", (service) => service.createGoal(input, milestoneTitles)),
@@ -208,12 +211,13 @@ export function usePlanner() {
       commit((service) => service.toggleCascadeObjective(planId, objectiveIndex)),
     createBrainDumpItem: (input: BrainDumpFormInput) =>
       commit((service) => service.createBrainDumpItem(input)),
-    updateBrainDumpItem: (itemId: string, input: { status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string }) =>
+    updateBrainDumpItem: (itemId: string, input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null }) =>
       commit((service) => service.updateBrainDumpItem(itemId, input)),
     scheduleBrainDumpItem: (itemId: string, date: string) =>
       commit((service) => service.scheduleBrainDumpItem(itemId, date)),
     createRoutine: (input: RoutineFormInput) => commitTracked("routine_created", (service) => service.createRoutine(input)),
     createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
+    updateEvent: (eventId: string, input: EventFormInput) => commit((service) => service.updateEvent(eventId, input)),
     createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),

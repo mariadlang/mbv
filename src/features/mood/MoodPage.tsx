@@ -20,7 +20,7 @@ export function MoodPage({ planner }: { planner: PlannerController }) {
   const todayKey = toLocalDateKey(new Date());
   const today = planner.snapshot.moodLogs.find((log) => log.date === todayKey);
   const [mood, setMood] = useState<MoodName>(today?.mood ?? "Calmada");
-  const [energy, setEnergy] = useState<1 | 2 | 3 | 4 | 5>(today?.energy ?? 3);
+  const [energy, setEnergy] = useState(today?.energy ?? 6);
   const [sleep, setSleep] = useState<1 | 2 | 3 | 4 | 5>(today?.sleep ?? 3);
   const [concentration, setConcentration] = useState<1 | 2 | 3 | 4 | 5>(today?.concentration ?? 3);
   const [selectedFactors, setSelectedFactors] = useState<string[]>(today?.factors ?? []);
@@ -38,14 +38,14 @@ export function MoodPage({ planner }: { planner: PlannerController }) {
           <h2>¿Cómo te sientes hoy?</h2>
           <div className="mood-face-row">{moods.map((item) => <button key={item.name} className={mood === item.name ? "is-selected" : ""} onClick={() => setMood(item.name)} aria-pressed={mood === item.name}><span>{item.face}</span><small>{item.label}</small></button>)}</div>
           <h3>Nivel de energía</h3>
-          <div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={energy === level ? "is-selected" : ""} onClick={() => setEnergy(level)}>{level}</button>)}</div>
+          <div className="energy-buttons">{([1,2,3,4,5,6,7,8,9,10] as const).map((level) => <button key={level} className={energy === level ? "is-selected" : ""} onClick={() => setEnergy(level)}>{level}</button>)}</div>
           <div className="mood-signal-grid"><div><h3>Calidad del sueño</h3><div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={sleep === level ? "is-selected" : ""} onClick={() => setSleep(level)}>{level}</button>)}</div></div><div><h3>Concentración</h3><div className="energy-buttons">{([1,2,3,4,5] as const).map((level) => <button key={level} className={concentration === level ? "is-selected" : ""} onClick={() => setConcentration(level)}>{level}</button>)}</div></div></div>
           <h3>Factores que influyen hoy</h3>
           <div className="factor-chips">{factors.map((factor) => <button key={factor} className={selectedFactors.includes(factor) ? "is-selected" : ""} onClick={() => setSelectedFactors(selectedFactors.includes(factor) ? selectedFactors.filter((item) => item !== factor) : [...selectedFactors, factor])}>{factor}</button>)}</div>
           <label className="mood-note"><span>Notas opcionales</span><textarea rows={4} value={note} onChange={(event) => setNote(event.target.value)} placeholder="¿Hay algo que quieras anotar sobre tu día?" /></label>
           <Button onClick={() => planner.saveMood(mood, energy, selectedFactors, note, sleep, concentration)}>Guardar registro</Button>
         </Card>
-        <Card className="mood-trend-card"><p className="eyebrow">Tendencia mensual</p><h2>Tu energía a lo largo del mes</h2><div className="mood-trend-chart"><ResponsiveContainer width="100%" height={260}><LineChart data={chartData}><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize:12,fill:"var(--color-text-secondary)"}} /><YAxis domain={[1,5]} ticks={[1,2,3,4,5]} axisLine={false} tickLine={false} tick={{fontSize:12,fill:"var(--color-text-secondary)"}} /><Tooltip contentStyle={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border)", borderRadius: 12 }} /><Line type="monotone" dataKey="energy" connectNulls stroke="var(--color-brand-strong)" strokeWidth={2.5} dot={false} /></LineChart></ResponsiveContainer></div><div className="neutral-observation"><strong>Observación neutral</strong><p>Tu energía puede variar. Escuchar tu ritmo también es avanzar.</p></div></Card>
+        <Card className="mood-trend-card"><p className="eyebrow">Tendencia mensual</p><h2>Tu energía a lo largo del mes</h2><div className="mood-trend-chart"><ResponsiveContainer width="100%" height={260}><LineChart data={chartData}><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize:12,fill:"var(--color-text-secondary)"}} /><YAxis domain={[1,10]} ticks={[2,4,6,8,10]} axisLine={false} tickLine={false} tick={{fontSize:12,fill:"var(--color-text-secondary)"}} /><Tooltip contentStyle={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border)", borderRadius: 12 }} /><Line type="monotone" dataKey="energy" connectNulls stroke="var(--color-brand-strong)" strokeWidth={2.5} dot={false} /></LineChart></ResponsiveContainer></div><div className="neutral-observation"><strong>Observación neutral</strong><p>Tu energía puede variar. Escuchar tu ritmo también es avanzar.</p></div></Card>
       </div>
     </div>
   );

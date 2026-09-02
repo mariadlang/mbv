@@ -2701,10 +2701,100 @@ html[data-theme="dark"] .intention-quote blockquote { color: var(--color-text-pr
   .hub-capture-options[open] { grid-template-columns: 1fr; }
   .modal-layer { align-items: end; padding: 10px; }
   .modal { width: 100%; max-height: calc(100dvh - 20px); border-radius: 20px 20px 14px 14px; }
+  .modal > .form-grid .modal__actions, .modal > .fitness-form .modal__actions { position: relative; z-index: 4; margin: 8px 0 0; border-top: 1px solid var(--color-border); background: var(--color-background); padding: 12px 0 0; }
 }
 
 @media (max-width: 390px) {
   .goal-cascade-path { gap: 5px; padding-inline: 8px; font-size: .78rem; }
   .goal-method-summary { align-items: flex-start; flex-direction: column; }
   .week-context-card { padding: 16px; }
+}
+
+/* 01.09 · connected capture and daily execution refinements */
+.overview-kpis .card { min-height: 124px; grid-template-columns: auto 1fr; align-content: center; column-gap: 12px; padding: 15px 17px; }
+.overview-kpis .card > span { grid-row: 1 / span 3; width: 34px; height: 34px; }
+.overview-kpis .card > small, .overview-kpis .card > strong, .overview-kpis .card > p { grid-column: 2; margin: 0; }
+.overview-kpis strong { font-size: clamp(1.45rem, 2.5vw, 1.8rem); }
+.brain-list { min-height: 280px; }
+.brain-card-add { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.brain-card-add__primary { display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 7px; }
+.brain-date-choice { display: grid; gap: 7px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.brain-date-choice legend { color: var(--color-text-secondary); font-size: .7rem; }
+.brain-date-choice > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.brain-date-choice button { display: block; width: 100%; height: auto; min-height: 30px; border: 1px solid var(--color-border); border-radius: 8px; background: transparent; color: var(--color-text-secondary); font-size: .7rem; cursor: pointer; }
+.brain-date-choice button.is-active { border-color: var(--color-brand); background: var(--color-brand-soft); color: var(--color-brand-strong); }
+.brain-date-choice > input { min-width: 0; min-height: 36px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-elevated); padding: 6px 9px; color: var(--color-text-primary); }
+.brain-item { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.brain-item-editor { display: grid; gap: 8px; border-top: 1px solid var(--color-border); padding: 12px 0; }
+.brain-item-editor > input, .brain-item-editor > select { width: 100%; min-height: 38px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface-elevated); padding: 7px 10px; color: var(--color-text-primary); font: inherit; }
+.brain-item-editor > div:last-child { display: flex; gap: 7px; }
+.brain-item-editor > div:last-child button { display: inline-flex; min-height: 34px; align-items: center; gap: 5px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-elevated); padding: 6px 9px; color: var(--color-text-primary); cursor: pointer; }
+.month-brain-link { display: flex; align-items: center; gap: 5px; color: var(--color-brand-strong); font-size: var(--text-xs); }
+.month-card-empty-copy small { color: var(--color-brand-strong); text-align: center; }
+.vision-card { height: 300px; min-height: 300px; overflow: hidden; }
+.vision-card__visual { flex: 0 0 116px; height: 116px; overflow: hidden; }
+.vision-card h2 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.vision-card p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.vision-success, .goal-success { display: grid; justify-items: center; gap: 14px; padding: 8px 4px 4px; text-align: center; }
+.vision-success > svg, .goal-success > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--color-brand-soft); color: var(--color-brand-strong); }
+.vision-success h2, .goal-success h2 { margin: 0; font-size: 1.55rem; }
+.vision-success p, .goal-success p { max-width: 520px; margin: 0; color: var(--color-text-secondary); }
+.goal-success--compact .goal-cascade-path { padding-block: 10px; }
+.workout-builder { gap: 14px; }
+.workout-builder fieldset { background: color-mix(in srgb, var(--color-surface-muted) 58%, transparent); padding: 13px; }
+.workout-builder__sets > div { padding: 8px; }
+.workout-builder .form-help--positive { margin: 0; border: 1px solid color-mix(in srgb, var(--color-brand) 45%, var(--color-border)); border-radius: 11px; background: var(--color-brand-soft); padding: 10px 12px; color: var(--color-text-secondary); }
+.today-wellbeing-card--summary > header small { display: block; margin-top: 3px; color: var(--color-brand-strong); }
+.today-wellbeing-card--summary .mood-selector { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.today-wellbeing-card--summary .mood-option { display: grid; min-height: 70px; place-items: center; gap: 4px; border-radius: 14px; }
+.today-wellbeing-card--summary .mood-option > svg { color: var(--color-text-secondary); }
+.today-wellbeing-card--summary .mood-option.is-selected { border-color: var(--color-brand); background: var(--color-brand-soft); box-shadow: 0 5px 18px color-mix(in srgb, var(--color-brand) 18%, transparent); }
+.today-wellbeing-card--summary .mood-option.is-selected > svg, .today-wellbeing-card--summary .mood-option.is-selected small { color: var(--color-brand-strong); }
+.today-energy-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; border: 0; margin: 0; padding: 0; }
+.today-energy-row legend { grid-column: 1 / -1; font-weight: 650; }
+.energy-segments { display: grid; grid-template-columns: repeat(10, minmax(24px, 1fr)); gap: 4px; }
+.energy-segments button { min-height: 30px; border: 0; border-radius: 8px; background: var(--color-surface-muted); color: var(--color-text-secondary); font-size: .7rem; cursor: pointer; }
+.energy-segments button.is-selected { background: var(--color-brand); color: white; }
+.today-priority-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) 34px; align-items: center; border-bottom: 1px solid var(--color-border); }
+.today-priority-list .today-priority-row button { border-bottom: 0; }
+.today-priority-list .priority-toggle { grid-template-columns: 30px minmax(0, 1fr) 20px; }
+.today-priority-list .priority-edit { display: grid; min-height: 34px; grid-template-columns: 1fr; place-items: center; padding: 0; color: var(--color-brand-strong); }
+.day-inline-composer { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(100px, .7fr)) auto; align-items: end; gap: 8px; margin: 10px 0 14px; border: 1px solid var(--color-brand); border-radius: 13px; background: var(--color-brand-soft); padding: 12px; }
+.day-inline-composer > header { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; }
+.day-inline-composer > header button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.day-inline-composer label { display: grid; gap: 4px; color: var(--color-text-secondary); font-size: .7rem; }
+.day-inline-composer input, .day-inline-composer select { min-width: 0; min-height: 38px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface-elevated); padding: 7px 9px; color: var(--color-text-primary); font: inherit; }
+.today-timeline-add-menu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.today-timeline-add-menu button { display: inline-flex; min-height: 34px; align-items: center; gap: 4px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface-elevated); padding: 6px 10px; color: var(--color-brand-strong); font-size: .72rem; cursor: pointer; }
+.timeline-actions { display: flex; gap: 5px; }
+.day-timeline-list article > button, .timeline-actions > button { display: grid; min-width: 36px; min-height: 36px; place-items: center; border: 0; border-radius: var(--radius-sm); background: var(--color-brand-soft); color: var(--color-brand-strong); cursor: pointer; }
+.today-habit-row { display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: center; border-bottom: 1px solid var(--color-border); }
+.today-habits-card > div .today-habit-row > button { border-bottom: 0; }
+.today-habits-card > div .today-habit-edit { display: grid; min-height: 34px; grid-template-columns: 1fr; place-items: center; color: var(--color-brand-strong); }
+.today-habits-empty > button { display: inline-flex !important; width: auto; min-height: 38px !important; grid-template-columns: auto auto !important; justify-content: center; border: 0 !important; border-radius: 10px; background: var(--color-brand-soft) !important; padding: 8px 12px; color: var(--color-brand-strong) !important; cursor: pointer; }
+.overdue-card { position: relative; display: grid; gap: 0; overflow: hidden; padding: 18px 20px; padding-right: clamp(20px, 14vw, 180px); }
+.overdue-card > div:first-child { margin-bottom: 5px; }
+.overdue-card > div:first-child h2 { margin: 2px 0; font-size: 1.25rem; }
+.overdue-card > div:first-child p { margin: 0; color: var(--color-text-secondary); font-size: .75rem; }
+.overdue-row { min-height: 48px; padding: 7px 0; }
+.overdue-row .button { min-height: 34px; padding: 6px 10px; }
+
+@media (max-width: 900px) {
+  .day-inline-composer { grid-template-columns: 1fr 1fr; }
+  .day-inline-composer > header, .day-inline-composer > label:first-of-type { grid-column: 1 / -1; }
+  .today-wellbeing-card--summary .mood-option small { display: block; position: static; width: auto; height: auto; overflow: visible; clip: auto; clip-path: none; white-space: normal; }
+}
+
+@media (max-width: 620px) {
+  .overview-kpis .card { min-height: 112px; }
+  .brain-lists-grid { grid-template-columns: 1fr; }
+  .vision-card { height: 270px; min-height: 270px; }
+  .today-wellbeing-card--summary .mood-selector { grid-template-columns: repeat(5, minmax(52px, 1fr)); overflow-x: auto; padding-bottom: 4px; }
+  .today-wellbeing-card--summary .mood-option { min-width: 52px; min-height: 62px; border-radius: 13px; }
+  .today-wellbeing-card--summary .mood-option small { font-size: .62rem; }
+  .energy-segments { grid-template-columns: repeat(5, 1fr); }
+  .day-inline-composer { grid-template-columns: 1fr; }
+  .day-inline-composer > header, .day-inline-composer > label:first-of-type { grid-column: auto; }
+  .day-inline-composer .button { width: 100%; }
+  .overdue-card { padding-right: 18px; }
 }
