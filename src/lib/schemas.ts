@@ -21,6 +21,7 @@ export const habitFormSchema = z.object({
   target: z.number().positive("El objetivo debe ser mayor que cero."),
   unit: z.string().trim().min(1, "Indica una unidad."),
   scheduledDays: z.array(z.number().int().min(0).max(6)).min(1, "Elige al menos un día."),
+  oneOffDate: z.string().optional(),
   lifeAreaId: optionalId,
   origin: z.enum(["established", "experiment"]).optional(),
 });
@@ -31,7 +32,7 @@ export const goalFormSchema = z.object({
   targetDate: z.string().optional(),
   targetMonth: z.string().optional(),
   lifeAreaId: optionalId,
-  progressType: z.enum(["milestones", "numeric", "manual", "tasks"]).default("milestones"),
+  progressType: z.enum(["milestones", "numeric", "manual", "tasks"]).default("tasks"),
   targetValue: z.number().positive().optional(),
   unit: z.string().trim().optional(),
   manualProgress: z.number().min(0).max(100).optional(),
@@ -226,7 +227,7 @@ const lifeAreaSchema = z.object({
 const habitSchema = z.object({
   id: z.string(), name: z.string(), description: z.string().optional(),
   type: z.enum(["boolean", "quantity", "duration"]),
-  scheduledDays: z.array(z.number().int().min(0).max(6)), target: z.number().positive(), unit: z.string(),
+  scheduledDays: z.array(z.number().int().min(0).max(6)), oneOffDate: z.string().optional(), target: z.number().positive(), unit: z.string(),
   lifeAreaId: optionalId, goalId: optionalId, origin: z.enum(["established", "experiment"]).optional(),
   recommendation: z.string().optional(), status: z.enum(["active", "paused", "archived"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
@@ -302,7 +303,9 @@ const cascadePlanSchema = z.object({
 
 const brainDumpItemSchema = z.object({
   id: z.string(), title: z.string(), type: z.enum(["wishlist", "want_to_do", "must_do", "shopping", "want_to_learn", "want_to_read", "watch_list"]),
-  tentativeDate: z.string().optional(), priority: z.enum(["low", "medium", "high"]), status: z.enum(["idea", "planned", "completed", "released"]),
+  tentativeDate: z.string().optional(), goalId: optionalId, projectId: optionalId, periodPlanId: optionalId,
+  convertedTaskId: optionalId, destination: z.enum(["monthly", "weekly", "daily"]).optional(),
+  priority: z.enum(["low", "medium", "high"]), status: z.enum(["idea", "planned", "completed", "released"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

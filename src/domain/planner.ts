@@ -65,6 +65,7 @@ export interface Habit {
   description?: string;
   type: HabitType;
   scheduledDays: number[];
+  oneOffDate?: string;
   target: number;
   unit: string;
   lifeAreaId?: string;
@@ -246,6 +247,11 @@ export interface BrainDumpItem {
   title: string;
   type: BrainDumpType;
   tentativeDate?: string;
+  goalId?: string;
+  projectId?: string;
+  periodPlanId?: string;
+  convertedTaskId?: string;
+  destination?: "monthly" | "weekly" | "daily";
   priority: "low" | "medium" | "high";
   status: "idea" | "planned" | "completed" | "released";
   createdAt: string;

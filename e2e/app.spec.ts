@@ -100,11 +100,11 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await page.getByRole("button", { name: "Nueva tarea" }).click();
   await page.getByLabel("Tarea", { exact: true }).fill("Preparar propuesta beta");
   await page.getByRole("button", { name: "Guardar tarea" }).click();
-  const task = page.getByRole("button", { name: /Preparar propuesta beta/ });
+  const task = page.getByLabel("Completar Preparar propuesta beta");
   await expect(task).toBeVisible();
   await task.click();
   await page.getByRole("tab", { name: "Completadas" }).click();
-  await expect(page.getByRole("button", { name: /Preparar propuesta beta/ })).toBeVisible();
+  await expect(page.getByText("Preparar propuesta beta", { exact: true })).toBeVisible();
 
   await page.goto("/app/habits");
   await page.getByRole("button", { name: "Crear hábito" }).click();
@@ -116,10 +116,79 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   } else {
     await saveHabitButton.click();
   }
-  await expect(page.getByRole("heading", { name: "Leer con calma" })).toBeVisible();
-  const firstScheduledCheck = page.locator(".habit-matrix__row .matrix-check:not([disabled])").first();
-  await firstScheduledCheck.click();
-  await expect(firstScheduledCheck).toHaveAttribute("aria-pressed", "true");
+  const todayHabit = page.locator(".habit-today-row").filter({ hasText: "Leer con calma" });
+  await expect(todayHabit).toBeVisible();
+  await todayHabit.getByRole("button", { name: "Marcar" }).click();
+  await expect(todayHabit.getByText("Completado")).toBeVisible();
+  await expect(todayHabit.getByRole("button", { name: "Desmarcar Leer con calma" })).toBeVisible();
+});
+
+test("habits dashboard records measured progress, edits habits and updates one wellbeing log", async ({ page }) => {
+  test.setTimeout(90_000);
+  await completeOnboarding(page);
+  await page.goto("/app/habits");
+
+  await page.getByRole("button", { name: "Crear hábito", exact: true }).click();
+  const createDialog = page.getByRole("dialog", { name: "Crear un hábito" });
+  await createDialog.getByLabel("Nombre del hábito").fill("Beber agua con calma");
+  for (const day of await createDialog.locator(".day-picker button").all()) {
+    if (await day.getAttribute("aria-pressed") === "false") await day.click();
+  }
+  await createDialog.getByRole("button", { name: /Personalizar/ }).click();
+  await createDialog.getByLabel("Tipo de registro").selectOption("quantity");
+  await createDialog.getByLabel("Objetivo").fill("8");
+  await createDialog.getByLabel("Unidad").fill("vasos");
+  await createDialog.getByRole("button", { name: "Guardar hábito" }).click();
+
+  const habitRow = page.locator(".habit-today-row").filter({ hasText: "Beber agua con calma" });
+  await expect(habitRow).toBeVisible();
+  await habitRow.getByRole("button", { name: "Registrar" }).click();
+  let progressDialog = page.getByRole("dialog", { name: "Registrar Beber agua con calma" });
+  await progressDialog.getByLabel("Progreso de hoy (vasos)").fill("5");
+  await progressDialog.getByRole("button", { name: "Guardar progreso" }).click();
+  await expect(habitRow.getByText("5/8 vasos")).toBeVisible();
+
+  await habitRow.getByRole("button", { name: "Registrar" }).click();
+  progressDialog = page.getByRole("dialog", { name: "Registrar Beber agua con calma" });
+  await progressDialog.getByLabel("Progreso de hoy (vasos)").fill("8");
+  await progressDialog.getByRole("button", { name: "Guardar progreso" }).click();
+  await expect(habitRow.getByText("Completado")).toBeVisible();
+
+  await habitRow.getByRole("button", { name: "Más opciones para Beber agua con calma" }).click();
+  await page.getByRole("menuitem", { name: "Editar hábito" }).click();
+  const editDialog = page.getByRole("dialog", { name: "Editar hábito" });
+  await editDialog.getByLabel("Nombre del hábito").fill("Beber agua");
+  await editDialog.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.locator(".habit-today-row").filter({ hasText: "Beber agua" })).toBeVisible();
+
+  const moodCard = page.locator(".habit-mood-panel .today-mood-card");
+  await moodCard.getByRole("radio", { name: "Excelente" }).click();
+  await moodCard.getByRole("button", { name: "Energía 9 de 10" }).click();
+  await moodCard.getByLabel("Nota breve sobre tu estado").fill("Con energía y gratitud.");
+  await moodCard.getByRole("button", { name: "Guardar registro" }).click();
+  await expect(moodCard.getByText("Registro guardado")).toBeVisible();
+  await page.reload();
+  await expect(moodCard.getByRole("radio", { name: "Excelente" })).toHaveAttribute("aria-checked", "true");
+  await expect(moodCard.getByRole("button", { name: "Energía 9 de 10" })).toHaveAttribute("aria-pressed", "true");
+  await expect(moodCard.getByLabel("Nota breve sobre tu estado")).toHaveValue("Con energía y gratitud.");
+
+  const todayMoodCount = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const moodLogs = await new Promise<Array<{ date: string }>>((resolve, reject) => {
+      const request = database.transaction("moodLogs", "readonly").objectStore("moodLogs").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    const today = new Date();
+    const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return moodLogs.filter((log) => log.date === key).length;
+  });
+  expect(todayMoodCount).toBe(1);
 });
 
 test("projects come before tasks and detailed task fields stay progressive", async ({ page }) => {
@@ -141,7 +210,7 @@ test("projects come before tasks and detailed task fields stay progressive", asy
   await page.getByRole("button", { name: "Nueva tarea" }).click();
   await page.getByLabel("Tarea", { exact: true }).fill("Revisar portada");
   await expect(page.getByLabel("Proyecto", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: /Añadir hora, duración y conexiones/ }).click();
+  await page.getByRole("button", { name: /Añadir duración y conexiones/ }).click();
   await page.locator(".advanced-task-form label", { hasText: /^Proyecto/ }).locator("select").selectOption({ label: "Lanzamiento sereno" });
   await page.getByRole("button", { name: "Guardar tarea" }).click();
   await expect(page.getByRole("button", { name: /Revisar portada.*Lanzamiento sereno/ })).toBeVisible();
@@ -335,6 +404,10 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     await page.goto(route);
     if (route === "/app/health") await authorizeFitnessIfNeeded(page);
     await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
+    if (route === "/app/habits") {
+      await page.reload();
+      await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
+    }
   }
   await page.reload();
   await expect(page.getByRole("heading", { name: /Centro de Privacidad/ })).toBeVisible();
@@ -399,6 +472,15 @@ test("browser history and responsive navigation work in the production runtime",
   await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
   await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
+
+  await page.evaluate(() => {
+    document.body.style.minHeight = "3000px";
+    window.scrollTo(0, 900);
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const primaryNavigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
+  await primaryNavigation.getByRole("link", { name: "Mi día", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test("help routes expose the configured support resources", async ({ page }) => {
@@ -526,6 +608,90 @@ test("quick actions close with Escape and outside click", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Chat de soporte" })).toBeHidden();
 });
 
+test("Mi día keeps the visual wellbeing check-in and its saved state", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/today");
+
+  const moodCard = page.locator(".today-mood-card");
+  await expect(moodCard.getByRole("heading", { name: "Mi estado hoy" })).toBeVisible();
+  await expect(moodCard.getByText("Tu bienestar importa")).toBeVisible();
+  await expect(moodCard.getByRole("radio")).toHaveCount(5);
+  await expect(moodCard.getByRole("radio", { name: "Equilibrada" })).toHaveAttribute("aria-checked", "true");
+  await expect(moodCard.getByRole("button", { name: "Energía 6 de 10" })).toHaveAttribute("aria-pressed", "true");
+
+  await moodCard.getByRole("radio", { name: "Buena" }).click();
+  await moodCard.getByRole("button", { name: "Energía 8 de 10" }).click();
+  await moodCard.getByLabel("Nota breve sobre tu estado").fill("Hoy avanzo con calma.");
+  await moodCard.getByRole("button", { name: "Guardar nota de bienestar" }).click();
+  await page.reload();
+
+  await expect(moodCard.getByRole("radio", { name: "Buena" })).toHaveAttribute("aria-checked", "true");
+  await expect(moodCard.getByRole("button", { name: "Energía 8 de 10" })).toHaveAttribute("aria-pressed", "true");
+  await expect(moodCard.getByLabel("Nota breve sobre tu estado")).toHaveValue("Hoy avanzo con calma.");
+});
+
+test("date-only planning, habit recurrence and Brain Dump conversion stay consistent", async ({ page }) => {
+  test.setTimeout(90_000);
+  await completeOnboarding(page);
+
+  for (const route of ["/app/tasks", "/app/today", "/app/planning?view=day", "/app/life-hub?tab=events"]) {
+    await page.goto(route);
+    await expect(page.locator('input[type="time"]')).toHaveCount(0);
+    await expect(page.getByText(/Sin hora|Todo el día|Hora opcional/)).toHaveCount(0);
+  }
+
+  await page.goto("/app/today");
+  await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Hábito" }).click();
+  const habitForm = page.locator(".day-inline-composer");
+  await expect(habitForm.getByRole("button", { name: "Solo hoy" })).toHaveAttribute("aria-pressed", "true");
+  await habitForm.getByPlaceholder("Nombre de hábito").fill("Estirar con calma");
+  await habitForm.getByRole("button", { name: /Guardar en Mi día/ }).click();
+  await expect(page.getByText("Estirar con calma", { exact: true })).toHaveCount(1);
+  await page.getByLabel("Editar Estirar con calma").click();
+  await page.locator(".day-inline-composer").getByRole("button", { name: "Todos los días" }).click();
+  await page.locator(".day-inline-composer").getByRole("button", { name: /Guardar en Mi día/ }).click();
+  await expect(page.getByText("Estirar con calma", { exact: true })).toHaveCount(1);
+
+  await page.goto("/app/help");
+  await page.getByRole("button", { name: /Aplicar/ }).first().click();
+  const toolkit = page.locator(".toolkit-form");
+  await toolkit.locator("textarea").fill("Preparar una salida en bicicleta");
+  await toolkit.getByLabel("¿Dónde quieres dejarlo?").selectOption("later");
+  await toolkit.getByRole("button", { name: "Aplicar al planner" }).click();
+  await page.goto("/app/life-hub");
+  await page.getByLabel("Editar Preparar una salida en bicicleta").click();
+  const nextMonth = new Date();
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  const nextMonthKey = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}`;
+  await page.getByRole("button", { name: "Mes", exact: true }).click();
+  await page.getByLabel("Mes para Preparar una salida en bicicleta").fill(nextMonthKey);
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await page.reload();
+  await expect(page.getByText(`Mes: ${nextMonthKey}`, { exact: false })).toBeVisible();
+
+  const readMatchingTaskIds = () => page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tasks = await new Promise<Array<{ id: string; title: string }>>((resolve, reject) => {
+      const request = database.transaction("tasks", "readonly").objectStore("tasks").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return tasks.filter((task) => task.title === "Preparar una salida en bicicleta").map((task) => task.id);
+  });
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.getByLabel("Convertir Preparar una salida en bicicleta en acción").click();
+    await page.getByRole("button", { name: "Confirmar destino" }).click();
+  }
+  expect(await readMatchingTaskIds()).toHaveLength(1);
+  await expect(page.getByText(/Convertido en Mi día/)).toBeVisible();
+});
+
 test("updated experiences remain usable across the required visual matrix", async ({ page }) => {
   test.setTimeout(300_000);
   const consoleErrors: string[] = [];
@@ -552,9 +718,11 @@ test("updated experiences remain usable across the required visual matrix", asyn
   ];
 
   const viewports = [
+    { width: 375, height: 812 },
     { width: 390, height: 844 },
     { width: 430, height: 932 },
     { width: 768, height: 1024 },
+    { width: 1366, height: 768 },
     { width: 1440, height: 900 },
   ];
   for (const viewport of viewports) {

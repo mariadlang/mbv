@@ -4,16 +4,19 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CalendarDays, Check, Feather, HeartPulse, Leaf, ListPlus, Quote, Sparkles, Target, TrendingUp, Utensils } from "lucide-react";
 import { buildDashboardSummary } from "@/src/domain/dashboardSummary";
 import { weeklyPlanningInsight } from "@/src/domain/cascadeRules";
+import { getDailyTopThree } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
+import { toLocalDateKey } from "@/src/lib/dates";
 
 export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { t, formatDate } = useI18n();
   const { snapshot } = planner;
   const summary = buildDashboardSummary(snapshot);
   const insight = weeklyPlanningInsight(snapshot);
+  const todayPriorities = getDailyTopThree(snapshot.tasks, toLocalDateKey(new Date()));
   const setupSteps = [
     { label: "Define una dirección", done: snapshot.lifeAreas.some((area) => Boolean(area.vision || area.dream)), href: "/app/vision" },
     { label: "Crea tu primera meta", done: snapshot.goals.length > 0, href: "/app/goals" },
@@ -46,14 +49,14 @@ export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerCon
       <Card className="week-focus-card"><header><div><p className="eyebrow">Esta semana</p><h2>Lo más importante</h2></div><Link to="/app/planning/weekly">Ver mi semana <ArrowRight size={15} /></Link></header>
         <div className="week-focus-list">
           <div><span><Target size={18} /></span><small>Objetivo principal</small><strong>{summary.primaryGoal?.title ?? "Define una meta para darle dirección a tu semana"}</strong></div>
-          <div><span><Sparkles size={18} /></span><small>Prioridad</small><strong>{summary.weeklyPlan?.priority || summary.weeklyPlan?.intention || "Elige lo que sí merece espacio"}</strong></div>
+          <div><span><Sparkles size={18} /></span><small>Prioridades de hoy</small><strong>{todayPriorities.length ? todayPriorities.map((task) => task.title).join(" · ") : "Elige lo que sí merece espacio hoy"}</strong></div>
           <div><span><Check size={18} /></span><small>Próximo hito</small><strong>{summary.nextMilestone?.title ?? "Aún no hay un hito pendiente"}</strong></div>
         </div>
         <div className="week-progress-summary"><ProgressBar value={summary.weekTasks.percentage} label="Tareas completadas esta semana" /><span>{summary.weekTasks.completed} de {summary.weekTasks.total} tareas</span></div>
       </Card>
 
       <Card className="upcoming-events-card"><header><div><p className="eyebrow">Agenda</p><h2>Próximos eventos</h2></div><Link to="/app/life-hub?tab=events">Ver calendario <ArrowRight size={15} /></Link></header>
-        {summary.upcomingEvents.length ? <div className="upcoming-event-list">{summary.upcomingEvents.map((event) => <article key={event.id}><time dateTime={event.startDate}>{formatDate(new Date(`${event.startDate}T12:00:00`), { weekday: "short", day: "numeric", month: "short" })}</time><div><strong>{event.title}</strong><small>{event.time || "Todo el día"}</small></div></article>)}</div> : <EmptyState title="Tu calendario tiene espacio" text="Cuando guardes un evento, aparecerá aquí sin llenar tu vista." />}
+        {summary.upcomingEvents.length ? <div className="upcoming-event-list">{summary.upcomingEvents.map((event) => <article key={event.id}><time dateTime={event.startDate}>{formatDate(new Date(`${event.startDate}T12:00:00`), { weekday: "short", day: "numeric", month: "short" })}</time><div><strong>{event.title}</strong><small>Evento próximo</small></div></article>)}</div> : <EmptyState title="Tu calendario tiene espacio" text="Cuando guardes un evento, aparecerá aquí sin llenar tu vista." />}
       </Card>
     </section>
 

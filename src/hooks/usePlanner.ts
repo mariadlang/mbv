@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { BrainDumpType, EntityStatus, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type {
   BodyCheckInFormInput,
   BrainDumpFormInput,
@@ -155,13 +155,17 @@ export function usePlanner() {
     loadDemo: () => commit((service) => service.loadDemo()),
     createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
     updateHabitName: (habitId: string, name: string) => commit((service) => service.updateHabitName(habitId, name)),
+    updateHabit: (habitId: string, input: { name: string; scheduledDays: number[]; oneOffDate?: string | null; type?: Habit["type"]; target?: number; unit?: string; lifeAreaId?: string; origin?: Habit["origin"] }) =>
+      commit((service) => service.updateHabit(habitId, input)),
     toggleHabit: (habitId: string, date: string) =>
       commit((service) => service.toggleHabit(habitId, date)),
+    setHabitProgress: (habitId: string, date: string, value: number) =>
+      commit((service) => service.setHabitProgress(habitId, date, value)),
     createTask: (title: string, date?: string, focusPriority?: 1 | 2 | 3) =>
       commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" }),
     createTaskDetailed: (input: TaskFormInput) =>
       commitTracked("task_created", (service) => service.createTaskDetailed(input), { source: "task_form" }),
-    updateTask: (taskId: string, input: Pick<TaskFormInput, "title" | "date" | "time" | "focusPriority">) =>
+    updateTask: (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>) =>
       commit((service) => service.updateTask(taskId, input)),
     assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
       commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
@@ -191,6 +195,8 @@ export function usePlanner() {
       commit((service) => service.toggleMilestone(milestoneId)),
     saveJournal: (text: string, options: { title?: string; type?: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string; imageDataUrl?: string } = {}) =>
       commitTracked("journal_entry_created", (service) => service.saveJournal(text, options)),
+    updateJournal: (entryId: string, input: { title?: string; text: string; type: "free" | "gratitude" | "weekly_review" | "monthly_reset"; goalId?: string }) =>
+      commit((service) => service.updateJournal(entryId, input)),
     updateDailyIntention: (value: string) =>
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
@@ -220,11 +226,12 @@ export function usePlanner() {
       commit((service) => service.toggleCascadeObjective(planId, objectiveIndex)),
     createBrainDumpItem: (input: BrainDumpFormInput) =>
       commit((service) => service.createBrainDumpItem(input)),
-    updateBrainDumpItem: (itemId: string, input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null }) =>
+    updateBrainDumpItem: (itemId: string, input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null; goalId?: string | null; projectId?: string | null }) =>
       commit((service) => service.updateBrainDumpItem(itemId, input)),
-    scheduleBrainDumpItem: (itemId: string, date: string) =>
-      commit((service) => service.scheduleBrainDumpItem(itemId, date)),
+    scheduleBrainDumpItem: (itemId: string, date: string, destination: "monthly" | "weekly" | "daily" = "daily") =>
+      commit((service) => service.scheduleBrainDumpItem(itemId, date, destination)),
     createRoutine: (input: RoutineFormInput) => commitTracked("routine_created", (service) => service.createRoutine(input)),
+    updateRoutine: (routineId: string, input: RoutineFormInput) => commit((service) => service.updateRoutine(routineId, input)),
     createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
     updateEvent: (eventId: string, input: EventFormInput) => commit((service) => service.updateEvent(eventId, input)),
     createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>

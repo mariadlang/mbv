@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import NextLink from "next/link";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { usePlanner } from "@/src/hooks/usePlanner";
@@ -41,6 +41,18 @@ const LifeHubPage = lazy(() => import("@/src/features/lifehub/LifeHubPage").then
 const FitnessPage = lazy(() => import("@/src/features/fitness/FitnessPage").then((module) => ({ default: module.FitnessPage })));
 const LearnPage = lazy(() => import("@/src/features/learn/LearnPage").then((module) => ({ default: module.LearnPage })));
 const SupportPage = lazy(() => import("@/src/features/support/SupportPage").then((module) => ({ default: module.SupportPage })));
+
+class HabitsErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    if (process.env.NODE_ENV !== "production") console.error("[habits-route] render failed", { name: error.name, message: error.message, componentStack: info.componentStack });
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <main className="error-page"><BrandMark /><h1>No pudimos abrir Hábitos.</h1><p>Tus datos no cambiaron. Puedes intentarlo nuevamente.</p><Button onClick={() => this.setState({ failed: false })}>Intentar de nuevo</Button><Button variant="ghost" onClick={() => window.location.reload()}>Recargar página</Button></main>;
+  }
+}
 
 function useMounted() {
   const [mounted, setMounted] = useState(false);
@@ -187,7 +199,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} access={account.access} initialView="week" onQuickCapture={openQuickCapture} />} />
             <Route path="/app/today" element={<TodayPage planner={planner} onQuickCapture={openQuickCapture} onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }} />} />
             <Route path="/app/tasks" element={<TasksPage planner={planner} onQuickCapture={openQuickCapture} />} />
-            <Route path="/app/habits" element={<HabitsPage planner={planner} />} />
+            <Route path="/app/habits" element={<HabitsErrorBoundary><HabitsPage planner={planner} /></HabitsErrorBoundary>} />
             <Route path="/app/challenges" element={<Navigate to="/app/life-hub?tab=challenges" replace />} />
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />

@@ -116,4 +116,33 @@ describe("backup validation", () => {
       reflection: { advanced: "Validé el alcance" },
     });
   });
+
+  it("preserves Brain Dump organization and conversion traceability", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.brainDumpItems.push({
+      id: "idea-1",
+      title: "Preparar una carrera",
+      type: "want_to_do",
+      tentativeDate: "2026-10",
+      goalId: "goal-1",
+      projectId: "project-1",
+      periodPlanId: "month-2026-10",
+      convertedTaskId: "task-1",
+      destination: "monthly",
+      priority: "medium",
+      status: "planned",
+      createdAt: "2026-09-03T12:00:00.000Z",
+      updatedAt: "2026-09-03T12:00:00.000Z",
+    });
+
+    const parsed = backupEnvelopeSchema.parse({ schemaVersion: 3, exportedAt: "2026-09-03T12:00:00.000Z", data: snapshot });
+    if (parsed.schemaVersion !== 3) throw new Error("Expected a version 3 backup");
+    expect(parsed.data.brainDumpItems[0]).toMatchObject({
+      tentativeDate: "2026-10",
+      goalId: "goal-1",
+      projectId: "project-1",
+      convertedTaskId: "task-1",
+      destination: "monthly",
+    });
+  });
 });

@@ -1,7 +1,9 @@
 "use client";
 
+/* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
+
 import { useMemo, useState, type FormEvent } from "react";
-import { CalendarDays, Check, Circle, Clock3, Flag, Plus, Sparkles } from "lucide-react";
+import { CalendarDays, Check, Circle, Flag, Pencil, Plus, Sparkles } from "lucide-react";
 import { isTaskOverdue } from "@/src/domain/rules";
 import { resistanceSuggestion } from "@/src/domain/guidanceRules";
 import { calculateProjectProgress, projectNextSuggestion } from "@/src/domain/cascadeRules";
@@ -10,6 +12,7 @@ import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
+import type { Task } from "@/src/domain/planner";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
 
@@ -21,7 +24,9 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
   const [projectComposerOpen, setProjectComposerOpen] = useState(false);
   const [resistanceHelp, setResistanceHelp] = useState<string | null>(null);
-  const [advanced, setAdvanced] = useState({ title: "", description: "", date: today, time: "", estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", focusPriority: "" as "" | "1" | "2" | "3", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
+  const [advanced, setAdvanced] = useState({ title: "", description: "", date: today, estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", focusPriority: "" as "" | "1" | "2" | "3", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskEdit, setTaskEdit] = useState({ title: "", date: "", goalId: "", projectId: "" });
   const [project, setProject] = useState({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
     if (tab === "inbox") return task.status === "inbox";
@@ -43,13 +48,12 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
       estimatedMinutes: advanced.estimatedMinutes ? Number(advanced.estimatedMinutes) : undefined,
       focusPriority,
       date: advanced.date || undefined,
-      time: advanced.time || undefined,
       lifeAreaId: advanced.lifeAreaId || undefined,
       goalId: advanced.goalId || undefined,
       projectId: advanced.projectId || undefined,
       recurrence: advanced.recurrence || undefined,
     });
-    setAdvanced({ ...advanced, title: "", description: "", time: "", estimatedMinutes: "" });
+    setAdvanced({ ...advanced, title: "", description: "", estimatedMinutes: "" });
     setTaskDetailsOpen(false);
     setAdvancedOpen(false);
   };
@@ -59,6 +63,18 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
     if (!project.name.trim() || !project.outcome.trim()) return;
     await planner.createProject({ ...project, lifeAreaId: project.lifeAreaId || undefined, goalId: project.goalId || undefined, targetDate: project.targetDate || undefined });
     setProject({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
+  };
+
+  const openTaskEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskEdit({ title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" });
+  };
+
+  const saveTaskEdit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingTaskId || !taskEdit.title.trim()) return;
+    await planner.updateTask(editingTaskId, taskEdit);
+    setEditingTaskId(null);
   };
 
   return <div className="page-stack tasks-page">
@@ -72,13 +88,12 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
     {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
 
-    {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><Clock3 size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
+    {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><CalendarDays size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
       <label className="form-field form-field--full"><span>Tarea</span><input required value={advanced.title} onChange={(event) => setAdvanced({ ...advanced, title: event.target.value })} /></label>
       <label className="form-field form-field--full"><span>Descripción</span><textarea rows={2} value={advanced.description} onChange={(event) => setAdvanced({ ...advanced, description: event.target.value })} /></label>
       <label className="form-field"><span>Fecha</span><input type="date" value={advanced.date} onChange={(event) => setAdvanced({ ...advanced, date: event.target.value })} /></label>
-      <button type="button" className="task-details-toggle" onClick={() => setTaskDetailsOpen((current) => !current)} aria-expanded={taskDetailsOpen}>{taskDetailsOpen ? "Ocultar detalles" : "Añadir hora, duración y conexiones"}</button>
+      <button type="button" className="task-details-toggle" onClick={() => setTaskDetailsOpen((current) => !current)} aria-expanded={taskDetailsOpen}>{taskDetailsOpen ? "Ocultar detalles" : "Añadir duración y conexiones"}</button>
       {taskDetailsOpen && <>
-      <label className="form-field"><span>Hora</span><input type="time" value={advanced.time} onChange={(event) => setAdvanced({ ...advanced, time: event.target.value })} /></label>
       <label className="form-field"><span>Duración estimada</span><input type="number" min="1" placeholder="minutos" value={advanced.estimatedMinutes} onChange={(event) => setAdvanced({ ...advanced, estimatedMinutes: event.target.value })} /></label>
       <label className="form-field"><span>Prioridad</span><select value={advanced.priority} onChange={(event) => setAdvanced({ ...advanced, priority: event.target.value as typeof advanced.priority })}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
       <label className="form-field"><span>Tres prioridades del día</span><select value={advanced.focusPriority} onChange={(event) => setAdvanced({ ...advanced, focusPriority: event.target.value as typeof advanced.focusPriority })}><option value="">No es una de las tres</option><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label>
@@ -90,8 +105,8 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
       <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setAdvancedOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarea</Button></div>
     </form></Card>}
 
-    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; return <button key={task.id} className={task.status === "completed" ? "is-complete" : ""} onClick={() => planner.toggleTask(task.id)}><span className="managed-task__check">{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</span><span><strong>{task.title}</strong><small>{task.date === today ? "Mi día" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." action={<Button onClick={() => onQuickCapture({ source: "empty", date: tab === "today" ? today : undefined })}>Añadir una tarea</Button>} />}</div></Card>
-    <div className="task-footer-metrics"><Card><span>Tareas completas hoy</span><strong>{snapshot.tasks.filter((task) => task.date === today && task.status === "completed").length}/{snapshot.tasks.filter((task) => task.date === today).length}</strong></Card><Card><span>Tiempo estimado</span><strong>{Math.round(tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0) / 60)}h {tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0) % 60}m</strong></Card></div>
+    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; return editingTaskId === task.id ? <form className="managed-task-editor" key={task.id} onSubmit={saveTaskEdit}><input autoFocus required value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} aria-label="Nombre de la tarea" /><input type="date" value={taskEdit.date} onChange={(event) => setTaskEdit({ ...taskEdit, date: event.target.value })} aria-label="Fecha de la tarea" /><select value={taskEdit.goalId} onChange={(event) => setTaskEdit({ ...taskEdit, goalId: event.target.value })} aria-label="Meta de la tarea"><option value="">Sin meta</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select value={taskEdit.projectId} onChange={(event) => setTaskEdit({ ...taskEdit, projectId: event.target.value })} aria-label="Proyecto de la tarea"><option value="">Sin proyecto</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><Button size="sm" type="submit">Guardar</Button><Button size="sm" type="button" variant="ghost" onClick={() => setEditingTaskId(null)}>Cancelar</Button></form> : <div key={task.id} className={`managed-task-row ${task.status === "completed" ? "is-complete" : ""}`}><button type="button" className="managed-task__check" onClick={() => planner.toggleTask(task.id)} aria-label={task.status === "completed" ? `Reabrir ${task.title}` : `Completar ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><button type="button" className="managed-task__content" onClick={() => openTaskEdit(task)}><span><strong>{task.title}</strong><small>{task.date === today ? "Mi día" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button><button type="button" className="managed-task__edit" onClick={() => openTaskEdit(task)} aria-label={`Editar ${task.title}`}><Pencil size={15} /></button></div>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." action={<Button onClick={() => onQuickCapture({ source: "empty", date: tab === "today" ? today : undefined })}>Añadir una tarea</Button>} />}</div></Card>
+    <div className="task-footer-metrics"><Card><span>Tareas completas hoy</span><strong>{snapshot.tasks.filter((task) => task.date === today && task.status === "completed").length}/{snapshot.tasks.filter((task) => task.date === today).length}</strong></Card><Card><span>Carga estimada</span><strong>{tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0)} min</strong></Card></div>
     </section>
   </div>;
 }

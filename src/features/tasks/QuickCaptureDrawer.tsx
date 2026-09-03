@@ -37,7 +37,7 @@ export function QuickCaptureDrawer({
   const [type, setType] = useState<CaptureType>("task");
   const [focusPriority, setFocusPriority] = useState<"1" | "2" | "3">("1");
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [feedback, setFeedback] = useState<{ id: string; title: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ id: string; title: string; destination: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
@@ -46,6 +46,7 @@ export function QuickCaptureDrawer({
 
   useEffect(() => {
     if (!open) return;
+    const previousActiveElement = document.activeElement as HTMLElement | null;
     queueMicrotask(() => {
       setTitle("");
       setDate(defaults.date ?? "");
@@ -73,6 +74,7 @@ export function QuickCaptureDrawer({
     return () => {
       window.removeEventListener("keydown", closeOnEscape);
       document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
     };
   }, [defaults, onClose, open]);
 
@@ -94,7 +96,7 @@ export function QuickCaptureDrawer({
     const created = next.tasks.find((task) => !existingIds.has(task.id));
     setSaving(false);
     if (!created) return;
-    setFeedback({ id: created.id, title: created.title });
+    setFeedback({ id: created.id, title: created.title, destination: created.date ? `Mi día · ${created.date}` : "Bandeja" });
     onClose();
   };
 
@@ -124,6 +126,6 @@ export function QuickCaptureDrawer({
         </form>
       </aside>
     </div>, document.body)}
-    {feedback && <div className="quick-capture-feedback" role="status" aria-live="polite"><span><Check size={17} /><strong>Guardado</strong><small>{feedback.title}</small></span><Link to="/app/tasks"><Eye size={15} /> Ver</Link><button type="button" onClick={undo}><RotateCcw size={15} /> Deshacer</button><button type="button" aria-label="Cerrar confirmación" onClick={() => setFeedback(null)}><X size={15} /></button></div>}
+    {feedback && <div className="quick-capture-feedback" role="status" aria-live="polite"><span><Check size={17} /><strong>Guardado en {feedback.destination}</strong><small>{feedback.title}</small></span><Link to="/app/tasks"><Eye size={15} /> Ver</Link><button type="button" onClick={undo}><RotateCcw size={15} /> Deshacer</button><button type="button" aria-label="Cerrar confirmación" onClick={() => setFeedback(null)}><X size={15} /></button></div>}
   </>;
 }
