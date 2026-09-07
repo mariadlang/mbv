@@ -191,7 +191,7 @@ En las sesiones del 2026-09-04 al 2026-09-07, sobre el SHA base más las correcc
 - Build de producción: aprobado.
 - Suite E2E completa anterior: 56/56 aprobada antes de restaurar el emoji del saludo.
 - Después de restaurarlo: ESLint/TypeScript aprobados y matriz responsive E2E 2/2 en proyectos desktop/mobile.
-- Tras implementar Plan semanal opción B: lint, TypeScript, 69 unitarias y build aprobados.
+- Tras implementar Plan semanal opción B: lint, TypeScript, 69 unitarias, build de producción y build de Sites/Vinext aprobados.
 - Los recorridos específicos del plan semanal aprobaron en desktop y mobile, incluida su matriz en 390×844, 430×932, 768×1024, 1440×900 y 1488×992.
 - La suite E2E global ejecutó 57/60 en paralelo; dos casos externos aprobaron al reintentarse de forma aislada. La matriz global desktop restante fue interrumpida por `ERR_NETWORK_IO_SUSPENDED` del entorno, mientras su equivalente mobile y la matriz específica semanal aprobaron.
 - Viewports cubiertos por la matriz: 375×812, 390×844, 430×932, 768×1024, 1366×768 y 1440×900.
