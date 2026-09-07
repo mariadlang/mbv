@@ -405,7 +405,7 @@ export const plannerService = {
           task.id === taskId
             ? {
                 ...task,
-                status: task.status === "completed" ? "planned" : "completed",
+                status: task.status === "completed" ? (task.date ? "planned" : "inbox") : "completed",
                 completedAt: task.status === "completed" ? undefined : now,
                 updatedAt: now,
               }
@@ -714,10 +714,11 @@ export const plannerService = {
     type: ReviewType,
     responses: Record<string, string>,
     decisions: string[] = [],
+    referenceDate = new Date(),
   ): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
-      const periodKey = getReviewPeriodKey(type, new Date(), snapshot.profile?.weekStartsOn ?? 1);
+      const periodKey = getReviewPeriodKey(type, referenceDate, type === "weekly" ? 1 : snapshot.profile?.weekStartsOn ?? 1);
       const summary = Object.values(responses).map((value) => value.trim()).filter(Boolean).join(" · ");
       const existing = snapshot.reviews.find((review) => review.type === type && review.periodKey === periodKey);
       const review = {

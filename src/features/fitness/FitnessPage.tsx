@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, BarChart3, CalendarDays, Check, ChevronRight, Clock3, Copy, Dumbbell,
-  Flame, Pencil, Plus, Settings2, Target, Trash2, Utensils,
+  Flame, Heart, Pencil, Plus, Settings2, Star, Target, Trash2, Utensils,
 } from "lucide-react";
 import type { MealLog } from "@/src/domain/planner";
 import { dailyNutritionTotals, mealCompletionPercent, normalizedExerciseSets } from "@/src/domain/fitnessRules";
@@ -136,6 +136,12 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     setSettingsOpen(false); setMessage("Tu contexto de Bienestar quedó guardado.");
   };
 
+  const deleteMeal = async (meal: MealLog) => {
+    if (!window.confirm(`¿Eliminar ${meal.name}? Esta acción no se puede deshacer.`)) return;
+    await planner.deleteMeal(selectedDate, meal.id);
+    setMessage("Comida eliminada.");
+  };
+
   if (legal.loading) return <div className="route-loading" role="status">Preparando tus controles de privacidad…</div>;
   if (!legal.hasConsent("sensitive_wellness")) return <div className="page-stack sensitive-consent-page"><Card><span className="fitness-round-icon"><Target size={22} /></span><p className="eyebrow">TU ELECCIÓN ES VOLUNTARIA</p><h1>Antes de usar Alimentación y Entrenamiento</h1><p>Esta función puede contener datos sensibles como objetivos físicos, comidas, peso, medidas, ejercicios, repeticiones y cargas. Se guardan localmente en este dispositivo y no se usan para publicidad personalizada.</p><ul><li>No tienes obligación de entregar estos datos.</li><li>Puedes retirar la autorización desde el Centro de Privacidad.</li><li>Negarte no limita las demás funciones de My Best Version.</li><li>Esta herramienta no sustituye orientación médica o nutricional profesional.</li></ul><div><Button loading={consentSaving} onClick={async () => { setConsentSaving(true); try { await legal.recordConsent({ consentType: "sensitive_wellness", method: "feature_gate", status: "granted" }); } finally { setConsentSaving(false); } }}>Autorizar y continuar</Button><Link className="button button--ghost" to="/app/life-hub">Ahora no</Link><Link className="button button--secondary" to="/data-policy">Leer política de datos</Link></div></Card></div>;
 
@@ -167,7 +173,7 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     {section === "nutrition" ? <>
       <Card className="fitness-day-card nutrition-day-card">
         <header><div><span className="fitness-round-icon"><CalendarDays size={21} /></span><div><p className="eyebrow">{selectedDate}</p><h2>{selectedDay.long}</h2></div></div><div className="macro-total"><strong><Flame size={21} /> {totals.calories} kcal</strong><span>P {totals.protein}g · C {totals.carbs}g · G {totals.fat}g</span></div></header>
-        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal)} aria-label={`Editar ${meal.name}`}><Pencil size={16} /></button></div><h3>{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small>{meal.notes}</small>}<button className="meal-card__delete" type="button" onClick={() => planner.deleteMeal(selectedDate, meal.id)} aria-label={`Eliminar ${meal.name}`}><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
+        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal)} aria-label={`Editar ${meal.name}`}><Pencil size={16} /></button></div><h3>{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small>{meal.notes}</small>}<button className="meal-card__delete" type="button" onClick={() => void deleteMeal(meal)} aria-label={`Eliminar ${meal.name}`}><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
       </Card>
       <Card className="fitness-day-summary"><span className="fitness-round-icon"><BarChart3 size={21} /></span><div><h2>Resumen del día</h2><p>{selectedNutrition?.meals.length ?? 0} comidas registradas</p><ProgressBar value={mealCompletionPercent(selectedNutrition?.meals.length ?? 0, fitness.mealsPerDay)} label={`${selectedNutrition?.meals.length ?? 0}/${fitness.mealsPerDay} completadas`} /></div><Button onClick={() => openMeal()}><Plus size={18} /> Añadir comida</Button></Card>
       <CopyDayControls label="Copiar alimentación a" selectedDate={selectedDate} copyTarget={copyTarget} onTarget={setCopyTarget} onCopy={async () => { if (!copyTarget) return; await planner.copyMeals(selectedDate, copyTarget); setMessage("Alimentación copiada al día elegido."); }} />
@@ -184,7 +190,7 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
       {selectedWorkout && <CopyDayControls label="Duplicar entrenamiento en" selectedDate={selectedDate} copyTarget={copyTarget} onTarget={setCopyTarget} onCopy={async () => { if (!copyTarget) return; await planner.duplicateWorkout(selectedDate, copyTarget); setMessage("Entrenamiento duplicado sin copiar el historial."); }} />}
     </>}
 
-    <Card className="fitness-quote"><span>☆</span><p>Pequeñas decisiones hoy, grandes cambios siempre.</p><span>♡</span></Card>
+    <Card className="fitness-quote"><Star size={21} aria-hidden="true" /><p>Pequeñas decisiones hoy, grandes cambios siempre.</p><Heart size={20} aria-hidden="true" /></Card>
     <details className="wellness-disclaimer"><summary>Información importante sobre bienestar</summary><p>Estos registros son de autoobservación y no constituyen diagnóstico ni tratamiento. Detén el ejercicio ante dolor o síntomas inusuales y consulta profesionales cualificados para cambios relevantes en salud o alimentación.</p></details>
 
     <Modal open={mealOpen} title={editingMealId ? "Editar comida" : "Añadir comida"} description="Registra manualmente solo la información que quieras observar." onClose={() => setMealOpen(false)}>

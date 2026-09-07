@@ -27,7 +27,7 @@ export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerCon
 
   return <div className="page-stack overview-dashboard">
     <header className="overview-dashboard__header">
-      <div><p className="eyebrow">MY BEST VERSION</p><h1>{t("Buenos días, {name}", { name: snapshot.profile?.name ?? "María" })} <span aria-hidden="true">👋</span></h1><p>Aquí tienes un vistazo a cómo estás avanzando.</p></div>
+      <div><p className="eyebrow">MY BEST VERSION</p><h1>{t("Buenos días, {name}", { name: snapshot.profile?.name ?? "María" })}</h1><p>Aquí tienes un vistazo a cómo estás avanzando.</p></div>
       <Link className="button button--secondary" to="/app/today">Ir a Mi día <ArrowRight size={16} /></Link>
     </header>
 

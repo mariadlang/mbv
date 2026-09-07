@@ -201,8 +201,8 @@ export function usePlanner() {
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
       commitTracked("progress_review_created", (service) => service.saveReview(type, summary, decisions), { period: type }),
-    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = []) =>
-      commitTracked("progress_review_created", (service) => service.saveStructuredReview(type, responses, decisions), { period: type }),
+    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = [], referenceDate?: Date) =>
+      commitTracked("progress_review_created", (service) => service.saveStructuredReview(type, responses, decisions, referenceDate), { period: type }),
     saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
       commit((service) => service.saveMonthlyBudget(input)),
     createTransaction: (input: TransactionFormInput) =>

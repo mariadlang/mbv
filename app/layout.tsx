@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Nunito_Sans } from "next/font/google";
+import { Inter, Nunito_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { BRAND_NAME, BRAND_SLOGAN } from "@/src/lib/brand";
 
@@ -8,6 +8,18 @@ const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-nunito-sans",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-playfair-display",
 });
 
 export const viewport: Viewport = {
@@ -47,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={nunitoSans.variable} suppressHydrationWarning>
+    <html lang="es" className={`${nunitoSans.variable} ${inter.variable} ${playfairDisplay.variable}`} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

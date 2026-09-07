@@ -1,0 +1,50 @@
+# Documentación de continuidad de My Best Version
+
+Esta carpeta es la puerta de entrada oficial para comprender cómo evolucionó el proyecto y retomar el trabajo sin reconstruir el contexto desde cero.
+
+## Qué consultar
+
+- [`HISTORIAL.md`](HISTORIAL.md): evolución cronológica verificable, desde el primer registro Git accesible hasta los cambios locales actuales.
+- [`ESTADO_ACTUAL.md`](ESTADO_ACTUAL.md): memoria breve del producto, arquitectura, módulos, conexiones, pruebas, riesgos y siguiente paso.
+- [`../../AGENTS.md`](../../AGENTS.md): reglas obligatorias de producto, arquitectura, calidad y actualización documental.
+
+Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_ACTUAL.md`; después, consultar las entradas recientes o relacionadas de `HISTORIAL.md`. El código y `git status` prevalecen cuando una nota antigua ya no describe el comportamiento vigente.
+
+## Punto de referencia de esta revisión
+
+- Última revisión documental: **2026-09-04, America/Bogota (UTC-05:00)**.
+- Repositorio: `mariadlang/mbv`.
+- Rama examinada: `main`.
+- SHA base del código confirmado: `b58d8f5c0424ee272e46fabe80f08bb36af29a6f`.
+- Sincronización observada: `main` y `origin/main` coincidían en ese SHA.
+- Historial: 61 commits alcanzables desde `main`, repositorio no superficial y sin etiquetas Git.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el SHA base del 2026-09-03, más cambios locales sin commit del 2026-09-04.
+
+El SHA anterior identifica el código base examinado. Los cambios documentales y funcionales todavía presentes en el working tree no forman parte de ese commit y no deben atribuirse a un hash futuro.
+
+## Fuentes utilizadas
+
+- Historial, grafo, referencias y diferencias de Git.
+- Estado preparado, no preparado y archivos nuevos del working tree.
+- Código actual de `app/`, `src/`, `tests/`, `e2e/`, `supabase/` y configuración del proyecto.
+- README, documentos de arquitectura, ADR, notas de producto, documentos legales, soporte y autenticación existentes.
+- Pruebas ejecutadas durante la sesión del 2026-09-04.
+
+No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas disponibles localmente. No se consultaron archivos `.env`, credenciales, tokens ni datos personales. Los documentos fuente externos mencionados por `docs/product/source-notes.md` no están versionados y, por tanto, no se revisaron directamente.
+
+## Limitaciones de la reconstrucción
+
+- El historial incluye dos raíces y varias líneas paralelas de trabajo/publicación que después se fusionaron. Se documentan como tales y no como funcionalidades independientes.
+- Los mensajes de commit casi nunca explican el motivo. Cuando no existe ADR, documento o evidencia de producto, el historial indica **“Motivo no documentado”**.
+- Que un commit añada o modifique pruebas demuestra cobertura versionada, no que esas pruebas se ejecutaran en aquel momento. Sólo se atribuyen resultados cuando quedaron documentados o se ejecutaron durante esta revisión.
+- La existencia de configuración de despliegue no demuestra qué SHA está publicado. La aplicación publicada se inspeccionó visualmente durante la auditoría del 2026-09-04, pero no se verificó externamente su SHA.
+- La presencia de migraciones Supabase no confirma por sí sola que todas estén aplicadas en producción.
+
+## Cómo actualizar estos documentos
+
+1. Verificar rama, `HEAD`, referencias y `git status`.
+2. Revisar el diff efectivo y relacionarlo con la entrada en curso; no crear una entrada por mensaje o intento.
+3. Actualizar `HISTORIAL.md` con fecha, impacto, evidencia, validaciones y estado real de entrega.
+4. Actualizar `ESTADO_ACTUAL.md` cuando cambien comportamiento, arquitectura, decisiones, pendientes, pruebas o punto de continuidad.
+5. Ajustar en este archivo la fecha, SHA y alcance sólo con datos reales.
+6. Entregar la documentación junto con los cambios del producto, sin commit, push o deploy salvo autorización expresa.

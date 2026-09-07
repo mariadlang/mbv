@@ -124,7 +124,7 @@ function ProtectedPlannerApp() {
   }, [accountDisplayName, accountLoading, accountOnboardingCompleted, accountUserId, establishedAccount, localOnboardingCompleted, locallyClearedAccountId, markOnboardingCompleted, mounted, onboardingRecoveryNonce, plannerLoading, resumeExistingSpace]);
 
   if (account.loading) {
-    return <main className="brand-loading" aria-label="Comprobando tu acceso"><BrandMark /><span className="brand-loading__ring" /><p>Preparando tu espacio…</p></main>;
+    return <main className="brand-loading" role="status" aria-live="polite" aria-label="Comprobando tu acceso"><BrandMark /><span className="brand-loading__ring" /><p>Preparando tu espacio…</p></main>;
   }
   if (!account.configured || !account.user) return <Navigate to="/login" replace />;
   if (!account.user.emailVerified) return <Navigate to="/verify-email" replace />;
@@ -139,7 +139,7 @@ function ProtectedPlannerApp() {
 
   if (!mounted || planner.loading) {
     return (
-      <main className="brand-loading" aria-label="Cargando My Best Version Planner">
+      <main className="brand-loading" role="status" aria-live="polite" aria-label="Cargando My Best Version Planner">
         <BrandMark />
         <span className="brand-loading__ring" />
         <p>Preparando un espacio para lo que importa…</p>

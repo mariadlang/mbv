@@ -1,6 +1,6 @@
 # Modelo de datos
 
-La aplicación normaliza en IndexedDB estas colecciones: `profiles`, `lifeAreas`, `goals`, `milestones`, `habits`, `habitLogs`, `tasks`, `moodLogs` y `journalEntries`.
+La aplicación normaliza en IndexedDB las colecciones del contenido personal. Además de `profiles`, `lifeAreas`, `goals`, `milestones`, `habits`, `habitLogs`, `tasks`, `moodLogs` y `journalEntries`, el esquema 3 incluye proyectos, planes y revisiones, finanzas, listas, rutinas, eventos, vision board, fitness, nutrición, medidas, retos y compras pendientes. La lista autoritativa está en `PlannerSnapshot` dentro de `src/domain/planner.ts` y en las tablas de `IndexedDbPlannerRepository`.
 
 - Un perfil conserva preferencias, intención diaria y estado de onboarding.
 - Las áreas de vida agrupan metas y hábitos.
@@ -10,3 +10,5 @@ La aplicación normaliza en IndexedDB estas colecciones: `profiles`, `lifeAreas`
 - Mood y journal son registros fechados e independientes.
 
 `PlannerSnapshot` reúne las colecciones para lectura. `BackupEnvelope` añade versión, fecha de exportación y payload para permitir migraciones futuras.
+
+Fuera de `PlannerSnapshot`, las migraciones de `supabase/` modelan identidad mínima, acceso, preferencias, consentimientos, solicitudes de privacidad, soporte, eventos minimizados y configuración de plataforma. No constituyen una copia remota del planner local.

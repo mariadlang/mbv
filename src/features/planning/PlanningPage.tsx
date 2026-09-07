@@ -3,15 +3,14 @@
 /* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { addDays, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
+import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Check, ChevronRight, Circle, Edit3, ListChecks, Plus, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
 import type { CascadePlan, PlannerSnapshot, Task } from "@/src/domain/planner";
-import { monthlyBrainDumpSummary, weeklyPlanningInsight } from "@/src/domain/cascadeRules";
-import { getSafePlanningDates } from "@/src/domain/rules";
+import { monthlyBrainDumpSummary } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { formatShortDay, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
+import { toLocalDateKey } from "@/src/lib/dates";
 import { cascadePlanFormSchema } from "@/src/lib/schemas";
 import { buildYearMonthSlots, monthPeriodKey, parseAreaGoals, serializeAreaGoals } from "@/src/domain/monthPlanning";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
@@ -21,6 +20,7 @@ import type { UserAccess } from "@/src/domain/access";
 import { canAccessFeature } from "@/src/domain/access";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
+import { WeeklyPlanView } from "@/src/features/planning/WeeklyPlanView";
 
 type PlanningView = "year" | "month" | "week" | "day" | "reset";
 type LongTermMode = "five" | "three";
@@ -76,6 +76,7 @@ function taskProvenance(snapshot: PlannerSnapshot, task: Task): string {
 export function PlanningPage({ planner, access, initialView = "year", onQuickCapture }: { planner: PlannerController; access: UserAccess; initialView?: PlanningView; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
   const location = useLocation();
+  const navigate = useNavigate();
   const todayKey = toLocalDateKey(new Date());
   const requestedView = new URLSearchParams(location.search).get("view") as PlanningView | null;
   const createMonthRequested = new URLSearchParams(location.search).get("create") === "month";
@@ -106,9 +107,6 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
   const [monthMode, setMonthMode] = useState<"calendar" | "agenda">("calendar");
   const [monthlyReset, setMonthlyReset] = useState({ advanced: "", learned: "", release: "", adjust: "", next: "" });
   const [monthlyResetSaved, setMonthlyResetSaved] = useState(false);
-  const [weeklyResetOpen, setWeeklyResetOpen] = useState(new URLSearchParams(location.search).get("reset") === "1");
-  const [weeklyReset, setWeeklyReset] = useState({ celebrate: "", release: "", adjust: "", priorities: ["", "", ""] });
-  const [weeklyResetSaved, setWeeklyResetSaved] = useState(false);
   const [reflection, setReflection] = useState({ advanced: "", pending: "", next: "" });
   const [reflectionSaved, setReflectionSaved] = useState(false);
 
@@ -117,22 +115,7 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
   const monthPlans = useMemo(() => snapshot.cascadePlans.filter((plan) => plan.horizon === "monthly").sort((a, b) => a.periodKey.localeCompare(b.periodKey)), [snapshot.cascadePlans]);
   const monthSlots = useMemo(() => buildYearMonthSlots(selectedYear, monthPlans), [monthPlans, selectedYear]);
   const selectedMonthPlan = monthPlans.find((plan) => plan.id === selectedMonthId);
-  const weekDates = getWeekDates(anchorDate, snapshot.profile?.weekStartsOn ?? 1);
-  const brainScheduleDates = getSafePlanningDates(weekDates, getWeekDates(addDays(weekDates[6], 1), snapshot.profile?.weekStartsOn ?? 1), todayKey);
-  const weeklyInsight = weeklyPlanningInsight(snapshot);
   const brainSummary = monthlyBrainDumpSummary(snapshot, format(anchorDate, "yyyy-MM"));
-  const monthlyContext = snapshot.cascadePlans.find((plan) => plan.horizon === "monthly" && plan.periodKey === format(anchorDate, "yyyy-MM"));
-  const availableActions = snapshot.tasks.filter((task) => !task.date && !["completed", "cancelled"].includes(task.status));
-  const availableActionGroups = (["Resultado mensual", "Meta", "Proyecto", "Bandeja"] as const).map((label) => ({
-    label,
-    tasks: availableActions.filter((task) => {
-      const monthly = snapshot.cascadePlans.some((plan) => plan.id === task.periodPlanId && plan.horizon === "monthly");
-      if (label === "Resultado mensual") return monthly;
-      if (label === "Meta") return Boolean(task.goalId) && !monthly;
-      if (label === "Proyecto") return Boolean(task.projectId) && !task.goalId && !monthly;
-      return !task.goalId && !task.projectId && !monthly;
-    }),
-  })).filter((group) => group.tasks.length);
 
   const openTaskEditor = (task: Task) => {
     setEditingTaskId(task.id);
@@ -164,7 +147,6 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
     });
   }, [selectedMonthPlan]);
 
-  useEffect(() => { if (new URLSearchParams(location.search).get("reset") === "1") queueMicrotask(() => setWeeklyResetOpen(true)); }, [location.search]);
   useEffect(() => { if (window.matchMedia("(max-width: 700px)").matches) queueMicrotask(() => setMonthMode("agenda")); }, []);
 
   const openLongTerm = (mode: LongTermMode) => {
@@ -259,22 +241,13 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
   };
 
   return <div className="page-stack cascade-page planning-v2">
-    <SectionNavigation section="plan" />
-    {view === "year" && <PlanningOverview access={access} snapshot={snapshot} fiveYearPlan={fiveYearPlan} threeYearPlan={threeYearPlan} monthSlots={monthSlots} selectedYear={selectedYear} availableYears={availableYears} todayKey={todayKey} onYearChange={setSelectedYear} onAddPlan={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onEditLongTerm={openLongTerm} onOpenMonth={openMonthDetail} onEditMonth={openEditMonth} onOpenWeek={() => setView("week")} onOpenDay={() => setView("day")} onOpenReset={() => setView("reset")} />}
+    {view !== "week" && <SectionNavigation section="plan" />}
+    {view === "year" && <PlanningOverview access={access} snapshot={snapshot} fiveYearPlan={fiveYearPlan} threeYearPlan={threeYearPlan} monthSlots={monthSlots} selectedYear={selectedYear} availableYears={availableYears} todayKey={todayKey} onYearChange={setSelectedYear} onAddPlan={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onEditLongTerm={openLongTerm} onOpenMonth={openMonthDetail} onEditMonth={openEditMonth} onOpenWeek={() => navigate("/app/planning/weekly")} onOpenDay={() => setView("day")} onOpenReset={() => setView("reset")} />}
 
-    {view === "month" && selectedMonthPlan && <MonthDetail plan={selectedMonthPlan} snapshot={snapshot} todayKey={todayKey} anchorDate={anchorDate} calendarDates={calendarDates} monthMode={monthMode} reflection={reflection} reflectionSaved={reflectionSaved} onBack={() => { setView("year"); setSelectedMonthId(null); }} onEdit={() => openEditMonth(selectedMonthPlan)} onDelete={async () => { if (!window.confirm(`¿Eliminar ${format(monthDate(selectedMonthPlan.periodKey), "MMMM yyyy", { locale: es })}? Esta acción no elimina tus tareas ni eventos.`)) return; await planner.deleteCascadePlan(selectedMonthPlan.id); setSelectedMonthId(null); setView("year"); }} onMonthMode={setMonthMode} onSelectDay={(key) => { setSelectedDate(key); setView("day"); }} onTogglePriority={(index) => planner.toggleCascadeObjective(selectedMonthPlan.id, index)} onReflectionChange={(next) => { setReflection(next); setReflectionSaved(false); }} onSaveReflection={saveReflection} onPlanWeek={() => setView("week")} />}
+    {view === "month" && selectedMonthPlan && <MonthDetail plan={selectedMonthPlan} snapshot={snapshot} todayKey={todayKey} anchorDate={anchorDate} calendarDates={calendarDates} monthMode={monthMode} reflection={reflection} reflectionSaved={reflectionSaved} onBack={() => { setView("year"); setSelectedMonthId(null); }} onEdit={() => openEditMonth(selectedMonthPlan)} onDelete={async () => { if (!window.confirm(`¿Eliminar ${format(monthDate(selectedMonthPlan.periodKey), "MMMM yyyy", { locale: es })}? Esta acción no elimina tus tareas ni eventos.`)) return; await planner.deleteCascadePlan(selectedMonthPlan.id); setSelectedMonthId(null); setView("year"); }} onMonthMode={setMonthMode} onSelectDay={(key) => { setSelectedDate(key); setView("day"); }} onTogglePriority={(index) => planner.toggleCascadeObjective(selectedMonthPlan.id, index)} onReflectionChange={(next) => { setReflection(next); setReflectionSaved(false); }} onSaveReflection={saveReflection} onPlanWeek={() => navigate("/app/planning/weekly")} />}
     {view === "month" && !selectedMonthPlan && <EmptyState title="Elige un mes" text="Vuelve a Mis meses para abrir el periodo que quieres planificar." action={<Button onClick={() => setView("year")}>Volver a Mis meses</Button>} />}
 
-    {view === "week" && <>
-      <PlanningSubheader title="Plan semanal" description="Elige tus prioridades y ubícalas en días reales, con margen para ajustar." onBack={() => setView("year")} />
-      <div className="weekly-planner-assistant"><Card><p className="eyebrow">Así te fue la semana pasada</p><strong>{weeklyInsight.completionRate}% completado</strong><p>{weeklyInsight.summary}</p></Card><Card><Sparkles size={20} /><p className="eyebrow">Sugerencia para esta semana</p><strong>{weeklyInsight.suggestion}</strong></Card><Card className="weekly-brain-dump"><p className="eyebrow">Ubica tus ideas pendientes</p>{snapshot.brainDumpItems.filter((item) => item.status === "idea").slice(0, 3).map((item, index) => { const target = brainScheduleDates[Math.min(index, brainScheduleDates.length - 1)]; const key = toLocalDateKey(target); return <div key={item.id}><span>{item.title}</span><Button type="button" variant="secondary" onClick={() => planner.scheduleBrainDumpItem(item.id, key, "weekly")}>Poner {key === todayKey ? "hoy" : formatShortDay(target)}</Button></div>; })}{!snapshot.brainDumpItems.some((item) => item.status === "idea") && <p>No hay ideas pendientes por ubicar.</p>}</Card></div>
-      <Card className="week-context-card"><header><div><p className="eyebrow">Lo que llega desde el mes</p><h2>Esto es lo que tu mes está enviando a esta semana</h2></div><CalendarDays size={22} /></header>{monthlyContext ? <div className="week-context-focus"><strong>{monthlyContext.priority || monthlyContext.intention || "Un mes con espacio"}</strong><p>{monthlyContext.intention}</p><ul>{monthlyContext.objectives.slice(0, 3).map((objective) => <li key={objective}>{objective}</li>)}</ul></div> : <p>Este mes todavía no tiene una prioridad definida. Puedes preparar la semana y completar el mes después.</p>}<div className="week-context-metrics"><article><strong>{snapshot.goals.filter((goal) => goal.status === "active").length}</strong><span>Metas activas</span><small>Direcciones abiertas</small></article><article><strong>{snapshot.events.filter((event) => weekDates.some((date) => event.startDate === toLocalDateKey(date))).length}</strong><span>Eventos</span><small>Compromisos de esta semana</small></article><article><strong>{snapshot.tasks.filter((task) => task.date && weekDates.some((date) => task.date === toLocalDateKey(date)) && task.status !== "completed").length}</strong><span>Pendientes</span><small>Acciones ya ubicadas</small></article></div></Card>
-      <section className="week-action-pool" aria-labelledby="available-actions-title"><header><div><p className="eyebrow">Acciones disponibles</p><h2 id="available-actions-title">Elige qué quieres ubicar</h2><p>La acción conserva su conexión y solo cambia de Bandeja al día elegido.</p></div><Badge tone="neutral">{availableActions.length} sin fecha</Badge></header>{availableActionGroups.length ? <div className="week-action-groups">{availableActionGroups.map((group) => <Card key={group.label}><h3>{group.label}</h3>{group.tasks.map((task) => <article key={task.id}><div><strong>{task.title}</strong><small>{taskProvenance(snapshot, task)}</small></div><Button size="sm" variant="secondary" onClick={() => planner.assignTaskFocusPriority(task.id, selectedDate)}>Poner {formatShortDay(new Date(`${selectedDate}T12:00:00`))}</Button></article>)}</Card>)}</div> : <p className="empty-inline">No hay acciones sin fecha. Puedes capturar una debajo y decidir cuándo hacerla.</p>}</section>
-      <div className="planning-add planning-add--universal"><Plus size={19} /><div><strong>Captura una acción para esta semana</strong><small>Se abrirá el mismo formulario breve que usas en toda la aplicación.</small></div><Button type="button" onClick={() => onQuickCapture({ source: "week", date: selectedDate, periodPlanId: snapshot.periodPlans.find((plan) => plan.type === "weekly" && selectedDate >= plan.startDate && selectedDate <= plan.endDate)?.id })}>Añadir acción</Button></div>
-      <div className="mobile-week-selector" role="tablist" aria-label="Días de la semana">{weekDates.map((date) => { const key = toLocalDateKey(date); return <button type="button" role="tab" aria-selected={selectedDate === key} className={selectedDate === key ? "is-active" : ""} key={key} onClick={() => setSelectedDate(key)}><span>{formatShortDay(date)}</span><strong>{date.getDate()}</strong></button>; })}</div>
-      <section className="week-board">{weekDates.map((date) => { const key = toLocalDateKey(date); const tasks = snapshot.tasks.filter((task) => task.date === key && task.status !== "cancelled"); return <Card className={`day-column ${key === todayKey ? "is-today" : ""} ${key === selectedDate ? "is-selected" : ""}`} key={key}><header className="day-column__header"><div><span>{formatShortDay(date)}</span><strong>{date.getDate()}</strong></div>{key === todayKey && <Badge tone="rose">Mi día</Badge>}</header><div className="day-column__tasks">{tasks.map((task) => <div className={`week-task ${task.status === "completed" ? "is-complete" : ""}`} key={task.id}><button type="button" className="week-task__check" onClick={() => planner.toggleTask(task.id)} aria-label={task.status === "completed" ? `Reabrir ${task.title}` : `Completar ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={14} />}</button><button type="button" className="week-task__content" onClick={() => openTaskEditor(task)}><span>{task.title}<small>{taskProvenance(snapshot, task)}</small></span></button><button type="button" className="week-task__edit" onClick={() => openTaskEditor(task)} aria-label={`Editar ${task.title}`}><Edit3 size={14} /></button></div>)}{!tasks.length && <p className="day-column__empty">Espacio disponible</p>}</div></Card>; })}</section>
-      <Card className="weekly-reset-card"><div><p className="eyebrow">Revisión semanal · un solo flujo</p><h2>{weeklyResetSaved ? "Tu semana está lista." : "Prepara una semana que se sienta posible"}</h2><p>Esta revisión semanal se abre desde Inicio, Semana, Tu progreso y Mi diario.</p></div>{!weeklyResetOpen && !weeklyResetSaved ? <Button onClick={() => setWeeklyResetOpen(true)}>Iniciar revisión semanal</Button> : weeklyResetOpen ? <form className="weekly-reset-form" onSubmit={async (event) => { event.preventDefault(); await planner.saveStructuredReview("weekly", { celebrate: weeklyReset.celebrate, observe: weeklyInsight.summary, release: weeklyReset.release, adjust: weeklyReset.adjust, priority1: weeklyReset.priorities[0], priority2: weeklyReset.priorities[1], priority3: weeklyReset.priorities[2] }, weeklyReset.priorities); setWeeklyResetOpen(false); setWeeklyResetSaved(true); }}><label><span>1. Celebra · ¿Qué sí avanzó?</span><textarea required rows={2} value={weeklyReset.celebrate} onChange={(event) => setWeeklyReset({ ...weeklyReset, celebrate: event.target.value })} /></label><div className="weekly-observation"><strong>2. Observa</strong><span>{weeklyInsight.summary}</span><span>{completedHabitSummary(snapshot)}</span><span>Balance del mes disponible en Finanzas.</span></div><label><span>3. Suelta · ¿Qué ya no importa?</span><textarea rows={2} value={weeklyReset.release} onChange={(event) => setWeeklyReset({ ...weeklyReset, release: event.target.value })} /></label><label><span>4. Ajusta · ¿Qué quieres mover o cambiar?</span><textarea rows={2} value={weeklyReset.adjust} onChange={(event) => setWeeklyReset({ ...weeklyReset, adjust: event.target.value })} /></label><fieldset><legend>5. Elige tus tres prioridades de la próxima semana</legend>{weeklyReset.priorities.map((value, index) => <input key={index} value={value} onChange={(event) => setWeeklyReset({ ...weeklyReset, priorities: weeklyReset.priorities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder={`Prioridad ${index + 1}`} />)}</fieldset><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setWeeklyResetOpen(false)}>Ahora no</Button><Button type="submit">Guardar revisión semanal</Button></div></form> : null}<Link className="button button--secondary" to="/app/today">Ver Mi día</Link></Card>
-    </>}
+    {view === "week" && <WeeklyPlanView planner={planner} anchorDate={anchorDate} todayKey={todayKey} reviewInitiallyOpen={new URLSearchParams(location.search).get("reset") === "1"} onAnchorDateChange={setAnchorDate} onBack={() => navigate("/app/planning")} onEditTask={openTaskEditor} />}
 
     {view === "day" && <><PlanningSubheader title="Plan diario" description="Ordena lo esencial del día por fecha y prioridad." onBack={() => setView("year")} /><Card className="daily-schedule-card daily-date-plan"><header><div><p className="eyebrow">Acciones del día</p><h2>{format(new Date(`${selectedDate}T12:00:00`), "EEEE d 'de' MMMM", { locale: es })}</h2></div><input type="date" aria-label="Fecha del plan diario" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: "today", date: selectedDate })}><Plus size={16} /><span>Añadir una acción a este día</span><strong>Añadir</strong></button><div className="daily-priority-list">{snapshot.tasks.filter((task) => task.date === selectedDate && task.status !== "cancelled").sort((a, b) => (a.focusPriority ?? 9) - (b.focusPriority ?? 9)).map((task) => <div key={task.id} className={task.status === "completed" ? "is-complete" : ""}><button type="button" onClick={() => planner.toggleTask(task.id)} aria-label={task.status === "completed" ? `Reabrir ${task.title}` : `Completar ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><button type="button" onClick={() => openTaskEditor(task)}><strong>{task.title}</strong><small>{taskProvenance(snapshot, task)}</small></button><button type="button" onClick={() => openTaskEditor(task)} aria-label={`Editar ${task.title}`}><Edit3 size={14} /></button></div>)}{!snapshot.tasks.some((task) => task.date === selectedDate && task.status !== "cancelled") && <EmptyState title="Este día tiene espacio" text="Añade una acción cuando sepas qué merece atención." />}</div></Card></>}
 
@@ -358,4 +331,3 @@ function MonthDetail({ plan, snapshot, todayKey, anchorDate, calendarDates, mont
 
 function PlanningSubheader({ title, description, onBack }: { title: string; description: string; onBack: () => void }) { return <><button type="button" className="back-link" onClick={onBack}><ArrowLeft size={16} /> Volver a Planificación</button><SectionHeading eyebrow="Planificación" title={title} description={description} /></>; }
 function EmptyStateIfMonthEmpty({ snapshot, monthKey }: { snapshot: PlannerSnapshot; monthKey: string }) { const hasEntries = snapshot.events.some((event) => event.startDate.startsWith(monthKey)) || snapshot.tasks.some((task) => task.date?.startsWith(monthKey) && task.status !== "cancelled"); return hasEntries ? null : <p className="empty-inline">Este mes todavía tiene espacio. Añade eventos o acciones cuando estés lista.</p>; }
-function completedHabitSummary(snapshot: PlannerSnapshot) { const habits = snapshot.habits.filter((habit) => habit.status === "active"); const activeHabitIds = new Set(habits.map((habit) => habit.id)); const completed = snapshot.habitLogs.filter((log) => activeHabitIds.has(log.habitId) && log.value > 0).length; return habits.length ? `${completed} registros de hábitos completados. Mira el detalle en Tu progreso.` : "Aún no hay hábitos activos; puedes empezar con uno pequeño."; }

@@ -2,6 +2,8 @@
 
 Aplicación web local-first para convertir visión personal en metas, hábitos, acciones semanales y reflexión diaria. Acompaña sin culpa: los días no programados no reducen la constancia.
 
+La documentación vigente para continuar el proyecto comienza en [`docs/proyecto/README.md`](docs/proyecto/README.md). Allí se separan el historial verificable, el estado actual y las limitaciones conocidas.
+
 ## Stack actual
 
 - Next.js 16, React 19 y TypeScript
@@ -11,6 +13,7 @@ Aplicación web local-first para convertir visión personal en metas, hábitos, 
 - Zustand para estado de interfaz
 - Vitest para pruebas unitarias y Playwright para E2E
 - Vinext y Cloudflare Sites como destino de publicación adicional, mediante scripts explícitos
+- Supabase Auth para identidad, acceso, preferencias, soporte y metadatos mínimos de producto
 
 ## Desarrollo
 
@@ -46,7 +49,9 @@ Las pantallas no acceden directamente al almacenamiento. El repositorio local pu
 
 ## Persistencia y privacidad
 
-La app no tiene inicio de sesión ni sincronización entre dispositivos. Los datos viven en IndexedDB dentro del navegador y dispositivo actuales. Las imágenes también se guardan localmente, por lo que se limitan por tipo y tamaño para evitar respaldos excesivos.
+El acceso actual requiere una cuenta administrada por Supabase. El contenido detallado del planner —metas, hábitos, tareas, journal, finanzas, fitness e imágenes— continúa en IndexedDB dentro del navegador y dispositivo actuales y no se sincroniza entre dispositivos. Supabase conserva identidad, estado de acceso, preferencias, consentimientos, solicitudes, soporte y eventos de producto minimizados; no recibe el contenido personal del planner mediante estos flujos.
+
+Las imágenes locales se limitan por tipo y tamaño para evitar respaldos excesivos. Consulta el inventario y las precauciones en [`docs/proyecto/ESTADO_ACTUAL.md`](docs/proyecto/ESTADO_ACTUAL.md).
 
 ## Respaldos y migraciones
 

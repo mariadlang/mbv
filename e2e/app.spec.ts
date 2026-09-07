@@ -630,6 +630,25 @@ test("Mi día keeps the visual wellbeing check-in and its saved state", async ({
   await expect(moodCard.getByLabel("Nota breve sobre tu estado")).toHaveValue("Hoy avanzo con calma.");
 });
 
+test("daily close updates one journal entry instead of creating duplicates", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/today");
+
+  await page.getByLabel("¿Qué avancé hoy?").fill("Terminé la primera versión de una tarea importante.");
+  await page.getByLabel("¿Qué quiero recordar de hoy?").fill("Avanzar con calma también cuenta.");
+  await page.getByRole("button", { name: "Guardar mi cierre del día" }).click();
+  await expect(page.getByText("Tu cierre quedó guardado en Mi diario.")).toBeVisible();
+
+  await page.getByLabel("¿Qué avancé hoy?").fill("Terminé y revisé una tarea importante.");
+  await page.getByRole("button", { name: "Actualizar mi cierre" }).click();
+  await expect(page.getByText("Tu cierre quedó guardado en Mi diario.")).toBeVisible();
+
+  await page.goto("/app/journal");
+  const dailyCloseEntries = page.locator(".journal-entry").filter({ hasText: "Cierre del día" });
+  await expect(dailyCloseEntries).toHaveCount(1);
+  await expect(dailyCloseEntries).toContainText("Terminé y revisé una tarea importante.");
+});
+
 test("date-only planning, habit recurrence and Brain Dump conversion stay consistent", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
@@ -692,6 +711,112 @@ test("date-only planning, habit recurrence and Brain Dump conversion stay consis
   await expect(page.getByText(/Convertido en Mi día/)).toBeVisible();
 });
 
+test("weekly plan option B creates, assigns and preserves the same task across Mi día", async ({ page }) => {
+  test.setTimeout(90_000);
+  await completeOnboarding(page);
+  await page.goto("/app/planning/weekly");
+
+  await expect(page.locator(".weekly-day-group")).toHaveCount(7);
+  await expect(page.getByRole("heading", { name: "Pendientes sin fecha" })).toBeVisible();
+
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const todayGroup = page.locator(`#weekly-day-${todayKey}`);
+  await todayGroup.getByRole("button", { name: "Añadir tarea" }).click();
+  await todayGroup.getByPlaceholder("Título de la tarea").fill("Tarea semanal de prueba");
+  await todayGroup.getByRole("button", { name: "Guardar" }).click();
+  await expect(todayGroup.getByText("Tarea semanal de prueba", { exact: true })).toBeVisible();
+
+  await todayGroup.getByRole("button", { name: "Marcar prioridad: Tarea semanal de prueba" }).click();
+  await expect(page.locator(".weekly-priority-chips").getByRole("button", { name: /Tarea semanal de prueba/ })).toBeVisible();
+
+  await page.getByLabel("Añadir pendiente sin fecha").fill("Pendiente semanal de prueba");
+  await page.getByRole("button", { name: "Guardar pendiente" }).click();
+  let pending = page.locator(".weekly-pending-task").filter({ hasText: "Pendiente semanal de prueba" });
+  await expect(pending).toBeVisible();
+  await pending.getByText("Asignar día", { exact: true }).click();
+  await pending.getByRole("button", { name: `Asignar Pendiente semanal de prueba al ${todayKey}` }).click();
+  await expect(pending).toHaveCount(0);
+
+  let scheduled = todayGroup.locator(".weekly-task-row").filter({ hasText: "Pendiente semanal de prueba" });
+  await expect(scheduled).toBeVisible();
+  await scheduled.getByText("Cambiar día", { exact: true }).click();
+  await scheduled.getByRole("button", { name: "Quitar fecha" }).click();
+  pending = page.locator(".weekly-pending-task").filter({ hasText: "Pendiente semanal de prueba" });
+  await expect(pending).toBeVisible();
+  await pending.getByText("Asignar día", { exact: true }).click();
+  await pending.getByRole("button", { name: `Asignar Pendiente semanal de prueba al ${todayKey}` }).click();
+
+  await page.goto("/app/today");
+  await expect(page.getByText("Pendiente semanal de prueba", { exact: true }).first()).toBeVisible();
+  await page.getByLabel("Completar Pendiente semanal de prueba").click();
+
+  await page.goto("/app/planning/weekly");
+  scheduled = page.locator(".weekly-task-row").filter({ hasText: "Pendiente semanal de prueba" });
+  await expect(scheduled).toHaveClass(/is-complete/);
+  await page.reload();
+  await expect(page.locator(".weekly-task-row").filter({ hasText: "Pendiente semanal de prueba" })).toHaveClass(/is-complete/);
+
+  const matchingTasks = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tasks = await new Promise<Array<{ id: string; title: string }>>((resolve, reject) => {
+      const request = database.transaction("tasks", "readonly").objectStore("tasks").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return tasks.filter((task) => task.title === "Pendiente semanal de prueba").map((task) => task.id);
+  });
+  expect(matchingTasks).toHaveLength(1);
+});
+
+test("weekly plan option B remains legible across its responsive matrix", async ({ page }) => {
+  await completeOnboarding(page);
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1440, height: 900 },
+    { width: 1488, height: 992 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/app/planning/weekly");
+    await expect(page.locator(".weekly-day-group")).toHaveCount(7);
+    await expect(page.getByRole("heading", { name: "Plan semanal" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pendientes sin fecha" })).toBeVisible();
+    const metrics = await page.evaluate(() => {
+      const layout = document.querySelector<HTMLElement>(".weekly-plan-layout")!;
+      const week = document.querySelector<HTMLElement>(".weekly-days-panel")!;
+      const pending = document.querySelector<HTMLElement>(".weekly-pending-panel")!;
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        columns: getComputedStyle(layout).gridTemplateColumns,
+        weekTop: Math.round(week.getBoundingClientRect().top),
+        pendingTop: Math.round(pending.getBoundingClientRect().top),
+      };
+    });
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+    if (viewport.width > 920) {
+      expect(metrics.columns.split(" ").length).toBeGreaterThan(1);
+      expect(Math.abs(metrics.weekTop - metrics.pendingTop)).toBeLessThanOrEqual(1);
+    } else {
+      expect(metrics.pendingTop).toBeGreaterThan(metrics.weekTop);
+      const toggle = page.getByRole("button", { name: "Ocultar pendientes sin fecha" });
+      await toggle.click();
+      await expect(page.locator("#weekly-pending-content")).toBeHidden();
+      await page.getByRole("button", { name: "Mostrar pendientes sin fecha" }).click();
+      await expect(page.locator("#weekly-pending-content")).toBeVisible();
+    }
+  }
+});
+
 test("updated experiences remain usable across the required visual matrix", async ({ page }) => {
   test.setTimeout(300_000);
   const consoleErrors: string[] = [];
@@ -709,7 +834,7 @@ test("updated experiences remain usable across the required visual matrix", asyn
     { path: "/app/more", locator: () => page.getByRole("heading", { name: "Más herramientas", exact: true }) },
     { path: "/app/goals", locator: () => page.getByRole("button", { name: "Crear meta" }) },
     { path: "/app/planning?view=year&create=month", locator: () => page.getByRole("dialog", { name: /Planificar/ }).getByRole("button", { name: "Guardar plan" }) },
-    { path: "/app/planning?view=week", locator: () => page.getByRole("heading", { name: "Plan semanal" }) },
+    { path: "/app/planning/weekly", locator: () => page.getByRole("heading", { name: "Plan semanal" }) },
     { path: "/app/progress", locator: () => page.getByRole("heading", { name: "Tu progreso" }) },
     { path: "/app/vision?guided=1", locator: () => page.getByRole("button", { name: /Crear una tarjeta personalizada/ }) },
     { path: "/app/finance", locator: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
@@ -807,10 +932,13 @@ test("a goal connects its monthly result, weekly action, Mi día and Progress", 
   await monthDialog.getByRole("button", { name: "Guardar plan" }).click();
   await expect(page.getByRole("heading", { name: "Terminar el primer borrador de la guía" })).toBeVisible();
 
-  await page.goto("/app/planning?view=week");
-  const connectedAction = page.locator(".week-action-groups article").filter({ hasText: "Escribir el esquema de la guía" });
-  await expect(connectedAction).toContainText("Resultado de");
-  await connectedAction.getByRole("button", { name: /Poner/ }).click();
+  await page.goto("/app/planning/weekly");
+  const connectedAction = page.locator(".weekly-pending-task").filter({ hasText: "Escribir el esquema de la guía" });
+  await expect(connectedAction).toContainText("Meta · Publicar una guía útil");
+  await connectedAction.getByText("Asignar día", { exact: true }).click();
+  const currentDate = new Date();
+  const currentDateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+  await connectedAction.getByRole("button", { name: `Asignar Escribir el esquema de la guía al ${currentDateKey}` }).click();
 
   await page.goto("/app/today");
   await expect(page.getByText("Escribir el esquema de la guía").first()).toBeVisible();
@@ -838,8 +966,8 @@ test("English mode covers the updated product flows", async ({ page }) => {
   await page.goto("/app/life-hub");
   await expect(page.getByRole("heading", { name: "Inbox", exact: true })).toBeVisible();
 
-  await page.goto("/app/planning?view=week");
-  await expect(page.getByText("What comes from the month", { exact: true })).toBeVisible();
+  await page.goto("/app/planning/weekly");
+  await expect(page.getByRole("heading", { name: "Unscheduled tasks" })).toBeVisible();
 
   await page.goto("/app/vision?guided=1");
   await expect(page.getByRole("heading", { name: "First, picture the life you want" })).toBeVisible();
