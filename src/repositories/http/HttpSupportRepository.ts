@@ -4,7 +4,11 @@ import type { SupportRepository, SubmitFeedbackInput } from "@/src/repositories/
 async function parseResponse<T>(response: Response): Promise<T> {
   const data: unknown = await response.json().catch(() => ({}));
   const error = data && typeof data === "object" && "error" in data ? (data as { error?: unknown }).error : undefined;
-  if (!response.ok) throw new Error(typeof error === "string" ? error : "REQUEST_FAILED");
+  if (!response.ok) {
+    const failure = new Error(typeof error === "string" ? error : "REQUEST_FAILED") as Error & { status: number };
+    failure.status = response.status;
+    throw failure;
+  }
   return data as T;
 }
 
@@ -19,5 +23,5 @@ export class HttpSupportRepository implements SupportRepository {
   async listFaqs(token: string, locale: "es" | "en") { return parseResponse<{ faqs: SupportFaq[] }>(await fetch(`/api/feedback?locale=${locale}`, { headers: { Authorization: `Bearer ${token}` } })).then((data) => data.faqs); }
   async getMarketingPreference(token: string) { return parseResponse<{ consent: boolean }>(await fetch("/api/marketing-preference", { headers: { Authorization: `Bearer ${token}` } })).then((data) => data.consent); }
   async setMarketingPreference(token: string, consent: boolean, source: string) { return parseResponse<{ consent: boolean }>(await fetch("/api/marketing-preference", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ consent, source }) })).then((data) => data.consent); }
-  async trackEvent(token: string, input: Parameters<SupportRepository["trackEvent"]>[1]) { await parseResponse(await fetch("/api/events", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(input) })); }
+  async trackEvent(token: string, input: Parameters<SupportRepository["trackEvent"]>[1], options?: { signal?: AbortSignal }) { await parseResponse(await fetch("/api/events", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(input), signal: options?.signal })); }
 }

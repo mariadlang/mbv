@@ -10,7 +10,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_category"), id: z.string().uuid(), label: z.string().trim().min(2).max(80), active: z.boolean(), sortOrder: z.number().int().min(0).max(10000) }),
 ]);
 
-const emptySummary = { total_users:0,new_users_week:0,new_users_month:0,active_today:0,active_7d:0,active_30d:0,onboarding_rate:0,activation_rate:0,retention_7d:0,retention_30d:0,pending_suggestions:0,open_support:0 };
+const emptySummary = { total_users:0,new_users_week:0,new_users_month:0,active_today:0,active_7d:0,active_30d:0,analytics_v2_cohort_users:0,onboarding_rate:0,activation_rate:0,retention_7d:0,retention_30d:0,pending_suggestions:0,open_support:0 };
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     for (const result of [summary,users,usage,tickets,faqs,profiles,categories,settings,audit]) if (result.error) throw result.error;
     const profileMap = new Map((profiles.data ?? []).map((item) => [item.user_id, item]));
     const ticketRows = (tickets.data ?? []).map((item) => ({ id:item.id,reference:item.reference,userId:item.user_id,type:item.type,category:item.category,subject:item.subject,message:item.message,attachmentPath:item.attachment_path,pageUrl:item.page_url,deviceMetadata:item.device_metadata,status:item.status,priority:item.priority,createdAt:item.created_at,updatedAt:item.updated_at,resolvedAt:item.resolved_at,email:profileMap.get(item.user_id)?.email,displayName:profileMap.get(item.user_id)?.display_name,similarCount:(tickets.data ?? []).filter((other) => other.type===item.type && other.category===item.category).length }));
-    return NextResponse.json({ summary: summary.data ?? emptySummary, users: users.data ?? [], usage: usage.data ?? [], tickets: ticketRows, faqs: (faqs.data ?? []).map((item) => ({ id:item.id,question:item.question,answer:item.answer,locale:item.locale,sortOrder:item.sort_order })), categories: (categories.data ?? []).map((item) => ({ id:item.id,name:item.label,appliesTo:[item.ticket_type],active:item.active,sortOrder:item.sort_order })), settings: (settings.data ?? []).map((item) => ({ key:item.key,value:item.value,updatedAt:item.updated_at })), audit: (audit.data ?? []).map((item) => ({ id:item.id,action:item.action,entityType:item.entity_type,entityId:item.entity_id,createdAt:item.created_at })) });
+    return NextResponse.json({ summary: { ...emptySummary, ...(summary.data ?? {}) }, users: users.data ?? [], usage: usage.data ?? [], tickets: ticketRows, faqs: (faqs.data ?? []).map((item) => ({ id:item.id,question:item.question,answer:item.answer,locale:item.locale,sortOrder:item.sort_order })), categories: (categories.data ?? []).map((item) => ({ id:item.id,name:item.label,appliesTo:[item.ticket_type],active:item.active,sortOrder:item.sort_order })), settings: (settings.data ?? []).map((item) => ({ key:item.key,value:item.value,updatedAt:item.updated_at })), audit: (audit.data ?? []).map((item) => ({ id:item.id,action:item.action,entityType:item.entity_type,entityId:item.entity_id,createdAt:item.created_at })) });
   } catch (error) { return authErrorResponse(error); }
 }
 

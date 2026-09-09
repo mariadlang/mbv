@@ -26,4 +26,5 @@ export interface LegalPrivacyRepository {
   updateRequestStatus(id: string, status: PrivacyRequest["status"], response?: string): Promise<PrivacyRequest>;
   getCookiePreferences(): Promise<CookiePreferences | null>;
   saveCookiePreferences(input: CookiePreferences): Promise<CookiePreferences>;
+  subscribeCookiePreferences(listener: (preferences: CookiePreferences | null) => void): () => void;
 }

@@ -6,6 +6,7 @@ import { Check, ChevronDown, Eye, RotateCcw, Save, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Button } from "@/src/components/ui/Primitives";
+import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 
 export type QuickCaptureDefaults = {
   source: "global" | "dashboard" | "today" | "week" | "inbox" | "empty" | "goal";
@@ -22,11 +23,13 @@ export function QuickCaptureDrawer({
   open,
   defaults,
   planner,
+  access,
   onClose,
 }: {
   open: boolean;
   defaults: QuickCaptureDefaults;
   planner: PlannerController;
+  access: UserAccess;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
@@ -39,6 +42,7 @@ export function QuickCaptureDrawer({
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ id: string; title: string; destination: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const headingId = useId();
@@ -56,6 +60,7 @@ export function QuickCaptureDrawer({
       setType(defaults.focusPriority ? "priority" : "task");
       setFocusPriority(String(defaults.focusPriority ?? 1) as "1" | "2" | "3");
       setOptionsOpen(false);
+      setError("");
     });
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -82,6 +87,7 @@ export function QuickCaptureDrawer({
     event.preventDefault();
     const cleanTitle = title.trim();
     if (!cleanTitle || saving) return;
+    if (date && !isTrialPlanningDateAllowed(access, date)) { setError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     setSaving(true);
     const existingIds = new Set(planner.snapshot.tasks.map((task) => task.id));
     const next = await planner.createTaskDetailed({
@@ -99,6 +105,7 @@ export function QuickCaptureDrawer({
     setFeedback({ id: created.id, title: created.title, destination: created.date ? `Mi día · ${created.date}` : "Bandeja" });
     onClose();
   };
+  const trialDateBounds = getTrialPlanningDateBounds(access);
 
   const undo = async () => {
     if (!feedback) return;
@@ -115,13 +122,14 @@ export function QuickCaptureDrawer({
           <label className="form-field"><span>Nombre</span><input ref={titleRef} required minLength={2} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Escribe algo para recordarlo…" /></label>
           <button type="button" className="quick-capture-options-toggle" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((current) => !current)}><span>Más opciones</span><ChevronDown size={17} /></button>
           {optionsOpen && <div className="quick-capture-options">
-            <label className="form-field"><span>Fecha</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+            <label className="form-field"><span>Fecha</span><input type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={date} onChange={(event) => { setDate(event.target.value); setError(""); }} /></label>
             <label className="form-field"><span>Prioridad</span><select value={priority} onChange={(event) => setPriority(event.target.value as typeof priority)}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
             <label className="form-field"><span>Meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin meta</option>{planner.snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option value={goal.id} key={goal.id}>{goal.title}</option>)}</select></label>
             <label className="form-field"><span>Proyecto</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Sin proyecto</option>{planner.snapshot.projects.filter((project) => project.status === "active").map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select></label>
             <label className="form-field"><span>Tipo</span><select value={type} onChange={(event) => setType(event.target.value as CaptureType)}><option value="task">Tarea</option><option value="priority">Prioridad de Mi día</option></select></label>
             {type === "priority" && <label className="form-field"><span>Posición</span><select value={focusPriority} onChange={(event) => setFocusPriority(event.target.value as typeof focusPriority)}><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label>}
           </div>}
+          {error && <p className="form-error" role="alert">{error}</p>}
           <div className="quick-capture-actions"><small>{date ? "Se guardará en el día elegido." : "Se guardará en Bandeja, sin fecha."}</small><Button type="submit" loading={saving}><Save size={16} /> Guardar</Button></div>
         </form>
       </aside>

@@ -10,6 +10,7 @@ function toAccountUser(user: User | null): AccountUser | null {
     email: user.email,
     displayName: String(user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email.split("@")[0]),
     emailVerified: Boolean(user.email_confirmed_at),
+    emailVerifiedAt: user.email_confirmed_at ?? null,
     legalVersion: typeof user.user_metadata?.legal_version === "string" ? user.user_metadata.legal_version : null,
     termsAcceptedAt: typeof user.user_metadata?.terms_accepted_at === "string" ? user.user_metadata.terms_accepted_at : null,
     dataProcessingAcceptedAt: typeof user.user_metadata?.data_processing_accepted_at === "string" ? user.user_metadata.data_processing_accepted_at : null,

@@ -14,6 +14,7 @@ import {
   Circle,
   ClipboardCheck,
   Inbox,
+  Lock,
   MoreHorizontal,
   Plus,
   Repeat2,
@@ -27,9 +28,11 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getReviewPeriodKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Button } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 
 type WeeklyPlanViewProps = {
   planner: PlannerController;
+  access: UserAccess;
   anchorDate: Date;
   todayKey: string;
   reviewInitiallyOpen?: boolean;
@@ -75,7 +78,7 @@ function closeClosestDetails(target: EventTarget | null) {
   (target as HTMLElement | null)?.closest("details")?.removeAttribute("open");
 }
 
-export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyOpen = false, onAnchorDateChange, onBack, onEditTask }: WeeklyPlanViewProps) {
+export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewInitiallyOpen = false, onAnchorDateChange, onBack, onEditTask }: WeeklyPlanViewProps) {
   const { snapshot } = planner;
   const weekDates = useMemo(() => getWeekDates(anchorDate, 1), [anchorDate]);
   const weekKeys = useMemo(() => new Set(weekDates.map(toLocalDateKey)), [weekDates]);
@@ -87,6 +90,11 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
   const reviewPeriodKey = getReviewPeriodKey("weekly", weekDates[0], 1);
   const savedReview = snapshot.reviews.find((review) => review.type === "weekly" && review.periodKey === reviewPeriodKey);
   const insight = weeklyPlanningInsight(snapshot, weekDates[0]);
+  const dateBounds = getTrialPlanningDateBounds(access);
+  const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
+  const visibleWeekReadOnly = weekDates.every((date) => !canPlanDate(toLocalDateKey(date)));
+  const visibleWeekHasReadOnlyDays = weekDates.some((date) => !canPlanDate(toLocalDateKey(date)));
+  const reviewReferenceDateAllowed = canPlanDate(toLocalDateKey(weekDates[0]));
 
   const [openComposerDate, setOpenComposerDate] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -124,6 +132,7 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
   };
 
   const createTask = async (date?: string) => {
+    if (date && !canPlanDate(date)) { setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     const key = date ?? "pending";
     const title = (date ? drafts[date] ?? "" : pendingDraft).trim();
     if (!title || savingKeyRef.current) return;
@@ -135,18 +144,24 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
   };
 
   const updateTask = async (task: Task, patch: TaskUpdatePatch, message: string) =>
-    runOperation(`task-${task.id}`, () => planner.updateTask(task.id, { title: task.title, ...patch }), message);
+    (!task.date || canPlanDate(task.date)) && (!patch.date || canPlanDate(patch.date))
+      ? runOperation(`task-${task.id}`, () => planner.updateTask(task.id, { title: task.title, ...patch }), message)
+      : (setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE), Promise.resolve(false));
 
   const toggleTask = async (task: Task) =>
-    runOperation(`task-${task.id}`, () => planner.toggleTask(task.id), task.status === "completed" ? "Tarea reabierta." : "Tarea completada.");
+    !task.date || canPlanDate(task.date)
+      ? runOperation(`task-${task.id}`, () => planner.toggleTask(task.id), task.status === "completed" ? "Tarea reabierta." : "Tarea completada.")
+      : (setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE), Promise.resolve(false));
 
   const moveTask = async (task: Task, date: string) => {
+    if ((task.date && !canPlanDate(task.date)) || !canPlanDate(date)) { setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE); return false; }
     const target = new Date(`${date}T12:00:00`);
     const outsideVisibleWeek = !weekKeys.has(date);
     return updateTask(task, { date }, outsideVisibleWeek ? `Tarea movida al ${format(target, "d 'de' MMMM 'de' yyyy", { locale: es })}.` : `Tarea movida al ${capitalize(format(target, "EEEE", { locale: es }))}.`);
   };
 
   const placeIdea = async (idea: BrainDumpItem, date: string) => {
+    if (!canPlanDate(date)) { setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE); return false; }
     const target = new Date(`${date}T12:00:00`);
     return runOperation(`idea-${idea.id}`, () => planner.scheduleBrainDumpItem(idea.id, date, "weekly"), `Idea convertida en tarea para ${format(target, "d 'de' MMMM", { locale: es })}.`);
   };
@@ -174,6 +189,7 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
 
   const saveReview = async (event: FormEvent) => {
     event.preventDefault();
+    if (!reviewReferenceDateAllowed) { setOperationError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     const responses = {
       celebrate: reviewDraft.celebrate,
       observe: insight.summary,
@@ -196,7 +212,7 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
         <p>Distribuye tus acciones por día, sin perder de vista tus metas.</p>
       </div>
       <div className="weekly-header-actions">
-        <Button type="button" variant="outline" onClick={openReview}><ClipboardCheck size={17} aria-hidden="true" /> Revisión semanal</Button>
+        <Button type="button" variant="outline" onClick={openReview} disabled={!reviewReferenceDateAllowed} title={!reviewReferenceDateAllowed ? "Disponible en solo lectura fuera del horizonte de la prueba" : undefined}><ClipboardCheck size={17} aria-hidden="true" /> Revisión semanal</Button>
         <div className="weekly-period-navigation" aria-label="Navegar por semanas">
           <button type="button" onClick={() => navigateWeek(-1)} aria-label="Semana anterior"><ChevronLeft size={18} /></button>
           <strong>{formatWeekRange(weekDates)}</strong>
@@ -205,6 +221,8 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
         </div>
       </div>
     </header>
+
+    {visibleWeekHasReadOnlyDays && <div className="month-readonly-notice weekly-readonly-notice" role="status"><Lock size={18} aria-hidden="true" /><div><strong>{visibleWeekReadOnly ? "Semana en solo lectura" : "Algunos días están en solo lectura"}</strong><span>{TRIAL_PLANNING_LIMIT_MESSAGE}</span></div></div>}
 
     <section className="weekly-priority-strip" aria-labelledby="weekly-priorities-title">
       <div><Star size={17} aria-hidden="true" /><strong id="weekly-priorities-title">Prioridades de la semana</strong></div>
@@ -235,30 +253,31 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
           {weekDates.map((date) => {
             const key = toLocalDateKey(date);
             const isToday = key === todayKey;
+            const dayReadOnly = !canPlanDate(key);
             const dayTasks = weekTasks.filter((task) => task.date === key);
             const dayHabits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, date));
-            return <section id={`weekly-day-${key}`} className={`weekly-day-group ${isToday ? "is-today" : ""}`} key={key} aria-labelledby={`weekly-day-title-${key}`}>
+            return <section id={`weekly-day-${key}`} className={`weekly-day-group ${isToday ? "is-today" : ""} ${dayReadOnly ? "is-readonly" : ""}`} key={key} aria-labelledby={`weekly-day-title-${key}`}>
               <header className="weekly-day-label">
                 <span id={`weekly-day-title-${key}`}>{capitalize(format(date, "EEEE", { locale: es }))}</span>
                 <strong>{date.getDate()} <small>{format(date, "MMM", { locale: es })}</small></strong>
                 {isToday && <em>Hoy</em>}
               </header>
               <div className="weekly-day-content">
-                <div className="weekly-day-toolbar"><button type="button" onClick={() => setOpenComposerDate(key)}><Plus size={16} aria-hidden="true" /> Añadir tarea</button></div>
+                <div className="weekly-day-toolbar">{dayReadOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> Solo lectura</span> : <button type="button" onClick={() => setOpenComposerDate(key)}><Plus size={16} aria-hidden="true" /> Añadir tarea</button>}</div>
                 <div className="weekly-day-items">
-                  {dayTasks.map((task) => <WeeklyTaskRow key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}
+                  {dayTasks.map((task) => <WeeklyTaskRow key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} readOnly={dayReadOnly} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}
                   {dayHabits.map((habit) => {
                     const log = snapshot.habitLogs.find((item) => item.habitId === habit.id && item.date === key);
                     const complete = isHabitLogComplete(habit, log);
                     return <div className="weekly-habit-row" key={habit.id}>
-                      <button type="button" className={complete ? "is-complete" : ""} aria-pressed={complete} aria-label={`${complete ? "Desmarcar" : "Registrar"} hábito ${habit.name} el ${format(date, "d 'de' MMMM", { locale: es })}`} disabled={Boolean(savingKey)} onClick={() => void runOperation(`habit-${habit.id}-${key}`, () => planner.toggleHabit(habit.id, key), complete ? "Registro de hábito retirado para este día." : "Hábito registrado para este día.")}>{complete ? <Check size={13} /> : <Circle size={13} />}</button>
+                      <button type="button" className={complete ? "is-complete" : ""} aria-pressed={complete} aria-label={`${complete ? "Desmarcar" : "Registrar"} hábito ${habit.name} el ${format(date, "d 'de' MMMM", { locale: es })}${dayReadOnly ? ", solo lectura" : ""}`} disabled={Boolean(savingKey) || dayReadOnly} onClick={() => void runOperation(`habit-${habit.id}-${key}`, () => planner.toggleHabit(habit.id, key), complete ? "Registro de hábito retirado para este día." : "Hábito registrado para este día.")}>{complete ? <Check size={13} /> : <Circle size={13} />}</button>
                       <Repeat2 size={15} aria-hidden="true" />
                       <span>Hábito · {habit.name}</span>
                     </div>;
                   })}
                   {!dayTasks.length && !dayHabits.length && openComposerDate !== key && <p className="weekly-day-empty">Este día tiene espacio.</p>}
                 </div>
-                {openComposerDate === key && <form className="weekly-inline-composer" onSubmit={(event) => { event.preventDefault(); void createTask(key); }}>
+                {!dayReadOnly && openComposerDate === key && <form className="weekly-inline-composer" onSubmit={(event) => { event.preventDefault(); void createTask(key); }}>
                   <input ref={composerRef} value={drafts[key] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [key]: event.target.value }))} placeholder="Título de la tarea" aria-label={`Título de la tarea para ${format(date, "EEEE d 'de' MMMM", { locale: es })}`} />
                   <Button type="submit" size="sm" loading={savingKey === `create-${key}`} disabled={!drafts[key]?.trim()}>Guardar</Button>
                   <button type="button" className="weekly-composer-cancel" onClick={() => setOpenComposerDate(null)} aria-label="Cancelar nueva tarea"><X size={18} /></button>
@@ -281,8 +300,8 @@ export function WeeklyPlanView({ planner, anchorDate, todayKey, reviewInitiallyO
             <Button type="submit" size="sm" loading={savingKey === "create-pending"} disabled={!pendingDraft.trim()} aria-label="Guardar pendiente"><ArrowRight size={17} /></Button>
           </form>
           <div className="weekly-pending-list">
-            {unscheduledTasks.map((task) => <WeeklyPendingTask key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}
-            {unplacedIdeas.map((idea) => <WeeklyPendingIdea key={idea.id} idea={idea} weekDates={weekDates} saving={savingKey === `idea-${idea.id}`} onPlace={placeIdea} />)}
+            {unscheduledTasks.map((task) => <WeeklyPendingTask key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} readOnly={false} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}
+            {unplacedIdeas.map((idea) => <WeeklyPendingIdea key={idea.id} idea={idea} weekDates={weekDates} saving={savingKey === `idea-${idea.id}`} canPlanDate={canPlanDate} dateBounds={dateBounds} onPlace={placeIdea} />)}
             {!unscheduledTasks.length && !unplacedIdeas.length && <p className="weekly-pending-empty">No hay pendientes sin fecha.</p>}
           </div>
         </div>
@@ -308,22 +327,25 @@ type TaskOperationProps = {
   planner: PlannerController;
   weekDates: Date[];
   saving: boolean;
+  readOnly: boolean;
+  canPlanDate: (date: string) => boolean;
+  dateBounds: ReturnType<typeof getTrialPlanningDateBounds>;
   onMove: (task: Task, date: string) => Promise<boolean>;
   onUpdate: (task: Task, patch: TaskUpdatePatch, message: string) => Promise<boolean>;
   onToggle: (task: Task) => Promise<boolean>;
   onEdit: (task: Task) => void;
 };
 
-function DateAssignmentMenu({ task, weekDates, label, onMove, onUpdate }: Pick<TaskOperationProps, "task" | "weekDates" | "onMove" | "onUpdate"> & { label: string }) {
+function DateAssignmentMenu({ task, weekDates, label, canPlanDate, dateBounds, onMove, onUpdate }: Pick<TaskOperationProps, "task" | "weekDates" | "canPlanDate" | "dateBounds" | "onMove" | "onUpdate"> & { label: string }) {
   return <details className="weekly-date-menu">
     <summary aria-label={`${label}: ${task.title}`}><CalendarDays size={15} aria-hidden="true" /><span>{label}</span><ChevronDown size={14} aria-hidden="true" /></summary>
     <div className="weekly-popover weekly-date-popover">
       <strong>Semana visible</strong>
       <div>{weekDates.map((date) => {
         const key = toLocalDateKey(date);
-        return <button type="button" key={key} aria-label={`Asignar ${task.title} al ${key}`} onClick={(event) => { closeClosestDetails(event.currentTarget); void onMove(task, key); }}><span>{capitalize(format(date, "EEE", { locale: es }).replace(".", ""))}</span><strong>{date.getDate()}</strong></button>;
+        return <button type="button" key={key} disabled={!canPlanDate(key)} aria-label={`Asignar ${task.title} al ${key}${canPlanDate(key) ? "" : ", fuera del horizonte de la prueba"}`} onClick={(event) => { closeClosestDetails(event.currentTarget); void onMove(task, key); }}><span>{capitalize(format(date, "EEE", { locale: es }).replace(".", ""))}</span><strong>{date.getDate()}</strong></button>;
       })}</div>
-      <label><span>Otra fecha</span><input type="date" defaultValue={task.date ?? ""} onChange={(event) => { if (!event.target.value) return; closeClosestDetails(event.currentTarget); void onMove(task, event.target.value); }} /></label>
+      <label><span>Otra fecha</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} defaultValue={task.date ?? ""} onChange={(event) => { if (!event.target.value || !canPlanDate(event.target.value)) return; closeClosestDetails(event.currentTarget); void onMove(task, event.target.value); }} /></label>
       {task.date && <button type="button" className="weekly-unschedule-action" onClick={(event) => { closeClosestDetails(event.currentTarget); void onUpdate(task, { date: "" }, "Tarea devuelta a Pendientes sin fecha."); }}>Quitar fecha</button>}
     </div>
   </details>;
@@ -340,36 +362,36 @@ function TaskOptionsMenu({ task, planner, onUpdate, onEdit }: Pick<TaskOperation
   </details>;
 }
 
-function WeeklyTaskRow({ task, planner, weekDates, saving, onMove, onUpdate, onToggle, onEdit }: TaskOperationProps) {
+function WeeklyTaskRow({ task, planner, weekDates, saving, readOnly, canPlanDate, dateBounds, onMove, onUpdate, onToggle, onEdit }: TaskOperationProps) {
   const goal = planner.snapshot.goals.find((item) => item.id === task.goalId);
   const complete = task.status === "completed";
   return <article id={`weekly-task-${task.id}`} className={`weekly-task-row ${complete ? "is-complete" : ""}`} tabIndex={-1}>
-    <button type="button" className="weekly-task-check" aria-label={complete ? `Reabrir ${task.title}` : `Completar ${task.title}`} disabled={saving} onClick={() => void onToggle(task)}>{complete ? <Check size={14} /> : <Circle size={14} />}</button>
+    <button type="button" className="weekly-task-check" aria-label={`${complete ? "Reabrir" : "Completar"} ${task.title}${readOnly ? ", solo lectura" : ""}`} disabled={saving || readOnly} onClick={() => void onToggle(task)}>{complete ? <Check size={14} /> : <Circle size={14} />}</button>
     <div className="weekly-task-copy"><strong>{task.title}</strong>{goal && <span>Meta · {goal.title}</span>}</div>
-    <button type="button" className={`weekly-task-star ${task.priority === "high" ? "is-active" : ""}`} aria-pressed={task.priority === "high"} aria-label={`${task.priority === "high" ? "Quitar" : "Marcar"} prioridad: ${task.title}`} disabled={saving} onClick={() => void onUpdate(task, { priority: task.priority === "high" ? "medium" : "high" }, task.priority === "high" ? "Tarea retirada de las prioridades." : "Tarea marcada como prioridad.")}><Star size={15} /></button>
-    <div className="weekly-task-actions"><DateAssignmentMenu task={task} weekDates={weekDates} label="Cambiar día" onMove={onMove} onUpdate={onUpdate} /><TaskOptionsMenu task={task} planner={planner} onUpdate={onUpdate} onEdit={onEdit} /></div>
+    <button type="button" className={`weekly-task-star ${task.priority === "high" ? "is-active" : ""}`} aria-pressed={task.priority === "high"} aria-label={`${task.priority === "high" ? "Quitar" : "Marcar"} prioridad: ${task.title}${readOnly ? ", solo lectura" : ""}`} disabled={saving || readOnly} onClick={() => void onUpdate(task, { priority: task.priority === "high" ? "medium" : "high" }, task.priority === "high" ? "Tarea retirada de las prioridades." : "Tarea marcada como prioridad.")}><Star size={15} /></button>
+    <div className="weekly-task-actions">{readOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> Solo lectura</span> : <><DateAssignmentMenu task={task} weekDates={weekDates} label="Cambiar día" canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={onMove} onUpdate={onUpdate} /><TaskOptionsMenu task={task} planner={planner} onUpdate={onUpdate} onEdit={onEdit} /></>}</div>
   </article>;
 }
 
-function WeeklyPendingTask({ task, planner, weekDates, saving, onMove, onUpdate, onToggle, onEdit }: TaskOperationProps) {
+function WeeklyPendingTask({ task, planner, weekDates, saving, canPlanDate, dateBounds, onMove, onUpdate, onToggle, onEdit }: TaskOperationProps) {
   const complete = task.status === "completed";
   const goal = planner.snapshot.goals.find((item) => item.id === task.goalId);
-  return <article className="weekly-pending-task">
+  return <article className={`weekly-pending-task ${complete ? "is-complete" : ""}`}>
     <div className="weekly-pending-task__main">
       <button type="button" className="weekly-task-check" aria-label={complete ? `Reabrir ${task.title}` : `Completar ${task.title}`} disabled={saving} onClick={() => void onToggle(task)}>{complete ? <Check size={14} /> : <Circle size={14} />}</button>
       <div className="weekly-pending-task__copy"><strong>{task.title}</strong>{goal && <span>Meta · {goal.title}</span>}</div>
       <TaskOptionsMenu task={task} planner={planner} onUpdate={onUpdate} onEdit={onEdit} />
     </div>
-    <DateAssignmentMenu task={task} weekDates={weekDates} label="Asignar día" onMove={onMove} onUpdate={onUpdate} />
+    <DateAssignmentMenu task={task} weekDates={weekDates} label="Asignar día" canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={onMove} onUpdate={onUpdate} />
   </article>;
 }
 
-function WeeklyPendingIdea({ idea, weekDates, saving, onPlace }: { idea: BrainDumpItem; weekDates: Date[]; saving: boolean; onPlace: (idea: BrainDumpItem, date: string) => Promise<boolean> }) {
+function WeeklyPendingIdea({ idea, weekDates, saving, canPlanDate, dateBounds, onPlace }: { idea: BrainDumpItem; weekDates: Date[]; saving: boolean; canPlanDate: (date: string) => boolean; dateBounds: ReturnType<typeof getTrialPlanningDateBounds>; onPlace: (idea: BrainDumpItem, date: string) => Promise<boolean> }) {
   return <article className="weekly-pending-task weekly-pending-idea">
     <div className="weekly-pending-task__main"><Inbox size={15} aria-hidden="true" /><strong>{idea.title}</strong><span>Idea de Bandeja</span></div>
     <details className="weekly-date-menu">
       <summary aria-label={`Asignar día a la idea ${idea.title}`}><CalendarDays size={15} aria-hidden="true" /><span>Asignar día</span><ChevronDown size={14} aria-hidden="true" /></summary>
-      <div className="weekly-popover weekly-date-popover"><strong>Semana visible</strong><div>{weekDates.map((date) => <button type="button" disabled={saving} key={toLocalDateKey(date)} aria-label={`Asignar ${idea.title} al ${toLocalDateKey(date)}`} onClick={(event) => { closeClosestDetails(event.currentTarget); void onPlace(idea, toLocalDateKey(date)); }}><span>{capitalize(format(date, "EEE", { locale: es }).replace(".", ""))}</span><strong>{date.getDate()}</strong></button>)}</div><label><span>Otra fecha</span><input type="date" onChange={(event) => { if (!event.target.value) return; closeClosestDetails(event.currentTarget); void onPlace(idea, event.target.value); }} /></label></div>
+      <div className="weekly-popover weekly-date-popover"><strong>Semana visible</strong><div>{weekDates.map((date) => { const key = toLocalDateKey(date); return <button type="button" disabled={saving || !canPlanDate(key)} key={key} aria-label={`Asignar ${idea.title} al ${key}${canPlanDate(key) ? "" : ", fuera del horizonte de la prueba"}`} onClick={(event) => { closeClosestDetails(event.currentTarget); void onPlace(idea, key); }}><span>{capitalize(format(date, "EEE", { locale: es }).replace(".", ""))}</span><strong>{date.getDate()}</strong></button>; })}</div><label><span>Otra fecha</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} onChange={(event) => { if (!event.target.value || !canPlanDate(event.target.value)) return; closeClosestDetails(event.currentTarget); void onPlace(idea, event.target.value); }} /></label></div>
     </details>
   </article>;
 }

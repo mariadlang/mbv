@@ -50,7 +50,7 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
             <div><p className="eyebrow">Últimos 7 días</p><h2>Acciones que sumaron</h2></div>
             <div className="chart-legend"><span><i className="legend-dot legend-dot--rose" /> Hábitos</span><span><i className="legend-dot legend-dot--sage" /> Tareas</span></div>
           </div>
-          <div className="large-chart" aria-label="Hábitos registrados y tareas completadas en los últimos siete días">
+          <div className="large-chart" role="img" aria-label="Hábitos registrados y tareas completadas en los últimos siete días">
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData} margin={{ top: 20, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid stroke="var(--color-border)" vertical={false} strokeDasharray="3 5" />

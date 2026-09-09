@@ -6,6 +6,7 @@ export interface AccountUser {
   email: string;
   displayName: string;
   emailVerified: boolean;
+  emailVerifiedAt: string | null;
   legalVersion: string | null;
   termsAcceptedAt: string | null;
   dataProcessingAcceptedAt: string | null;

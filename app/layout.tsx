@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Inter, Nunito_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { BRAND_NAME, BRAND_SLOGAN } from "@/src/lib/brand";
+import { BRAND_NAME, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
@@ -39,20 +39,21 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase,
     title: `${BRAND_NAME} · ${BRAND_SLOGAN}`,
-    description: "Organización para el desarrollo personal: convierte tu visión en planes, hábitos y acciones sostenibles.",
+    description: BRAND_PROMISE,
     icons: {
       icon: "/brand-icon.svg",
       shortcut: "/brand-icon.svg",
     },
     openGraph: {
       title: `${BRAND_NAME} · ${BRAND_SLOGAN}`,
-      description: "Diseña la vida que quieres vivir con planeación en cascada, hábitos, bienestar y finanzas.",
+      description: BRAND_PROMISE,
       type: "website",
+      siteName: BRAND_NAME,
     },
     twitter: {
       card: "summary_large_image",
       title: `${BRAND_NAME} · ${BRAND_SLOGAN}`,
-      description: "Diseña la vida que quieres vivir con planeación en cascada, hábitos, bienestar y finanzas.",
+      description: BRAND_PROMISE,
     },
   };
 }

@@ -28,7 +28,9 @@ import type {
 } from "@/src/lib/schemas";
 import { backupFileSchema } from "@/src/lib/schemas";
 import { analyticsService } from "@/src/services/analyticsService";
-import type { ProductEventName } from "@/src/domain/productAnalytics";
+import type { ClientProductEventName } from "@/src/domain/productAnalytics";
+import { isTrialPlanningDateAllowed, isTrialPlanningMonthAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
+import { toLocalDateKey } from "@/src/lib/dates";
 
 type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
 
@@ -43,7 +45,7 @@ function reportPlannerError(context: string, error: unknown) {
   }
 }
 
-export function usePlanner() {
+export function usePlanner(access: UserAccess | null = null) {
   const [snapshot, setSnapshot] = useState<PlannerSnapshot>(createEmptySnapshot());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,9 +118,9 @@ export function usePlanner() {
     URL.revokeObjectURL(url);
   }, []);
 
-  const commitTracked = useCallback(async (event: ProductEventName, operation: (service: PlannerService) => Promise<PlannerSnapshot>, properties: Record<string, string | number | boolean> = {}) => {
+  const commitTracked = useCallback(async (event: ClientProductEventName, operation: (service: PlannerService) => Promise<PlannerSnapshot>, properties: Record<string, string | number | boolean> = {}, dedupeKey?: string) => {
     const next = await commit(operation);
-    analyticsService.track(event, properties);
+    analyticsService.track(event, properties, dedupeKey);
     return next;
   }, [commit]);
 
@@ -142,6 +144,29 @@ export function usePlanner() {
     [commit],
   );
 
+  const assertPlanningDateAllowed = (date?: string | null) => {
+    if (access && date && !isTrialPlanningDateAllowed(access, date)) throw new Error(TRIAL_PLANNING_LIMIT_MESSAGE);
+  };
+  const assertTaskWritable = (taskId: string, nextDate?: string | null) => {
+    assertPlanningDateAllowed(snapshot.tasks.find((task) => task.id === taskId)?.date);
+    assertPlanningDateAllowed(nextDate);
+  };
+  const assertPlanWritable = (planId: string) => {
+    const plan = snapshot.cascadePlans.find((item) => item.id === planId);
+    if (access && plan?.horizon === "monthly" && !isTrialPlanningMonthAllowed(access, plan.periodKey)) throw new Error(TRIAL_PLANNING_LIMIT_MESSAGE);
+  };
+  const assertTentativeDateAllowed = (date?: string | null) => {
+    if (!access || !date) return;
+    const allowed = date.length === 7
+      ? isTrialPlanningMonthAllowed(access, date)
+      : isTrialPlanningDateAllowed(access, date);
+    if (!allowed) throw new Error(TRIAL_PLANNING_LIMIT_MESSAGE);
+  };
+  const assertBrainDumpWritable = (itemId: string, nextDate?: string | null) => {
+    assertTentativeDateAllowed(snapshot.brainDumpItems.find((item) => item.id === itemId)?.tentativeDate);
+    assertTentativeDateAllowed(nextDate);
+  };
+
   return {
     snapshot,
     loading,
@@ -150,31 +175,71 @@ export function usePlanner() {
     retry: load,
     completeOnboarding: (
       input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[]; focus?: "today" | "goal" | "week" | "habit"; result?: string; action?: string },
-    ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed" }),
+    ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed", version: 2 }, "completed:v2"),
     resumeExistingSpace,
     loadDemo: () => commit((service) => service.loadDemo()),
-    createHabit: (input: HabitFormInput) => commit((service) => service.createHabit(input)),
+    createHabit: async (input: HabitFormInput) => {
+      const next = await commit((service) => service.createHabit(input));
+      analyticsService.track("first_action_created", { source: "habit", result: "connected", version: 2 }, "first:v2");
+      return next;
+    },
     updateHabitName: (habitId: string, name: string) => commit((service) => service.updateHabitName(habitId, name)),
     updateHabit: (habitId: string, input: { name: string; scheduledDays: number[]; oneOffDate?: string | null; type?: Habit["type"]; target?: number; unit?: string; lifeAreaId?: string; origin?: Habit["origin"] }) =>
       commit((service) => service.updateHabit(habitId, input)),
-    toggleHabit: (habitId: string, date: string) =>
-      commit((service) => service.toggleHabit(habitId, date)),
-    setHabitProgress: (habitId: string, date: string, value: number) =>
-      commit((service) => service.setHabitProgress(habitId, date, value)),
-    createTask: (title: string, date?: string, focusPriority?: 1 | 2 | 3) =>
-      commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" }),
-    createTaskDetailed: (input: TaskFormInput) =>
-      commitTracked("task_created", (service) => service.createTaskDetailed(input), { source: "task_form" }),
-    updateTask: (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>) =>
-      commit((service) => service.updateTask(taskId, input)),
-    assignTaskFocusPriority: (taskId: string, date: string, focusPriority?: 1 | 2 | 3) =>
-      commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority)),
+    toggleHabit: async (habitId: string, date: string) => {
+      assertPlanningDateAllowed(date);
+      const next = await commit((service) => service.toggleHabit(habitId, date));
+      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) analyticsService.track("first_habit_recorded", { source: "habit_toggle", version: 2 }, "recorded:v2");
+      return next;
+    },
+    setHabitProgress: async (habitId: string, date: string, value: number) => {
+      assertPlanningDateAllowed(date);
+      const next = await commit((service) => service.setHabitProgress(habitId, date, value));
+      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) analyticsService.track("first_habit_recorded", { source: "habit_progress", version: 2 }, "recorded:v2");
+      return next;
+    },
+    createTask: async (title: string, date?: string, focusPriority?: 1 | 2 | 3) => {
+      assertPlanningDateAllowed(date);
+      const next = await commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" });
+      if (date) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+      return next;
+    },
+    createTaskDetailed: async (input: TaskFormInput) => {
+      assertPlanningDateAllowed(input.date);
+      const next = await commitTracked("task_created", (service) => service.createTaskDetailed(input), { source: "task_form" });
+      if (input.date || input.goalId || input.projectId || input.periodPlanId || input.focusPriority) {
+        analyticsService.track("first_action_created", { source: input.periodPlanId ? "monthly_planning" : input.goalId ? "goal" : "today", result: "connected", version: 2 }, "first:v2");
+      }
+      return next;
+    },
+    updateTask: async (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>) => {
+      assertTaskWritable(taskId, input.date);
+      const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
+      const next = await commit((service) => service.updateTask(taskId, input));
+      if (!previousDate && input.date) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+      else if (previousDate && input.date !== undefined && input.date !== previousDate) analyticsService.track("action_rescheduled", { source: "task_edit", version: 2 }, "first:v2");
+      return next;
+    },
+    assignTaskFocusPriority: async (taskId: string, date: string, focusPriority?: 1 | 2 | 3) => {
+      assertTaskWritable(taskId, date);
+      const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
+      const next = await commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority));
+      if (!previousDate) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+      else if (date !== previousDate) analyticsService.track("action_rescheduled", { source: "priority_assignment", version: 2 }, "first:v2");
+      return next;
+    },
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
-    toggleTask: async (taskId: string) => { const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") analyticsService.track("task_completed", { source: "task_toggle" }); return next; },
-    deleteTask: (taskId: string) => commit((service) => service.deleteTask(taskId)),
-    rescheduleTask: (taskId: string, date: string) =>
-      commit((service) => service.rescheduleTask(taskId, date)),
+    toggleTask: async (taskId: string) => { assertTaskWritable(taskId); const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") { analyticsService.track("task_completed", { source: "task_toggle" }); analyticsService.track("first_action_completed", { source: "task_toggle", version: 2 }, "completed:v2"); } return next; },
+    deleteTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.deleteTask(taskId)); },
+    rescheduleTask: async (taskId: string, date: string) => {
+      assertTaskWritable(taskId, date);
+      const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
+      const next = await commit((service) => service.rescheduleTask(taskId, date));
+      if (!previousDate) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+      else if (previousDate !== date) analyticsService.track("action_rescheduled", { source: "reschedule", version: 2 }, "first:v2");
+      return next;
+    },
     saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
       commit((service) => service.saveMood(mood, energy, factors, note, sleep, concentration)),
     createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
@@ -201,8 +266,10 @@ export function usePlanner() {
       commit((service) => service.updateDailyIntention(value)),
     saveReview: (type: ReviewType, summary: string, decisions: string[] = []) =>
       commitTracked("progress_review_created", (service) => service.saveReview(type, summary, decisions), { period: type }),
-    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = [], referenceDate?: Date) =>
-      commitTracked("progress_review_created", (service) => service.saveStructuredReview(type, responses, decisions, referenceDate), { period: type }),
+    saveStructuredReview: (type: ReviewType, responses: Record<string, string>, decisions: string[] = [], referenceDate?: Date) => {
+      if (type === "weekly" && referenceDate) assertPlanningDateAllowed(toLocalDateKey(referenceDate));
+      return commitTracked("progress_review_created", (service) => service.saveStructuredReview(type, responses, decisions, referenceDate), { period: type });
+    },
     saveMonthlyBudget: (input: { monthKey: string; plannedIncome: number; notes?: string; lines: { categoryId: string; plannedAmount: number }[] }) =>
       commit((service) => service.saveMonthlyBudget(input)),
     createTransaction: (input: TransactionFormInput) =>
@@ -215,25 +282,39 @@ export function usePlanner() {
     saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
     saveCascadePlan: (input: CascadePlanFormInput) => {
+      if (access && input.horizon === "monthly" && !isTrialPlanningMonthAllowed(access, input.periodKey)) throw new Error(TRIAL_PLANNING_LIMIT_MESSAGE);
+      if (input.horizon === "monthly" || input.horizon === "weekly") input.activities?.forEach((activity) => assertPlanningDateAllowed(activity.date));
       const event = input.horizon === "annual" ? "annual_plan_updated" : input.horizon === "monthly" ? "monthly_plan_updated" : input.horizon === "weekly" ? "week_planned" : null;
       return event ? commitTracked(event, (service) => service.saveCascadePlan(input), { period: input.horizon }) : commit((service) => service.saveCascadePlan(input));
     },
-    upsertPlanActions: (planId: string, goalId: string | undefined, actions: Array<{ taskId?: string; title: string; date?: string }>) =>
-      commit((service) => service.upsertPlanActions(planId, goalId, actions)),
-    deleteCascadePlan: (planId: string) =>
-      commit((service) => service.deleteCascadePlan(planId)),
-    toggleCascadeObjective: (planId: string, objectiveIndex: number) =>
-      commit((service) => service.toggleCascadeObjective(planId, objectiveIndex)),
+    upsertPlanActions: async (planId: string, goalId: string | undefined, actions: Array<{ taskId?: string; title: string; date?: string }>) => {
+      assertPlanWritable(planId);
+      actions.forEach((action) => assertPlanningDateAllowed(action.date));
+      const next = await commit((service) => service.upsertPlanActions(planId, goalId, actions));
+      if (actions.some((action) => !action.taskId && action.title.trim())) analyticsService.track("first_action_created", { source: "monthly_planning", result: "connected", version: 2 }, "first:v2");
+      return next;
+    },
+    deleteCascadePlan: (planId: string) => { assertPlanWritable(planId); return commit((service) => service.deleteCascadePlan(planId)); },
+    toggleCascadeObjective: (planId: string, objectiveIndex: number) => { assertPlanWritable(planId); return commit((service) => service.toggleCascadeObjective(planId, objectiveIndex)); },
     createBrainDumpItem: (input: BrainDumpFormInput) =>
       commit((service) => service.createBrainDumpItem(input)),
-    updateBrainDumpItem: (itemId: string, input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null; goalId?: string | null; projectId?: string | null }) =>
-      commit((service) => service.updateBrainDumpItem(itemId, input)),
-    scheduleBrainDumpItem: (itemId: string, date: string, destination: "monthly" | "weekly" | "daily" = "daily") =>
-      commit((service) => service.scheduleBrainDumpItem(itemId, date, destination)),
+    updateBrainDumpItem: (itemId: string, input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null; goalId?: string | null; projectId?: string | null }) => {
+      assertBrainDumpWritable(itemId, input.tentativeDate);
+      return commit((service) => service.updateBrainDumpItem(itemId, input));
+    },
+    scheduleBrainDumpItem: (itemId: string, date: string, destination: "monthly" | "weekly" | "daily" = "daily") => {
+      assertBrainDumpWritable(itemId);
+      assertPlanningDateAllowed(date);
+      return commit((service) => service.scheduleBrainDumpItem(itemId, date, destination));
+    },
     createRoutine: (input: RoutineFormInput) => commitTracked("routine_created", (service) => service.createRoutine(input)),
     updateRoutine: (routineId: string, input: RoutineFormInput) => commit((service) => service.updateRoutine(routineId, input)),
-    createEvent: (input: EventFormInput) => commit((service) => service.createEvent(input)),
-    updateEvent: (eventId: string, input: EventFormInput) => commit((service) => service.updateEvent(eventId, input)),
+    createEvent: (input: EventFormInput) => { assertPlanningDateAllowed(input.startDate); return commit((service) => service.createEvent(input)); },
+    updateEvent: (eventId: string, input: EventFormInput) => {
+      assertPlanningDateAllowed(snapshot.events.find((item) => item.id === eventId)?.startDate);
+      assertPlanningDateAllowed(input.startDate);
+      return commit((service) => service.updateEvent(eventId, input));
+    },
     createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),

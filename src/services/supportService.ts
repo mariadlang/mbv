@@ -10,5 +10,5 @@ export const supportService = {
   listFaqs: (token: string, locale: "es" | "en") => repository.listFaqs(token, locale),
   getMarketingPreference: (token: string) => repository.getMarketingPreference(token),
   setMarketingPreference(token: string, consent: boolean, source: string) { const parsed = marketingPreferenceSchema.parse({ consent, source }); return repository.setMarketingPreference(token, parsed.consent, parsed.source); },
-  trackEvent(token: string, input: Parameters<typeof repository.trackEvent>[1]) { const parsed = productEventSchema.parse({ ...input, metadata: sanitizeProductMetadata(input.metadata ?? {}) }); return repository.trackEvent(token, parsed); },
+  trackEvent(token: string, input: Parameters<typeof repository.trackEvent>[1], options?: { signal?: AbortSignal }) { const parsed = productEventSchema.parse({ ...input, metadata: sanitizeProductMetadata(input.metadata ?? {}) }); return repository.trackEvent(token, parsed, options); },
 };

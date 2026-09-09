@@ -10,7 +10,7 @@ import { Modal } from "@/src/components/ui/Modal";
 import { Onboarding } from "@/src/features/onboarding/Onboarding";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
-import { accessLabel } from "@/src/domain/access";
+import { ACCESS_COMMUNICATION, accessLabel } from "@/src/domain/access";
 import { ForgotPasswordPage, LandingPage, LoginPage, SignupPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
 import { AiPrivacyPage, CookiesPage, DataDeletionPage, DataPolicyPage, LegalCenterPage, LegalNoticesPage, LegalPrivacyPage, PaymentsPage, PqrPage, PrivacyCenterPage, PrivacyPage, ProviderInfoPage, RetractPage, SecurityPage, TermsPage } from "@/src/features/legal/LegalPages";
 import { CookieConsentProvider } from "@/src/features/legal/CookieConsent";
@@ -23,6 +23,7 @@ import { useUiStore } from "@/src/stores/useUiStore";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { QuickCaptureDrawer, type QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { CTA } from "@/src/lib/cta";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -74,7 +75,7 @@ function ProtectedPlannerApp() {
   const account = useAccount();
   const navigate = useNavigate();
   const routeLocation = useBrowserRouteLocation();
-  const planner = usePlanner();
+  const planner = usePlanner(account.access);
   const mounted = useMounted();
   const [quickCapture, setQuickCapture] = useState<QuickCaptureDefaults | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -134,7 +135,8 @@ function ProtectedPlannerApp() {
   const needsLegalAcceptance = account.user.legalVersion !== LEGAL_VERSION || !account.user.termsAcceptedAt || !account.user.dataProcessingAcceptedAt || !account.user.adultDeclaredAt;
   if (needsLegalAcceptance) return <LegalAcceptanceGate />;
   if (account.access.accessStatus === "expired" || account.access.accessStatus === "blocked") {
-    return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>{account.access.accessStatus === "blocked" ? "Este acceso necesita revisión." : "Tu prueba de 15 días terminó."}</h1><p>{account.access.accessStatus === "blocked" ? "Contacta al equipo de soporte para revisar el estado de la cuenta." : "Tus datos locales permanecen en este dispositivo. Puedes continuar con Premium cuando estés lista."}</p><div><Link className="button button--primary" to="/upgrade">Ver Premium</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
+    const blocked = account.access.accessStatus === "blocked";
+    return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>{blocked ? "Este acceso necesita revisión." : ACCESS_COMMUNICATION.expired.title}</h1><p>{blocked ? "Contacta al equipo de soporte para revisar el estado de la cuenta. Tu información local permanece en este dispositivo." : ACCESS_COMMUNICATION.expired.note}</p><div><Link className="button button--primary" to={blocked ? "/pqr" : "/upgrade"}>{blocked ? "Contactar soporte" : CTA.paywall.label}</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
   }
 
   if (!mounted || planner.loading) {
@@ -198,15 +200,15 @@ function ProtectedPlannerApp() {
             <Route path="/app/planning/monthly" element={<Navigate to="/app/planning" replace />} />
             <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} access={account.access} initialView="week" onQuickCapture={openQuickCapture} />} />
             <Route path="/app/today" element={<TodayPage planner={planner} onQuickCapture={openQuickCapture} onNeedHelp={() => { setHelpMode(null); setHelpOpen(true); }} />} />
-            <Route path="/app/tasks" element={<TasksPage planner={planner} onQuickCapture={openQuickCapture} />} />
-            <Route path="/app/habits" element={<HabitsErrorBoundary><HabitsPage planner={planner} /></HabitsErrorBoundary>} />
+            <Route path="/app/tasks" element={<TasksPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
+            <Route path="/app/habits" element={<HabitsErrorBoundary><HabitsPage planner={planner} access={account.access} /></HabitsErrorBoundary>} />
             <Route path="/app/challenges" element={<Navigate to="/app/life-hub?tab=challenges" replace />} />
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
-            <Route path="/app/life-hub" element={<LifeHubPage planner={planner} onQuickCapture={openQuickCapture} />} />
+            <Route path="/app/life-hub" element={<LifeHubPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/health" element={<FitnessPage planner={planner} />} />
             <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
-            <Route path="/app/goals" element={<GoalsPage planner={planner} />} />
+            <Route path="/app/goals" element={<GoalsPage planner={planner} access={account.access} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} onLocalDataCleared={() => setLocallyClearedAccountId(accountUserId ?? null)} />} />
@@ -225,7 +227,7 @@ function ProtectedPlannerApp() {
         </Suspense>
       </AppShell>
       <GuidedTutorial replayNonce={tutorialReplayNonce} onComplete={() => account.updatePreferences({ tutorialCompleted: true })} />
-      <QuickCaptureDrawer open={Boolean(quickCapture)} defaults={quickCapture ?? { source: "global" }} planner={planner} onClose={() => setQuickCapture(null)} />
+      <QuickCaptureDrawer open={Boolean(quickCapture)} defaults={quickCapture ?? { source: "global" }} planner={planner} access={account.access} onClose={() => setQuickCapture(null)} />
       <Modal open={helpOpen} title="¿Qué necesitas ahora?" description="Elige lo que se parece más a este momento. Te mostraremos un paso breve." onClose={() => setHelpOpen(false)}>
         {!helpMode ? <div className="unblock-options"><Button variant="secondary" onClick={() => setHelpMode("overwhelmed")}>Estoy abrumada</Button><Button variant="secondary" onClick={() => setHelpMode("start")}>No sé empezar</Button><Button variant="secondary" onClick={() => setHelpMode("energy")}>Tengo poca energía</Button><Link className="button button--ghost" to="/app/help" onClick={() => setHelpOpen(false)}>Ver todas las herramientas</Link></div> : <div className="minimum-mode"><p className="eyebrow">{helpMode === "energy" ? "Modo mínimo" : "Desbloquearme"}</p><h2>{helpMode === "overwhelmed" ? "Reduce el campo de visión" : helpMode === "start" ? "Haz visible el primer movimiento" : "Hoy también cuenta en pequeño"}</h2><ol><li>{helpMode === "overwhelmed" ? "Elige solo una de tus tres prioridades." : helpMode === "start" ? "Abre la tarea y escribe el primer verbo." : "Elige una tarea de menos de 10 minutos."}</li><li>Pon un temporizador de 10 minutos.</li><li>Al terminar, decide con calma si continúas o paras.</li></ol><Link className="button button--primary" to="/app/today" onClick={() => setHelpOpen(false)}>Ver mi próximo paso</Link></div>}
       </Modal>

@@ -115,7 +115,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         <div className="wheel-layout">
           <Card className="wheel-chart-card">
             <div className="wheel-legend"><span><i className="legend-dot legend-dot--taupe" /> Actual</span><span><i className="legend-dot legend-dot--rose" /> Deseada</span></div>
-            <div className="wheel-chart" aria-label="Rueda de vida actual y deseada">
+            <div className="wheel-chart" role="img" aria-label="Rueda de vida: comparación entre la valoración actual y la deseada por área">
               <ResponsiveContainer width="100%" height={460}>
                 <RadarChart data={radarData} outerRadius="72%">
                   <PolarGrid stroke="var(--color-border)" />

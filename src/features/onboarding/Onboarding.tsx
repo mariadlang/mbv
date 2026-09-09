@@ -9,6 +9,7 @@ import { Button, Card } from "@/src/components/ui/Primitives";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { analyticsService } from "@/src/services/analyticsService";
 import { BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
+import { CTA } from "@/src/lib/cta";
 
 type OnboardingFocus = "today" | "goal" | "week" | "habit";
 
@@ -75,6 +76,8 @@ export function Onboarding({ planner, onCompleted, defaultName }: { planner: Pla
     setSaving(true);
     try {
       await planner.completeOnboarding({ ...profile.data, selectedAreaNames: [], priorities: [], ...outcome.data });
+      analyticsService.track("first_outcome_created", { source: "onboarding", view: focus, version: 2 }, "onboarding-outcome:v2");
+      analyticsService.track("first_action_created", { source: "onboarding", view: focus, result: "connected", version: 2 }, "first:v2");
       await onCompleted();
       navigate("/app/today", { replace: true });
     } catch {
@@ -87,13 +90,13 @@ export function Onboarding({ planner, onCompleted, defaultName }: { planner: Pla
     return <main className="splash-page">
       <div className="splash-orb splash-orb--one" /><div className="splash-orb splash-orb--two" />
       <section className="splash-content">
-        <BrandMark />
+        <BrandMark compact />
         <p className="eyebrow">MY BEST VERSION</p>
         <h1>{BRAND_SLOGAN}</h1>
         <div className="splash-divider"><span /><Heart size={17} /><span /></div>
         <p>{BRAND_PROMISE}</p>
         <div className="splash-illustration splash-logo-illustration" aria-label="Logo oficial de My Best Version"><BrandMark iconOnly /></div>
-        <Button onClick={() => { analyticsService.track("onboarding_started", { source: "welcome" }, "onboarding-started"); setStage(1); }}>Crear mi primera acción <ArrowRight size={18} /></Button>
+        <Button onClick={() => { analyticsService.track(CTA.firstAccess.event, { source: "welcome", version: 2 }, "onboarding-started:v2"); setStage(1); }}>{CTA.firstAccess.label} <ArrowRight size={18} /></Button>
         <span className="signed-session"><Check size={14} /> Tus datos se guardan localmente en este dispositivo</span>
         <input ref={fileRef} className="sr-only" type="file" accept="application/json" onChange={(event) => importBackup(event.target.files?.[0])} />
         <button className="splash-import" onClick={() => fileRef.current?.click()}><FileUp size={14} /> Ya tengo un respaldo</button>
@@ -109,7 +112,7 @@ export function Onboarding({ planner, onCompleted, defaultName }: { planner: Pla
     </header>
     <div className="onboarding-progress"><span style={{ width: `${stage / 4 * 100}%` }} /></div>
     <section className="onboarding-panel onboarding-panel--reference">
-      {stage === 1 && <><span className="onboarding-symbol"><Sparkles size={24} /></span><h1>¿Qué te gustaría <em>organizar primero?</em></h1><p>Elige un punto de partida. Las demás herramientas seguirán disponibles cuando las necesites.</p><div className="onboarding-focus-grid" role="radiogroup" aria-label="Qué organizar primero">{focusOptions.map(({ id, title, copy, Icon }) => <button type="button" role="radio" aria-checked={focus === id} className={focus === id ? "is-selected" : ""} onClick={() => setFocus(id)} key={id}><span className="area-check">{focus === id && <Check size={14} />}</span><Icon size={24} /><strong>{title}</strong><small>{copy}</small></button>)}</div><Button className="onboarding-primary" onClick={() => setStage(2)}>Continuar</Button></>}
+      {stage === 1 && <><span className="onboarding-symbol"><Sparkles size={24} /></span><h1>¿Qué te gustaría <em>organizar primero?</em></h1><p>Elige un punto de partida. Las demás herramientas seguirán disponibles cuando las necesites.</p><div className="onboarding-focus-grid" role="radiogroup" aria-label="Qué organizar primero">{focusOptions.map(({ id, title, copy, Icon }) => <button type="button" role="radio" aria-checked={focus === id} className={focus === id ? "is-selected" : ""} onClick={() => setFocus(id)} key={id}><span className="area-check">{focus === id && <Check size={14} />}</span><Icon size={24} /><strong>{title}</strong><small>{copy}</small></button>)}</div><Button className="onboarding-primary" onClick={() => { analyticsService.track("onboarding_focus_selected", { source: "onboarding", view: focus, version: 2 }, "focus-selected:v2"); setStage(2); }}>Continuar</Button></>}
 
       {stage === 2 && <><span className="onboarding-symbol"><Target size={24} /></span><h1>{resultCopy[focus].title}</h1><p>{resultCopy[focus].description}</p><label className="form-field onboarding-wide-field"><span>Resultado</span><input value={result} onChange={(event) => setResult(event.target.value)} placeholder={resultCopy[focus].placeholder} /></label>{formError && <p className="form-error" role="alert">{formError}</p>}<Button className="onboarding-primary" onClick={continueFromResult}>Continuar</Button></>}
 

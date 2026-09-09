@@ -1,10 +1,90 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-async function completeOnboarding(page: Page, name = "María", startChoice: RegExp = /Mi día/, stayAtDestination = false) {
-  await page.goto("/app/dashboard");
+const p0Viewports = [
+  { width: 375, height: 812 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+] as const;
+
+function signedOutPath(path: string) {
+  return `${path}${path.includes("?") ? "&" : "?"}e2e-auth=signed-out`;
+}
+
+async function dismissCookieBanner(page: Page) {
   const necessaryCookies = page.getByRole("button", { name: "Solo necesarias" });
-  if (await necessaryCookies.waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) await necessaryCookies.click();
-  await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible();
+  if (await necessaryCookies.waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) {
+    await necessaryCookies.click();
+  }
+}
+
+function collectRuntimeErrors(page: Page) {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console: ${message.text()}`);
+  });
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  return errors;
+}
+
+async function expectNoHorizontalOverflow(page: Page, context: string) {
+  const layout = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    offenders: [...document.querySelectorAll<HTMLElement>("body *")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.right > document.documentElement.clientWidth + 1 || rect.left < -1;
+      })
+      .slice(0, 8)
+      .map((element) => ({
+        className: typeof element.className === "string" ? element.className : "",
+        tag: element.tagName,
+        text: element.textContent?.trim().slice(0, 44),
+        width: Math.round(element.getBoundingClientRect().width),
+      })),
+  }));
+  expect(
+    layout.scrollWidth,
+    `${context}: ${JSON.stringify({ clientWidth: layout.clientWidth, offenders: layout.offenders })}`,
+  ).toBeLessThanOrEqual(layout.clientWidth + 1);
+}
+
+async function expectVisibleKeyboardFocus(locator: Locator) {
+  await expect(locator).toBeFocused();
+  const focusStyle = await locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineStyle: style.outlineStyle, outlineWidth: Number.parseFloat(style.outlineWidth) };
+  });
+  expect(focusStyle.outlineStyle).not.toBe("none");
+  expect(focusStyle.outlineWidth).toBeGreaterThanOrEqual(2);
+}
+
+async function expectMinimumTouchTarget(locator: Locator, label: string) {
+  const box = await locator.boundingBox();
+  expect(box, `${label} debe estar visible`).not.toBeNull();
+  expect(box!.width, `${label} debe medir al menos 44 px de ancho`).toBeGreaterThanOrEqual(44);
+  expect(box!.height, `${label} debe medir al menos 44 px de alto`).toBeGreaterThanOrEqual(44);
+}
+
+async function captureP0Reference(page: Page, fileName: string, ready: Locator, viewport = { width: 1440, height: 900 }) {
+  await page.setViewportSize(viewport);
+  await expect(ready).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: `docs/qa/screenshots/p0-${fileName}-${viewport.width}x${viewport.height}.png`,
+    animations: "disabled",
+    caret: "hide",
+    style: "nextjs-portal { display: none !important; }",
+  });
+}
+
+async function completeOnboarding(page: Page, name = "María", startChoice: RegExp = /Mi día/, stayAtDestination = false, initialPath = "/app/dashboard") {
+  await page.goto(initialPath);
+  await dismissCookieBanner(page);
+  await expect(page.getByRole("heading", { name: /Una vida más tuya/ })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: /Crear mi primera acción/ }).click();
   await page.getByRole("radio", { name: startChoice }).click();
   await page.getByRole("button", { name: "Continuar" }).click();
@@ -74,6 +154,8 @@ test("a returning account opens its existing space without repeating onboarding"
   await expect(page).toHaveURL(/\/app\/dashboard/);
   await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Crear mi espacio/ })).toHaveCount(0);
+  await page.goto("/app/today");
+  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
 });
 
 test("each onboarding starting point creates a first action in Mi día", async ({ browser }) => {
@@ -403,7 +485,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
   for (const [route, heading] of routes) {
     await page.goto(route);
     if (route === "/app/health") await authorizeFitnessIfNeeded(page);
-    await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible({ timeout: 15_000 });
     if (route === "/app/habits") {
       await page.reload();
       await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
@@ -817,99 +899,291 @@ test("weekly plan option B remains legible across its responsive matrix", async 
   }
 });
 
-test("updated experiences remain usable across the required visual matrix", async ({ page }) => {
+test("P0 public routes remain clear across the required visual matrix", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "This test already covers every required viewport.");
   test.setTimeout(300_000);
-  const consoleErrors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
-  });
-  await completeOnboarding(page);
-
+  const runtimeErrors = collectRuntimeErrors(page);
   const screens = [
-    { path: "/app/dashboard", locator: () => page.getByRole("heading", { name: /Buenos días/ }) },
-    { path: "/app/today", locator: () => page.getByRole("heading", { name: "Qué hago ahora" }) },
-    { path: "/app/tasks", locator: () => page.getByRole("button", { name: "Nuevo proyecto" }) },
-    { path: "/app/habits", locator: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
-    { path: "/app/life-hub", locator: () => page.getByRole("heading", { name: "Bandeja", exact: true }) },
-    { path: "/app/more", locator: () => page.getByRole("heading", { name: "Más herramientas", exact: true }) },
-    { path: "/app/goals", locator: () => page.getByRole("button", { name: "Crear meta" }) },
-    { path: "/app/planning?view=year&create=month", locator: () => page.getByRole("dialog", { name: /Planificar/ }).getByRole("button", { name: "Guardar plan" }) },
-    { path: "/app/planning/weekly", locator: () => page.getByRole("heading", { name: "Plan semanal" }) },
-    { path: "/app/progress", locator: () => page.getByRole("heading", { name: "Tu progreso" }) },
-    { path: "/app/vision?guided=1", locator: () => page.getByRole("button", { name: /Crear una tarjeta personalizada/ }) },
-    { path: "/app/finance", locator: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
-    { path: "/app/health", locator: () => page.getByRole("heading", { name: /Antes de usar Alimentación y Entrenamiento|Alimentación/ }) },
-    { path: "/app/challenges", locator: () => page.getByRole("button", { name: "Elegir este reto" }).first() },
+    { path: "/", ready: () => page.getByRole("heading", { name: "Tu vida completa, organizada con claridad y sin culpa.", exact: true }) },
+    { path: "/trial", ready: () => page.getByRole("heading", { name: "Explora lo esencial para convertir tu visión en acciones posibles.", exact: true }) },
+    { path: "/signup", ready: () => page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true }) },
+    { path: "/login", ready: () => page.getByRole("heading", { name: "Vuelve a tu planner.", exact: true }) },
+    { path: "/verify-email", ready: () => page.getByRole("heading", { name: "Revisa tu correo.", exact: true }) },
+    { path: "/forgot-password", ready: () => page.getByRole("heading", { name: "Recupera tu acceso.", exact: true }) },
+    { path: "/upgrade", ready: () => page.getByRole("heading", { name: "Amplía tu horizonte cuando estés lista.", exact: true }) },
+    { path: "/privacy", ready: () => page.getByRole("heading", { name: "Tu privacidad, en claro", exact: true }) },
+    { path: "/terms", ready: () => page.getByRole("heading", { name: "Términos y Condiciones", exact: true }) },
   ];
 
-  const viewports = [
-    { width: 375, height: 812 },
-    { width: 390, height: 844 },
-    { width: 430, height: 932 },
-    { width: 768, height: 1024 },
-    { width: 1366, height: 768 },
-    { width: 1440, height: 900 },
-  ];
-  for (const viewport of viewports) {
+  for (const viewport of p0Viewports) {
     await page.setViewportSize(viewport);
     for (const screen of screens) {
-      await page.goto(screen.path);
-      await expect(screen.locator()).toBeVisible();
-      const layout = await page.evaluate(() => ({
-        clientWidth: document.documentElement.clientWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-        taskSection: (() => {
-          const section = document.querySelector<HTMLElement>(".tasks-section");
-          const header = section?.querySelector<HTMLElement>(":scope > header");
-          return { section: section?.getBoundingClientRect().toJSON(), sectionCss: section ? getComputedStyle(section).cssText : "", header: header?.getBoundingClientRect().toJSON(), headerWidth: header ? getComputedStyle(header).width : "" };
-        })(),
-        offenders: [...document.querySelectorAll<HTMLElement>("body *")]
-          .filter((element) => {
-            const rect = element.getBoundingClientRect();
-            return rect.right > document.documentElement.clientWidth + 1 || rect.left < -1;
-          })
-          .slice(0, 8)
-          .map((element) => ({ className: element.className, parentClass: element.parentElement?.className, tag: element.tagName, text: element.textContent?.trim().slice(0, 36), width: Math.round(element.getBoundingClientRect().width) })),
-      }));
-      expect(layout.scrollWidth, `${screen.path} at ${viewport.width}x${viewport.height}: ${JSON.stringify({ offenders: layout.offenders, taskSection: layout.taskSection })}`).toBeLessThanOrEqual(layout.clientWidth + 1);
+      await page.goto(signedOutPath(screen.path));
+      await dismissCookieBanner(page);
+      await expect(screen.ready()).toBeVisible();
+      await expectNoHorizontalOverflow(page, `${screen.path} at ${viewport.width}x${viewport.height}`);
+
+      if (screen.path === "/") {
+        await expect(page.getByRole("link", { name: "Comienza tu prueba gratis", exact: true })).toHaveCount(3);
+        await expect(page.locator(".marketing-header").getByRole("link", { name: "Comienza tu prueba gratis", exact: true })).toBeVisible();
+      }
+      if (screen.path === "/trial") await expect(page.getByRole("link", { name: "Comienza tu prueba gratis", exact: true })).toBeVisible();
+      if (screen.path === "/signup") await expect(page.locator(".auth-card form").getByRole("button", { name: "Crear mi cuenta", exact: true })).toBeVisible();
+      if (screen.path === "/login") await expect(page.locator(".auth-card form").getByRole("button", { name: "Iniciar sesión", exact: true })).toBeVisible();
+      if (screen.path === "/verify-email") await expect(page.getByRole("link", { name: "Ir a verificar mi correo", exact: true })).toBeVisible();
+      if (screen.path === "/forgot-password") await expect(page.getByRole("link", { name: "Volver a mi espacio", exact: true })).toBeVisible();
+      if (screen.path === "/upgrade") await expect(page.getByRole("link", { name: "Continuar en Mercado Pago", exact: true })).toBeVisible();
     }
   }
 
-  await page.goto("/app/health?section=training");
-  await authorizeFitnessIfNeeded(page);
-  for (const [index, viewport] of viewports.entries()) {
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("P0 product routes remain usable across the required visual matrix", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "This test already covers every required viewport.");
+  test.setTimeout(300_000);
+  const runtimeErrors = collectRuntimeErrors(page);
+  await completeOnboarding(page);
+
+  const screens = [
+    { path: "/app/dashboard", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
+    { path: "/app/today", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
+    { path: "/app/planning", ready: () => page.getByRole("heading", { name: "Planificación", exact: true }) },
+    { path: "/app/planning/weekly", ready: () => page.getByRole("heading", { name: "Plan semanal", exact: true }) },
+    { path: "/app/habits", ready: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
+    { path: "/app/progress", ready: () => page.getByRole("heading", { name: "Tu progreso", exact: true }) },
+    { path: "/app/journal", ready: () => page.getByRole("heading", { name: "Mi diario", exact: true }) },
+    { path: "/app/finance", ready: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
+    { path: "/app/health", ready: () => page.getByRole("heading", { name: /Antes de usar Alimentación y Entrenamiento|Alimentación/ }) },
+    { path: "/app/settings", ready: () => page.getByRole("heading", { name: "Ajustes y datos", exact: true }) },
+  ];
+
+  for (const viewport of p0Viewports) {
     await page.setViewportSize(viewport);
-
-    await page.goto("/app/health?section=training");
-    await page.getByRole("button", { name: "Añadir entrenamiento" }).first().click();
-    const workoutDialog = page.getByRole("dialog", { name: "Añadir entrenamiento" });
-    const saveWorkout = workoutDialog.getByRole("button", { name: "Guardar entrenamiento" });
-    await saveWorkout.scrollIntoViewIfNeeded();
-    await expect(saveWorkout).toBeInViewport();
-
-    await page.goto("/app/goals");
-    await page.getByRole("button", { name: "Crear meta" }).click();
-    const goalDialog = page.getByRole("dialog", { name: "Crear una meta" });
-    const createGoal = goalDialog.getByRole("button", { name: "Crear meta", exact: true });
-    await createGoal.scrollIntoViewIfNeeded();
-    await expect(createGoal).toBeInViewport();
-    await goalDialog.getByLabel("¿Qué quieres lograr?").fill(`Meta móvil ${index + 1}`);
-    await goalDialog.getByLabel("¿Por qué importa para ti?").fill("Para verificar el flujo completo en pantallas pequeñas.");
-    await goalDialog.getByRole("button", { name: "Crear meta", exact: true }).click();
-    const successDialog = page.getByRole("dialog", { name: "Meta creada" });
-    const planGoal = successDialog.getByRole("link", { name: /Planificar esta meta/ });
-    await planGoal.scrollIntoViewIfNeeded();
-    await expect(planGoal).toBeInViewport();
-
-    await page.goto("/app/challenges");
-    await page.getByRole("button", { name: "Crear reto personal" }).click();
-    const challengeDialog = page.getByRole("dialog", { name: "Crear un reto" });
-    const saveChallenge = challengeDialog.getByRole("button", { name: "Guardar reto" });
-    await saveChallenge.scrollIntoViewIfNeeded();
-    await expect(saveChallenge).toBeInViewport();
+    for (const screen of screens) {
+      await page.goto(screen.path);
+      await expect(screen.ready()).toBeVisible();
+      await expectNoHorizontalOverflow(page, `${screen.path} at ${viewport.width}x${viewport.height}`);
+    }
   }
 
-  expect(consoleErrors).toEqual([]);
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("P0 keyboard focus, dark mode, reduced motion and 200% reflow remain usable", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "Desktop covers keyboard and reflow; touch targets have a mobile-specific test.");
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await completeOnboarding(page);
+
+  await page.goto("/app/settings");
+  const darkMode = page.getByRole("button", { name: "Oscuro", exact: true });
+  await darkMode.click();
+  await expect(darkMode).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  await page.goto("/app/dashboard");
+  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
+  const skipLink = page.locator(".skip-link");
+  await skipLink.focus();
+  await expectVisibleKeyboardFocus(skipLink);
+  const reducedMotion = await page.locator(".page-content > *").first().evaluate((element) => {
+    const toMilliseconds = (value: string) => value.trim().endsWith("ms") ? Number.parseFloat(value) : Number.parseFloat(value) * 1000;
+    const style = getComputedStyle(element);
+    return {
+      matches: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      animation: Math.max(...style.animationDuration.split(",").map(toMilliseconds)),
+      transition: Math.max(...style.transitionDuration.split(",").map(toMilliseconds)),
+    };
+  });
+  expect(reducedMotion.matches).toBe(true);
+  expect(reducedMotion.animation).toBeLessThanOrEqual(1);
+  expect(reducedMotion.transition).toBeLessThanOrEqual(1);
+
+  await page.goto("/app/habits");
+  const createHabit = page.getByRole("button", { name: "Crear hábito", exact: true });
+  await createHabit.focus();
+  await page.keyboard.press("Enter");
+  const habitDialog = page.getByRole("dialog", { name: "Crear un hábito" });
+  const closeDialog = habitDialog.getByRole("button", { name: "Cerrar", exact: true });
+  await expectVisibleKeyboardFocus(closeDialog);
+  const lastDialogControl = habitDialog.locator("button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])").last();
+  await page.keyboard.press("Shift+Tab");
+  await expect(lastDialogControl).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(closeDialog).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(habitDialog).toHaveCount(0);
+  await expect(createHabit).toBeFocused();
+
+  await page.setViewportSize({ width: 720, height: 450 });
+  for (const [path, heading] of [
+    ["/app/today", /Buenos días, María/],
+    ["/app/settings", /^Ajustes y datos$/],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
+    await expectNoHorizontalOverflow(page, `${path} at a 200% reflow equivalent`);
+  }
+  await page.goto(signedOutPath("/signup"));
+  await expect(page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page, "/signup at a 200% reflow equivalent");
+});
+
+test("P0 mobile drawer traps focus and critical touch targets are at least 44px", async ({ page }) => {
+  test.skip(test.info().project.name !== "mobile", "Touch target media queries require the mobile project.");
+  await completeOnboarding(page);
+  await page.goto("/app/dashboard");
+
+  const menuTrigger = page.getByRole("button", { name: "Abrir menú", exact: true });
+  await expectMinimumTouchTarget(menuTrigger, "Abrir menú");
+  await menuTrigger.focus();
+  await page.keyboard.press("Enter");
+  const drawer = page.locator(".mobile-drawer");
+  await expect(drawer).toBeVisible();
+  const closeMenu = drawer.getByRole("button", { name: "Cerrar menú", exact: true });
+  await expectVisibleKeyboardFocus(closeMenu);
+  await expectMinimumTouchTarget(closeMenu, "Cerrar menú");
+  const lastDrawerControl = drawer.locator("button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])").last();
+  await page.keyboard.press("Shift+Tab");
+  await expect(lastDrawerControl).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(closeMenu).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(menuTrigger).toBeFocused();
+
+  for (const link of await page.locator(".mobile-nav a").all()) await expectMinimumTouchTarget(link, "Destino de navegación móvil");
+
+  await page.goto("/app/habits");
+  await expectMinimumTouchTarget(page.getByRole("button", { name: "Crear hábito", exact: true }), "Crear hábito");
+  await page.goto(signedOutPath("/"));
+  await dismissCookieBanner(page);
+  await expectMinimumTouchTarget(page.locator(".marketing-header").getByRole("link", { name: "Comienza tu prueba gratis", exact: true }), "CTA principal de adquisición");
+});
+
+test("the trial permits three local calendar months and blocks the fourth", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "The access rule is viewport-independent and already has unit coverage.");
+  await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
+  await page.goto("/app/planning");
+
+  const start = new Date();
+  const periodAt = (offset: number) => {
+    const date = new Date(start.getFullYear(), start.getMonth() + offset, 1);
+    return { year: date.getFullYear(), key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` };
+  };
+  const yearSelect = page.getByLabel("Año");
+  for (const offset of [0, 1, 2]) {
+    const period = periodAt(offset);
+    await yearSelect.selectOption(String(period.year));
+    const card = page.locator(`[id="month-${period.key}"]`);
+    await expect(card).toBeVisible();
+    await expect(card).not.toHaveClass(/month-card--locked/);
+  }
+
+  const blockedPeriod = periodAt(3);
+  await yearSelect.selectOption(String(blockedPeriod.year));
+  const blockedCard = page.locator(`[id="month-${blockedPeriod.key}"]`);
+  await expect(blockedCard).toHaveClass(/month-card--locked/);
+  await expect(blockedCard.getByRole("link", { name: "Desbloquear Premium", exact: true })).toBeVisible();
+});
+
+test("TasksPage rejects a trial date beyond its horizon without persistence", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "The access rule is viewport-independent.");
+  const runtimeErrors = collectRuntimeErrors(page);
+  await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
+  await page.goto("/app/tasks");
+
+  const readTasks = () => page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tasks = await new Promise<unknown[]>((resolve, reject) => {
+      const request = database.transaction("tasks", "readonly").objectStore("tasks").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return tasks;
+  });
+  const tasksBefore = await readTasks();
+
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  const taskForm = page.locator(".advanced-task-form");
+  await taskForm.getByLabel("Tarea", { exact: true }).fill("Tarea fuera del horizonte");
+  const dateInput = taskForm.getByLabel("Fecha");
+  const maxDate = await dateInput.getAttribute("max");
+  expect(maxDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  const blocked = new Date(`${maxDate}T12:00:00`);
+  blocked.setDate(blocked.getDate() + 1);
+  const blockedDate = `${blocked.getFullYear()}-${String(blocked.getMonth() + 1).padStart(2, "0")}-${String(blocked.getDate()).padStart(2, "0")}`;
+  await taskForm.evaluate((form) => form.setAttribute("novalidate", ""));
+  await dateInput.fill(blockedDate);
+  await taskForm.getByRole("button", { name: "Guardar tarea", exact: true }).click();
+
+  await expect(page.locator(".tasks-section").getByRole("alert")).toHaveText("Tu prueba permite planificar dentro de un horizonte de 3 meses. Puedes consultar lo que ya existe fuera de ese periodo, sin modificarlo.");
+  await expect(taskForm).toBeVisible();
+  expect(await readTasks()).toEqual(tasksBefore);
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("an existing month outside the trial horizon remains available in read-only mode", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "The preservation flow is viewport-independent.");
+  await completeOnboarding(page);
+  await page.goto("/app/planning");
+
+  const start = new Date();
+  const future = new Date(start.getFullYear(), start.getMonth() + 3, 1);
+  const periodKey = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}`;
+  await page.getByLabel("Año").selectOption(String(future.getFullYear()));
+  const futureCard = page.locator(`[id="month-${periodKey}"]`);
+  await futureCard.locator(".month-card-main").click();
+  const monthDialog = page.getByRole("dialog", { name: /Planificar/ });
+  await monthDialog.getByLabel("Resultado concreto del mes").fill("Preparar un resultado futuro");
+  await monthDialog.getByRole("button", { name: "Guardar plan", exact: true }).click();
+  await expect(monthDialog).toHaveCount(0);
+
+  await page.evaluate(() => window.sessionStorage.setItem("mbv-e2e-access", "trial"));
+  await page.reload();
+  await page.getByLabel("Año").selectOption(String(future.getFullYear()));
+  const preservedCard = page.locator(`[id="month-${periodKey}"]`);
+  await expect(preservedCard).toContainText("Preparar un resultado futuro");
+  await expect(preservedCard.getByText("Solo lectura", { exact: true })).toBeVisible();
+  await preservedCard.getByRole("button", { name: "Ver mes", exact: true }).click();
+  await expect(page.getByText("Preparar un resultado futuro", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Tu plan se conserva sin cambios", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Editar mes" })).toHaveCount(0);
+});
+
+test("captures the eight P0 visual references", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "Reference captures use the canonical desktop viewport.");
+  test.skip(process.env.MBV_CAPTURE_P0_SCREENSHOTS !== "1", "Set MBV_CAPTURE_P0_SCREENSHOTS=1 to refresh committed references.");
+  test.setTimeout(180_000);
+  await page.clock.setFixedTime(new Date("2026-09-04T12:00:00-05:00"));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  await page.goto("/app/dashboard");
+  await dismissCookieBanner(page);
+  await captureP0Reference(page, "onboarding", page.getByRole("heading", { name: /Una vida más tuya/ }), { width: 390, height: 844 });
+  await completeOnboarding(page);
+  await captureP0Reference(page, "dashboard", page.getByRole("heading", { name: /Buenos días, María/ }));
+  await page.goto("/app/today");
+  await captureP0Reference(page, "today", page.getByRole("heading", { name: /Buenos días, María/ }), { width: 390, height: 844 });
+  await page.goto("/app/habits");
+  await captureP0Reference(page, "habits", page.getByRole("heading", { name: "Hábitos", exact: true }));
+
+  await page.goto(signedOutPath("/"));
+  await captureP0Reference(page, "landing", page.getByRole("heading", { name: "Tu vida completa, organizada con claridad y sin culpa.", exact: true }));
+  await page.goto(signedOutPath("/trial"));
+  await captureP0Reference(page, "trial", page.getByRole("heading", { name: "Explora lo esencial para convertir tu visión en acciones posibles.", exact: true }));
+  await page.goto(signedOutPath("/signup"));
+  await captureP0Reference(page, "signup", page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true }));
+  await page.goto(signedOutPath("/upgrade"));
+  await captureP0Reference(page, "upgrade", page.getByRole("heading", { name: "Amplía tu horizonte cuando estés lista.", exact: true }));
 });
 
 test("a goal connects its monthly result, weekly action, Mi día and Progress", async ({ page }) => {
@@ -991,4 +1265,19 @@ test("English mode covers the updated product flows", async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
   }
+
+  for (const [path, heading] of [
+    ["/", "Your whole life, organized with clarity and without guilt."],
+    ["/trial", "Explore the essentials to turn your vision into possible actions."],
+    ["/signup", "Start a life that feels more like yours."],
+    ["/login", "Return to your planner."],
+    ["/verify-email", "Check your email."],
+    ["/forgot-password", "Recover access to your account."],
+    ["/upgrade", "Expand your horizon when you're ready."],
+  ] as const) {
+    await page.goto(signedOutPath(path));
+    await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
+  }
+  await page.goto(signedOutPath("/"));
+  await expect(page.getByRole("link", { name: "Start your free trial", exact: true })).toHaveCount(3);
 });

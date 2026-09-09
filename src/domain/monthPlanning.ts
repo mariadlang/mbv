@@ -1,10 +1,15 @@
-import type { CascadePlan } from "@/src/domain/planner";
+import type { CascadePlan, PlannerEvent, Task } from "@/src/domain/planner";
 
 export interface YearMonthSlot {
   monthIndex: number;
   periodKey: string;
   plan?: CascadePlan;
   isCurrent: boolean;
+}
+
+export interface MonthPlanEntries {
+  actions: Array<{ id: string; title: string; date?: string }>;
+  events: Array<{ id: string; title: string; date: string }>;
 }
 
 export function monthPeriodKey(year: number, monthIndex: number) {
@@ -27,6 +32,32 @@ export function buildYearMonthSlots(year: number, plans: CascadePlan[], today = 
       isCurrent: year === today.getFullYear() && monthIndex === today.getMonth(),
     };
   });
+}
+
+export function collectMonthPlanEntries(plan: CascadePlan, tasks: Task[], events: PlannerEvent[]): MonthPlanEntries {
+  const linkedActions = tasks
+    .filter((task) => task.periodPlanId === plan.id && task.status !== "cancelled")
+    .map((task) => ({ id: task.id, title: task.title, date: task.date }));
+  const linkedActionTitles = new Set(linkedActions.map((action) => action.title.trim().toLocaleLowerCase()));
+  const calendarEvents = events
+    .filter((event) => event.startDate.startsWith(plan.periodKey))
+    .map((event) => ({ id: event.id, title: event.title, date: event.startDate }));
+  const calendarEventKeys = new Set(calendarEvents.map((event) => `${event.title.trim().toLocaleLowerCase()}::${event.date}`));
+
+  return {
+    actions: [
+      ...linkedActions,
+      ...plan.activities
+        .filter((activity) => activity.type !== "event" && !linkedActionTitles.has(activity.title.trim().toLocaleLowerCase()))
+        .map((activity) => ({ id: activity.id, title: activity.title, date: activity.date })),
+    ],
+    events: [
+      ...calendarEvents,
+      ...plan.activities
+        .filter((activity) => activity.type === "event" && !calendarEventKeys.has(`${activity.title.trim().toLocaleLowerCase()}::${activity.date ?? ""}`))
+        .map((activity) => ({ id: activity.id, title: activity.title, date: activity.date ?? "" })),
+    ],
+  };
 }
 
 export function parseAreaGoals(value?: string): Record<string, string> {

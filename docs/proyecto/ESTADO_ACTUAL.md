@@ -1,17 +1,17 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-07, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-09, America/Bogota (UTC-05:00)**.
 
 ## Punto de continuidad
 
 - Repositorio real: `C:/Users/maria/Documents/Codex/2026-08-10/a-web-app-para-my-best`.
 - Rama: `main`, con upstream `origin/main`.
-- SHA anterior a esta entrega: `b58d8f5c0424ee272e46fabe80f08bb36af29a6f` (`feat: complete action-first planning and habits experience`).
-- `main` y `origin/main`: alineados al preparar la entrega del 2026-09-07.
-- Historial: completo/no superficial, 61 commits alcanzables, dos raíces históricas y sin tags.
-- Entrega: los cambios de `MBV-H-020` y `MBV-H-021` se consolidan en `main`, se envían a `origin/main` y se publican en el Site existente el 2026-09-07.
+- SHA anterior a esta entrega: `53221567be90c3dd2b9e9d47e1dce4be19891cd8` (`chore: align Sites build metadata`).
+- `main` y `origin/main`: alineados en `53221567` antes de comenzar los ajustes P0.
+- Historial: completo/no superficial, 63 commits alcanzables desde ese SHA, dos raíces históricas y sin tags.
+- Entrega P0: permanece en el working tree bajo `MBV-H-022`. **Commit, push y despliegue pendientes de verificación.**
 
-Este documento describe el estado consolidado mediante `MBV-H-020` y `MBV-H-021` de [`HISTORIAL.md`](HISTORIAL.md), publicado sobre el Site existente de My Best Version.
+Este documento describe el estado publicado mediante `MBV-H-020` y `MBV-H-021` y el candidato P0 todavía no publicado de `MBV-H-022` en [`HISTORIAL.md`](HISTORIAL.md). No atribuye el working tree al Site existente antes del despliegue.
 
 ## Qué es el producto
 
@@ -32,9 +32,24 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Registro/login con Supabase, además de Google y enlace mágico cuando el proveedor está configurado.
 - Consentimientos obligatorios separados y marketing opcional.
 - Trial de 15 días, estados de acceso y capacidades Premium calculados mediante reglas de dominio y funciones Supabase.
+- Landing y trial reutilizan el CTA “Comienza tu prueba gratis”; el formulario crea una cuenta y el onboarding crea una primera acción.
+- La prueba no requiere tarjeta ni cobro automático, comienza en el primer acceso verificado y limita la edición mensual a un horizonte de tres meses.
 - Onboarding en cuatro pasos que parte de `Mi día`, `Una meta`, `Mi semana` o `Un hábito`, pide un resultado y una primera acción, y aterriza en Mi día.
 - Una cuenta ya establecida recupera un perfil local mínimo si falta y evita repetir el onboarding. Borrar explícitamente los datos locales permite volver al estado inicial.
 - Importación de respaldo disponible desde el onboarding.
+
+### Marca, acceso y activación P0
+
+- La jerarquía verbal se centraliza en `src/lib/brand.ts`: promesa, idea rectora, posicionamiento, mensaje estratégico, slogan y explicación operativa.
+- Metadata y Open Graph usan `mybestversion.life`, la promesa principal y “Una vida más tuya.”; la pieza social ya no incluye un monograma alternativo ni “Planea · Acciona · Logra”.
+- `src/lib/cta.ts` define los CTA principales de adquisición, cuenta, onboarding, acceso, paywall, checkout y recuperación.
+- `src/domain/access.ts` es la fuente reutilizable de trial, capacidades y feature gates. El horizonte se valida para periodos y fechas locales; un plan mensual existente fuera del horizonte se conserva en solo lectura con sus actividades históricas, tareas y eventos enlazados, sin duplicar equivalentes.
+- Feed Hub continúa identificado técnicamente como Premium, pero no se comunica como disponible porque no tiene acceso desde la navegación vigente.
+- Activación v2 requiere onboarding, acción conectada, progreso consciente y segunda sesión dentro de siete días; no exige crear una meta.
+- Onboarding y activación se calculan sobre la cohorte observable de cuentas con eventos v2, no sobre todas las cuentas; esa cohorte no equivale a un registro persistido de consentimiento.
+- La analítica propia se encola sólo con consentimiento, minimiza metadatos y reserva los hitos derivados al servidor. Retirar el consentimiento en otra pestaña detiene la captura y limpia la cola e intenciones de autenticación pendientes.
+- La sesión analítica se comparte entre pestañas y sólo se renueva después de 30 minutos de inactividad cuando vuelve a existir actividad real; el inicio se deduplica por identificador de sesión.
+- El logo temporal continúa siendo `public/brand-icon.svg`; la auditoría confirmó que contiene un PNG y que falta el master vectorial aprobado.
 
 ### Navegación vigente
 
@@ -59,6 +74,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Planificación dispone de vistas año, mes, semana, día y revisión; siempre muestra los doce meses del año elegido.
 - Los planes incluyen horizontes de cinco años/Premium, tres años, mensual y semanal.
 - Un mes puede conservar intención, prioridades, áreas, acciones, eventos, reflexión y procedencia de una meta.
+- El trial aplica el mismo horizonte local de tres meses a creación, asignación y reprogramación desde mes, semana, día y captura rápida; `usePlanner` vuelve a validar la regla antes de persistir.
 - La ruta semanal usa una lista vertical de lunes a domingo con prioridades derivadas de las mismas tareas, creación rápida por día, hábitos recurrentes, edición y cambio de fecha, y un panel de pendientes sin fecha que permite asignar sin duplicar entidades.
 - Brain Dump conserva su conversión idempotente a tarea dentro del panel de pendientes y la revisión semanal se abre en modal sin ocupar espacio permanente.
 - Tareas pueden enlazar meta, proyecto y plan; Top 3 se expresa mediante `focusPriority`.
@@ -95,6 +111,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Centro de privacidad autenticado con consentimientos y solicitudes.
 - Soporte acepta sugerencias, bugs y mensajes de cuenta mediante rutas API autenticadas.
 - Eventos propios usan una taxonomía cerrada y excluyen textos de metas, journal, comidas, salud y finanzas.
+- La taxonomía v2 separa eventos aceptados del navegador de `second_session_started`, `activation_completed` y `payment_confirmed`, reservados al servidor.
 - `/platform` exige superadmin y ofrece métricas, usuarios, tickets, FAQ, categorías y parámetros respaldados por Supabase.
 - Mercado Pago es un enlace externo; volver del checkout no activa Premium.
 
@@ -115,7 +132,7 @@ Feature UI → usePlanner → plannerService → PlannerRepository → Dexie/Ind
 Token de cuenta → rutas API → Supabase
    ├→ soporte/FAQ
    ├→ preferencias de marketing
-   ├→ eventos minimizados
+   ├→ eventos minimizados y consentidos → hitos de activación v2
    └→ plataforma superadmin
 ```
 
@@ -132,11 +149,17 @@ Token de cuenta → rutas API → Supabase
 - `src/repositories/local/IndexedDbPlannerRepository.ts`: Dexie, tablas y transacciones.
 - `src/domain/planner.ts`: entidades y `PlannerSnapshot` esquema 3.
 - `src/domain/`: reglas puras de progreso, fechas, acceso, finanzas, fitness y orientación.
+- `src/lib/brand.ts` y `src/lib/cta.ts`: jerarquía verbal y CTA del funnel.
+- `src/domain/access.ts`: trial, matriz de capacidades y feature gates.
+- `src/domain/monthPlanning.ts`: doce meses, serialización de áreas y composición sin duplicados de actividades, tareas y eventos mensuales.
+- `src/domain/productAnalytics.ts`: taxonomía y evaluación pura de activación v2.
 - `src/hooks/useAccount.tsx` y `src/repositories/supabase/`: cuenta y datos remotos mínimos.
 - `app/api/`: soporte, eventos, marketing y plataforma.
 - `supabase/migrations/`: esquema remoto y políticas RLS.
 - `tests/` y `e2e/app.spec.ts`: pruebas unitarias y recorridos completos.
 - `app/globals.css`: tokens y sistema visual global.
+- `scripts/check-contrast.mjs`: comprobación de contrastes semánticos principales.
+- `docs/brand/`, `docs/product/` y `docs/qa/`: decisiones P0 e informe de release.
 
 ## Tecnologías e integraciones verificadas
 
@@ -162,6 +185,7 @@ pnpm dev
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:contrast
 pnpm build
 pnpm test:e2e
 ```
@@ -179,6 +203,9 @@ pnpm test:e2e
 - Mantener cinco destinos principales en mobile y navegación desktop accesible.
 - Usar español claro, foco visible, nombres accesibles y estados vacíos útiles.
 - Validar imports y formularios con Zod; no registrar contenido sensible en consola o eventos.
+- Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
+- No anunciar Feed Hub como disponible, ni inventar precio, periodicidad o activación automática de Premium.
+- Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
 - No considerar una tarea con cambios completa sin actualizar `HISTORIAL.md` y, si aplica, este archivo.
 
 ## Validación conocida
@@ -198,21 +225,35 @@ En las sesiones del 2026-09-04 al 2026-09-07, sobre el SHA base más las correcc
 
 Estas comprobaciones no demuestran la configuración real de Supabase, migraciones, Google, Mercado Pago, correo ni variables legales en producción.
 
+Para el candidato P0 del 2026-09-08 se registraron durante la implementación:
+
+- ESLint: aprobado.
+- TypeScript: aprobado.
+- Unitarias: 20 archivos y 96 pruebas aprobadas.
+- Contraste: 12 pares principales aprobados mediante `pnpm test:contrast`.
+- Build de producción Next.js: aprobado.
+- Matriz Playwright P0 final: 66 casos aprobados, 8 omisiones intencionales y 0 fallos. Las omisiones evitan duplicar cobertura entre proyectos o reservan utilidades que sólo corren con una variable explícita.
+- Screenshots: ocho referencias P0 generadas en `docs/qa/screenshots/`.
+- Smoke de producción: pendiente del despliegue de este candidato.
+
+La evidencia y los estados finales deben actualizarse en [`../qa/p0-release-report.md`](../qa/p0-release-report.md) después de cada ejecución real.
+
 ## Problemas y limitaciones confirmados
 
 1. El planner no sincroniza entre dispositivos; borrar datos del sitio puede eliminar el contenido local si no existe respaldo.
 2. Mercado Pago no tiene webhook de activación automática; Premium se habilita mediante operación administrativa segura.
-3. No se verificó que todas las migraciones Supabase ni los datos legales del responsable estén configurados en producción.
+3. La migración analítica v2 fue aplicada y un segundo dry-run confirmó que la base remota está al día; los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
 4. La auditoría legal enumera tareas administrativas y revisión jurídica pendientes; el cálculo SQL inicial de días hábiles no integra festivos colombianos.
 5. `AdminPage.tsx`, `FeedHubPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
-6. La matriz E2E global desktop no pudo cerrarse en esta sesión debido a una suspensión de red del runner; no produjo una aserción de producto y debe reintentarse cuando el entorno sea estable.
+6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
+7. Feed Hub está modelado como Premium, pero no es accesible desde la navegación vigente.
+8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
+9. El candidato P0 tiene validación integral final y migración remota aplicada, pero aún no tiene commit, push, despliegue ni smoke de producción.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
 
-La entrega del 2026-09-07 incluye carga global, estilos, E2E, Dashboard, Bienestar, Diario, Hoy y la vista semanal de Planificación. La documentación incluida afecta `AGENTS.md`, README, documentos de arquitectura, la actualización del ADR local-first, el enlace de compatibilidad y esta carpeta.
+La última entrega publicada confirmada sigue siendo la del 2026-09-07. El working tree del 2026-09-08 prepara los ajustes P0 de marca, CTA, acceso, microcopy, accesibilidad, Open Graph, analítica y documentación, pero no debe presentarse todavía como publicado.
 
-La revisión documental final confirmó cobertura de los 61 commits, enlaces locales válidos, referencias Git válidas, ausencia de valores con forma de credencial, `git diff --check` limpio y ningún cambio staged.
-
-Siguiente paso documentado: validar el Site publicado con datos reales de la cuenta y reintentar la matriz E2E global desktop cuando la conectividad del runner sea estable.
+Siguiente paso documentado: preparar el commit; enviar `main`; desplegar exactamente esa revisión en Sites; y hacer smoke de producción, incluida metadata/Open Graph. El webhook de Mercado Pago, las condiciones comerciales, el dominio personalizado y el master vectorial permanecen como dependencias externas pendientes.

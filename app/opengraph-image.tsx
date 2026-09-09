@@ -1,28 +1,25 @@
 import { ImageResponse } from "next/og";
-import { BRAND_NAME, BRAND_SLOGAN } from "@/src/lib/brand";
+import { BRAND_NAME, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 
-export const alt = `${BRAND_NAME} · ${BRAND_SLOGAN}`;
+export const alt = `${BRAND_NAME}. ${BRAND_PROMISE} ${BRAND_SLOGAN}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function OpenGraphImage() {
   return new ImageResponse(
-    <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", overflow: "hidden", background: "#FFF6F2", color: "#2F2F33", padding: "72px 84px", fontFamily: "Nunito Sans, sans-serif" }}>
-      <div style={{ position: "absolute", width: 420, height: 420, borderRadius: 999, background: "#F6CFCC", opacity: 0.72, top: -180, right: -80 }} />
-      <div style={{ position: "absolute", width: 310, height: 310, borderRadius: 999, background: "#E6D3B8", opacity: 0.55, bottom: -150, left: -80 }} />
+    <div style={{ width: "100%", height: "100%", display: "flex", position: "relative", overflow: "hidden", background: "#f7f4ef", color: "#292724", padding: "76px 88px", fontFamily: "Nunito Sans, sans-serif" }}>
+      <div style={{ position: "absolute", width: 430, height: 430, borderRadius: 999, background: "#fbeaec", top: -190, right: -90 }} />
+      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: 999, background: "#e6d3b8", opacity: 0.52, bottom: -155, left: -95 }} />
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <div style={{ width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center", border: "3px solid #2F2F33", borderRadius: 28, background: "linear-gradient(135deg, #F6CFCC, #FFF6F2)", fontFamily: "Nunito Sans, sans-serif", fontSize: 29, fontWeight: 700, letterSpacing: 2 }}>MBV</div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontFamily: "Nunito Sans, sans-serif", fontSize: 31, fontWeight: 700, letterSpacing: 10 }}>MY BEST VERSION</span>
-            <span style={{ marginTop: 10, fontFamily: "Nunito Sans, sans-serif", color: "#E88A7E", fontSize: 20, letterSpacing: 5 }}>PLANEA · ACCIONA · LOGRA</span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <span style={{ width: 58, height: 5, borderRadius: 99, background: "#a95568" }} />
+          <span style={{ fontSize: 30, fontWeight: 750, letterSpacing: 8 }}>{BRAND_NAME.toUpperCase()}</span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}>
-          <span style={{ fontSize: 77, lineHeight: 1.05 }}>{BRAND_SLOGAN}</span>
-          <span style={{ marginTop: 22, fontFamily: "Nunito Sans, sans-serif", fontSize: 28, lineHeight: 1.4, color: "#6F625C" }}>Convierte tu visión en planes, hábitos y acciones sostenibles.</span>
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: 950 }}>
+          <span style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.08, letterSpacing: -2 }}>{BRAND_PROMISE}</span>
+          <span style={{ marginTop: 32, color: "#8d3f54", fontSize: 27, fontWeight: 650 }}>{BRAND_SLOGAN}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontFamily: "Nunito Sans, sans-serif", fontSize: 20, color: "#6F625C" }}><span style={{ width: 74, height: 5, borderRadius: 99, background: "#E88A7E" }} /> Planeación en cascada · bienestar · finanzas · progreso</div>
+        <div style={{ display: "flex", color: "#6b655f", fontSize: 20 }}>mybestversion.life</div>
       </div>
     </div>,
     size,

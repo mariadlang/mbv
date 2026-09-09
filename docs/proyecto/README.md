@@ -12,13 +12,13 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Última revisión documental: **2026-09-04, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-09-09, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `main`.
-- SHA base del código confirmado: `b58d8f5c0424ee272e46fabe80f08bb36af29a6f`.
+- SHA base anterior al candidato P0: `53221567be90c3dd2b9e9d47e1dce4be19891cd8`.
 - Sincronización observada: `main` y `origin/main` coincidían en ese SHA.
-- Historial: 61 commits alcanzables desde `main`, repositorio no superficial y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el SHA base del 2026-09-03, más cambios locales sin commit del 2026-09-04.
+- Historial previo al candidato: 63 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el SHA base del 2026-09-07, más el candidato P0 local sin commit del 2026-09-08.
 
 El SHA anterior identifica el código base examinado. Los cambios documentales y funcionales todavía presentes en el working tree no forman parte de ese commit y no deben atribuirse a un hash futuro.
 
@@ -28,7 +28,7 @@ El SHA anterior identifica el código base examinado. Los cambios documentales y
 - Estado preparado, no preparado y archivos nuevos del working tree.
 - Código actual de `app/`, `src/`, `tests/`, `e2e/`, `supabase/` y configuración del proyecto.
 - README, documentos de arquitectura, ADR, notas de producto, documentos legales, soporte y autenticación existentes.
-- Pruebas ejecutadas durante la sesión del 2026-09-04.
+- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-09.
 
 No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas disponibles localmente. No se consultaron archivos `.env`, credenciales, tokens ni datos personales. Los documentos fuente externos mencionados por `docs/product/source-notes.md` no están versionados y, por tanto, no se revisaron directamente.
 
@@ -37,7 +37,7 @@ No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas dispo
 - El historial incluye dos raíces y varias líneas paralelas de trabajo/publicación que después se fusionaron. Se documentan como tales y no como funcionalidades independientes.
 - Los mensajes de commit casi nunca explican el motivo. Cuando no existe ADR, documento o evidencia de producto, el historial indica **“Motivo no documentado”**.
 - Que un commit añada o modifique pruebas demuestra cobertura versionada, no que esas pruebas se ejecutaran en aquel momento. Sólo se atribuyen resultados cuando quedaron documentados o se ejecutaron durante esta revisión.
-- La existencia de configuración de despliegue no demuestra qué SHA está publicado. La aplicación publicada se inspeccionó visualmente durante la auditoría del 2026-09-04, pero no se verificó externamente su SHA.
+- La existencia de configuración de despliegue no demuestra qué SHA está publicado. El candidato P0 del 2026-09-08 todavía no debe atribuirse al Site ni a un SHA futuro hasta completar commit, despliegue y smoke verificables.
 - La presencia de migraciones Supabase no confirma por sí sola que todas estén aplicadas en producción.
 
 ## Cómo actualizar estos documentos

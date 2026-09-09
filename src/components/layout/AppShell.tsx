@@ -62,11 +62,40 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
   }, [navigationType, pathname]);
   useEffect(() => {
     if (!mobileMenuOpen) return;
+    const previousActiveElement = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
+    const backgroundElements = Array.from(document.querySelectorAll<HTMLElement>("[data-mobile-drawer-background]"));
+    const previousInert = backgroundElements.map((element) => element.inert);
     document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setMobileMenuOpen(false); };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => { document.removeEventListener("keydown", closeOnEscape); document.body.style.overflow = previousOverflow; };
+    backgroundElements.forEach((element) => { element.inert = true; });
+    const drawer = document.querySelector<HTMLElement>(".mobile-drawer");
+    const focusableSelector = "button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])";
+    queueMicrotask(() => drawer?.querySelector<HTMLElement>(focusableSelector)?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      backgroundElements.forEach((element, index) => { element.inert = previousInert[index]; });
+      previousActiveElement?.focus();
+    };
   }, [mobileMenuOpen]);
   useEffect(() => {
     if (!fabOpen) return;
@@ -85,8 +114,8 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
   const avatar = userAvatar ? <img src={userAvatar} alt={`Foto de ${userName}`} /> : <span>{userName.slice(0, 1).toUpperCase()}</span>;
   return <div className={`app-shell theme-${theme} ${isSidebarCollapsed ? "app-shell--collapsed" : ""} ${isToday ? "app-shell--today" : ""} ${isWeeklyPlanning ? "app-shell--weekly" : ""}`} data-color-mode={colorMode}>
     <a className="skip-link" href="#main-content">{t("Saltar al contenido principal")}</a>
-    <aside className="sidebar" aria-label={t("Navegación principal")}>
-      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label="My Best Version, inicio"><BrandMark compact={isSidebarCollapsed} iconOnly={isSidebarCollapsed} />{isToday && <span className="sidebar-today-claim">Planea · Haz · Vive · Avanza</span>}</NavLink>
+    <aside className="sidebar" aria-label={t("Navegación principal")} data-mobile-drawer-background>
+      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label="My Best Version, inicio"><BrandMark compact={isSidebarCollapsed} iconOnly={isSidebarCollapsed} /></NavLink>
       <nav className="sidebar__nav">{desktopPrimaryItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={scrollToTop} className={`nav-item ${isPrimaryActive(href, pathname) ? "nav-item--active" : ""}`} aria-current={isPrimaryActive(href, pathname) ? "page" : undefined} title={isSidebarCollapsed ? t(label) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{t(label)}</span>}</NavLink>)}</nav>
       <div className="sidebar__footer">
         <nav className="sidebar__utility-nav" aria-label="Utilidades">{desktopUtilityItems.map(([href, label, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`} title={isSidebarCollapsed ? t(label) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{t(label)}</span>}</NavLink>)}{isToday && onSignOut && <button className="nav-item sidebar-today-signout" type="button" onClick={onSignOut}><LogOut size={18} />{!isSidebarCollapsed && <span>{t("Cerrar sesión")}</span>}</button>}{isSuperadmin && <NavLink className={({ isActive }) => `nav-item sidebar-admin-link ${isActive ? "nav-item--active" : ""}`} to="/platform" title={isSidebarCollapsed ? "Superadmin" : undefined}><Sparkles size={18} />{!isSidebarCollapsed && <span>Superadmin</span>}</NavLink>}</nav>
@@ -94,9 +123,9 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
         {!isToday && <div className="sidebar__footer-actions">{onSignOut && <button className="sidebar-signout" type="button" onClick={onSignOut} aria-label={t("Cerrar sesión")} title={t("Cerrar sesión")}><LogOut size={17} /></button>}<button className="collapse-button" type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-expanded={!isSidebarCollapsed} aria-label={isSidebarCollapsed ? t("Expandir navegación") : t("Contraer navegación")}>{isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>}
       </div>
     </aside>
-    {mobileMenuOpen && <div className="mobile-drawer-layer"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú" /><aside className="mobile-drawer" aria-label="Menú móvil"><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button></header><nav><section><span>Principal</span>{primaryItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}</section><section><span>Tu cuenta</span>{utilityItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>Superadmin</strong></NavLink>}</section></nav></aside></div>}
-    <div className="app-main"><header className="topbar"><button type="button" className="topbar__mobile-brand" aria-label="Abrir menú" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><div className="topbar__utilities">{accessText && <NavLink to="/upgrade" className="access-chip">{accessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label="Necesito ayuda" title="¿Necesitas ayuda?"><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? "Activar modo oscuro" : "Activar modo claro"} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? "Guardando…" : "Guardado"}</div><NavLink to="/app/settings" className="topbar__profile" aria-label="Editar foto y perfil"><span>{userName}</span><span className="topbar-avatar">{avatar}</span></NavLink></header><main id="main-content" className="page-content" key={pathname}>{children}</main></div>
-    {!['/app/dashboard', '/app/today'].includes(pathname) && !isWeeklyPlanning && <div ref={fabRef} className={`fab-cluster ${fabOpen ? "is-open" : ""}`}><div className="fab-menu" aria-hidden={!fabOpen}><button type="button" onClick={() => { setFabOpen(false); onQuickAdd(); }}><Plus size={17} /><span>{t("Capturar")}</span></button><NavLink to="/app/support" onClick={() => setFabOpen(false)}><MessageCircle size={17} /><span>{t("Chat de soporte")}</span></NavLink><NavLink to="/app/support?type=suggestion" onClick={() => setFabOpen(false)}><Sparkles size={17} /><span>{t("Sugerencia al equipo")}</span></NavLink><NavLink to="/app/more" onClick={() => setFabOpen(false)}><Wrench size={17} /><span>{t("Herramientas")}</span></NavLink></div><button className="fab" type="button" onClick={() => setFabOpen((open) => !open)} aria-label={fabOpen ? t("Cerrar acciones rápidas") : t("Abrir acciones rápidas")} aria-expanded={fabOpen}><Plus size={22} /></button></div>}
-    <nav className="mobile-nav" aria-label={t("Navegación móvil")}>{mobileItems.map(([href,label,Icon]) => { const active = isPrimaryActive(href, pathname); return <NavLink key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{t(label)}</span></NavLink>; })}</nav>
+    {mobileMenuOpen && <div className="mobile-drawer-layer"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú" /><aside id="mobile-navigation-drawer" className="mobile-drawer" role="dialog" aria-modal="true" aria-label="Menú móvil"><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button></header><nav><section><span>Principal</span>{primaryItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}</section><section><span>Tu cuenta</span>{utilityItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>Superadmin</strong></NavLink>}</section></nav></aside></div>}
+    <div className="app-main" data-mobile-drawer-background><header className="topbar"><button type="button" className="topbar__mobile-brand" aria-label="Abrir menú" aria-controls="mobile-navigation-drawer" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><div className="topbar__utilities">{accessText && <NavLink to="/upgrade" className="access-chip">{accessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label="Necesito ayuda" title="¿Necesitas ayuda?"><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? "Activar modo oscuro" : "Activar modo claro"} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? "Guardando…" : "Guardado"}</div><NavLink to="/app/settings" className="topbar__profile" aria-label="Editar foto y perfil"><span>{userName}</span><span className="topbar-avatar">{avatar}</span></NavLink></header><main id="main-content" className="page-content" key={pathname}>{children}</main></div>
+    {!['/app/dashboard', '/app/today'].includes(pathname) && !isWeeklyPlanning && <div ref={fabRef} className={`fab-cluster ${fabOpen ? "is-open" : ""}`} data-mobile-drawer-background><div className="fab-menu" aria-hidden={!fabOpen}><button type="button" onClick={() => { setFabOpen(false); onQuickAdd(); }}><Plus size={17} /><span>{t("Capturar")}</span></button><NavLink to="/app/support" onClick={() => setFabOpen(false)}><MessageCircle size={17} /><span>{t("Chat de soporte")}</span></NavLink><NavLink to="/app/support?type=suggestion" onClick={() => setFabOpen(false)}><Sparkles size={17} /><span>{t("Sugerencia al equipo")}</span></NavLink><NavLink to="/app/more" onClick={() => setFabOpen(false)}><Wrench size={17} /><span>{t("Herramientas")}</span></NavLink></div><button className="fab" type="button" onClick={() => setFabOpen((open) => !open)} aria-label={fabOpen ? t("Cerrar acciones rápidas") : t("Abrir acciones rápidas")} aria-expanded={fabOpen}><Plus size={22} /></button></div>}
+    <nav className="mobile-nav" aria-label={t("Navegación móvil")} data-mobile-drawer-background>{mobileItems.map(([href,label,Icon]) => { const active = isPrimaryActive(href, pathname); return <NavLink key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{t(label)}</span></NavLink>; })}</nav>
   </div>;
 }

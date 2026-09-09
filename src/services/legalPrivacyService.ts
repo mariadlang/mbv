@@ -17,4 +17,5 @@ export const legalPrivacyService = {
   updateRequestStatus: (id: string, status: Parameters<typeof repository.updateRequestStatus>[1], response?: string) => repository.updateRequestStatus(id, status, response),
   getCookiePreferences: () => repository.getCookiePreferences(),
   saveCookiePreferences: (input: CookiePreferences) => repository.saveCookiePreferences(cookiePreferencesSchema.parse(input)),
+  subscribeCookiePreferences: (listener: (preferences: CookiePreferences | null) => void) => repository.subscribeCookiePreferences(listener),
 };

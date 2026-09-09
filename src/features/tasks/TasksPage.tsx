@@ -13,10 +13,11 @@ import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/component
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import type { Task } from "@/src/domain/planner";
+import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
 
-export function TasksPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
+export function TasksPage({ planner, access, onQuickCapture }: { planner: PlannerController; access: UserAccess; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
   const today = toLocalDateKey(new Date());
   const [tab, setTab] = useState<TaskTab>("today");
@@ -28,6 +29,9 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEdit, setTaskEdit] = useState({ title: "", date: "", goalId: "", projectId: "" });
   const [project, setProject] = useState({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
+  const [planningError, setPlanningError] = useState("");
+  const dateBounds = getTrialPlanningDateBounds(access);
+  const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
     if (tab === "inbox") return task.status === "inbox";
     if (tab === "completed") return task.status === "completed";
@@ -40,6 +44,8 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
   const addDetailed = async (event: FormEvent) => {
     event.preventDefault();
     if (!advanced.title.trim()) return;
+    if (advanced.date && !canPlanDate(advanced.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+    setPlanningError("");
     const focusPriority = advanced.focusPriority ? Number(advanced.focusPriority) as 1 | 2 | 3 : undefined;
     const occupied = focusPriority && snapshot.tasks.find((task) => task.date === advanced.date && task.focusPriority === focusPriority && task.status !== "completed" && task.status !== "cancelled");
     if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return;
@@ -66,6 +72,8 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
   };
 
   const openTaskEdit = (task: Task) => {
+    if (task.date && !canPlanDate(task.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+    setPlanningError("");
     setEditingTaskId(task.id);
     setTaskEdit({ title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" });
   };
@@ -73,6 +81,8 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
   const saveTaskEdit = async (event: FormEvent) => {
     event.preventDefault();
     if (!editingTaskId || !taskEdit.title.trim()) return;
+    if (taskEdit.date && !canPlanDate(taskEdit.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+    setPlanningError("");
     await planner.updateTask(editingTaskId, taskEdit);
     setEditingTaskId(null);
   };
@@ -84,6 +94,7 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
     <ProjectIntelligence planner={planner} />
 
     <section className="tasks-section"><header><div><p className="eyebrow">Después, las acciones</p><h2>Tareas</h2><span>Acciones ejecutables, vinculadas a un proyecto cuando corresponde.</span></div><Button onClick={() => setAdvancedOpen((current) => !current)} aria-expanded={advancedOpen}><Plus size={17} /> {advancedOpen ? "Cerrar" : "Nueva tarea"}</Button></header>
+    {planningError && <div className="inline-message" role="alert">{planningError}</div>}
     <div className="task-tabs" role="tablist">{(["inbox", "today", "upcoming", "completed"] as const).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? "is-active" : ""} onClick={() => setTab(item)}>{item === "inbox" ? "Bandeja" : item === "today" ? "Mi día" : item === "upcoming" ? "Próximas" : "Completadas"}</button>)}</div>
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
     {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
@@ -91,7 +102,7 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
     {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><CalendarDays size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
       <label className="form-field form-field--full"><span>Tarea</span><input required value={advanced.title} onChange={(event) => setAdvanced({ ...advanced, title: event.target.value })} /></label>
       <label className="form-field form-field--full"><span>Descripción</span><textarea rows={2} value={advanced.description} onChange={(event) => setAdvanced({ ...advanced, description: event.target.value })} /></label>
-      <label className="form-field"><span>Fecha</span><input type="date" value={advanced.date} onChange={(event) => setAdvanced({ ...advanced, date: event.target.value })} /></label>
+      <label className="form-field"><span>Fecha</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} value={advanced.date} onChange={(event) => { setPlanningError(""); setAdvanced({ ...advanced, date: event.target.value }); }} /></label>
       <button type="button" className="task-details-toggle" onClick={() => setTaskDetailsOpen((current) => !current)} aria-expanded={taskDetailsOpen}>{taskDetailsOpen ? "Ocultar detalles" : "Añadir duración y conexiones"}</button>
       {taskDetailsOpen && <>
       <label className="form-field"><span>Duración estimada</span><input type="number" min="1" placeholder="minutos" value={advanced.estimatedMinutes} onChange={(event) => setAdvanced({ ...advanced, estimatedMinutes: event.target.value })} /></label>
@@ -105,7 +116,7 @@ export function TasksPage({ planner, onQuickCapture }: { planner: PlannerControl
       <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setAdvancedOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarea</Button></div>
     </form></Card>}
 
-    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; return editingTaskId === task.id ? <form className="managed-task-editor" key={task.id} onSubmit={saveTaskEdit}><input autoFocus required value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} aria-label="Nombre de la tarea" /><input type="date" value={taskEdit.date} onChange={(event) => setTaskEdit({ ...taskEdit, date: event.target.value })} aria-label="Fecha de la tarea" /><select value={taskEdit.goalId} onChange={(event) => setTaskEdit({ ...taskEdit, goalId: event.target.value })} aria-label="Meta de la tarea"><option value="">Sin meta</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select value={taskEdit.projectId} onChange={(event) => setTaskEdit({ ...taskEdit, projectId: event.target.value })} aria-label="Proyecto de la tarea"><option value="">Sin proyecto</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><Button size="sm" type="submit">Guardar</Button><Button size="sm" type="button" variant="ghost" onClick={() => setEditingTaskId(null)}>Cancelar</Button></form> : <div key={task.id} className={`managed-task-row ${task.status === "completed" ? "is-complete" : ""}`}><button type="button" className="managed-task__check" onClick={() => planner.toggleTask(task.id)} aria-label={task.status === "completed" ? `Reabrir ${task.title}` : `Completar ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><button type="button" className="managed-task__content" onClick={() => openTaskEdit(task)}><span><strong>{task.title}</strong><small>{task.date === today ? "Mi día" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button><button type="button" className="managed-task__edit" onClick={() => openTaskEdit(task)} aria-label={`Editar ${task.title}`}><Pencil size={15} /></button></div>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." action={<Button onClick={() => onQuickCapture({ source: "empty", date: tab === "today" ? today : undefined })}>Añadir una tarea</Button>} />}</div></Card>
+    <Card className="task-manager-card"><header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header><button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button><div className="managed-task-list">{tasks.map((task) => { const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId); const projectName = snapshot.projects.find((item) => item.id === task.projectId)?.name; const readOnly = Boolean(task.date && !canPlanDate(task.date)); return editingTaskId === task.id ? <form className="managed-task-editor" key={task.id} onSubmit={saveTaskEdit}><input autoFocus required value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} aria-label="Nombre de la tarea" /><input type="date" min={dateBounds?.min} max={dateBounds?.max} value={taskEdit.date} onChange={(event) => { setPlanningError(""); setTaskEdit({ ...taskEdit, date: event.target.value }); }} aria-label="Fecha de la tarea" /><select value={taskEdit.goalId} onChange={(event) => setTaskEdit({ ...taskEdit, goalId: event.target.value })} aria-label="Meta de la tarea"><option value="">Sin meta</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select value={taskEdit.projectId} onChange={(event) => setTaskEdit({ ...taskEdit, projectId: event.target.value })} aria-label="Proyecto de la tarea"><option value="">Sin proyecto</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><Button size="sm" type="submit">Guardar</Button><Button size="sm" type="button" variant="ghost" onClick={() => setEditingTaskId(null)}>Cancelar</Button></form> : <div key={task.id} className={`managed-task-row ${task.status === "completed" ? "is-complete" : ""}`}><button type="button" className="managed-task__check" disabled={readOnly} title={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : undefined} onClick={() => void planner.toggleTask(task.id)} aria-label={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : task.status === "completed" ? `Reabrir ${task.title}` : `Completar ${task.title}`}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><button type="button" className="managed-task__content" disabled={readOnly} title={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : undefined} onClick={() => openTaskEdit(task)}><span><strong>{task.title}</strong><small>{task.date === today ? "Mi día" : task.date ?? "Sin fecha"} · {projectName ?? area?.name ?? "Personal"}</small></span>{task.priority === "high" && <Flag size={16} className="rose-icon" />}{task.date && <CalendarDays size={15} />}</button><button type="button" className="managed-task__edit" disabled={readOnly} title={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : undefined} onClick={() => openTaskEdit(task)} aria-label={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : `Editar ${task.title}`}><Pencil size={15} /></button></div>; })}{!tasks.length && <EmptyState title="Este espacio está libre" text="Añade una tarea o cambia de pestaña para revisar lo que viene." action={<Button onClick={() => onQuickCapture({ source: "empty", date: tab === "today" ? today : undefined })}>Añadir una tarea</Button>} />}</div></Card>
     <div className="task-footer-metrics"><Card><span>Tareas completas hoy</span><strong>{snapshot.tasks.filter((task) => task.date === today && task.status === "completed").length}/{snapshot.tasks.filter((task) => task.date === today).length}</strong></Card><Card><span>Carga estimada</span><strong>{tasks.reduce((sum, task) => sum + (task.estimatedMinutes ?? 0), 0)} min</strong></Card></div>
     </section>
   </div>;

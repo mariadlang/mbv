@@ -103,4 +103,13 @@ export class SupabaseLegalPrivacyRepository implements LegalPrivacyRepository {
 
   async getCookiePreferences() { return readLocal().cookies; }
   async saveCookiePreferences(input: CookiePreferences) { const state = readLocal(); state.cookies = input; writeLocal(state); return input; }
+  subscribeCookiePreferences(listener: (preferences: CookiePreferences | null) => void) {
+    if (typeof window === "undefined") return () => undefined;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== STORAGE_KEY) return;
+      listener(readLocal().cookies);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }
 }

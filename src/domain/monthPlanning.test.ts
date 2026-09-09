@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CascadePlan } from "@/src/domain/planner";
-import { buildYearMonthSlots, monthPeriodKey, parseAreaGoals, serializeAreaGoals } from "./monthPlanning";
+import type { CascadePlan, PlannerEvent, Task } from "@/src/domain/planner";
+import { buildYearMonthSlots, collectMonthPlanEntries, monthPeriodKey, parseAreaGoals, serializeAreaGoals } from "./monthPlanning";
 
 const plan = (periodKey: string): CascadePlan => ({
   id: `plan-${periodKey}`,
@@ -35,5 +35,46 @@ describe("annual month planning", () => {
     const encoded = serializeAreaGoals({ health: "Entrenar tres veces", finance: "  " });
     expect(parseAreaGoals(encoded)).toEqual({ health: "Entrenar tres veces" });
     expect(parseAreaGoals("not-json")).toEqual({});
+  });
+
+  it("preserves historical plan activities when deriving monthly actions and events", () => {
+    const monthlyPlan = {
+      ...plan("2026-12"),
+      activities: [
+        { id: "historical-action", title: "Preparar cierre", date: "2026-12-08", type: "activity" as const },
+        { id: "linked-copy", title: " reservar cita ", date: "2026-12-09", type: "activity" as const },
+        { id: "historical-event", title: "Cena de cierre", date: "2026-12-20", type: "event" as const },
+        { id: "calendar-copy", title: " consulta ", date: "2026-12-11", type: "event" as const },
+      ],
+    };
+    const linkedTask: Task = {
+      id: "linked-task",
+      title: "Reservar cita",
+      periodPlanId: monthlyPlan.id,
+      date: "2026-12-09",
+      priority: "medium",
+      status: "planned",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const calendarEvent: PlannerEvent = {
+      id: "calendar-event",
+      title: "Consulta",
+      startDate: "2026-12-11",
+      category: "medical",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    expect(collectMonthPlanEntries(monthlyPlan, [linkedTask], [calendarEvent])).toEqual({
+      actions: [
+        { id: "linked-task", title: "Reservar cita", date: "2026-12-09" },
+        { id: "historical-action", title: "Preparar cierre", date: "2026-12-08" },
+      ],
+      events: [
+        { id: "calendar-event", title: "Consulta", date: "2026-12-11" },
+        { id: "historical-event", title: "Cena de cierre", date: "2026-12-20" },
+      ],
+    });
   });
 });
