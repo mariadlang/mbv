@@ -9,9 +9,9 @@
 - SHA anterior a esta entrega: `53221567be90c3dd2b9e9d47e1dce4be19891cd8` (`chore: align Sites build metadata`).
 - `main` y `origin/main`: alineados en `53221567` antes de comenzar los ajustes P0.
 - Historial: completo/no superficial, 63 commits alcanzables desde ese SHA, dos raíces históricas y sin tags.
-- Entrega P0: permanece en el working tree bajo `MBV-H-022`. **Commit, push y despliegue pendientes de verificación.**
+- Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 
-Este documento describe el estado publicado mediante `MBV-H-020` y `MBV-H-021` y el candidato P0 todavía no publicado de `MBV-H-022` en [`HISTORIAL.md`](HISTORIAL.md). No atribuye el working tree al Site existente antes del despliegue.
+Este documento describe el estado publicado mediante `MBV-H-020`, `MBV-H-021` y `MBV-H-022` en [`HISTORIAL.md`](HISTORIAL.md). El SHA funcional P0 fue comprobado tanto en GitHub como en el Site.
 
 ## Qué es el producto
 
@@ -234,7 +234,7 @@ Para el candidato P0 del 2026-09-08 se registraron durante la implementación:
 - Build de producción Next.js: aprobado.
 - Matriz Playwright P0 final: 66 casos aprobados, 8 omisiones intencionales y 0 fallos. Las omisiones evitan duplicar cobertura entre proyectos o reservan utilidades que sólo corren con una variable explícita.
 - Screenshots: ocho referencias P0 generadas en `docs/qa/screenshots/`.
-- Smoke de producción: pendiente del despliegue de este candidato.
+- Smoke de producción: aprobado sobre la versión 27 para landing/trial, dashboard, Mi día, Semana, Hábitos y Upgrade; sin errores de consola ni overflow horizontal. Open Graph respondió en 1200×630.
 
 La evidencia y los estados finales deben actualizarse en [`../qa/p0-release-report.md`](../qa/p0-release-report.md) después de cada ejecución real.
 
@@ -248,12 +248,12 @@ La evidencia y los estados finales deben actualizarse en [`../qa/p0-release-repo
 6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
 7. Feed Hub está modelado como Premium, pero no es accesible desde la navegación vigente.
 8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
-9. El candidato P0 tiene validación integral final y migración remota aplicada, pero aún no tiene commit, push, despliegue ni smoke de producción.
+9. `mybestversion.life` no está adjunto al Site; la URL operativa confirmada sigue siendo la URL pública de Sites.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
 
-La última entrega publicada confirmada sigue siendo la del 2026-09-07. El working tree del 2026-09-08 prepara los ajustes P0 de marca, CTA, acceso, microcopy, accesibilidad, Open Graph, analítica y documentación, pero no debe presentarse todavía como publicado.
+La última entrega funcional publicada confirmada es `5c5f5a0bfd342a4b731fa927f992d7233959006d` del release P0, desplegada como versión 27 en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`.
 
-Siguiente paso documentado: preparar el commit; enviar `main`; desplegar exactamente esa revisión en Sites; y hacer smoke de producción, incluida metadata/Open Graph. El webhook de Mercado Pago, las condiciones comerciales, el dominio personalizado y el master vectorial permanecen como dependencias externas pendientes.
+Siguiente paso documentado: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin reabrir el release técnico P0 ya validado.

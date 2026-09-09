@@ -1,16 +1,17 @@
 # Informe de release P0
 
-Fecha de apertura: **2026-09-08 (America/Bogota, UTC-05:00)**.
+Fecha de apertura: **2026-09-08 (America/Bogota, UTC-05:00)**. Cierre técnico: **2026-09-09**.
 
 ## Estado del informe
 
-El candidato P0 local cerró su validación de código, builds, accesibilidad, matriz visual/funcional, capturas y migración remota. Commit, push, despliegue y smoke del artefacto publicado permanecen pendientes y no se atribuyen a la versión actualmente visible.
+El candidato P0 cerró su validación de código, builds, accesibilidad, matriz visual/funcional, capturas y migración remota. El commit funcional fue enviado a `origin/main`, guardado como versión 27 de Sites, publicado y verificado en producción.
 
 - SHA base: `53221567be90c3dd2b9e9d47e1dce4be19891cd8`.
-- SHA candidato: **PENDIENTE — todavía no existe commit de esta entrega.**
-- URL candidata: **PENDIENTE — todavía no se ha desplegado esta entrega.**
+- SHA funcional publicado: `5c5f5a0bfd342a4b731fa927f992d7233959006d`.
+- URL publicada: `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`.
+- Sites: versión 27, despliegue `appgdep_6aa199690ba08191a458b52f4d5abcc4`, estado `succeeded`, revisión de entorno 1.
 - Migración analítica: `202609080001_product_analytics_v2.sql` aplicada; un segundo `db push --linked --dry-run` devolvió `Remote database is up to date`.
-- Decisión de lanzamiento: **LISTO PARA COMMIT Y DESPLIEGUE TÉCNICO, SUJETO AL SMOKE DE PRODUCCIÓN. NO LISTO PARA UN LANZAMIENTO COMERCIAL PREMIUM AUTOSERVICIO** mientras no existan webhook/conciliación segura y términos comerciales aprobados.
+- Decisión de lanzamiento: **APROBADO PARA RELEASE TÉCNICO P0. NO LISTO PARA UN LANZAMIENTO COMERCIAL PREMIUM AUTOSERVICIO** mientras no existan webhook/conciliación segura y términos comerciales aprobados.
 
 ## Pruebas de código
 
@@ -24,7 +25,7 @@ El candidato P0 local cerró su validación de código, builds, accesibilidad, m
 | `pnpm build:vinext` | Aprobado | Artefacto de Sites/Vinext generado correctamente |
 | Playwright | 66 aprobadas, 8 omitidas intencionalmente, 0 fallos | Suite completa; los skips evitan repetir cobertura por proyecto o activan utilidades sólo bajo una variable explícita |
 | Migración Supabase | Aplicada y verificada | Segundo dry-run enlazado: `Remote database is up to date` |
-| Smoke de producción | **PENDIENTE DE DEPLOY** | No atribuir estos resultados a la versión actualmente publicada |
+| Smoke de producción | Aprobado | Landing/trial, dashboard, Mi día, Semana, Hábitos y Upgrade; sin overflow horizontal ni errores de consola; Open Graph 1200×630 |
 
 Estos resultados deben actualizarse si una ejecución posterior cambia el working tree.
 
@@ -132,13 +133,11 @@ Las ocho referencias se generaron desde el candidato validado y fueron inspeccio
 
 ## Pendientes y riesgos residuales
 
-1. Crear el commit, enviarlo a `origin/main` y desplegar exactamente ese candidato.
-2. Hacer smoke de producción y verificar metadata/Open Graph reales después del despliegue.
-3. Adjuntar y verificar el dominio personalizado `mybestversion.life`; todavía no está asociado al Site.
-4. Implementar webhook y conciliación segura de Mercado Pago antes de ofrecer activación Premium autoservicio.
-5. Definir precio, moneda, periodicidad, impuestos, renovación, cancelación y reembolsos.
-6. Recibir el master vectorial aprobado; mantener mientras tanto el activo temporal sin rediseñarlo.
+1. Adjuntar y verificar el dominio personalizado `mybestversion.life`; todavía no está asociado al Site.
+2. Implementar webhook y conciliación segura de Mercado Pago antes de ofrecer activación Premium autoservicio.
+3. Definir precio, moneda, periodicidad, impuestos, renovación, cancelación y reembolsos.
+4. Recibir el master vectorial aprobado; mantener mientras tanto el activo temporal sin rediseñarlo.
 
 ## Criterio de salida
 
-El candidato P0 cumple el criterio local funcional, verbal, visual y de QA y la migración requerida ya está aplicada. Puede avanzar a commit y despliegue técnico; sólo después del smoke se podrá afirmar que esa misma versión está operativa en producción. El producto **no está listo para un lanzamiento comercial Premium autoservicio** mientras sigan pendientes la conciliación segura de Mercado Pago y las condiciones comerciales. El master vectorial y el dominio personalizado continúan como dependencias externas explícitas.
+El release técnico P0 cumple el criterio funcional, verbal, visual y de QA; la migración requerida está aplicada y el mismo SHA fue verificado en producción. El producto **no está listo para un lanzamiento comercial Premium autoservicio** mientras sigan pendientes la conciliación segura de Mercado Pago y las condiciones comerciales. El master vectorial y el dominio personalizado continúan como dependencias externas explícitas.

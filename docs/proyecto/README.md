@@ -18,9 +18,9 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - SHA base anterior al candidato P0: `53221567be90c3dd2b9e9d47e1dce4be19891cd8`.
 - Sincronización observada: `main` y `origin/main` coincidían en ese SHA.
 - Historial previo al candidato: 63 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el SHA base del 2026-09-07, más el candidato P0 local sin commit del 2026-09-08.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release técnico P0 `5c5f5a0bfd342a4b731fa927f992d7233959006d`, publicado el 2026-09-09.
 
-El SHA anterior identifica el código base examinado. Los cambios documentales y funcionales todavía presentes en el working tree no forman parte de ese commit y no deben atribuirse a un hash futuro.
+El SHA base identifica el punto anterior examinado; el SHA `5c5f5a0bfd342a4b731fa927f992d7233959006d` identifica la implementación funcional P0 enviada y publicada. Esta actualización documental de cierre se versiona después de ese SHA sin cambios de runtime.
 
 ## Fuentes utilizadas
 
@@ -37,7 +37,7 @@ No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas dispo
 - El historial incluye dos raíces y varias líneas paralelas de trabajo/publicación que después se fusionaron. Se documentan como tales y no como funcionalidades independientes.
 - Los mensajes de commit casi nunca explican el motivo. Cuando no existe ADR, documento o evidencia de producto, el historial indica **“Motivo no documentado”**.
 - Que un commit añada o modifique pruebas demuestra cobertura versionada, no que esas pruebas se ejecutaran en aquel momento. Sólo se atribuyen resultados cuando quedaron documentados o se ejecutaron durante esta revisión.
-- La existencia de configuración de despliegue no demuestra qué SHA está publicado. El candidato P0 del 2026-09-08 todavía no debe atribuirse al Site ni a un SHA futuro hasta completar commit, despliegue y smoke verificables.
+- La existencia de configuración de despliegue no demuestra por sí sola qué SHA está publicado; para P0 se registraron explícitamente el SHA, versión de Sites, despliegue y smoke verificables.
 - La presencia de migraciones Supabase no confirma por sí sola que todas estén aplicadas en producción.
 
 ## Cómo actualizar estos documentos
