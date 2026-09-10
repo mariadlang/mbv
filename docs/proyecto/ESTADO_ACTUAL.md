@@ -260,6 +260,7 @@ Para el candidato P1 del 2026-09-10:
 - Matriz de producto: 16 rutas × 9 viewports × claro/oscuro aprobada tras corregir un overflow de 3 px en Ajustes a 320×568.
 - Recorridos funcionales de onboarding, cuenta existente, planificación, Hábitos, Meta → mes → semana → Mi día → Progreso e inglés Beta aprobados en las ejecuciones registradas.
 - Builds Next y Vinext aprobados; smoke de producción aprobado sobre portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos, sin errores de consola observados.
+- Verificación post-release: `db lint` identificó y luego confirmó resuelto el conflicto PL/pgSQL P0 de `record_user_event`; la migración forward `202609100001_fix_product_analytics_v2_ambiguity.sql` quedó aplicada, la base remota quedó al día y `/api/events` respondió `200` en siete envíos consecutivos.
 
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
@@ -267,7 +268,7 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 
 1. El planner no sincroniza entre dispositivos; borrar datos del sitio puede eliminar el contenido local si no existe respaldo.
 2. Mercado Pago no tiene webhook de activación automática; Premium se habilita mediante operación administrativa segura.
-3. La migración analítica v2 fue aplicada y un segundo dry-run confirmó que la base remota está al día; los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
+3. La migración analítica v2 y su hotfix forward de ambigüedad PL/pgSQL fueron aplicados; `db lint` quedó sin errores y un dry-run confirmó que la base remota está al día. Los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
 4. La auditoría legal enumera tareas administrativas y revisión jurídica pendientes; el cálculo SQL inicial de días hábiles no integra festivos colombianos.
 5. `AdminPage.tsx`, `FeedHubPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
 6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
@@ -281,6 +282,6 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 ## Entrega vigente y siguiente paso
 
-La entrega funcional P1 confirmada es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, publicada como versión 29 mediante el despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4` en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El smoke de producción aprobó portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos; `main` y `origin/main` quedaron alineados al publicar el SHA funcional.
+La entrega funcional P1 confirmada es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, publicada como versión 29 mediante el despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4` en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El smoke de producción aprobó portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos. La verificación posterior también confirmó recuperada la telemetría autenticada tras aplicar el hotfix SQL forward; no requirió un nuevo bundle de Sites.
 
 Siguiente paso después del cierre técnico P1: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.

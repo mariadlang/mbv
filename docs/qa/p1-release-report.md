@@ -94,6 +94,9 @@ Las matrices automatizadas verifican render, encabezado, consola y overflow en c
 | `pnpm test:e2e` | Aprobado de forma acumulada: 63 casos de la suite completa más 2 casos corregidos y repetidos, 9 omisiones intencionales y 0 fallos pendientes |
 | `git diff --check` | Aprobado |
 | Smoke de producción | Aprobado sobre Sites versión 29 para portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos; sin errores de consola observados ni overflow horizontal en la comprobación dimensional |
+| `supabase db lint --linked --level error` | Detectó el conflicto P0 `second_session_at` antes del hotfix y quedó aprobado sin incidencias después de aplicarlo |
+| `supabase db push --dry-run --include-all` | Aprobado después del hotfix: base remota al día y cero migraciones pendientes |
+| Telemetría de producción | Aprobada después del hotfix: 7 respuestas consecutivas `200` de `/api/events` y cero errores nuevos en la ventana posterior |
 
 ## Incidencias de validación
 
@@ -103,6 +106,7 @@ Las matrices automatizadas verifican render, encabezado, consola y overflow en c
 4. La matriz de 320×568 detectó 3 px de overflow en Áreas de vida; se corrigió la capacidad de contracción del input, sin cambiar el layout en otros tamaños.
 5. La protección del contenido personal cambió el mecanismo del nombre accesible de dos controles de tarea. La prueba se ajustó a `getByRole` y a la fila gestionada; desktop y mobile aprobaron al repetir los dos casos.
 6. `next typegen` regenera `next-env.d.ts`; después del último build/typecheck se restauraron la referencia de Vinext y la ruta estable.
+7. El smoke posterior al despliegue reveló respuestas `500` en `/api/events`. `supabase db lint --linked --level error` confirmó SQLSTATE `42702`: la función P0 `record_user_event` compartía el nombre `second_session_at` entre una variable PL/pgSQL y una columna del CTE. La migración forward `202609100001_fix_product_analytics_v2_ambiguity.sql` renombró la variable y calificó todas las columnas del CTE; no cambió datos de producto ni UI. Tras aplicarla, el lint remoto quedó limpio, el dry-run confirmó la base al día y producción respondió `200` en siete envíos consecutivos.
 
 ## Inventario de archivos
 
@@ -137,6 +141,7 @@ Las matrices automatizadas verifican render, encabezado, consola y overflow en c
 - `src/i18n/messages/features/navigation-space-progress.ts`
 - `src/i18n/messages/features/planning.ts`
 - `src/i18n/messages/index.ts`
+- `supabase/migrations/202609100001_fix_product_analytics_v2_ambiguity.sql`
 - `src/styles/foundations.css`, `layout.css`, `marketing.css`, `primitives.css`, `primitives-enhancements.css`, `tokens.css`, `tokens-dark.css` y `utilities.css`
 - `src/styles/features/connected-flows.css`, `contextual-planning.css`, `daily-execution.css`, `editorial-and-modules.css`, `fitness.css`, `habits.css`, `legacy-platform.css`, `month-planning.css`, `planning.css`, `product-core.css`, `product-v2.css`, `quick-capture.css` y `weekly-plan.css`
 
@@ -164,4 +169,4 @@ Ningún archivo de aplicación ni documentación. El artefacto temporal no versi
 
 ## Criterio de salida
 
-P1 queda **listo para merge técnico**: auditorías, matrices, builds y smoke de producción aprobaron; el SHA funcional se envió a `main`/`origin/main` y se publicó como versión 29. Esto no equivale a declarar listo el lanzamiento comercial Premium ni autoriza iniciar P2.
+P1 queda **listo para merge técnico**: auditorías, matrices, builds, smoke de producción y telemetría autenticada aprobaron; el SHA funcional se envió a `main`/`origin/main` y se publicó como versión 29. El hotfix SQL posterior corrige una incidencia residual P0 sin alterar el bundle desplegado. Esto no equivale a declarar listo el lanzamiento comercial Premium ni autoriza iniciar P2.

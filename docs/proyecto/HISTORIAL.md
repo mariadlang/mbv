@@ -395,3 +395,15 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Validación ejecutada:** auditorías de tokens e i18n, ESLint, TypeScript, 25 archivos y 140 pruebas unitarias, 22/22 pares de contraste, builds Next/Vinext y `git diff --check` aprobados. La matriz pública aprobó 10 rutas × 9 viewports; la matriz de producto aprobó 16 rutas × 9 viewports en claro/oscuro; el plan semanal aprobó su matriz específica y los recorridos ES/EN aprobaron en desktop/mobile. La suite Playwright quedó aprobada de forma acumulada con 65 casos, 9 omisiones intencionales y 0 fallos pendientes.
 - **Estado de entrega:** release técnico P1 consolidado en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviado a `origin/main` y publicado como versión 29 mediante `appgdep_6aa2f93962bc81919311825a6c2bc6b4`. El despliegue terminó en `succeeded`; el smoke aprobó portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos sin errores de consola observados.
 - **Pendientes o limitaciones:** el bridge i18n y los colores directos restantes son deuda gradual. Webhook/conciliación de Mercado Pago, condiciones comerciales, revisión jurídica, dominio personalizado y master vectorial siguen bloqueando el lanzamiento comercial Premium, no el release técnico P1.
+
+### 2026-09-10 — Hotfix forward de telemetría P0 detectado al cerrar P1
+
+- **Identificador estable:** `MBV-H-024`.
+- **Tipo de cambio:** corrección SQL forward y verificación de producción; sin cambio de UI ni datos del planner.
+- **Área afectada:** RPC `record_user_event` y observabilidad de eventos autenticados.
+- **Situación anterior:** producción devolvía `500` en `/api/events`; el bridge retenía la cola consentida y reintentaba con espera incremental, sin interrumpir la experiencia visible.
+- **Causa confirmada:** `supabase db lint --linked --level error` reportó SQLSTATE `42702` porque `second_session_at` era simultáneamente una variable PL/pgSQL y una columna no calificada del CTE de hitos.
+- **Qué se hizo:** se añadió y aplicó `supabase/migrations/202609100001_fix_product_analytics_v2_ambiguity.sql`, que conserva la firma/contrato del RPC, renombra la variable local y califica las columnas del CTE. No se modificó la migración histórica ya aplicada.
+- **Impacto:** los eventos vuelven a persistirse y la cola pendiente puede vaciarse; no cambia navegación, onboarding, planificación, Hábitos, Trial/Premium ni persistencia local-first.
+- **Validación ejecutada:** lint remoto sin incidencias, dry-run remoto `upToDate: true`, siete respuestas consecutivas `200` de `/api/events` y cero errores nuevos en la ventana posterior.
+- **Estado de implementación:** aplicado en la base remota y preparado para quedar versionado en `main`.
