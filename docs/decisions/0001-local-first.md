@@ -1,6 +1,8 @@
 # ADR 0001: Persistencia local-first
 
-**Estado:** aceptada para el contenido del planner; requisito de acceso sin cuenta sustituido el 23 de agosto de 2026.
+**Estado:** aceptada.
+
+**Alcance vigente:** contenido del planner local-first; el requisito histórico de acceso sin cuenta fue sustituido el 23 de agosto de 2026.
 
 Usamos IndexedDB mediante Dexie para proteger la intimidad del contenido personal y mantenerlo disponible en el dispositivo. La contrapartida es que el planner no se sincroniza entre dispositivos; se mitiga con backup JSON y una interfaz de repositorio sustituible.
 

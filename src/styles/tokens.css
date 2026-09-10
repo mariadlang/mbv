@@ -1,0 +1,171 @@
+@theme inline {
+  --font-sans: var(--font-family-primary);
+}
+
+:root {
+  color-scheme: light;
+
+  /* Level 1: approved brand values */
+  --brand-rose-soft: #fbeaec;
+  --brand-rose: #e8a7af;
+  --brand-rose-deep: #a95568;
+  --brand-sand: #e6d3b8;
+  --brand-lavender: #b8b1c9;
+  --brand-ivory: #f7f4ef;
+  --brand-white: #ffffff;
+  --brand-charcoal: #292724;
+  --brand-taupe: #6f6964;
+  --brand-sage: #7d9179;
+
+  /* Level 2: semantic color tokens */
+  --color-brand-soft: var(--brand-rose-soft);
+  --color-brand: var(--brand-rose);
+  --color-brand-strong: var(--brand-rose-deep);
+  --color-accent-sand: var(--brand-sand);
+  --color-accent-lavender: var(--brand-lavender);
+  --color-background: var(--brand-ivory);
+  --color-surface: var(--brand-white);
+  --color-surface-elevated: var(--brand-white);
+  --color-surface-muted: #f1eeea;
+  --color-text-primary: var(--brand-charcoal);
+  --color-text-secondary: var(--brand-taupe);
+  --color-text-muted: var(--brand-taupe);
+  --color-text-secondary-on-background: var(--brand-taupe);
+  --color-border: #e5e0da;
+  --color-border-strong: #d4cec7;
+  --color-success: var(--brand-sage);
+  --color-success-soft: #e9f0e5;
+  --color-success-text: #52684f;
+  --color-warning: #a87948;
+  --color-warning-soft: #f7eadb;
+  --color-warning-text: #795027;
+  --color-danger: #a9555d;
+  --color-danger-soft: #fae2e2;
+  --color-danger-text: #8f424a;
+  --color-brand-text-on-soft: #91465a;
+  --color-focus: var(--brand-rose-deep);
+  --color-overlay: rgba(41, 39, 36, .42);
+
+  /* Deprecated compatibility aliases. Do not use in new code. */
+  --charcoal: var(--color-text-primary);
+  --rose: var(--color-brand);
+  --rose-deep: var(--color-brand-strong);
+  --ivory: var(--color-background);
+  --cream: var(--color-surface-muted);
+  --taupe: var(--color-text-secondary);
+  --sage: var(--color-success);
+  --blush: var(--color-brand-soft);
+  --border: var(--color-border);
+  --white: var(--color-surface-elevated);
+  --paper: var(--color-surface);
+  --warm-line: var(--color-border);
+
+  /* Typography foundations: Nunito Sans is the only product family. */
+  --font-family-primary: var(--font-nunito-sans), "Segoe UI", Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-emphasis: 650;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 750;
+  --line-height-tight: 1.05;
+  --line-height-display-compact: 1.08;
+  --line-height-heading: 1.2;
+  --line-height-title: 1.3;
+  --line-height-subheading: 1.35;
+  --line-height-body: 1.6;
+  --line-height-relaxed: 1.7;
+  --line-height-label: 1.4;
+  --letter-spacing-tight: -.025em;
+  --letter-spacing-display: -.045em;
+  --letter-spacing-title: -.012em;
+  --letter-spacing-label: .02em;
+  --letter-spacing-eyebrow: .12em;
+  --letter-spacing-brand: .18em;
+
+  /* Typography roles preserve the implemented scale. */
+  --text-xs: .75rem;
+  --text-sm: .875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: clamp(1.0625rem, 1.5vw, 1.25rem);
+  --text-2xl: clamp(1.375rem, 2vw, 1.625rem);
+  --text-3xl: clamp(2rem, 2.5vw, 2.25rem);
+  --type-display-size: clamp(2.45rem, 5.3vw, 4.8rem);
+  --type-display-compact-size: clamp(2.45rem, 3.6vw, 3.15rem);
+  --type-plan-display-size: clamp(2.3rem, 5vw, 4rem);
+  --type-auth-display-size: clamp(2rem, 5vw, 3rem);
+  --type-highlight-size: clamp(1.65rem, 2.8vw, 2.15rem);
+  --type-h1-size: var(--text-3xl);
+  --type-h2-size: var(--text-2xl);
+  --type-h3-size: var(--text-xl);
+  --type-h4-size: var(--text-base);
+  --type-body-large-size: var(--text-lg);
+  --type-body-size: var(--text-base);
+  --type-body-small-size: var(--text-sm);
+  --type-caption-size: var(--text-xs);
+  --type-label-size: var(--text-xs);
+  --type-button-size: .88rem;
+  --type-navigation-size: .88rem;
+  --type-eyebrow-size: var(--text-xs);
+  --type-quote-size: 1.125rem;
+
+  /* 4/8-based spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --shadow: 0 6px 24px rgba(41, 39, 36, .055);
+  --shadow-raised: 0 18px 54px rgba(41, 39, 36, .11);
+  --shadow-sm: var(--shadow);
+  --shadow-md: var(--shadow);
+  --shadow-lg: var(--shadow-raised);
+  --shadow-focus: 0 0 0 4px var(--color-focus);
+  --transition-fast: 140ms ease;
+  --transition-base: 220ms ease;
+  --sidebar-width: 248px;
+
+  /* Level 3: shared component tokens */
+  --button-primary-background: var(--color-brand);
+  --button-primary-text: var(--color-text-primary);
+  --button-primary-hover-background: var(--color-brand-strong);
+  --button-primary-hover-text: var(--brand-white);
+  --button-secondary-background: var(--color-brand-soft);
+  --button-secondary-text: var(--color-text-primary);
+  --button-danger-background: var(--color-danger);
+  --button-danger-hover-background: var(--color-danger-text);
+  --button-danger-text: var(--brand-white);
+  --button-radius: var(--radius-control);
+  --button-shadow: 0 8px 22px rgba(215, 127, 139, .22);
+  --button-hover-shadow: 0 10px 28px rgba(169, 85, 104, .24);
+  --card-background: var(--color-surface-elevated);
+  --card-border: var(--color-border);
+  --card-radius: var(--radius-card);
+  --card-shadow: var(--shadow);
+  --input-background: var(--color-surface-elevated);
+  --input-border: var(--color-border);
+  --input-border-hover: var(--color-border-strong);
+  --input-border-focus: var(--color-brand-strong);
+  --input-radius: var(--radius-sm);
+  --navigation-active-background: var(--color-brand-soft);
+  --navigation-active-text: var(--color-brand-strong);
+  --tab-active-background: var(--color-brand-soft);
+  --tab-active-text: var(--color-brand-strong);
+  --modal-background: var(--color-background);
+  --modal-overlay: var(--color-overlay);
+  --progress-track: var(--color-border);
+  --progress-value: var(--color-brand);
+}

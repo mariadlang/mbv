@@ -7,6 +7,7 @@ import { legalPrivacyService } from "@/src/services/legalPrivacyService";
 import { setAnalyticsConsent } from "@/src/services/analyticsService";
 import { Button } from "@/src/components/ui/Primitives";
 import { Link } from "react-router-dom";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 interface CookieContextValue { preferences: CookiePreferences | null; openSettings(): void }
 const CookieContext = createContext<CookieContextValue | null>(null);
@@ -21,6 +22,7 @@ const makePreferences = (functional: boolean, analytics: boolean, marketing: boo
 });
 
 export function CookieConsentProvider({ children }: { children: ReactNode }) {
+  const { m } = useI18n();
   const [preferences, setPreferences] = useState<CookiePreferences | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -112,13 +114,14 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ preferences, openSettings }), [openSettings, preferences]);
 
   return <CookieContext.Provider value={value}>{children}
-    {loaded && !preferences && !settingsOpen && <aside className="cookie-banner" role="region" aria-labelledby="cookie-title"><div><strong id="cookie-title">Tu privacidad también se planea con claridad</strong><p>Usamos tecnologías necesarias para la sesión, tus preferencias y los datos locales. Las categorías opcionales permanecen apagadas hasta que las aceptes.</p><Link to="/cookies">Leer política de cookies</Link></div><div><Button variant="ghost" onClick={openSettings}>Configurar</Button><Button variant="secondary" onClick={() => void save(makePreferences(false, false, false))}>Solo necesarias</Button><Button onClick={() => void save(makePreferences(true, true, true))}>Aceptar todas</Button></div></aside>}
-    {settingsOpen && <div className="cookie-settings-backdrop" role="presentation"><section className="cookie-settings" role="dialog" aria-modal="true" aria-labelledby="cookie-settings-title"><header><p className="eyebrow">PRIVACIDAD</p><h2 id="cookie-settings-title">Preferencias de cookies</h2><p>Puedes cambiar estas opciones cuando quieras. Las categorías opcionales no cargan proveedores externos mientras no estén documentados y habilitados.</p></header><div className="cookie-category"><div><strong>Necesarias</strong><p>Sesión, seguridad, idioma, decisión de cookies e IndexedDB.</p></div><span>Siempre activas</span></div><CookieToggle label="Funcionales" description="Recuerdan opciones adicionales de experiencia." checked={functional} onChange={setFunctional} /><CookieToggle label="Analítica" description="Medición opcional. No hay un proveedor externo activo hoy." checked={analytics} onChange={setAnalytics} /><CookieToggle label="Marketing" description="Comunicaciones o medición publicitaria opcional. No hay un proveedor activo hoy." checked={marketing} onChange={setMarketing} /><footer><Button variant="ghost" onClick={cancel}>Cancelar</Button><Button onClick={() => void save(makePreferences(functional, analytics, marketing))}>Guardar preferencias</Button></footer></section></div>}
+    {loaded && !preferences && !settingsOpen && <aside className="cookie-banner" role="region" aria-labelledby="cookie-title" data-i18n-explicit="true"><div><strong id="cookie-title">{m("cookies.banner.title")}</strong><p>{m("cookies.banner.description")}</p><Link to="/cookies">{m("cookies.readPolicy")}</Link></div><div><Button variant="ghost" onClick={openSettings}>{m("cookies.configure")}</Button><Button variant="secondary" onClick={() => void save(makePreferences(false, false, false))}>{m("cookies.necessaryOnly")}</Button><Button onClick={() => void save(makePreferences(true, true, true))}>{m("cookies.acceptAll")}</Button></div></aside>}
+    {settingsOpen && <div className="cookie-settings-backdrop" role="presentation"><section className="cookie-settings" role="dialog" aria-modal="true" aria-labelledby="cookie-settings-title" data-i18n-explicit="true"><header><p className="eyebrow">{m("cookies.settings.eyebrow")}</p><h2 id="cookie-settings-title">{m("cookies.settings.title")}</h2><p>{m("cookies.settings.description")}</p></header><div className="cookie-category"><div><strong>{m("cookies.necessary.title")}</strong><p>{m("cookies.necessary.description")}</p></div><span>{m("cookies.alwaysActive")}</span></div><CookieToggle label={m("cookies.functional.title")} description={m("cookies.functional.description")} checked={functional} onChange={setFunctional} /><CookieToggle label={m("cookies.analytics.title")} description={m("cookies.analytics.description")} checked={analytics} onChange={setAnalytics} /><CookieToggle label={m("cookies.marketing.title")} description={m("cookies.marketing.description")} checked={marketing} onChange={setMarketing} /><footer><Button variant="ghost" onClick={cancel}>{m("common.cancel")}</Button><Button onClick={() => void save(makePreferences(functional, analytics, marketing))}>{m("cookies.save")}</Button></footer></section></div>}
   </CookieContext.Provider>;
 }
 
 function CookieToggle({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange(value: boolean): void }) {
-  return <label className="cookie-category"><div><strong>{label}</strong><p>{description}</p></div><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={`Permitir ${label.toLowerCase()}`} /></label>;
+  const { m } = useI18n();
+  return <label className="cookie-category"><div><strong>{label}</strong><p>{description}</p></div><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={m("cookies.allow", { category: label.toLocaleLowerCase() })} /></label>;
 }
 
 export function useCookieConsent() {
@@ -128,6 +131,7 @@ export function useCookieConsent() {
 }
 
 export function CookiePreferencesButton() {
+  const { m } = useI18n();
   const { openSettings } = useCookieConsent();
-  return <button type="button" className="public-footer-link" onClick={openSettings}>Preferencias de cookies</button>;
+  return <button type="button" className="public-footer-link" onClick={openSettings} data-i18n-explicit="true">{m("cookies.preferences")}</button>;
 }

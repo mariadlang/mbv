@@ -1,16 +1,29 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { localeByLanguage, translate, translateLegacyText } from "@/src/i18n/translations";
+import { translate, translateLegacyText } from "@/src/i18n/translations";
+import { formatMessage } from "@/src/i18n/messages";
+import type { MessageKey, MessageParams } from "@/src/i18n/keys";
+import {
+  formatCurrency as formatLocalizedCurrency,
+  formatDate as formatLocalizedDate,
+  formatNumber as formatLocalizedNumber,
+  formatPlural as formatLocalizedPlural,
+  localeByLanguage,
+} from "@/src/i18n/formatters";
 import { useUiStore, type Language } from "@/src/stores/useUiStore";
 
 interface I18nValue {
   language: Language;
   locale: string;
   setLanguage(language: Language): void;
+  m(key: MessageKey, params?: MessageParams): string;
+  /** @deprecated Compatibility bridge for Spanish source strings. Do not use in new code. */
   t(source: string, params?: Record<string, string | number>): string;
   formatDate(value: Date | string, options?: Intl.DateTimeFormatOptions): string;
   formatNumber(value: number, options?: Intl.NumberFormatOptions): string;
+  formatCurrency(value: number, currency: string, options?: Omit<Intl.NumberFormatOptions, "style" | "currency">): string;
+  formatPlural(count: number, forms: { zero?: string; one: string; other: string }): string;
 }
 
 const I18nContext = createContext<I18nValue | null>(null);
@@ -24,8 +37,18 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    document.documentElement.dataset.i18nLegacyBridge = "active";
+
+    const isOutsideLegacyBridge = (node: Node) => {
+      const element = node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement;
+      if (!element) return false;
+      if (element.closest("[data-no-translate='true'], [translate='no'], [data-i18n-explicit='true']")) return true;
+      return ["SCRIPT", "STYLE", "NOSCRIPT"].includes(element.tagName);
+    };
+
     const translateNode = (root: Node) => {
       const processText = (node: Text) => {
+        if (isOutsideLegacyBridge(node)) return;
         const current = node.data;
         const last = lastAppliedText.current.get(node);
         if (!originalText.current.has(node) || (last !== undefined && current !== last)) originalText.current.set(node, current);
@@ -35,7 +58,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         lastAppliedText.current.set(node, next);
       };
       const processElement = (element: Element) => {
-        if (element.closest("[data-no-translate='true']")) return;
+        if (isOutsideLegacyBridge(element)) return;
         for (const attribute of ["placeholder", "aria-label", "title"]) {
           const current = element.getAttribute(attribute);
           if (current === null) continue;
@@ -68,16 +91,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["placeholder", "aria-label", "title"] });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      delete document.documentElement.dataset.i18nLegacyBridge;
+    };
   }, [language]);
 
   const value = useMemo<I18nValue>(() => ({
     language,
     locale: localeByLanguage[language],
     setLanguage,
+    m: (key, params) => formatMessage(language, key, params),
     t: (source, params) => translate(language, source, params),
-    formatDate: (input, options) => new Intl.DateTimeFormat(localeByLanguage[language], options).format(typeof input === "string" ? new Date(input) : input),
-    formatNumber: (input, options) => new Intl.NumberFormat(localeByLanguage[language], options).format(input),
+    formatDate: (input, options) => formatLocalizedDate(language, input, options),
+    formatNumber: (input, options) => formatLocalizedNumber(language, input, options),
+    formatCurrency: (input, currency, options) => formatLocalizedCurrency(language, input, currency, options),
+    formatPlural: (count, forms) => formatLocalizedPlural(language, count, forms),
   }), [language, setLanguage]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

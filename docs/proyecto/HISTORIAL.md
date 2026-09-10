@@ -26,10 +26,11 @@ Reconstrucción realizada el **2026-09-04 (America/Bogota, UTC-05:00)**. El orde
 20. [Trabajo local actual](#2026-09-04--auditoría-correcciones-locales-y-continuidad-documental)
 21. [Plan semanal opción B](#2026-09-07--plan-semanal-opción-b-conectado-al-planner)
 22. [Ajustes P0 de prelanzamiento](#2026-09-08--ajustes-p0-de-prelanzamiento)
+23. [Consolidación P1](#2026-09-09-a-2026-09-10--consolidación-p1-de-experiencia-y-sistema)
 
 ## Nota sobre el grafo
 
-El repositorio no es superficial. Antes del candidato P0, `main` alcanza 63 commits y contiene dos raíces: `18fe17f` y `1002103`. Varias mejoras aparecen en pares o variantes para la línea principal y ramas de Sites; se fusionaron mediante `5a52b46`, `82bb24e` y `c357130`. En la revisión previa, las referencias de Sites disponibles eran ancestros de `main` y no contenían trabajo adelantado. No hay etiquetas Git. El working tree P0 todavía no debe atribuirse a un commit o despliegue futuro.
+El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 commits y contiene dos raíces: `18fe17f` y `1002103`. Varias mejoras históricas aparecen en pares o variantes para la línea principal y ramas de Sites; se fusionaron mediante `5a52b46`, `82bb24e` y `c357130`. No hay etiquetas Git. La entrega P1 se documenta como un hito nuevo y no reescribe la historia anterior.
 
 ---
 
@@ -376,3 +377,21 @@ El repositorio no es superficial. Antes del candidato P0, `main` alcanza 63 comm
 - **Validación ejecutada:** ESLint, TypeScript, build de producción Next.js y build de Sites/Vinext aprobados; 20 archivos y 96 pruebas unitarias aprobadas; 12 pares de contraste aprobados; ocho screenshots P0 generados e inspeccionados. La suite Playwright final aprobó 66 casos, omitió 8 de forma intencional y no tuvo fallos. La migración analítica v2 fue aplicada y un segundo dry-run confirmó `Remote database is up to date`. El smoke de producción aprobó rutas públicas y críticas de producto, metadata y Open Graph sin errores de consola.
 - **Estado de implementación:** release técnico P0 publicado. El despliegue `appgdep_6aa199690ba08191a458b52f4d5abcc4` terminó en `succeeded` y el smoke de producción aprobó landing/trial, dashboard, Mi día, Semana, Hábitos, Upgrade y Open Graph 1200×630 sin errores de consola.
 - **Pendientes o limitaciones:** implementar webhook/conciliación segura de Mercado Pago; definir las condiciones comerciales; adjuntar `mybestversion.life`; y recibir el master vectorial aprobado. Estos puntos impiden declarar listo el lanzamiento comercial Premium autoservicio, no el release técnico P0.
+
+### 2026-09-09 a 2026-09-10 — Consolidación P1 de experiencia y sistema
+
+- **Identificador estable:** `MBV-H-023`.
+- **Tipo de cambio:** release técnico P1; sistema visual, navegación, lenguaje, accesibilidad, documentación y QA.
+- **Área afectada:** tipografía, arquitectura CSS, primitives, Mi espacio, navegación, i18n, lenguaje de producto, continuidad de hábitos, documentación y QA.
+- **Estado previo:** release P0 documentado en `8e6ede1`, con `main`, `origin/main` y working tree alineados antes de iniciar P1.
+- **Objetivo:** consolidar decisiones ya vigentes sin rediseñar el producto, cambiar la matriz Trial/Premium, alterar persistencia ni incorporar assets sin aprobación.
+- **Qué se hizo — tipografía y CSS:** Nunito Sans quedó como única familia activa; `app/globals.css` pasó a ser un manifiesto ordenado de capas y `src/styles` separa tokens, foundations, layout, primitives, marketing, utilidades y features. Se definieron tres niveles de tokens, modo oscuro y una auditoría incremental con baseline de 291 coincidencias directas en 15 archivos, distribuidas entre fuentes de tokens, excepciones técnicas y deuda heredada.
+- **Qué se hizo — design system:** Button, IconButton, Card, Badge, Tabs, SegmentedControl, FormField, feedback, carga, vacío y error comparten contratos. Modal y drawer conservan foco, Escape, bloqueo de scroll y retorno al disparador.
+- **Qué se hizo — navegación y Mi espacio:** Inicio, Mi día, Planificar, Mi espacio y Progreso son los cinco destinos principales en desktop/mobile. Bienestar y Finanzas permanecen visibles como accesos secundarios. Mi espacio abre un Resumen, conserva sus módulos y normaliza el alias `calendar` a `events`.
+- **Qué se hizo — lenguaje e i18n:** se añadieron 1.230 claves ES/EN tipadas, formatters y auditoría de paridad; el bridge legacy quedó congelado en 803 entradas. EN permanece Beta. Las superficies revisadas aíslan contenido personal para que títulos como “Hoy” no se traduzcan.
+- **Qué se hizo — progreso amable:** Hábitos prioriza “Mayor continuidad”, separa “No programado” de 0 % y Retos puede pausarse/reanudarse sin borrar registros.
+- **Qué se hizo — documentación:** se añadieron fuente de verdad de marca, tipografía, dirección visual, manifiesto de assets, diccionario de producto, arquitectura actual, índice ADR, contratos de primitives, excepciones de tokens e informe P1.
+- **Integridad funcional:** se conservaron los flujos, reglas Trial/Premium, persistencia local-first y relaciones Meta → resultado mensual → semana → Mi día → Progreso. No se añadieron capacidades P2.
+- **Validación ejecutada:** auditorías de tokens e i18n, ESLint, TypeScript, 25 archivos y 140 pruebas unitarias, 22/22 pares de contraste, builds Next/Vinext y `git diff --check` aprobados. La matriz pública aprobó 10 rutas × 9 viewports; la matriz de producto aprobó 16 rutas × 9 viewports en claro/oscuro; el plan semanal aprobó su matriz específica y los recorridos ES/EN aprobaron en desktop/mobile. La suite Playwright quedó aprobada de forma acumulada con 65 casos, 9 omisiones intencionales y 0 fallos pendientes.
+- **Estado de entrega:** candidato P1 validado localmente y listo para commit/publicación; el SHA, push, versión, despliegue y smoke se consignarán al publicar.
+- **Pendientes o limitaciones:** el bridge i18n y los colores directos restantes son deuda gradual. Webhook/conciliación de Mercado Pago, condiciones comerciales, revisión jurídica, dominio personalizado y master vectorial siguen bloqueando el lanzamiento comercial Premium, no el release técnico P1.

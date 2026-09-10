@@ -12,15 +12,15 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Última revisión documental: **2026-09-09, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-09-10, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `main`.
-- SHA base anterior al candidato P0: `53221567be90c3dd2b9e9d47e1dce4be19891cd8`.
-- Sincronización observada: `main` y `origin/main` coincidían en ese SHA.
-- Historial previo al candidato: 63 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release técnico P0 `5c5f5a0bfd342a4b731fa927f992d7233959006d`, publicado el 2026-09-09.
+- SHA base anterior al candidato P1: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`.
+- Sincronización observada: `main` y `origin/main` coincidían en ese SHA antes de P1.
+- Historial en la base P1: 65 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el candidato técnico P1 `MBV-H-023`.
 
-El SHA base identifica el punto anterior examinado; el SHA `5c5f5a0bfd342a4b731fa927f992d7233959006d` identifica la implementación funcional P0 enviada y publicada. Esta actualización documental de cierre se versiona después de ese SHA sin cambios de runtime.
+El SHA base identifica el release P0 documentado desde el que comenzó P1. El SHA funcional P1, su versión de Sites y el smoke de producción se incorporan a esta memoria después de completar publicación.
 
 ## Fuentes utilizadas
 
@@ -28,7 +28,7 @@ El SHA base identifica el punto anterior examinado; el SHA `5c5f5a0bfd342a4b731f
 - Estado preparado, no preparado y archivos nuevos del working tree.
 - Código actual de `app/`, `src/`, `tests/`, `e2e/`, `supabase/` y configuración del proyecto.
 - README, documentos de arquitectura, ADR, notas de producto, documentos legales, soporte y autenticación existentes.
-- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-09.
+- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-10.
 
 No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas disponibles localmente. No se consultaron archivos `.env`, credenciales, tokens ni datos personales. Los documentos fuente externos mencionados por `docs/product/source-notes.md` no están versionados y, por tanto, no se revisaron directamente.
 

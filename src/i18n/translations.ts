@@ -1,5 +1,10 @@
 import type { Language } from "@/src/stores/useUiStore";
 
+/**
+ * Legacy Spanish-source catalog kept only while existing surfaces migrate to
+ * stable keys in `src/i18n/messages`. New copy must not be added here.
+ */
+
 type Params = Record<string, string | number>;
 
 const en: Record<string, string> = {
@@ -864,4 +869,4 @@ export function translateLegacyText(language: Language, source: string): string 
   return `${leading}${translated}${trailing}`;
 }
 
-export const localeByLanguage: Record<Language, string> = { es: "es-CO", en: "en-US" };
+export { localeByLanguage } from "@/src/i18n/formatters";

@@ -61,7 +61,7 @@ export function SupportPage() {
       </form>
       <aside><HelpCircle size={23} /><h3>Tu privacidad importa</h3><p>Un reporte guarda la ruta, fecha, navegador, sistema operativo, versión e ID interno. Nunca registra contraseñas, tokens, diario ni contenido sensible.</p></aside>
     </Card>
-    <Card className="support-faqs"><header><div><p className="eyebrow">RESPUESTAS BREVES</p><h2>Preguntas frecuentes</h2></div>{support.loading && <small role="status">Actualizando…</small>}</header>{support.faqs.map((faq) => <details key={faq.id}><summary>{faq.question}<ChevronDown size={17} /></summary><p>{faq.answer}</p></details>)}</Card>
+    <Card className="support-faqs"><header><div><p className="eyebrow">RESPUESTAS BREVES</p><h2>Preguntas frecuentes</h2></div>{support.loading && <small role="status">Actualizando…</small>}</header>{support.faqs.map((faq) => <details key={faq.id} data-no-translate="true"><summary>{faq.question}<ChevronDown size={17} /></summary><p>{faq.answer}</p></details>)}</Card>
   </div>;
 }
 

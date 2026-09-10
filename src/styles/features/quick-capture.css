@@ -1,0 +1,14 @@
+/* Universal capture and action-first daily experience */
+.quick-capture-layer { position: fixed; z-index: 120; inset: 0; display: flex; justify-content: flex-end; }
+.quick-capture-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; background: var(--color-overlay); backdrop-filter: blur(5px); }
+.quick-capture-drawer { position: relative; z-index: 1; display: grid; width: min(480px, 100%); height: 100%; overflow-y: auto; align-content: start; border-left: 1px solid var(--color-border); background: var(--color-background); box-shadow: -24px 0 70px rgba(47, 47, 51, .18); }
+.quick-capture-drawer > header { position: sticky; z-index: 2; top: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-background) 94%, transparent); padding: 26px 24px 18px; backdrop-filter: blur(12px); }
+.quick-capture-drawer > header h2 { margin: 3px 0 5px; }
+.quick-capture-drawer > header p:not(.eyebrow) { margin: 0; color: var(--color-text-secondary); font-size: var(--text-sm); }
+.quick-capture-drawer > form { display: grid; gap: 16px; padding: 24px; }
+.quick-capture-options-toggle { display: flex; min-height: 44px; align-items: center; justify-content: space-between; border: 0; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--color-brand-strong); font: inherit; font-weight: 700; cursor: pointer; }
+.quick-capture-options-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.quick-capture-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.quick-capture-actions { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid var(--color-border); background: var(--color-background); padding: 15px 0 calc(15px + env(safe-area-inset-bottom)); }
+.quick-capture-actions small { color: var(--color-text-secondary); }
+.quick-capture-feedback { position: fixed; z-index: 125; right: 24px; bottom: 24px; display: flex; max-width: min(560px, calc(100vw - 32px)); align-items: center; gap: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-elevated); padding: 11px 12px 11px 14px; box-shadow: var(--shadow-lg); }

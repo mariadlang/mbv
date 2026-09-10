@@ -50,7 +50,14 @@ export function habitRecommendation(name: string, origin: "established" | "exper
 
 export function weeklyPlanningInsight(snapshot: PlannerSnapshot, today = new Date()): {
   completionRate: number;
+  completed: number;
+  total: number;
+  summaryKind: "completed" | "insufficient_data";
+  suggestionKind: "sustainable" | "reduce_project" | "choose_results";
+  projectName?: string;
+  /** Canonical Spanish snapshot kept for persisted review compatibility. */
   summary: string;
+  /** Canonical Spanish snapshot kept for persisted review compatibility. */
   suggestion: string;
 } {
   const end = new Date(today);
@@ -67,9 +74,14 @@ export function weeklyPlanningInsight(snapshot: PlannerSnapshot, today = new Dat
   const project = snapshot.projects.find((item) => item.status === "active");
   return {
     completionRate,
+    completed,
+    total: relevant.length,
+    summaryKind: relevant.length ? "completed" : "insufficient_data",
+    suggestionKind: completionRate >= 75 ? "sustainable" : project ? "reduce_project" : "choose_results",
+    projectName: completionRate < 75 ? project?.name : undefined,
     summary: relevant.length
-      ? `Completaste ${completed} de ${relevant.length} tareas planificadas la semana pasada.`
-      : "Aún no hay suficientes tareas fechadas para comparar la semana anterior.",
+      ? `Completaste ${completed} de ${relevant.length} tareas planificadas en los últimos siete días.`
+      : "Aún no hay suficientes tareas fechadas para comparar los últimos siete días.",
     suggestion: completionRate >= 75
       ? "El ritmo fue sostenible: conserva tus tres prioridades y deja espacio de recuperación."
       : project

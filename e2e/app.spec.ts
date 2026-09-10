@@ -1,16 +1,23 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const p0Viewports = [
+const p1Viewports = [
+  { width: 320, height: 568 },
   { width: 375, height: 812 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
   { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
 ] as const;
 
 function signedOutPath(path: string) {
   return `${path}${path.includes("?") ? "&" : "?"}e2e-auth=signed-out`;
+}
+
+function formatSpanishAssignmentDate(date: Date) {
+  return new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long" }).format(date);
 }
 
 async function dismissCookieBanner(page: Page) {
@@ -182,11 +189,17 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await page.getByRole("button", { name: "Nueva tarea" }).click();
   await page.getByLabel("Tarea", { exact: true }).fill("Preparar propuesta beta");
   await page.getByRole("button", { name: "Guardar tarea" }).click();
-  const task = page.getByLabel("Completar Preparar propuesta beta");
+  const task = page.getByRole("button", { name: "Completar Preparar propuesta beta", exact: true });
   await expect(task).toBeVisible();
-  await task.click();
+  if (test.info().project.name === "mobile") {
+    await task.focus();
+    await page.keyboard.press("Enter");
+  } else {
+    await task.click();
+  }
+  await expect(page.getByRole("button", { name: "Reabrir Preparar propuesta beta", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Completadas" }).click();
-  await expect(page.getByText("Preparar propuesta beta", { exact: true })).toBeVisible();
+  await expect(page.locator(".managed-task__content").filter({ hasText: "Preparar propuesta beta" })).toBeVisible();
 
   await page.goto("/app/habits");
   await page.getByRole("button", { name: "Crear hábito" }).click();
@@ -203,6 +216,9 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await todayHabit.getByRole("button", { name: "Marcar" }).click();
   await expect(todayHabit.getByText("Completado")).toBeVisible();
   await expect(todayHabit.getByRole("button", { name: "Desmarcar Leer con calma" })).toBeVisible();
+  await expect(page.getByText("Mayor continuidad", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mejor racha", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".habit-not-scheduled").first()).toHaveAccessibleName("No programado");
 });
 
 test("habits dashboard records measured progress, edits habits and updates one wellbeing log", async ({ page }) => {
@@ -402,8 +418,10 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Bandeja" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mi espacio", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Captura rápida" }).click();
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=lists$/);
+  await expect(page.getByRole("heading", { name: "Bandeja", exact: true })).toBeVisible();
   await page.getByLabel("Nombre").fill("Aprender fotografía");
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(page.locator(".brain-inbox-list").getByText("Aprender fotografía")).toBeVisible();
@@ -472,7 +490,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
-    ["/app/life-hub", /^Bandeja$/],
+    ["/app/life-hub", /^Mi espacio$/],
     ["/app/health", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
@@ -487,43 +505,67 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     if (route === "/app/health") await authorizeFitnessIfNeeded(page);
     await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible({ timeout: 15_000 });
     if (route === "/app/habits") {
+      await expect(page.getByText("Mayor continuidad", { exact: true })).toBeVisible();
+      await expect(page.getByText("Mejor racha", { exact: true })).toHaveCount(0);
       await page.reload();
       await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
     }
   }
   await page.reload();
   await expect(page.getByRole("heading", { name: /Centro de Privacidad/ })).toBeVisible();
+
+  await page.goto("/app/life-hub?tab=calendar");
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=events$/);
+  await expect(page.getByRole("button", { name: "Calendario", exact: true })).toHaveAttribute("aria-current", "page");
+
+  await page.goto("/app/progress#statistics");
+  await expect(page.locator("#statistics")).toBeVisible();
 });
 
 test("information architecture separates overview from daily execution", async ({ page }) => {
   await completeOnboarding(page);
   const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await expect(navigation.getByRole("link")).toHaveCount(test.info().project.name === "mobile" ? 5 : 7);
+  await expect(navigation.getByRole("link")).toHaveCount(5);
   await expect(navigation).toContainText("Inicio");
   await expect(navigation).toContainText("Mi día");
   await expect(navigation).toContainText("Planificar");
   await expect(navigation).toContainText("Progreso");
   await expect(navigation).toContainText("Mi espacio");
-  if (test.info().project.name === "mobile") {
-    await expect(navigation).not.toContainText("Bienestar");
-    await expect(navigation).not.toContainText("Finanzas");
-  } else {
-    await expect(navigation).toContainText("Bienestar");
-    await expect(navigation).toContainText("Finanzas");
-  }
+  await expect(navigation).not.toContainText("Bienestar");
+  await expect(navigation).not.toContainText("Finanzas");
+  await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
 
   if (test.info().project.name === "desktop") {
-    const wellbeingLink = navigation.getByRole("link", { name: "Bienestar", exact: true });
+    const shortcuts = page.locator(".sidebar__space-shortcuts");
+    await expect(shortcuts).toContainText("En Mi espacio");
+    const wellbeingLink = shortcuts.getByRole("link", { name: /Bienestar/ });
     await wellbeingLink.click();
     await expect(page).toHaveURL(/\/app\/health/);
-    await expect(wellbeingLink).toHaveAttribute("aria-current", "page");
+    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(wellbeingLink).not.toHaveAttribute("aria-current");
+    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
 
-    const financeLink = navigation.getByRole("link", { name: "Finanzas", exact: true });
+    const financeLink = shortcuts.getByRole("link", { name: /Finanzas/ });
     await financeLink.click();
     await expect(page).toHaveURL(/\/app\/finance/);
-    await expect(financeLink).toHaveAttribute("aria-current", "page");
+    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(financeLink).not.toHaveAttribute("aria-current");
+    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
+  } else {
+    await navigation.getByRole("link", { name: "Mi espacio", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Mi espacio", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Bienestar/ }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Finanzas/ }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
+    const drawer = page.locator(".mobile-drawer");
+    await expect(drawer.getByRole("link", { name: /Bienestar/ })).toBeVisible();
+    await expect(drawer.getByRole("link", { name: /Finanzas/ })).toBeVisible();
+    await drawer.getByRole("link", { name: /Bienestar/ }).click();
+    await expect(page).toHaveURL(/\/app\/health/);
+    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
   }
 
   await navigation.getByRole("link", { name: "Mi día", exact: true }).click();
@@ -600,6 +642,11 @@ test("creates a gentle challenge and records today", async ({ page }) => {
   await page.getByRole("button", { name: "Guardar reto" }).click();
   await expect(page.getByRole("heading", { name: "Dar un paso valiente" })).toBeVisible();
   await page.getByRole("button", { name: "Registrar hoy" }).click();
+  await expect(page.getByRole("button", { name: "Quitar registro de hoy" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Pausar" }).click();
+  await expect(page.getByRole("heading", { name: "Retos en pausa" })).toBeVisible();
+  await page.getByRole("button", { name: "Retomar" }).click();
+  await expect(page.getByRole("heading", { name: "Dar un paso valiente" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Quitar registro de hoy" })).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -701,7 +748,11 @@ test("Mi día keeps the visual wellbeing check-in and its saved state", async ({
   await expect(moodCard.getByRole("radio", { name: "Equilibrada" })).toHaveAttribute("aria-checked", "true");
   await expect(moodCard.getByRole("button", { name: "Energía 6 de 10" })).toHaveAttribute("aria-pressed", "true");
 
-  await moodCard.getByRole("radio", { name: "Buena" }).click();
+  const balancedMood = moodCard.getByRole("radio", { name: "Equilibrada" });
+  await balancedMood.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(moodCard.getByRole("radio", { name: "Buena" })).toBeFocused();
+  await expect(moodCard.getByRole("radio", { name: "Buena" })).toHaveAttribute("aria-checked", "true");
   await moodCard.getByRole("button", { name: "Energía 8 de 10" }).click();
   await moodCard.getByLabel("Nota breve sobre tu estado").fill("Hoy avanzo con calma.");
   await moodCard.getByRole("button", { name: "Guardar nota de bienestar" }).click();
@@ -759,7 +810,7 @@ test("date-only planning, habit recurrence and Brain Dump conversion stay consis
   await toolkit.locator("textarea").fill("Preparar una salida en bicicleta");
   await toolkit.getByLabel("¿Dónde quieres dejarlo?").selectOption("later");
   await toolkit.getByRole("button", { name: "Aplicar al planner" }).click();
-  await page.goto("/app/life-hub");
+  await page.goto("/app/life-hub?tab=lists");
   await page.getByLabel("Editar Preparar una salida en bicicleta").click();
   const nextMonth = new Date();
   nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -817,7 +868,8 @@ test("weekly plan option B creates, assigns and preserves the same task across M
   let pending = page.locator(".weekly-pending-task").filter({ hasText: "Pendiente semanal de prueba" });
   await expect(pending).toBeVisible();
   await pending.getByText("Asignar día", { exact: true }).click();
-  await pending.getByRole("button", { name: `Asignar Pendiente semanal de prueba al ${todayKey}` }).click();
+  const todayAssignmentName = `Asignar Pendiente semanal de prueba al ${formatSpanishAssignmentDate(now)}`;
+  await pending.getByRole("button", { name: todayAssignmentName }).click();
   await expect(pending).toHaveCount(0);
 
   let scheduled = todayGroup.locator(".weekly-task-row").filter({ hasText: "Pendiente semanal de prueba" });
@@ -827,7 +879,7 @@ test("weekly plan option B creates, assigns and preserves the same task across M
   pending = page.locator(".weekly-pending-task").filter({ hasText: "Pendiente semanal de prueba" });
   await expect(pending).toBeVisible();
   await pending.getByText("Asignar día", { exact: true }).click();
-  await pending.getByRole("button", { name: `Asignar Pendiente semanal de prueba al ${todayKey}` }).click();
+  await pending.getByRole("button", { name: todayAssignmentName }).click();
 
   await page.goto("/app/today");
   await expect(page.getByText("Pendiente semanal de prueba", { exact: true }).first()).toBeVisible();
@@ -899,9 +951,9 @@ test("weekly plan option B remains legible across its responsive matrix", async 
   }
 });
 
-test("P0 public routes remain clear across the required visual matrix", async ({ page }) => {
+test("P1 public routes remain clear across the required visual matrix", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop", "This test already covers every required viewport.");
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   const runtimeErrors = collectRuntimeErrors(page);
   const screens = [
     { path: "/", ready: () => page.getByRole("heading", { name: "Tu vida completa, organizada con claridad y sin culpa.", exact: true }) },
@@ -913,9 +965,10 @@ test("P0 public routes remain clear across the required visual matrix", async ({
     { path: "/upgrade", ready: () => page.getByRole("heading", { name: "Amplía tu horizonte cuando estés lista.", exact: true }) },
     { path: "/privacy", ready: () => page.getByRole("heading", { name: "Tu privacidad, en claro", exact: true }) },
     { path: "/terms", ready: () => page.getByRole("heading", { name: "Términos y Condiciones", exact: true }) },
+    { path: "/legal", ready: () => page.getByRole("heading", { name: "Centro Legal y de Privacidad", exact: true }) },
   ];
 
-  for (const viewport of p0Viewports) {
+  for (const viewport of p1Viewports) {
     await page.setViewportSize(viewport);
     for (const screen of screens) {
       await page.goto(signedOutPath(screen.path));
@@ -939,31 +992,45 @@ test("P0 public routes remain clear across the required visual matrix", async ({
   expect(runtimeErrors).toEqual([]);
 });
 
-test("P0 product routes remain usable across the required visual matrix", async ({ page }) => {
+test("P1 product routes remain usable across the required visual matrix in light and dark mode", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop", "This test already covers every required viewport.");
-  test.setTimeout(300_000);
+  test.setTimeout(900_000);
   const runtimeErrors = collectRuntimeErrors(page);
   await completeOnboarding(page);
 
   const screens = [
     { path: "/app/dashboard", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
     { path: "/app/today", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
+    { path: "/app/vision", ready: () => page.getByRole("heading", { name: "Vida soñada", exact: true }) },
+    { path: "/app/goals", ready: () => page.getByRole("heading", { name: "Metas", exact: true }) },
     { path: "/app/planning", ready: () => page.getByRole("heading", { name: "Planificación", exact: true }) },
     { path: "/app/planning/weekly", ready: () => page.getByRole("heading", { name: "Plan semanal", exact: true }) },
+    { path: "/app/life-hub", ready: () => page.getByRole("heading", { name: "Mi espacio", exact: true }) },
+    { path: "/app/tasks", ready: () => page.getByRole("heading", { name: "Proyectos y tareas", exact: true }) },
     { path: "/app/habits", ready: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
     { path: "/app/progress", ready: () => page.getByRole("heading", { name: "Tu progreso", exact: true }) },
     { path: "/app/journal", ready: () => page.getByRole("heading", { name: "Mi diario", exact: true }) },
     { path: "/app/finance", ready: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
     { path: "/app/health", ready: () => page.getByRole("heading", { name: /Antes de usar Alimentación y Entrenamiento|Alimentación/ }) },
     { path: "/app/settings", ready: () => page.getByRole("heading", { name: "Ajustes y datos", exact: true }) },
+    { path: "/app/help", ready: () => page.getByRole("heading", { name: "Desbloquearme", exact: true }) },
+    { path: "/app/support", ready: () => page.getByRole("heading", { name: "Ayuda y soporte", exact: true }) },
   ];
 
-  for (const viewport of p0Viewports) {
-    await page.setViewportSize(viewport);
-    for (const screen of screens) {
-      await page.goto(screen.path);
-      await expect(screen.ready()).toBeVisible();
-      await expectNoHorizontalOverflow(page, `${screen.path} at ${viewport.width}x${viewport.height}`);
+  for (const colorMode of ["light", "dark"] as const) {
+    await page.goto("/app/settings");
+    const modeControl = page.locator(".color-mode-setting").getByRole("button", { name: colorMode === "dark" ? "Oscuro" : "Claro", exact: true });
+    if (await modeControl.getAttribute("aria-pressed") !== "true") await modeControl.click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", colorMode);
+
+    for (const viewport of p1Viewports) {
+      await page.setViewportSize(viewport);
+      for (const screen of screens) {
+        await page.goto(screen.path);
+        await expect(screen.ready()).toBeVisible();
+        await expect(page.locator("html")).toHaveAttribute("data-theme", colorMode);
+        await expectNoHorizontalOverflow(page, `${screen.path} in ${colorMode} at ${viewport.width}x${viewport.height}`);
+      }
     }
   }
 
@@ -1002,7 +1069,12 @@ test("P0 keyboard focus, dark mode, reduced motion and 200% reflow remain usable
   expect(reducedMotion.animation).toBeLessThanOrEqual(1);
   expect(reducedMotion.transition).toBeLessThanOrEqual(1);
 
+  await page.locator(".access-chip").click();
+  await expect(page).toHaveURL(/\/upgrade$/);
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+
   await page.goto("/app/habits");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const createHabit = page.getByRole("button", { name: "Crear hábito", exact: true });
   await createHabit.focus();
   await page.keyboard.press("Enter");
@@ -1211,8 +1283,7 @@ test("a goal connects its monthly result, weekly action, Mi día and Progress", 
   await expect(connectedAction).toContainText("Meta · Publicar una guía útil");
   await connectedAction.getByText("Asignar día", { exact: true }).click();
   const currentDate = new Date();
-  const currentDateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
-  await connectedAction.getByRole("button", { name: `Asignar Escribir el esquema de la guía al ${currentDateKey}` }).click();
+  await connectedAction.getByRole("button", { name: `Asignar Escribir el esquema de la guía al ${formatSpanishAssignmentDate(currentDate)}` }).click();
 
   await page.goto("/app/today");
   await expect(page.getByText("Escribir el esquema de la guía").first()).toBeVisible();
@@ -1227,21 +1298,40 @@ test("a goal connects its monthly result, weekly action, Mi día and Progress", 
 test("English mode covers the updated product flows", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
+  await page.goto("/app/tasks");
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  await page.getByLabel("Tarea", { exact: true }).fill("Hoy");
+  await page.getByRole("button", { name: "Guardar tarea" }).click();
+  await expect(page.getByText("Hoy", { exact: true }).first()).toBeVisible();
   await page.goto("/app/settings");
-  await page.getByRole("button", { name: "EN", exact: true }).click();
+  await page.getByRole("button", { name: "Inglés, Beta", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+
+  await page.goto("/app/dashboard");
+  await expect(page.getByRole("heading", { name: /Good morning, María/ })).toBeVisible();
+  const primaryNavigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
+  await expect(primaryNavigation).toContainText("Home");
+  await expect(primaryNavigation).toContainText("My day");
+  await expect(primaryNavigation).toContainText("Plan");
+  await expect(primaryNavigation).toContainText("My space");
+  await expect(primaryNavigation).toContainText("Progress");
+
+  await page.goto("/app/today");
+  await expect(page.getByRole("heading", { name: /Good morning, María/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My mood today", exact: true })).toBeVisible();
 
   await page.goto("/app/tasks");
   await expect(page.getByText("First, the outcome", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "New task" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Inbox" })).toBeVisible();
+  await expect(page.getByText("Hoy", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Primero, el resultado", { exact: true })).toHaveCount(0);
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Inbox", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My space", exact: true })).toBeVisible();
 
   await page.goto("/app/planning/weekly");
-  await expect(page.getByRole("heading", { name: "Unscheduled tasks" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pending without a date" })).toBeVisible();
 
   await page.goto("/app/vision?guided=1");
   await expect(page.getByRole("heading", { name: "First, picture the life you want" })).toBeVisible();
@@ -1268,12 +1358,12 @@ test("English mode covers the updated product flows", async ({ page }) => {
 
   for (const [path, heading] of [
     ["/", "Your whole life, organized with clarity and without guilt."],
-    ["/trial", "Explore the essentials to turn your vision into possible actions."],
+    ["/trial", "Explore the essentials for turning your vision into realistic actions."],
     ["/signup", "Start a life that feels more like yours."],
     ["/login", "Return to your planner."],
     ["/verify-email", "Check your email."],
-    ["/forgot-password", "Recover access to your account."],
-    ["/upgrade", "Expand your horizon when you're ready."],
+    ["/forgot-password", "Recover your access."],
+    ["/upgrade", "Expand your horizon when you are ready."],
   ] as const) {
     await page.goto(signedOutPath(path));
     await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();

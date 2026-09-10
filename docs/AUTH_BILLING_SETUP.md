@@ -23,8 +23,8 @@ La migración reconoce `maria.delosangelesgtg@gmail.com` sólo dentro de la func
 ## Trial y capacidades
 
 - Duración: 15 días desde el primer acceso verificado.
-- Base durante trial: planner, hábitos, bienestar, finanzas, fitness, proyectos, retos y planeación hasta tres meses.
-- Premium: añade Feed Hub y planeación a cinco años.
+- Base durante trial: planner, hábitos, bienestar, finanzas, fitness, proyectos, retos y planificación hasta tres meses.
+- Premium: añade planificación a cinco años. `feed_hub` existe como capacidad técnica, pero no está accesible ni debe comunicarse como disponible.
 - Estados `expired` y `blocked` no reciben acceso al planner.
 - Las reglas puras están en `src/domain/access.ts`; la fuente autoritativa del tiempo es `server_now` devuelta por Supabase.
 
@@ -44,3 +44,7 @@ Configura en cada entorno:
 - `NEXT_PUBLIC_MERCADO_PAGO_URL` (opcional si se usa el enlace predeterminado)
 
 Después de configurar variables, vuelve a desplegar y valida registro → correo verificado → primer acceso → trial → upgrade.
+
+## Límites comerciales pendientes
+
+El repositorio no define precio, moneda comercial, periodicidad, impuestos, renovación, cancelación ni reembolsos. No publiques una oferta Premium autoservicio hasta implementar webhook, verificación de firma y conciliación idempotente con Mercado Pago. La documentación técnica no constituye condiciones de venta.

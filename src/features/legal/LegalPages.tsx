@@ -31,7 +31,7 @@ function ResponsibleInfo() {
 }
 
 function LegalArticle({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead: string; children: ReactNode }) {
-  return <PublicFrame><article className="legal-page"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><LegalStatus /><p className="lead">{lead}</p>{children}<section><h2>Fuentes oficiales de referencia</h2><ul className="legal-source-list">{officialLegalSources.map(([name, url]) => <li key={url}><a href={url} target="_blank" rel="noreferrer">{name} <ExternalLink size={13} /></a></li>)}</ul><p>Este contenido debe recibir revisión jurídica antes de una operación comercial definitiva o un cambio material del producto.</p></section></article></PublicFrame>;
+  return <PublicFrame><article className="legal-page" translate="no" data-no-translate="true"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><LegalStatus /><p className="lead">{lead}</p>{children}<section><h2>Fuentes oficiales de referencia</h2><ul className="legal-source-list">{officialLegalSources.map(([name, url]) => <li key={url}><a href={url} target="_blank" rel="noreferrer">{name} <ExternalLink size={13} /></a></li>)}</ul><p>Este contenido debe recibir revisión jurídica antes de una operación comercial definitiva o un cambio material del producto.</p></section></article></PublicFrame>;
 }
 
 export function LegalCenterPage() {
@@ -48,7 +48,7 @@ export function LegalCenterPage() {
     ["/provider-info", "Información del proveedor", "Identificación y canales oficiales disponibles."],
     ["/pqr", "Peticiones, quejas y reclamos", "Presenta una PQR o consulta de privacidad."],
   ];
-  return <PublicFrame><main className="legal-page legal-page--center"><p className="eyebrow">TRANSPARENCIA Y CONTROL</p><h1>Centro Legal y de Privacidad</h1><LegalStatus /><p className="lead">Encuentra en lenguaje claro las reglas del servicio, el tratamiento de datos y los canales para ejercer tus derechos.</p><div className="legal-resource-grid">{items.map(([href, title, text]) => <Link key={href} to={href}><FileCheck2 size={20} /><strong>{title}</strong><span>{text}</span></Link>)}</div><section><h2>Responsable y canales</h2><ResponsibleInfo /></section></main></PublicFrame>;
+  return <PublicFrame><main className="legal-page legal-page--center" translate="no" data-no-translate="true"><p className="eyebrow">TRANSPARENCIA Y CONTROL</p><h1>Centro Legal y de Privacidad</h1><LegalStatus /><p className="lead">Encuentra en lenguaje claro las reglas del servicio, el tratamiento de datos y los canales para ejercer tus derechos.</p><div className="legal-resource-grid">{items.map(([href, title, text]) => <Link key={href} to={href}><FileCheck2 size={20} /><strong>{title}</strong><span>{text}</span></Link>)}</div><section><h2>Responsable y canales</h2><ResponsibleInfo /></section></main></PublicFrame>;
 }
 
 export function TermsPage() {
@@ -178,7 +178,7 @@ function RequestForm({ compact = false }: { compact?: boolean }) {
 
 export function PqrPage() {
   const account = useAccount();
-  return <PublicFrame><main className="legal-page legal-page--center"><p className="eyebrow">ATENCIÓN Y PRIVACIDAD</p><h1>Peticiones, quejas y reclamos</h1><LegalStatus /><p className="lead">Radica solicitudes comerciales, de privacidad, retracto, seguridad o eliminación. Al iniciar sesión podrás consultar su estado y conservar la trazabilidad.</p>{account.user ? <RequestForm /> : <><Card className="legal-login-card"><Mail size={22} /><h2>Ingresa para proteger tu solicitud</h2><p>Usamos tu cuenta para verificar identidad, asignar una referencia y mostrarte el seguimiento.</p><Link className="button button--primary" to="/login">Iniciar sesión</Link></Card><section><h2>Plazos de privacidad</h2><p>Consultas: hasta 10 días hábiles. Reclamos: hasta 15 días hábiles. Si se requiere prórroga, informaremos el motivo y la nueva fecha dentro de los límites legales.</p></section></>}</main></PublicFrame>;
+  return <PublicFrame><main className="legal-page legal-page--center" translate="no" data-no-translate="true"><p className="eyebrow">ATENCIÓN Y PRIVACIDAD</p><h1>Peticiones, quejas y reclamos</h1><LegalStatus /><p className="lead">Radica solicitudes comerciales, de privacidad, retracto, seguridad o eliminación. Al iniciar sesión podrás consultar su estado y conservar la trazabilidad.</p>{account.user ? <RequestForm /> : <><Card className="legal-login-card"><Mail size={22} /><h2>Ingresa para proteger tu solicitud</h2><p>Usamos tu cuenta para verificar identidad, asignar una referencia y mostrarte el seguimiento.</p><Link className="button button--primary" to="/login">Iniciar sesión</Link></Card><section><h2>Plazos de privacidad</h2><p>Consultas: hasta 10 días hábiles. Reclamos: hasta 15 días hábiles. Si se requiere prórroga, informaremos el motivo y la nueva fecha dentro de los límites legales.</p></section></>}</main></PublicFrame>;
 }
 
 export function LegalPrivacyPage() {

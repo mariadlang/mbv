@@ -1,0 +1,58 @@
+html[data-theme="dark"],
+.app-shell[data-color-mode="dark"] {
+  color-scheme: dark;
+  --color-background: #1f1f23;
+  --color-surface: #27272c;
+  --color-surface-elevated: #2f2f35;
+  --color-surface-muted: #38363a;
+  --color-text-primary: #fff6f2;
+  --color-text-secondary: #d0c8cd;
+  --color-text-muted: #a9a0a6;
+  --color-text-secondary-on-background: #d0c8cd;
+  --color-border: #48454c;
+  --color-border-strong: #625e66;
+  --color-brand-soft: #60494f;
+  --color-brand: #e8a7af;
+  --color-brand-strong: #f1b5bc;
+  --color-accent-sand: #c8ae8c;
+  --color-accent-lavender: #c6bfda;
+  --color-success: #a7bda0;
+  --color-success-soft: #304033;
+  --color-success-text: #a7bda0;
+  --color-warning: #e2b47c;
+  --color-warning-soft: #493a2c;
+  --color-warning-text: #e2b47c;
+  --color-danger: #f08f98;
+  --color-danger-soft: #4a2d32;
+  --color-danger-text: #f08f98;
+  --color-brand-text-on-soft: #f1b5bc;
+  --color-focus: #f1b5bc;
+  --color-overlay: rgba(0, 0, 0, .64);
+  --shadow: 0 8px 26px rgba(0, 0, 0, .18);
+  --shadow-raised: 0 22px 58px rgba(0, 0, 0, .3);
+  --button-primary-text: var(--brand-charcoal);
+  --button-primary-hover-text: var(--brand-charcoal);
+  --button-danger-text: var(--brand-charcoal);
+}
+
+html[data-theme="dark"] body { background: var(--color-background); }
+html[data-theme="dark"] .app-shell :where(
+  .focus-task, .mood-option, .matrix-check, .week-switcher, .planning-add, .search-field,
+  .radio-cards span, .area-picker button, .intention-options button, .area-grid-reference button,
+  .weekday-start > *, .segmented-control button.is-active, .planning-tabs button.is-active,
+  .journal-tabs button.is-active, .vision-card, .task-toolbar > button, .factor-chips button,
+  .energy-buttons button, .month-calendar-grid > button, .calendar-toolbar > button,
+  .cascade-map button, .life-hub-tabs button.is-active, .active-challenges header button
+) { background: var(--color-surface-elevated); color: var(--color-text-primary); }
+html[data-theme="dark"] .app-shell :where(
+  .intention-options button.is-selected, .area-grid-reference button.is-selected,
+  .mood-option.is-selected, .factor-chips button.is-selected, .energy-buttons button.is-selected
+) { background: var(--color-brand-soft); border-color: var(--color-brand); }
+html[data-theme="dark"] .app-shell :where(.segmented-control, .planning-tabs, .journal-tabs, .finance-tabs, .life-hub-tabs) { background: var(--color-surface-muted); }
+html[data-theme="dark"] .recharts-cartesian-axis-tick-value,
+html[data-theme="dark"] .recharts-polar-angle-axis-tick-value { fill: var(--color-text-secondary); }
+html[data-theme="dark"] .dashboard-greeting p,
+html[data-theme="dark"] .intention-quote blockquote,
+html[data-theme="dark"] .priority-goal-list small,
+html[data-theme="dark"] .dash-mood-inner p { color: var(--color-text-secondary); }
+html[data-theme="dark"] .intention-quote blockquote { color: var(--color-text-primary); }

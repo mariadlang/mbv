@@ -124,8 +124,8 @@ export function QuickCaptureDrawer({
           {optionsOpen && <div className="quick-capture-options">
             <label className="form-field"><span>Fecha</span><input type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={date} onChange={(event) => { setDate(event.target.value); setError(""); }} /></label>
             <label className="form-field"><span>Prioridad</span><select value={priority} onChange={(event) => setPriority(event.target.value as typeof priority)}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>
-            <label className="form-field"><span>Meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin meta</option>{planner.snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option value={goal.id} key={goal.id}>{goal.title}</option>)}</select></label>
-            <label className="form-field"><span>Proyecto</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Sin proyecto</option>{planner.snapshot.projects.filter((project) => project.status === "active").map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select></label>
+            <label className="form-field"><span>Meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin meta</option>{planner.snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option value={goal.id} key={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label>
+            <label className="form-field"><span>Proyecto</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Sin proyecto</option>{planner.snapshot.projects.filter((project) => project.status === "active").map((project) => <option value={project.id} key={project.id} data-no-translate="true" translate="no">{project.name}</option>)}</select></label>
             <label className="form-field"><span>Tipo</span><select value={type} onChange={(event) => setType(event.target.value as CaptureType)}><option value="task">Tarea</option><option value="priority">Prioridad de Mi día</option></select></label>
             {type === "priority" && <label className="form-field"><span>Posición</span><select value={focusPriority} onChange={(event) => setFocusPriority(event.target.value as typeof focusPriority)}><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label>}
           </div>}
@@ -134,6 +134,6 @@ export function QuickCaptureDrawer({
         </form>
       </aside>
     </div>, document.body)}
-    {feedback && <div className="quick-capture-feedback" role="status" aria-live="polite"><span><Check size={17} /><strong>Guardado en {feedback.destination}</strong><small>{feedback.title}</small></span><Link to="/app/tasks"><Eye size={15} /> Ver</Link><button type="button" onClick={undo}><RotateCcw size={15} /> Deshacer</button><button type="button" aria-label="Cerrar confirmación" onClick={() => setFeedback(null)}><X size={15} /></button></div>}
+    {feedback && <div className="quick-capture-feedback" role="status" aria-live="polite"><span><Check size={17} /><strong>Guardado en {feedback.destination}</strong><small data-no-translate="true" translate="no">{feedback.title}</small></span><Link to="/app/tasks"><Eye size={15} /> Ver</Link><button type="button" onClick={undo}><RotateCcw size={15} /> Deshacer</button><button type="button" aria-label="Cerrar confirmación" onClick={() => setFeedback(null)}><X size={15} /></button></div>}
   </>;
 }

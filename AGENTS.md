@@ -17,10 +17,19 @@
 
 ## Interfaz
 
-- Respetar los tokens de `app/globals.css`: marfil, crema, carbón, rosa evolución, taupe, salvia y blush.
-- Cormorant Garamond para títulos/editorial; DM Sans para interfaz.
+- Respetar los tokens semánticos definidos en `src/styles/`; los aliases históricos de `src/styles/tokens.css` son sólo compatibilidad y no deben usarse en código nuevo.
+- Nunito Sans es la única tipografía vigente para títulos, cuerpo, controles y marca digital; no reincorporar Cormorant Garamond ni DM Sans.
 - Conservar navegación de escritorio y navegación inferior móvil.
 - Todos los controles necesitan nombre accesible, foco visible y estados vacíos útiles.
+- Lucide React es el sistema iconográfico principal. El saludo `👋` de Mi día es una excepción aprobada, no un sistema alternativo.
+
+## Lenguaje e internacionalización
+
+- Español es canónico; el selector EN permanece visible, operativo y marcado como Beta hasta que exista una decisión comercial explícita distinta.
+- Todo copy nuevo usa claves estables de `src/i18n/messages`; no añadir frases a `src/i18n/translations.ts`.
+- Fechas, números, moneda y plurales usan `src/i18n/formatters.ts`.
+- Nunca traducir contenido de usuaria ni texto legal sin revisión. Marcar límites legacy con `data-no-translate`, `translate="no"` o `data-i18n-explicit` según corresponda.
+- Ejecutar `pnpm audit:i18n` y `pnpm audit:design-tokens` junto con las validaciones del cambio.
 
 ## Calidad
 

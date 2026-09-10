@@ -6,7 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Coins, Heart, Home, Leaf, Palette, Plane, Plus, Save, Sparkles } from "lucide-react";
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
+import { Badge, Button, Card, SectionHeading, SegmentedControl } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { Modal } from "@/src/components/ui/Modal";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
@@ -72,7 +72,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         eyebrow="Tu visión, sin límites"
         title={view === "dream" ? "Vida soñada" : "Rueda de vida"}
         description={view === "dream" ? "Explora la vida que quieres construir por áreas." : "Evalúa dónde estás y visualiza hacia dónde quieres avanzar."}
-        action={<div className="segmented-control"><button className={view === "dream" ? "is-active" : ""} onClick={() => setView("dream")}>Vida soñada</button><button className={view === "wheel" ? "is-active" : ""} onClick={() => setView("wheel")}>Rueda de vida</button></div>}
+        action={<SegmentedControl ariaLabel="Vista de visión" items={[{ id: "dream", label: "Vida soñada" }, { id: "wheel", label: "Rueda de vida" }]} value={view} onChange={setView} />}
       />
 
       {guided && <Card className="vision-guided-start"><Sparkles size={22} /><div><p className="eyebrow">Tu punto de partida</p><h2>Diseña primero una imagen de la vida que quieres</h2><p>Elige un área, escribe una visión breve y después observa la Rueda de vida. Desde aquí podrás convertir lo importante en una meta.</p></div><Button variant="secondary" onClick={() => setView("wheel")}>Ver mi Rueda de vida <ArrowRight size={16} /></Button></Card>}
@@ -85,9 +85,9 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
               return (
                 <button key={area.id} className={`vision-card ${selected?.id === area.id ? "is-selected" : ""}`} onClick={() => chooseArea(area.id)}>
                   <span className={`vision-card__visual vision-card__visual--${area.color}`}>{area.imageDataUrl ? <img src={area.imageDataUrl} alt="" /> : <Icon size={30} strokeWidth={1.35} />}</span>
-                  <Badge tone="neutral">{area.custom ? area.category : area.name}</Badge>
-                  <h2>{area.vision ? area.vision.split(".")[0] : `Diseñar mi visión de ${area.name.toLowerCase()}`}</h2>
-                  <p>{area.vision || "Describe cómo se siente esta área cuando está alineada contigo."}</p>
+                  <Badge tone="neutral"><span data-no-translate="true" translate="no">{area.custom ? area.category : area.name}</span></Badge>
+                  <h2>{area.vision ? <span data-no-translate="true" translate="no">{area.vision.split(".")[0]}</span> : <>Diseñar mi visión de <span data-no-translate="true" translate="no">{area.name.toLowerCase()}</span></>}</h2>
+                  {area.vision ? <p data-no-translate="true" translate="no">{area.vision}</p> : <p>Describe cómo se siente esta área cuando está alineada contigo.</p>}
                 </button>
               );
             })}
@@ -95,13 +95,13 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
           </section>
           {selected && (
             <Card className="vision-editor">
-              <p className="eyebrow">Reflexión · {selected.name}</p>
+              <p className="eyebrow">Reflexión · <span data-no-translate="true" translate="no">{selected.name}</span></p>
               <h2>¿Cómo se ve tu mejor versión aquí?</h2>
-              {selected.custom && <label className="form-field"><span>Área de vida</span><select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id}>{area.name}</option>)}</select><small>Las opciones son las mismas de tu Rueda de vida.</small></label>}
+              {selected.custom && <label className="form-field"><span>Área de vida</span><select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select><small>Las opciones son las mismas de tu Rueda de vida.</small></label>}
               <label className="form-field"><span>Mi sueño</span><input value={dream} onChange={(event) => setDream(event.target.value)} placeholder="Ej. Vivir con energía y calma" /></label>
               <label className="form-field"><span>Mi visión</span><textarea rows={6} value={vision} onChange={(event) => setVision(event.target.value)} placeholder="Escribe una imagen concreta, propia y posible…" aria-label="Visión del área" /></label>
               <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImage(event.target.files?.[0], setImageDataUrl)} /></label>
-              {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt={`Vista previa de ${selected.name}`} /><figcaption>Esta imagen aparecerá en tu tarjeta de Vida soñada.</figcaption></figure>}
+              {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt="Vista previa del área elegida" /><figcaption>Esta imagen aparecerá en tu tarjeta de Vida soñada.</figcaption></figure>}
               {imageError && <p className="form-error" role="alert">{imageError}</p>}
               <div className="score-pair">
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
@@ -115,7 +115,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         <div className="wheel-layout">
           <Card className="wheel-chart-card">
             <div className="wheel-legend"><span><i className="legend-dot legend-dot--taupe" /> Actual</span><span><i className="legend-dot legend-dot--rose" /> Deseada</span></div>
-            <div className="wheel-chart" role="img" aria-label="Rueda de vida: comparación entre la valoración actual y la deseada por área">
+            <div className="wheel-chart" role="img" aria-label="Rueda de vida: comparación entre la valoración actual y la deseada por área" data-no-translate="true" translate="no">
               <ResponsiveContainer width="100%" height={460}>
                 <RadarChart data={radarData} outerRadius="72%">
                   <PolarGrid stroke="var(--color-border)" />
@@ -128,15 +128,15 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
             </div>
           </Card>
           <div className="wheel-side page-stack">
-            <Card className="reflection-panel"><Sparkles size={24} /><p className="eyebrow">Reflexión</p><h2>¿Qué área deseas fortalecer?</h2><p>{selected?.vision || "Elige un área y escribe una visión que te dé dirección, no presión."}</p><Button variant="secondary" onClick={() => setView("dream")}>Editar mi visión</Button></Card>
+            <Card className="reflection-panel"><Sparkles size={24} /><p className="eyebrow">Reflexión</p><h2>¿Qué área deseas fortalecer?</h2>{selected?.vision ? <p data-no-translate="true" translate="no">{selected.vision}</p> : <p>Elige un área y escribe una visión que te dé dirección, no presión.</p>}<Button variant="secondary" onClick={() => setView("dream")}>Editar mi visión</Button></Card>
             <Card className="wheel-summary"><p className="eyebrow">Resumen</p><strong>{(radarData.reduce((sum, item) => sum + item.actual, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio actual</span><strong>{(radarData.reduce((sum, item) => sum + item.deseada, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio deseado</span></Card>
           </div>
         </div>
       )}
       <Modal open={customOpen} title={customSavedId ? "Visión guardada" : "Crear tarjeta personalizada"} description={customSavedId ? "Esta parte de tu visión ya puede convertirse en una meta cuando quieras." : "Elige solo los campos que te ayuden. Nada aquí es obligatorio salvo el nombre."} onClose={() => setCustomOpen(false)}>
-        {customSavedId ? <div className="vision-success"><CheckCircle2 size={28} aria-hidden="true" /><h2>{custom.name}</h2><p>Tu tarjeta ya forma parte de Tablero visual y está conectada con {custom.category}.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim() || !custom.category) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
+        {customSavedId ? <div className="vision-success"><CheckCircle2 size={28} aria-hidden="true" /><h2 data-no-translate="true" translate="no">{custom.name}</h2><p>Tu tarjeta ya forma parte de Tablero visual y está conectada con <span data-no-translate="true" translate="no">{custom.category}</span>.</p><Link className="button button--primary" to="/app/goals" state={{ openGoal: true, areaId: customSavedId, title: custom.dream || custom.name, reason: custom.vision || custom.dream }} onClick={() => setCustomOpen(false)}>Convertir esto en una meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={() => setCustomOpen(false)}>Ahora no</Button></div> : <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); if (!custom.name.trim() || !custom.category) return; const next = await planner.createLifeArea({ name: custom.name, category: custom.category, dream: custom.dream, vision: custom.vision, currentScore: custom.currentScore ? Number(custom.currentScore) : undefined, desiredScore: custom.desiredScore ? Number(custom.desiredScore) : undefined, imageDataUrl: customImage }); const created = next.lifeAreas.at(-1); if (created) { setCustomSavedId(created.id); chooseArea(created.id); } }}>
           <label className="form-field"><span>Nombre</span><input required value={custom.name} onChange={(event) => setCustom({ ...custom, name: event.target.value })} placeholder="Ej. Mi vida creativa" /></label>
-          <label className="form-field"><span>Área de vida</span><select required value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}><option value="">Elige un área</option>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id}>{area.name}</option>)}</select><small>Usamos las mismas áreas de tu Rueda de vida para mantener todo conectado.</small></label>
+          <label className="form-field"><span>Área de vida</span><select required value={custom.category} onChange={(event) => setCustom({ ...custom, category: event.target.value })}><option value="">Elige un área</option>{lifeAreaOptions.map((area) => <option value={area.name} key={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select><small>Usamos las mismas áreas de tu Rueda de vida para mantener todo conectado.</small></label>
           <label className="form-field form-field--full"><span>Mi sueño</span><input value={custom.dream} onChange={(event) => setCustom({ ...custom, dream: event.target.value })} placeholder="Una frase que nombre lo que deseas" /></label>
           <label className="form-field form-field--full"><span>Mi visión</span><textarea rows={5} value={custom.vision} onChange={(event) => setCustom({ ...custom, vision: event.target.value })} placeholder="¿Cómo se ve tu mejor versión aquí?" /></label>
           <label className="form-field"><span>Estado actual · opcional</span><input type="number" min="1" max="10" value={custom.currentScore} onChange={(event) => setCustom({ ...custom, currentScore: event.target.value })} /></label>

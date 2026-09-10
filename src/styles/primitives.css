@@ -1,0 +1,78 @@
+.button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--button-radius);
+  padding: 11px 18px;
+  font-size: var(--type-button-size);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.button:hover { transform: translateY(-1px); }
+.button:active { transform: translateY(0); }
+.button:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; transform: none; }
+.button[aria-busy="true"] { cursor: progress; }
+.button--primary { background: var(--button-primary-background); color: var(--button-primary-text); box-shadow: var(--button-shadow); }
+.button--primary:hover { background: var(--button-primary-hover-background); color: var(--button-primary-hover-text); box-shadow: var(--button-hover-shadow); }
+.button--secondary { background: var(--button-secondary-background); border-color: transparent; color: var(--button-secondary-text); }
+.button--secondary:hover { border-color: var(--color-brand); background: var(--color-surface-elevated); }
+.button--outline { background: transparent; border-color: var(--color-text-primary); color: var(--color-text-primary); }
+.button--outline:hover { background: var(--color-surface-muted); }
+.button--ghost { background: transparent; color: var(--color-text-primary); }
+.button--ghost:hover { background: var(--color-surface-muted); }
+.button--text { min-height: auto; background: transparent; padding-inline: 0; color: var(--color-brand-strong); }
+.button--text:hover { transform: none; color: var(--color-text-primary); }
+.button--success { border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border)); background: var(--color-success-soft); color: var(--color-success-text); box-shadow: none; }
+.button--success:hover { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success-soft) 82%, var(--color-surface-elevated)); color: var(--color-success-text); box-shadow: none; }
+.button--warning { border-color: color-mix(in srgb, var(--color-warning) 42%, var(--color-border)); background: var(--color-warning-soft); color: var(--color-warning-text); box-shadow: none; }
+.button--warning:hover { border-color: var(--color-warning); background: color-mix(in srgb, var(--color-warning-soft) 82%, var(--color-surface-elevated)); color: var(--color-warning-text); box-shadow: none; }
+.button--danger { background: var(--button-danger-background); color: var(--button-danger-text); }
+.button--danger:hover { background: var(--button-danger-hover-background); }
+.button--sm { min-height: 36px; padding: 8px 12px; font-size: var(--text-xs); }
+.button--lg { min-height: 52px; padding: 14px 24px; font-size: var(--text-base); }
+.button__spinner { animation: spin .8s linear infinite; }
+
+.icon-button, .circle-link {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-elevated);
+  cursor: pointer;
+}
+.icon-button:hover, .circle-link:hover { border-color: var(--color-brand); color: var(--color-brand-strong); }
+
+.card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-background);
+  box-shadow: var(--card-shadow);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.badge {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: var(--type-caption-size);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}
+.badge--neutral { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+.badge--rose { background: var(--color-brand-soft); color: var(--color-text-primary); }
+.badge--sage { background: var(--color-success-soft); color: var(--color-success-text); }
+.badge--lavender { background: color-mix(in srgb, var(--color-accent-lavender) 30%, transparent); color: var(--color-text-primary); }
+.badge--warm { background: var(--color-warning-soft); color: var(--color-warning-text); }
+.badge--danger { background: var(--color-danger-soft); color: var(--color-danger-text); }

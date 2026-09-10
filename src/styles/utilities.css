@@ -1,0 +1,222 @@
+/* P0 accessibility: semantic foregrounds, resilient focus and touch targets */
+.stat-card__icon { color: var(--color-brand-text-on-soft); }
+.month-card--locked { border-style: dashed; background: var(--color-surface-muted); }
+.month-card--locked .month-card-main { cursor: default; }
+.month-card--locked .month-card-empty-copy { color: var(--color-text-secondary-on-background); }
+.month-readonly-label { display: inline-flex; align-items: center; gap: 6px; color: var(--color-warning-text); font-size: var(--text-xs); }
+.month-readonly-notice { display: flex; align-items: flex-start; gap: 12px; border-color: color-mix(in srgb, var(--color-warning-text) 36%, var(--color-border)); background: var(--color-warning-soft); padding: 18px; color: var(--color-warning-text); }
+.month-readonly-notice h2 { margin-bottom: 4px; font-size: var(--text-lg); }
+.month-readonly-notice p { margin: 0; }
+.month-priority-card > ol { display: grid; gap: 8px; margin: 16px 0 0; padding-left: 22px; }
+
+.today-mood-energy__segments button {
+  position: relative;
+  height: 44px;
+  background: transparent;
+}
+.today-mood-energy__segments button::before {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 13px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand) 9%, var(--color-surface-muted));
+  content: "";
+  transform: translateY(-50%);
+}
+.today-mood-energy__segments button.is-filled::before {
+  background: color-mix(in srgb, var(--color-brand) 86%, #e88686);
+}
+.today-mood-energy__segments button.is-filled { background: transparent; }
+.today-mood-energy__segments button[aria-pressed="true"]::before {
+  box-shadow: 0 0 0 2px var(--color-surface-elevated), 0 0 0 4px var(--color-focus);
+}
+.today-mood-energy__segments button:focus-visible,
+.today-mood-note-field input:focus-visible,
+.weekly-inline-composer input:focus-visible,
+.weekly-pending-composer input:focus-visible,
+.weekly-date-menu > summary:focus-visible,
+.weekly-options-menu > summary:focus-visible,
+.weekly-task-row:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.weekly-back-link,
+.weekly-plan-heading p,
+.weekly-priority-chips > span,
+.weekly-day-empty,
+.weekly-task-copy span,
+.weekly-task-row.is-complete .weekly-task-copy strong,
+.weekly-date-menu > summary,
+.weekly-options-menu > summary,
+.weekly-date-popover > strong,
+.weekly-date-popover > label,
+.weekly-options-popover > label,
+.weekly-habit-row,
+.weekly-composer-cancel,
+.weekly-pending-task__copy > span,
+.weekly-pending-idea .weekly-pending-task__main > span,
+.weekly-pending-empty,
+.weekly-review-observation {
+  color: var(--color-text-secondary-on-background);
+}
+.weekly-task-check,
+.weekly-task-star {
+  border-color: var(--color-text-secondary-on-background);
+}
+
+html[data-theme="dark"] .app-shell--weekly {
+  --weekly-bg: var(--color-background);
+  --weekly-text: var(--color-text-primary);
+  --weekly-rose: var(--color-brand);
+  --weekly-lavender: var(--color-accent-lavender);
+}
+html[data-theme="dark"] .app-shell--weekly :where(
+  .weekly-header-actions > .button,
+  .weekly-period-navigation > button:not(.button),
+  .weekly-period-navigation > strong,
+  .weekly-priority-chips button,
+  .weekly-days-panel,
+  .weekly-pending-panel,
+  .weekly-task-check,
+  .weekly-popover,
+  .weekly-date-popover > div button,
+  .weekly-date-popover input,
+  .weekly-options-popover select,
+  .weekly-habit-row > button,
+  .weekly-inline-composer input,
+  .weekly-pending-composer input,
+  .weekly-review-dialog textarea,
+  .weekly-review-dialog input
+) {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+html[data-theme="dark"] .app-shell--weekly :where(
+  .weekly-day-group.is-today,
+  .weekly-task-row:hover,
+  .weekly-date-menu[open] > summary,
+  .weekly-options-menu[open] > summary,
+  .weekly-review-observation
+) {
+  background: var(--color-surface-muted);
+}
+html[data-theme="dark"] .app-shell--weekly :where(
+  .weekly-priority-chips button:hover,
+  .weekly-priority-chips button:focus-visible,
+  .weekly-date-popover > div button:hover,
+  .weekly-unschedule-action:hover,
+  .weekly-options-popover > button:hover,
+  .weekly-date-menu[open] > summary,
+  .weekly-options-menu[open] > summary
+) {
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+html[data-theme="dark"] .app-shell--weekly :where(
+  .weekly-priority-strip > div:first-child,
+  .weekly-days-panel__header nav button,
+  .weekly-day-label,
+  .weekly-day-label > strong small,
+  .weekly-day-toolbar button,
+  .weekly-unschedule-action,
+  .weekly-options-popover > button,
+  .weekly-options-popover > label,
+  .weekly-day-label > strong,
+  .weekly-task-copy strong,
+  .weekly-pending-task__copy > strong,
+  .weekly-pending-idea .weekly-pending-task__main > strong,
+  .weekly-review-dialog > label span,
+  .weekly-review-dialog legend
+) {
+  color: var(--color-text-primary);
+}
+html[data-theme="dark"] .app-shell--weekly :where(
+  .weekly-priority-strip > div:first-child,
+  .weekly-day-label,
+  .weekly-day-label > strong small,
+  .weekly-options-popover > label
+) {
+  color: var(--color-text-secondary);
+}
+html[data-theme="dark"] .app-shell--weekly .weekly-task-row.is-complete .weekly-task-copy strong { color: var(--color-text-secondary); }
+html[data-theme="dark"] .app-shell--weekly .weekly-habit-row > button.is-complete {
+  background: var(--weekly-lavender);
+  color: var(--color-background);
+}
+html[data-theme="dark"] .app-shell--weekly .weekly-notice { color: var(--color-success-text); }
+
+@media (pointer: coarse) {
+  :where(
+    .button--sm,
+    .weekly-back-link,
+    .weekly-header-actions > .button,
+    .weekly-period-navigation > button,
+    .weekly-priority-chips button,
+    .weekly-days-panel__header nav button,
+    .weekly-day-toolbar button,
+    .weekly-date-menu > summary,
+    .weekly-unschedule-action,
+    .weekly-options-popover > button,
+    .weekly-inline-composer .button,
+    .weekly-pending-composer .button
+  ) {
+    min-height: 44px;
+  }
+  :where(
+    .language-switcher button,
+    .guided-tour__close,
+    .topbar__utilities button,
+    .sidebar-signout,
+    .collapse-button,
+    .today-mood-note-field button,
+    .habit-complete-button,
+    .habit-row-menu > button,
+    .habit-week-navigation button,
+    .habit-week-table td button,
+    .weekly-task-check,
+    .weekly-task-star,
+    .weekly-options-menu > summary,
+    .weekly-date-popover > div button,
+    .weekly-habit-row > button,
+    .weekly-composer-cancel,
+    .weekly-pending-composer .button,
+    .weekly-pending-toggle
+  ) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .weekly-task-row { grid-template-columns: 44px minmax(100px, 1fr) 44px auto; }
+  .weekly-habit-row { grid-template-columns: 44px 18px minmax(0, 1fr); }
+  .weekly-pending-task__main { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .weekly-pending-idea .weekly-pending-task__main { grid-template-columns: 24px minmax(0, 1fr); }
+  .weekly-inline-composer { grid-template-columns: minmax(120px, 1fr) auto 44px; }
+  .weekly-pending-composer { grid-template-columns: 20px minmax(0, 1fr) 44px; }
+  .weekly-date-popover > div { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+  .weekly-popover { width: min(320px, 82vw); }
+}
+
+@media (max-width: 700px) and (pointer: coarse) {
+  .weekly-task-row { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .weekly-inline-composer { grid-template-columns: minmax(0, 1fr) auto 44px; }
+  .today-mood-energy__segments { grid-template-columns: repeat(5, minmax(44px, 1fr)); }
+  :is(.weekly-date-menu, .weekly-options-menu) > .weekly-popover {
+    position: fixed;
+    z-index: 70;
+    inset: auto 14px calc(88px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: calc(100dvh - 132px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 430px) and (pointer: coarse) {
+  .weekly-inline-composer { grid-template-columns: minmax(0, 1fr) 44px; }
+}
+
+/* Keep keyboard focus visible even where legacy field styles reset outlines. */
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}

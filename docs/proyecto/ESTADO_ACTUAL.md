@@ -1,17 +1,18 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-09, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-10, America/Bogota (UTC-05:00)**.
 
 ## Punto de continuidad
 
 - Repositorio real: `C:/Users/maria/Documents/Codex/2026-08-10/a-web-app-para-my-best`.
 - Rama: `main`, con upstream `origin/main`.
-- SHA anterior a esta entrega: `53221567be90c3dd2b9e9d47e1dce4be19891cd8` (`chore: align Sites build metadata`).
-- `main` y `origin/main`: alineados en `53221567` antes de comenzar los ajustes P0.
-- Historial: completo/no superficial, 63 commits alcanzables desde ese SHA, dos raíces históricas y sin tags.
+- Base de la entrega P1: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2` (`docs: record P0 production release`).
+- `main` y `origin/main`: alineados en `8e6ede1` antes de comenzar P1.
+- Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
+- Entrega P1: `MBV-H-023` consolida tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA; está validada localmente y su SHA final se registra al cerrar el despliegue.
 
-Este documento describe el estado publicado mediante `MBV-H-020`, `MBV-H-021` y `MBV-H-022` en [`HISTORIAL.md`](HISTORIAL.md). El SHA funcional P0 fue comprobado tanto en GitHub como en el Site.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-023` en [`HISTORIAL.md`](HISTORIAL.md). P1 conserva el release P0 y no incorpora alcance P2.
 
 ## Qué es el producto
 
@@ -54,7 +55,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 ### Navegación vigente
 
 - Cinco destinos principales: **Inicio, Mi día, Planificar, Mi espacio y Progreso**.
-- Desktop muestra además **Bienestar** y **Finanzas** en el lateral.
+- Desktop mantiene **Bienestar** y **Finanzas** visibles en un grupo secundario “En Mi espacio”; no cuentan como destinos principales.
 - Mobile conserva exactamente los cinco destinos principales en la barra inferior; el menú y Más herramientas exponen utilidades adicionales.
 - Rutas antiguas se conservan como redirects: `/app/challenges`, `/app/mood`, `/app/life-hub/fitness`, `/app/feed`, `/app/profile`, `/app/pqr` y `/admin`.
 
@@ -85,15 +86,16 @@ No existe sincronización del contenido del planner entre dispositivos.
 
 - Hábitos booleanos, de cantidad o duración; recurrencia diaria, días laborables, personalizada o sólo una fecha.
 - Progreso parcial medible y edición del hábito.
-- Constancia y mejor racha cuentan únicamente días programados.
+- Constancia y **Mayor continuidad** cuentan únicamente días programados; “No programado” se representa como estado separado y nunca como 0 %.
 - Progreso reúne evidencia de metas, hitos, tareas y hábitos.
 - Journal admite entrada libre, gratitud y revisiones; el contenido permanece local.
 - La entrada rápida del Journal exige contenido en el working tree actual.
 
 ### Mi espacio y herramientas
 
-- Bandeja/Brain Dump con listas, edición, fecha flexible/mes/día y conversión idempotente a tarea.
+- La ruta base de Mi espacio abre un **Resumen** con accesos y contexto; Bandeja/Brain Dump conserva listas, edición, fecha flexible/mes/día y conversión idempotente a tarea.
 - Rutinas editables, Retos embebidos, Tablero de visión y Calendario/eventos.
+- El alias histórico `tab=calendar` se normaliza al destino canónico `tab=events`.
 - Más herramientas enlaza Bienestar, Finanzas, Rutinas, Retos, Tablero visual, Calendario, Ayuda, Aprende y Ajustes.
 - `LearnPage`, Centro de ayuda y modal global de desbloqueo ofrecen orientación no punitiva.
 
@@ -157,9 +159,13 @@ Token de cuenta → rutas API → Supabase
 - `app/api/`: soporte, eventos, marketing y plataforma.
 - `supabase/migrations/`: esquema remoto y políticas RLS.
 - `tests/` y `e2e/app.spec.ts`: pruebas unitarias y recorridos completos.
-- `app/globals.css`: tokens y sistema visual global.
-- `scripts/check-contrast.mjs`: comprobación de contrastes semánticos principales.
-- `docs/brand/`, `docs/product/` y `docs/qa/`: decisiones P0 e informe de release.
+- `app/globals.css`: punto de entrada ordenado de las capas CSS.
+- `src/styles/tokens.css` y `tokens-dark.css`: tokens de marca, semánticos, de componente y overrides oscuros.
+- `src/styles/`: foundations, layout, primitives, marketing, utilidades y estilos por feature.
+- `src/components/ui/Primitives.tsx` y `Modal.tsx`: contratos reutilizables de interfaz y accesibilidad.
+- `src/i18n/messages/`, `keys.ts` y `formatters.ts`: catálogos estables, tipado y formato localizado.
+- `scripts/check-contrast.mjs`, `audit-design-tokens.mjs` y `audit-i18n.mjs`: contraste y límites verificables de deuda.
+- `docs/architecture/`, `docs/brand/`, `docs/design-system/`, `docs/decisions/` y `docs/qa/`: fuentes vigentes y evidencia de release.
 
 ## Tecnologías e integraciones verificadas
 
@@ -186,7 +192,10 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:contrast
+pnpm audit:i18n
+pnpm audit:design-tokens
 pnpm build
+pnpm build:vinext
 pnpm test:e2e
 ```
 
@@ -200,7 +209,11 @@ pnpm test:e2e
 - Mantener el contenido sensible del planner local hasta una decisión explícita de sincronización.
 - No presentar datos demo como reales; su carga debe ser voluntaria.
 - No penalizar días no programados en la constancia.
-- Mantener cinco destinos principales en mobile y navegación desktop accesible.
+- Mantener exactamente cinco destinos principales en desktop/mobile; Bienestar y Finanzas son accesos secundarios visibles de Mi espacio.
+- Usar Nunito Sans como única familia tipográfica activa.
+- Introducir color, espacio, radio, sombra o control reutilizable mediante tokens y primitives antes de crear una variante aislada.
+- Mantener español como idioma canónico y EN visible como Beta mientras exista el bridge legacy.
+- No traducir contenido escrito o nombrado por la persona; usar límites explícitos también en portales.
 - Usar español claro, foco visible, nombres accesibles y estados vacíos útiles.
 - Validar imports y formularios con Zod; no registrar contenido sensible en consola o eventos.
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
@@ -236,7 +249,18 @@ Para el candidato P0 del 2026-09-08 se registraron durante la implementación:
 - Screenshots: ocho referencias P0 generadas en `docs/qa/screenshots/`.
 - Smoke de producción: aprobado sobre la versión 27 para landing/trial, dashboard, Mi día, Semana, Hábitos y Upgrade; sin errores de consola ni overflow horizontal. Open Graph respondió en 1200×630.
 
-La evidencia y los estados finales deben actualizarse en [`../qa/p0-release-report.md`](../qa/p0-release-report.md) después de cada ejecución real.
+Para el candidato P1 del 2026-09-10:
+
+- Auditoría de tokens: 291/291 coincidencias directas revisadas dentro del baseline, distribuidas entre fuentes de tokens, excepciones técnicas y deuda heredada.
+- Auditoría i18n: 1.230 claves estables ES/EN y 803/803 entradas legacy permitidas.
+- ESLint y TypeScript: aprobados.
+- Unitarias: 25 archivos y 140 pruebas aprobadas.
+- Contraste: 22/22 pares claro/oscuro aprobados.
+- Matriz pública: 10 rutas × 9 viewports aprobada.
+- Matriz de producto: 16 rutas × 9 viewports × claro/oscuro aprobada tras corregir un overflow de 3 px en Ajustes a 320×568.
+- Recorridos funcionales de onboarding, cuenta existente, planificación, Hábitos, Meta → mes → semana → Mi día → Progreso e inglés Beta aprobados en las ejecuciones registradas.
+
+La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
 ## Problemas y limitaciones confirmados
 
@@ -249,11 +273,13 @@ La evidencia y los estados finales deben actualizarse en [`../qa/p0-release-repo
 7. Feed Hub está modelado como Premium, pero no es accesible desde la navegación vigente.
 8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
 9. `mybestversion.life` no está adjunto al Site; la URL operativa confirmada sigue siendo la URL pública de Sites.
+10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
+11. Permanecen 291 coincidencias de color directo revisadas en 15 archivos; el baseline impide crecimiento y no autoriza una sustitución masiva sin QA visual.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
 
-La última entrega funcional publicada confirmada es `5c5f5a0bfd342a4b731fa927f992d7233959006d` del release P0, desplegada como versión 27 en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`.
+La producción confirmada antes de P1 corresponde a la versión 28 de Sites, asociada al cierre documental P0 `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`, en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El candidato P1 está validado localmente y se sustituirá aquí por su SHA y versión una vez aprobado el smoke de producción.
 
-Siguiente paso documentado: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin reabrir el release técnico P0 ya validado.
+Siguiente paso después del cierre técnico P1: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.

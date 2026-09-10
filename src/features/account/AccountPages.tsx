@@ -14,9 +14,9 @@ import { analyticsService, clearAuthAnalyticsIntent, rememberAuthAnalyticsIntent
 import { LanguageSwitcher } from "@/src/components/ui/LanguageSwitcher";
 import { CookiePreferencesButton, useCookieConsent } from "@/src/features/legal/CookieConsent";
 import { LEGAL_VERSION } from "@/src/lib/legalConfig";
-import { BRAND_OPERATIONAL_MESSAGE, BRAND_POSITIONING, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 import { CTA } from "@/src/lib/cta";
-import { ACCESS_COMMUNICATION, PREMIUM_AVAILABLE_CAPABILITIES, TRIAL_INCLUDED_CAPABILITIES } from "@/src/domain/access";
+import { useI18n } from "@/src/i18n/I18nProvider";
+import type { MessageKey } from "@/src/i18n/keys";
 
 const credentialsSchema = z.object({
   email: z.string().trim().email("Escribe un correo válido."),
@@ -24,22 +24,32 @@ const credentialsSchema = z.object({
 });
 const signupSchema = credentialsSchema.extend({ name: z.string().trim().min(2, "Cuéntanos cómo quieres que te llamemos.") });
 
+const trialCapabilityKeys = ["trial.capability.planning", "trial.capability.threeMonths", "trial.capability.visionGoals", "trial.capability.habits", "trial.capability.journal", "trial.capability.projects", "trial.capability.progress", "trial.capability.wellbeing", "trial.capability.finances"] satisfies MessageKey[];
+const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fiveYears"] satisfies MessageKey[];
+const landingSteps = [
+  ["01", "landing.how.look.title", "landing.how.look.description"],
+  ["02", "landing.how.act.title", "landing.how.act.description"],
+  ["03", "landing.how.observe.title", "landing.how.observe.description"],
+] as const satisfies ReadonlyArray<readonly [string, MessageKey, MessageKey]>;
+
 export function LandingPage() {
+  const { m } = useI18n();
   const { user } = useAccount();
   const destination = user ? "/app/dashboard" : "/signup";
-  const primaryLabel = user ? CTA.authenticated.label : CTA.acquisition.label;
+  const primaryLabel = m(user ? "public.cta.authenticated" : "public.cta.startTrial");
   const trackAcquisition = (source: string) => { if (!user) analyticsService.track(CTA.acquisition.event, { source, route: "/signup", version: 2 }); };
-  return <main className="marketing-page">
-    <header className="marketing-header"><BrandMark compact /><nav aria-label="Navegación pública"><LanguageSwitcher compact /><a href="#como-funciona">Cómo funciona</a><Link to="/trial">Prueba de 15 días</Link><Link to="/login">{CTA.login.label}</Link><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_header")}>{primaryLabel}</Link></nav></header>
-    <section className="hero-section"><div className="hero-copy"><p className="eyebrow">{BRAND_POSITIONING}</p><h1>{BRAND_PROMISE}</h1><p>{BRAND_OPERATIONAL_MESSAGE}</p><div className="hero-actions"><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_hero")}>{primaryLabel} <ArrowRight size={17} /></Link><Link className="button button--secondary" to="/trial">Ver qué incluye</Link></div><small><Check size={15} /> 15 días · sin tarjeta · sin cobro automático</small></div><div className="hero-visual" aria-label="Vista previa del planner"><img src="/brand-icon.svg" alt="Logo de My Best Version" /><Card><span>Tu dirección</span><strong>De la visión a una semana posible</strong><div className="hero-progress"><i /><i /><i /></div></Card><Card><span>Mi día</span><strong>3 prioridades con espacio para respirar</strong></Card></div></section>
-    <section id="como-funciona" className="marketing-section"><p className="eyebrow">CÓMO FUNCIONA</p><h2>Tu visión se convierte en un camino que sí puedes recorrer.</h2><div className="marketing-grid">{[["01","Mira hacia adelante","Aclara tu visión y las metas que hoy importan."],["02","Baja a lo concreto","Conecta resultados, meses, semanas y días."],["03","Observa con calma","Reconoce hábitos, energía y progreso sin castigos."]].map(([n,title,text]) => <Card key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p></Card>)}</div></section>
-    <section className="marketing-cta"><Heart size={24} /><h2>{BRAND_SLOGAN}</h2><p>Tu prueba comienza después de verificar tu correo y entrar por primera vez.</p><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_footer")}>{primaryLabel}</Link></section>
-    <footer className="marketing-footer"><BrandMark compact /><span>© 2026 My Best Version</span><Link to="/legal">Centro legal</Link><Link to="/privacy">Privacidad</Link><Link to="/terms">Términos</Link><Link to="/cookies">Cookies</Link><CookiePreferencesButton /><Link to="/pqr">PQR</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">SIC</a><Link to="/login">Acceso</Link></footer>
+  return <main className="marketing-page" data-i18n-explicit="true">
+    <header className="marketing-header"><BrandMark compact /><nav aria-label={m("public.nav.label")}><LanguageSwitcher compact /><a href="#como-funciona">{m("public.nav.how")}</a><Link to="/trial">{m("public.nav.trial")}</Link><Link to="/login">{m("public.nav.login")}</Link><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_header")}>{primaryLabel}</Link></nav></header>
+    <section className="hero-section"><div className="hero-copy"><p className="eyebrow">{m("brand.positioning")}</p><h1>{m("brand.promise")}</h1><p>{m("brand.operationalMessage")}</p><div className="hero-actions"><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_hero")}>{primaryLabel} <ArrowRight size={17} /></Link><Link className="button button--secondary" to="/trial">{m("public.cta.features")}</Link></div><small><Check size={15} /> {m("landing.trial.note")}</small></div><div className="hero-visual" aria-label={m("landing.preview.label")}><img src="/brand-icon.svg" alt={m("landing.preview.logo")} /><Card><span>{m("landing.preview.direction")}</span><strong>{m("landing.preview.directionValue")}</strong><div className="hero-progress"><i /><i /><i /></div></Card><Card><span>{m("landing.preview.day")}</span><strong>{m("landing.preview.dayValue")}</strong></Card></div></section>
+    <section id="como-funciona" className="marketing-section"><p className="eyebrow">{m("landing.how.eyebrow")}</p><h2>{m("landing.how.title")}</h2><div className="marketing-grid">{landingSteps.map(([number, title, description]) => <Card key={number}><span>{number}</span><h3>{m(title)}</h3><p>{m(description)}</p></Card>)}</div></section>
+    <section className="marketing-cta"><Heart size={24} /><h2>{m("brand.slogan")}</h2><p>{m("landing.footer.note")}</p><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_footer")}>{primaryLabel}</Link></section>
+    <footer className="marketing-footer"><BrandMark compact /><span>© 2026 My Best Version</span><Link to="/legal">{m("public.nav.legal")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/cookies">{m("public.nav.cookies")}</Link><CookiePreferencesButton /><Link to="/pqr">{m("public.nav.pqr")}</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">SIC</a><Link to="/login">{m("public.nav.access")}</Link></footer>
   </main>;
 }
 
 export function TrialPage() {
-  return <PublicFrame><section className="trial-page"><p className="eyebrow">{ACCESS_COMMUNICATION.trial.title.toUpperCase()}</p><h1>Explora lo esencial para convertir tu visión en acciones posibles.</h1><p className="lead">{ACCESS_COMMUNICATION.trial.note}</p><div className="trial-comparison"><Card><span>Durante tu prueba</span><h2>Lo que puedes explorar</h2><ul>{TRIAL_INCLUDED_CAPABILITIES.map((item) => <li key={item}><Check size={16} />{item}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>Con Premium</span><h2>Horizonte ampliado</h2><ul>{PREMIUM_AVAILABLE_CAPABILITIES.map((item) => <li key={item}><Check size={16} />{item}</li>)}</ul></Card></div><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{CTA.acquisition.label}</Link></section></PublicFrame>;
+  const { m } = useI18n();
+  return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><ul>{trialCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card></div><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
 }
 
 export function PrivacyPage() {
@@ -137,20 +147,25 @@ export function LoginPage() { return <AuthForm mode="login" />; }
 export function SignupPage() { return <AuthForm mode="signup" />; }
 
 function AuthForm({ mode }: { mode: "login" | "signup" }) {
+  const { m } = useI18n();
   const account = useAccount();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", email: "", password: "", acceptedTerms: false, acceptedData: false, adult: false, marketing: false });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState<MessageKey | null>(null);
+  const [error, setError] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
   if (account.user && account.access) return <Navigate to="/app/dashboard" replace />;
 
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setError(""); setMessage("");
+    event.preventDefault(); setError(null); setMessage(null);
     const parsed = (mode === "signup" ? signupSchema : credentialsSchema).safeParse(form);
-    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? "Revisa los datos."); return; }
-    if (mode === "signup" && (!form.acceptedTerms || !form.acceptedData || !form.adult)) { setError("Acepta por separado los Términos, el tratamiento de datos y confirma que eres mayor de 18 años."); return; }
-    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
+    if (!parsed.success) {
+      const field = parsed.error.issues[0]?.path[0];
+      setError(field === "email" ? "auth.validation.email" : field === "password" ? "auth.validation.password" : field === "name" ? "auth.validation.name" : "auth.validation.review");
+      return;
+    }
+    if (mode === "signup" && (!form.acceptedTerms || !form.acceptedData || !form.adult)) { setError("auth.validation.consents"); return; }
+    if (!account.configured) { setError("auth.error.configuration"); return; }
     if (mode === "signup") analyticsService.track(CTA.signupForm.event, { source: "email_form", route: "/signup", version: 2 }, "email-form:v2");
     setSaving(true);
     try {
@@ -162,48 +177,50 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
       } else { await account.signIn({ email: form.email, password: form.password }); analyticsService.track("login_succeeded"); }
       navigate("/app/dashboard");
     } catch (caught) {
-      const text = caught instanceof Error ? caught.message : "No pudimos completar el acceso.";
-      setError(text.includes("Invalid login") ? "El correo o la contraseña no coinciden." : "No pudimos completar el acceso. Revisa los datos e inténtalo de nuevo.");
+      const text = caught instanceof Error ? caught.message : "";
+      setError(text.includes("Invalid login") ? "auth.error.credentials" : "auth.error.access");
     } finally { setSaving(false); }
   };
 
   const continueWithGoogle = async () => {
-    setError(""); setMessage("");
-    if (mode === "signup" && (!form.acceptedTerms || !form.acceptedData || !form.adult)) { setError("Acepta por separado los Términos, el tratamiento de datos y confirma que eres mayor de 18 años antes de continuar con Google."); return; }
-    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
+    setError(null); setMessage(null);
+    if (mode === "signup" && (!form.acceptedTerms || !form.acceptedData || !form.adult)) { setError("auth.validation.googleConsents"); return; }
+    if (!account.configured) { setError("auth.error.configuration"); return; }
     if (mode === "signup") analyticsService.track(CTA.signupForm.event, { source: "google", route: "/signup", version: 2 }, "google:v2");
     rememberAuthAnalyticsIntent(mode, "google");
     setSaving(true);
     try { await account.signInWithGoogle(); }
-    catch { clearAuthAnalyticsIntent(); setError("No pudimos abrir el acceso con Google. Inténtalo de nuevo."); setSaving(false); }
+    catch { clearAuthAnalyticsIntent(); setError("auth.error.google"); setSaving(false); }
   };
 
   const sendMagicLink = async () => {
-    setError(""); setMessage("");
+    setError(null); setMessage(null);
     const parsed = z.string().trim().email("Escribe un correo válido.").safeParse(form.email);
-    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? "Escribe un correo válido."); return; }
-    if (!account.configured) { setError("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); return; }
+    if (!parsed.success) { setError("auth.validation.email"); return; }
+    if (!account.configured) { setError("auth.error.configuration"); return; }
     setSaving(true);
     try {
       await account.signInWithMagicLink(parsed.data);
       rememberAuthAnalyticsIntent("login", "magic_link");
-      setMessage("Te enviamos un enlace seguro. Revisa tu correo para continuar.");
-    } catch { setError("No pudimos enviar el enlace. Inténtalo de nuevo."); }
+      setMessage("auth.magicLink.sent");
+    } catch { setError("auth.error.magicLink"); }
     finally { setSaving(false); }
   };
 
-  return <PublicFrame><section className="auth-card"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{mode === "signup" ? "CREA TU ESPACIO" : "QUÉ BUENO VERTE"}</p><h1>{mode === "signup" ? "Empieza una vida más tuya." : "Vuelve a tu planner."}</h1><p>{mode === "signup" ? "Tendrás 15 días para explorar lo incluido en la prueba después de verificar tu correo." : "Continúa desde donde lo dejaste."}</p>{mode === "signup" && <div className="signup-consents" aria-label="Autorizaciones de registro"><label className="legal-consent"><input type="checkbox" checked={form.acceptedTerms} onChange={(event) => setForm({ ...form, acceptedTerms: event.target.checked })} /><span>Acepto los <Link to="/terms">Términos y Condiciones</Link>. <strong>Obligatorio</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.acceptedData} onChange={(event) => setForm({ ...form, acceptedData: event.target.checked })} /><span>Autorizo el tratamiento de mis datos según la <Link to="/data-policy">Política de Tratamiento</Link>. <strong>Obligatorio</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.adult} onChange={(event) => setForm({ ...form, adult: event.target.checked })} /><span>Declaro que tengo 18 años o más. <strong>Obligatorio</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.marketing} onChange={(event) => setForm({ ...form, marketing: event.target.checked })} /><span>Quiero recibir novedades de My Best Version. Opcional y revocable.</span></label></div>}<div className="auth-options"><Button type="button" variant="outline" disabled={saving} onClick={continueWithGoogle}><span className="google-mark" aria-hidden="true">G</span> Continuar con Google</Button>{mode === "login" && <small className="auth-legal-note">Google comparte únicamente tu identidad básica autorizada. Consulta el <Link to="/privacy">Aviso de Privacidad</Link>.</small>}</div><div className="auth-divider"><span>o continúa con tu correo</span></div><form onSubmit={submit}>{mode === "signup" && <label><span>Nombre</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>Correo</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>Contraseña</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{error}</p>}{message && <p className="inline-message" role="status">{message}</p>}<Button type="submit" disabled={saving}>{saving ? "Un momento…" : mode === "signup" ? CTA.signupForm.label : CTA.login.label}</Button>{mode === "login" && <Button type="button" variant="secondary" disabled={saving} onClick={sendMagicLink}><Mail size={17} aria-hidden="true" /> Enviarme un enlace de acceso</Button>}</form>{mode === "login" && <Link to="/forgot-password">Olvidé mi contraseña</Link>}<p>{mode === "signup" ? "¿Ya tienes cuenta?" : "¿Todavía no tienes cuenta?"} <Link to={mode === "signup" ? "/login" : "/signup"}>{mode === "signup" ? CTA.login.label : CTA.signupForm.label}</Link></p></section></PublicFrame>;
+  return <PublicFrame><section className="auth-card" data-i18n-explicit="true"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{m(mode === "signup" ? "auth.signup.eyebrow" : "auth.login.eyebrow")}</p><h1>{m(mode === "signup" ? "auth.signup.title" : "auth.login.title")}</h1><p>{m(mode === "signup" ? "auth.signup.description" : "auth.login.description")}</p>{mode === "signup" && <div className="signup-consents" aria-label={m("auth.consent.label")}><label className="legal-consent"><input type="checkbox" checked={form.acceptedTerms} onChange={(event) => setForm({ ...form, acceptedTerms: event.target.checked })} /><span>{m("auth.consent.terms")} <Link to="/terms">{m("public.nav.termsFull")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.acceptedData} onChange={(event) => setForm({ ...form, acceptedData: event.target.checked })} /><span>{m("auth.consent.data")} <Link to="/data-policy">{m("public.nav.dataPolicyTitle")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.adult} onChange={(event) => setForm({ ...form, adult: event.target.checked })} /><span>{m("auth.consent.adult")} <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.marketing} onChange={(event) => setForm({ ...form, marketing: event.target.checked })} /><span>{m("auth.consent.marketing")}</span></label></div>}<div className="auth-options"><Button type="button" variant="outline" disabled={saving} onClick={continueWithGoogle}><span className="google-mark" aria-hidden="true">G</span> {m("auth.google.continue")}</Button>{mode === "login" && <small className="auth-legal-note">{m("auth.google.privacy")} <Link to="/privacy">{m("public.nav.privacyNotice")}</Link>.</small>}</div><div className="auth-divider"><span>{m("auth.email.divider")}</span></div><form onSubmit={submit}>{mode === "signup" && <label><span>{m("auth.field.name")}</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>{m("auth.field.email")}</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>{m("auth.field.password")}</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{m(error)}</p>}{message && <p className="inline-message" role="status">{m(message)}</p>}<Button type="submit" disabled={saving}>{saving ? m("auth.loading") : m(mode === "signup" ? "public.cta.account" : "public.nav.login")}</Button>{mode === "login" && <Button type="button" variant="secondary" disabled={saving} onClick={sendMagicLink}><Mail size={17} aria-hidden="true" /> {m("auth.magicLink.submit")}</Button>}</form>{mode === "login" && <Link to="/forgot-password">{m("auth.forgot")}</Link>}<p>{m(mode === "signup" ? "auth.hasAccount" : "auth.needsAccount")} <Link to={mode === "signup" ? "/login" : "/signup"}>{m(mode === "signup" ? "public.nav.login" : "public.cta.account")}</Link></p></section></PublicFrame>;
 }
 
-export function VerifyEmailPage() { return <PublicFrame><section className="auth-card auth-card--message"><span className="auth-card__icon"><Mail size={22} /></span><h1>Revisa tu correo.</h1><p>Te enviamos un enlace para verificar tu cuenta. Tu prueba empezará cuando confirmes el correo y entres por primera vez.</p><a className="button button--primary" href="mailto:">{CTA.verification.label}</a><Link className="button button--secondary" to="/login">Ya verifiqué mi correo: {CTA.login.label}</Link></section></PublicFrame>; }
+export function VerifyEmailPage() { const { m } = useI18n(); return <PublicFrame><section className="auth-card auth-card--message" data-i18n-explicit="true"><span className="auth-card__icon"><Mail size={22} /></span><h1>{m("auth.verify.title")}</h1><p>{m("auth.verify.description")}</p><a className="button button--primary" href="mailto:">{m("public.cta.verify")}</a><Link className="button button--secondary" to="/login">{m("auth.verify.confirmed")}</Link></section></PublicFrame>; }
 
 export function ForgotPasswordPage() {
-  const account = useAccount(); const [email, setEmail] = useState(""); const [status, setStatus] = useState("");
-  const submit = async (event: FormEvent) => { event.preventDefault(); const parsed = z.string().email().safeParse(email); if (!parsed.success) return setStatus("Escribe un correo válido."); if (!account.configured) return setStatus("El acceso está temporalmente en configuración. Inténtalo de nuevo en unos minutos."); try { await account.requestPasswordReset(email); setStatus("Si existe una cuenta con ese correo, recibirá un enlace de recuperación."); } catch { setStatus("No pudimos enviar el enlace. Inténtalo de nuevo."); } };
-  return <PublicFrame><section className="auth-card"><h1>Recupera tu acceso.</h1><p>Te enviaremos un enlace seguro para crear una nueva contraseña.</p><form onSubmit={submit}><label><span>Correo</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>{status && <p role="status">{status}</p>}<Button type="submit">Enviar enlace</Button></form><Link to="/login">{CTA.recovery.label}</Link></section></PublicFrame>;
+  const { m } = useI18n();
+  const account = useAccount(); const [email, setEmail] = useState(""); const [status, setStatus] = useState<MessageKey | null>(null);
+  const submit = async (event: FormEvent) => { event.preventDefault(); const parsed = z.string().email().safeParse(email); if (!parsed.success) return setStatus("auth.validation.email"); if (!account.configured) return setStatus("auth.error.configuration"); try { await account.requestPasswordReset(email); setStatus("auth.recovery.sent"); } catch { setStatus("auth.error.magicLink"); } };
+  return <PublicFrame><section className="auth-card" data-i18n-explicit="true"><h1>{m("auth.recovery.title")}</h1><p>{m("auth.recovery.description")}</p><form onSubmit={submit}><label><span>{m("auth.field.email")}</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>{status && <p role="status">{m(status)}</p>}<Button type="submit">{m("auth.recovery.submit")}</Button></form><Link to="/login">{m("public.cta.return")}</Link></section></PublicFrame>;
 }
 
 export function UpgradePage() {
+  const { m } = useI18n();
   const checkoutUrl = billingService.getCheckoutUrl();
   const { preferences: cookiePreferences } = useCookieConsent();
   const trackedOpen = useRef(false);
@@ -212,7 +229,7 @@ export function UpgradePage() {
     trackedOpen.current = true;
     analyticsService.track("upgrade_opened", { source: "upgrade_page", route: "/upgrade", version: 2 }, "page-opened:v2");
   }, [cookiePreferences?.analytics]);
-  return <PublicFrame><section className="upgrade-page"><p className="eyebrow">MY BEST VERSION PREMIUM</p><h1>Amplía tu horizonte cuando estés lista.</h1><p>Premium mantiene disponible lo incluido en tu prueba y añade planificación a cinco años. Tu información local permanece en este dispositivo.</p><Card><Sparkles size={28} /><h2>Premium</h2><ul>{PREMIUM_AVAILABLE_CAPABILITIES.map((item) => <li key={item}><Check size={17} />{item}</li>)}</ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, "mercado-pago:v2")}>{CTA.checkout.label} <ArrowRight size={16} /></a><small>El pago ocurre en Mercado Pago. Volver aquí no activa Premium automáticamente; el equipo debe confirmar el pago de forma segura.</small></Card></section></PublicFrame>;
+  return <PublicFrame><section className="upgrade-page" data-i18n-explicit="true"><p className="eyebrow">{m("premium.eyebrow")}</p><h1>{m("premium.title")}</h1><p>{m("premium.description")}</p><Card><Sparkles size={28} /><h2>Premium</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={17} />{m(key)}</li>)}</ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, "mercado-pago:v2")}>{m("public.cta.checkout")} <ArrowRight size={16} /></a><small>{m("premium.checkout.note")}</small></Card></section></PublicFrame>;
 }
 
-export function PublicFrame({ children }: { children: React.ReactNode }) { return <main className="public-frame"><header><Link to="/" aria-label="My Best Version, inicio"><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">Prueba</Link><Link to="/legal">Centro legal</Link><Link to="/privacy">Privacidad</Link><Link to="/terms">Términos</Link><Link to="/login">Iniciar sesión</Link></nav></header>{children}<footer className="public-legal-footer"><span>© 2026 My Best Version</span><Link to="/terms">Términos</Link><Link to="/data-policy">Tratamiento de datos</Link><Link to="/privacy">Privacidad</Link><Link to="/cookies">Cookies</Link><CookiePreferencesButton /><Link to="/pqr">PQR</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">Superintendencia de Industria y Comercio</a></footer></main>; }
+export function PublicFrame({ children }: { children: React.ReactNode }) { const { m } = useI18n(); return <main className="public-frame"><header data-i18n-explicit="true"><Link to="/" aria-label={m("public.brand.home")}><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">{m("public.nav.trialShort")}</Link><Link to="/legal">{m("public.nav.legal")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/login">{m("public.nav.login")}</Link></nav></header>{children}<footer className="public-legal-footer" data-i18n-explicit="true"><span>© 2026 My Best Version</span><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/data-policy">{m("public.nav.dataPolicy")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/cookies">{m("public.nav.cookies")}</Link><CookiePreferencesButton /><Link to="/pqr">{m("public.nav.pqr")}</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">{m("public.nav.industryAuthority")}</a></footer></main>; }

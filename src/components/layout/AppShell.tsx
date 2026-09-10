@@ -2,41 +2,53 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { NavLink, useLocation, useNavigationType } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigationType } from "react-router-dom";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, HeartPulse, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, WalletCards, Wrench, X } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
 
-const primaryItems = [
-  ["/app/dashboard", "Inicio", LayoutDashboard],
-  ["/app/today", "Mi día", ListTodo],
-  ["/app/planning", "Planificar", CalendarDays],
-  ["/app/life-hub", "Mi espacio", Layers3],
-  ["/app/progress", "Progreso", BarChart3],
+export const primaryItems = [
+  ["/app/dashboard", "navigation.item.home", LayoutDashboard],
+  ["/app/today", "navigation.item.today", ListTodo],
+  ["/app/planning", "navigation.item.plan", CalendarDays],
+  ["/app/life-hub", "navigation.item.space", Layers3],
+  ["/app/progress", "navigation.item.progress", BarChart3],
 ] as const;
 
 const mobileItems = primaryItems;
 
-const desktopItems = [
-  ...primaryItems.slice(0, 4),
-  ["/app/health", "Bienestar", HeartPulse],
-  ["/app/finance", "Finanzas", WalletCards],
-  primaryItems[4],
+const spaceShortcutItems = [
+  ["/app/health", "navigation.item.wellbeing", HeartPulse],
+  ["/app/finance", "navigation.item.finances", WalletCards],
 ] as const;
 
 const utilityItems = [
-  ["/app/help", "Centro de ayuda", CircleHelp],
-  ["/app/settings", "Ajustes", Settings],
+  ["/app/help", "navigation.item.help", CircleHelp],
+  ["/app/settings", "navigation.item.settings", Settings],
 ] as const;
 
-function isPrimaryActive(href: string, pathname: string) {
+export function getAccessMessageDescriptor(accessText?: string): { key: NavigationSpaceProgressMessageKey; params?: { count: number } } | undefined {
+  if (!accessText) return undefined;
+  if (accessText === "Superadmin") return { key: "navigation.access.superadmin" };
+  if (accessText === "Premium") return { key: "navigation.access.premium" };
+  if (accessText === "Prueba") return { key: "navigation.access.trial" };
+  if (accessText === "Acceso bloqueado") return { key: "navigation.access.blocked" };
+  if (accessText === "Prueba finalizada") return { key: "navigation.access.expired" };
+  const trialDays = /^Prueba · (\d+) d(?:ía|ías)$/.exec(accessText);
+  if (trialDays) {
+    const count = Number(trialDays[1]);
+    return { key: count === 1 ? "navigation.access.trialDay" : "navigation.access.trialDays", params: { count } };
+  }
+  return { key: "navigation.access.status" };
+}
+
+export function isPrimaryActive(href: string, pathname: string) {
   if (href === "/app/dashboard") return pathname === href;
   if (href === "/app/today") return pathname === href;
   if (href === "/app/planning") return ["/app/vision", "/app/goals", "/app/planning"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  if (href === "/app/life-hub") return ["/app/life-hub", "/app/journal", "/app/habits", "/app/tasks", "/app/learn", "/app/more"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  if (href === "/app/health") return pathname === href || pathname.startsWith(`${href}/`);
-  if (href === "/app/finance") return pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/app/life-hub") return ["/app/life-hub", "/app/journal", "/app/habits", "/app/tasks", "/app/learn", "/app/more", "/app/health", "/app/finance"].some((path) => pathname === path || pathname.startsWith(`${path}/`));
   return pathname === "/app/progress";
 }
 
@@ -45,7 +57,7 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
   const navigationType = useNavigationType();
   const isToday = pathname === "/app/today";
   const isWeeklyPlanning = pathname === "/app/planning/weekly" || (pathname === "/app/planning" && new URLSearchParams(search).get("view") === "week");
-  const desktopPrimaryItems = desktopItems;
+  const desktopPrimaryItems = primaryItems;
   const desktopUtilityItems = utilityItems;
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
@@ -55,8 +67,11 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
-  const { t } = useI18n();
-  useEffect(() => { document.documentElement.dataset.theme = colorMode; }, [colorMode]);
+  const { m } = useI18n();
+  useEffect(() => {
+    document.documentElement.dataset.theme = colorMode;
+    return () => { delete document.documentElement.dataset.theme; };
+  }, [colorMode]);
   useEffect(() => {
     if (navigationType !== "POP") window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [navigationType, pathname]);
@@ -111,21 +126,27 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
     };
   }, [fabOpen]);
   const scrollToTop = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  const avatar = userAvatar ? <img src={userAvatar} alt={`Foto de ${userName}`} /> : <span>{userName.slice(0, 1).toUpperCase()}</span>;
+  const avatar = userAvatar ? <img src={userAvatar} alt={m("navigation.avatarAlt", { name: userName })} /> : <span>{userName.slice(0, 1).toUpperCase()}</span>;
+  const accessMessage = getAccessMessageDescriptor(accessText);
+  const localizedAccessText = accessMessage ? m(accessMessage.key, accessMessage.params) : undefined;
   return <div className={`app-shell theme-${theme} ${isSidebarCollapsed ? "app-shell--collapsed" : ""} ${isToday ? "app-shell--today" : ""} ${isWeeklyPlanning ? "app-shell--weekly" : ""}`} data-color-mode={colorMode}>
-    <a className="skip-link" href="#main-content">{t("Saltar al contenido principal")}</a>
-    <aside className="sidebar" aria-label={t("Navegación principal")} data-mobile-drawer-background>
-      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label="My Best Version, inicio"><BrandMark compact={isSidebarCollapsed} iconOnly={isSidebarCollapsed} /></NavLink>
-      <nav className="sidebar__nav">{desktopPrimaryItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={scrollToTop} className={`nav-item ${isPrimaryActive(href, pathname) ? "nav-item--active" : ""}`} aria-current={isPrimaryActive(href, pathname) ? "page" : undefined} title={isSidebarCollapsed ? t(label) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{t(label)}</span>}</NavLink>)}</nav>
+    <a className="skip-link" href="#main-content" data-i18n-explicit="true">{m("navigation.skipToContent")}</a>
+    <aside className="sidebar" aria-label={m("navigation.mainLabel")} data-mobile-drawer-background data-i18n-explicit="true">
+      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label={m("navigation.brandHome")}><BrandMark compact={isSidebarCollapsed} iconOnly={isSidebarCollapsed} /></NavLink>
+      <nav className="sidebar__nav" aria-label={m("navigation.primaryDestinations")}>{desktopPrimaryItems.map(([href, labelKey, Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${active ? "nav-item--active" : ""}`} aria-current={active ? "page" : undefined} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>; })}</nav>
+      <nav className="sidebar__utility-nav sidebar__space-shortcuts" aria-label={m("navigation.spaceShortcuts")}>
+        {!isSidebarCollapsed && <span className="local-note">{m("navigation.inSpace")}</span>}
+        {spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={scrollToTop} className="nav-item" aria-label={m("navigation.spaceShortcutLabel", { destination: m(labelKey) })} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>)}
+      </nav>
       <div className="sidebar__footer">
-        <nav className="sidebar__utility-nav" aria-label="Utilidades">{desktopUtilityItems.map(([href, label, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`} title={isSidebarCollapsed ? t(label) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{t(label)}</span>}</NavLink>)}{isToday && onSignOut && <button className="nav-item sidebar-today-signout" type="button" onClick={onSignOut}><LogOut size={18} />{!isSidebarCollapsed && <span>{t("Cerrar sesión")}</span>}</button>}{isSuperadmin && <NavLink className={({ isActive }) => `nav-item sidebar-admin-link ${isActive ? "nav-item--active" : ""}`} to="/platform" title={isSidebarCollapsed ? "Superadmin" : undefined}><Sparkles size={18} />{!isSidebarCollapsed && <span>Superadmin</span>}</NavLink>}</nav>
-        <NavLink to="/app/settings" className="sidebar-profile" aria-label={`${t("Ajustes")}: ${userName}`}>{avatar}{!isSidebarCollapsed && <div><strong>{userName}</strong><small>{t("Ajustes y perfil")}</small></div>}{!isSidebarCollapsed && <ChevronRight size={16} aria-hidden="true" />}</NavLink>
-        {!isToday && <div className="sidebar__footer-actions">{onSignOut && <button className="sidebar-signout" type="button" onClick={onSignOut} aria-label={t("Cerrar sesión")} title={t("Cerrar sesión")}><LogOut size={17} /></button>}<button className="collapse-button" type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-expanded={!isSidebarCollapsed} aria-label={isSidebarCollapsed ? t("Expandir navegación") : t("Contraer navegación")}>{isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>}
+        <nav className="sidebar__utility-nav" aria-label={m("navigation.utilities")}>{desktopUtilityItems.map(([href, labelKey, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</NavLink>)}{isToday && onSignOut && <button className="nav-item sidebar-today-signout" type="button" onClick={onSignOut}><LogOut size={18} />{!isSidebarCollapsed && <span>{m("navigation.signOut")}</span>}</button>}{isSuperadmin && <NavLink className={({ isActive }) => `nav-item sidebar-admin-link ${isActive ? "nav-item--active" : ""}`} to="/platform" title={isSidebarCollapsed ? m("navigation.access.superadmin") : undefined}><Sparkles size={18} />{!isSidebarCollapsed && <span>{m("navigation.access.superadmin")}</span>}</NavLink>}</nav>
+        <Link to="/app/settings" className="sidebar-profile" aria-label={m("navigation.settingsForUser", { name: userName })}>{avatar}{!isSidebarCollapsed && <div><strong>{userName}</strong><small>{m("navigation.settingsAndProfile")}</small></div>}{!isSidebarCollapsed && <ChevronRight size={16} aria-hidden="true" />}</Link>
+        {!isToday && <div className="sidebar__footer-actions">{onSignOut && <button className="sidebar-signout" type="button" onClick={onSignOut} aria-label={m("navigation.signOut")} title={m("navigation.signOut")}><LogOut size={17} /></button>}<button className="collapse-button" type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-expanded={!isSidebarCollapsed} aria-label={isSidebarCollapsed ? m("navigation.expand") : m("navigation.collapse")}>{isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>}
       </div>
     </aside>
-    {mobileMenuOpen && <div className="mobile-drawer-layer"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú" /><aside id="mobile-navigation-drawer" className="mobile-drawer" role="dialog" aria-modal="true" aria-label="Menú móvil"><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button></header><nav><section><span>Principal</span>{primaryItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}</section><section><span>Tu cuenta</span>{utilityItems.map(([href, label, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{t(label)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>Superadmin</strong></NavLink>}</section></nav></aside></div>}
-    <div className="app-main" data-mobile-drawer-background><header className="topbar"><button type="button" className="topbar__mobile-brand" aria-label="Abrir menú" aria-controls="mobile-navigation-drawer" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><div className="topbar__utilities">{accessText && <NavLink to="/upgrade" className="access-chip">{accessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label="Necesito ayuda" title="¿Necesitas ayuda?"><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? "Activar modo oscuro" : "Activar modo claro"} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? "Guardando…" : "Guardado"}</div><NavLink to="/app/settings" className="topbar__profile" aria-label="Editar foto y perfil"><span>{userName}</span><span className="topbar-avatar">{avatar}</span></NavLink></header><main id="main-content" className="page-content" key={pathname}>{children}</main></div>
-    {!['/app/dashboard', '/app/today'].includes(pathname) && !isWeeklyPlanning && <div ref={fabRef} className={`fab-cluster ${fabOpen ? "is-open" : ""}`} data-mobile-drawer-background><div className="fab-menu" aria-hidden={!fabOpen}><button type="button" onClick={() => { setFabOpen(false); onQuickAdd(); }}><Plus size={17} /><span>{t("Capturar")}</span></button><NavLink to="/app/support" onClick={() => setFabOpen(false)}><MessageCircle size={17} /><span>{t("Chat de soporte")}</span></NavLink><NavLink to="/app/support?type=suggestion" onClick={() => setFabOpen(false)}><Sparkles size={17} /><span>{t("Sugerencia al equipo")}</span></NavLink><NavLink to="/app/more" onClick={() => setFabOpen(false)}><Wrench size={17} /><span>{t("Herramientas")}</span></NavLink></div><button className="fab" type="button" onClick={() => setFabOpen((open) => !open)} aria-label={fabOpen ? t("Cerrar acciones rápidas") : t("Abrir acciones rápidas")} aria-expanded={fabOpen}><Plus size={22} /></button></div>}
-    <nav className="mobile-nav" aria-label={t("Navegación móvil")} data-mobile-drawer-background>{mobileItems.map(([href,label,Icon]) => { const active = isPrimaryActive(href, pathname); return <NavLink key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{t(label)}</span></NavLink>; })}</nav>
+    {mobileMenuOpen && <div className="mobile-drawer-layer" data-i18n-explicit="true"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")} /><aside id="mobile-navigation-drawer" className="mobile-drawer" role="dialog" aria-modal="true" aria-label={m("navigation.mobileMenu")}><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")}><X size={20} /></button></header><nav><section><span>{m("navigation.primary")}</span>{primaryItems.map(([href, labelKey, Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} className={active ? "active" : undefined} aria-current={active ? "page" : undefined} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>; })}</section><section><span>{m("navigation.inSpace")}</span>{spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>)}</section><section><span>{m("navigation.account")}</span>{utilityItems.map(([href, labelKey, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{m(labelKey)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>{m("navigation.access.superadmin")}</strong></NavLink>}</section></nav></aside></div>}
+    <div className="app-main" data-mobile-drawer-background><header className="topbar" data-i18n-explicit="true"><button type="button" className="topbar__mobile-brand" aria-label={m("navigation.openMenu")} aria-controls="mobile-navigation-drawer" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><div className="topbar__utilities">{localizedAccessText && <NavLink to="/upgrade" className="access-chip">{localizedAccessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label={m("navigation.needHelp")} title={m("navigation.needHelpQuestion")}><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? m("navigation.darkMode") : m("navigation.lightMode")} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? m("navigation.saving") : m("navigation.saved")}</div><Link to="/app/settings" className="topbar__profile" aria-label={m("navigation.editProfile")}><span>{userName}</span><span className="topbar-avatar">{avatar}</span></Link></header><main id="main-content" className="page-content" key={pathname}>{children}</main></div>
+    {!['/app/dashboard', '/app/today'].includes(pathname) && !isWeeklyPlanning && <div ref={fabRef} className={`fab-cluster ${fabOpen ? "is-open" : ""}`} data-mobile-drawer-background data-i18n-explicit="true"><div className="fab-menu" aria-hidden={!fabOpen}><button type="button" onClick={() => { setFabOpen(false); onQuickAdd(); }}><Plus size={17} /><span>{m("navigation.capture")}</span></button><NavLink to="/app/support" onClick={() => setFabOpen(false)}><MessageCircle size={17} /><span>{m("navigation.supportChat")}</span></NavLink><NavLink to="/app/support?type=suggestion" onClick={() => setFabOpen(false)}><Sparkles size={17} /><span>{m("navigation.suggestion")}</span></NavLink><NavLink to="/app/more" onClick={() => setFabOpen(false)}><Wrench size={17} /><span>{m("navigation.tools")}</span></NavLink></div><button className="fab" type="button" onClick={() => setFabOpen((open) => !open)} aria-label={fabOpen ? m("navigation.quickActions.close") : m("navigation.quickActions.open")} aria-expanded={fabOpen}><Plus size={22} /></button></div>}
+    <nav className="mobile-nav" aria-label={m("navigation.mobileLabel")} data-mobile-drawer-background data-i18n-explicit="true">{mobileItems.map(([href,labelKey,Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"} aria-current={active ? "page" : undefined}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{m(labelKey)}</span></Link>; })}</nav>
   </div>;
 }

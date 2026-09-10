@@ -57,7 +57,8 @@ describe("sincronización de consentimiento entre pestañas", () => {
   });
 
   it("actualiza el contexto y detiene y limpia analítica al retirar el consentimiento en otra pestaña", async () => {
-    const view = render(createElement(MemoryRouter, null, createElement(CookieConsentProvider, null, createElement(ConsentProbe))));
+    const view = render(createElement(I18nProvider, null, createElement(MemoryRouter, null,
+      createElement(CookieConsentProvider, null, createElement(ConsentProbe)))));
     await waitFor(() => expect(view.getByTestId("analytics-consent").textContent).toBe("off"));
 
     persistPreference(true);
@@ -89,9 +90,10 @@ describe("sincronización de consentimiento entre pestañas", () => {
 
   it("registra cada gate Premium una vez después de hidratar consentimiento concedido", async () => {
     const track = vi.spyOn(analyticsService, "track");
-    const view = render(createElement(MemoryRouter, null, createElement(CookieConsentProvider, null,
-      createElement(ConsentProbe),
-      createElement(TestPremiumFeatureGate, { access: trialAccess, feature: "five_year_planning" }, createElement("span", null, "Premium")))));
+    const view = render(createElement(I18nProvider, null, createElement(MemoryRouter, null,
+      createElement(CookieConsentProvider, null,
+        createElement(ConsentProbe),
+        createElement(TestPremiumFeatureGate, { access: trialAccess, feature: "five_year_planning" }, createElement("span", null, "Premium"))))));
     await waitFor(() => expect(view.getByTestId("analytics-consent").textContent).toBe("off"));
     expect(track).not.toHaveBeenCalled();
 

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 export function Modal({
   open,
@@ -10,13 +11,16 @@ export function Modal({
   description,
   onClose,
   children,
+  explicitI18n = false,
 }: {
   open: boolean;
   title: string;
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  explicitI18n?: boolean;
 }) {
+  const { m } = useI18n();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
@@ -61,11 +65,11 @@ export function Modal({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="modal-layer">
+    <div className="modal-layer" data-i18n-explicit={explicitI18n ? "true" : undefined}>
       <button
         type="button"
         className="modal-backdrop"
-        aria-label="Cerrar diálogo"
+        aria-label={m("modal.closeDialog")}
         onClick={onClose}
       />
       <section
@@ -78,11 +82,11 @@ export function Modal({
       >
         <header className="modal__header">
           <div>
-            <p className="eyebrow">My Best Version</p>
+            <p className="eyebrow">{m("modal.brand")}</p>
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}
           </div>
-          <button ref={closeButtonRef} className="icon-button" onClick={onClose} aria-label="Cerrar">
+          <button ref={closeButtonRef} className="icon-button" onClick={onClose} aria-label={m("modal.close")}>
             <X size={20} aria-hidden="true" />
           </button>
         </header>

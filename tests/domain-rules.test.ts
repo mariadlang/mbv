@@ -81,6 +81,14 @@ describe("habit consistency", () => {
     const logs: HabitLog[] = [10, 12, 14].map((day) => ({ id: `log-${day}`, habitId: habit.id, date: `2026-08-${day}`, value: 1, createdAt: now, updatedAt: now }));
     expect(calculateBestHabitStreak([habit], logs, dates)).toBe(3);
   });
+
+  it("resets continuity only when a scheduled occurrence has no complete record", () => {
+    const habit: Habit = { id: "reading", name: "Leer", type: "boolean", scheduledDays: [1, 3, 5], target: 1, unit: "sesión", status: "active", createdAt: now, updatedAt: now };
+    const dates = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19].map((day) => new Date(`2026-08-${day}T12:00:00`));
+    const logs: HabitLog[] = [10, 14, 17, 19].map((day) => ({ id: `reading-${day}`, habitId: habit.id, date: `2026-08-${day}`, value: 1, createdAt: now, updatedAt: now }));
+
+    expect(calculateBestHabitStreak([habit], logs, dates)).toBe(3);
+  });
 });
 
 describe("task rules", () => {
