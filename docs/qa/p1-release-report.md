@@ -7,10 +7,11 @@ Fecha de apertura: **2026-09-09 (America/Bogota, UTC-05:00)**. Última actualiza
 P1 consolida el sistema de experiencia existente sobre el SHA base `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`. No rediseña el producto, no cambia la persistencia local-first, no modifica la matriz Trial/Premium y no incorpora capacidades P2.
 
 - SHA base: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`.
-- SHA funcional P1: pendiente del commit final.
-- Rama objetivo: `main`.
-- URL objetivo: `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`.
-- Estado: **candidato P1 validado localmente y pendiente de publicación**.
+- SHA funcional P1: `8f240f5b1516d212da65630e36ea3d5a15fd40e9`.
+- Rama: `main`, alineada con `origin/main` al publicar el cambio funcional.
+- Sites: versión 29, despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4`, estado `succeeded`.
+- URL publicada: `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`.
+- Estado: **release técnico P1 publicado y verificado**.
 
 ## Estado de requisitos P1
 
@@ -25,7 +26,7 @@ P1 consolida el sistema de experiencia existente sobre el SHA base `8e6ede1995ce
 | P1.7 Gamificación amable | Implementado | “Mayor continuidad”, días no programados separados y retos pausables |
 | P1.8 Dirección visual/assets | Implementado documentalmente | Inventario, reglas de uso y faltantes externos sin inventar assets |
 | P1.9 Documentación técnica | Implementado | Arquitectura actual, ADR, índices y contratos del design system |
-| P1.10 QA exhaustivo | Implementado y validado localmente | Auditorías, unitarias, tipos, matrices y builds aprobados; smoke pendiente del despliegue |
+| P1.10 QA exhaustivo | Implementado y validado | Auditorías, unitarias, tipos, matrices, builds y smoke de producción aprobados |
 
 ## Arquitectura visual y de interfaz
 
@@ -68,6 +69,8 @@ Rutas de producto verificadas en claro y oscuro:
 | Plan semanal | 1 ruta × 5 viewports | Aprobada en desktop y mobile |
 | Idioma | recorridos ES/EN | Aprobados en desktop y mobile; EN permanece Beta |
 
+Las matrices automatizadas verifican render, encabezado, consola y overflow en cada combinación. La inspección visual manual representativa confirmó la portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos; no se generó una nueva colección de screenshots P1.
+
 ## Accesibilidad y consola
 
 - Focus visible, targets críticos de al menos 44 px, reducción de movimiento y reflow al 200 %.
@@ -90,6 +93,7 @@ Rutas de producto verificadas en claro y oscuro:
 | `pnpm build:vinext` | Aprobado |
 | `pnpm test:e2e` | Aprobado de forma acumulada: 63 casos de la suite completa más 2 casos corregidos y repetidos, 9 omisiones intencionales y 0 fallos pendientes |
 | `git diff --check` | Aprobado |
+| Smoke de producción | Aprobado sobre Sites versión 29 para portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos; sin errores de consola observados ni overflow horizontal en la comprobación dimensional |
 
 ## Incidencias de validación
 
@@ -160,4 +164,4 @@ Ningún archivo de aplicación ni documentación. El artefacto temporal no versi
 
 ## Criterio de salida
 
-El candidato está **listo para commit y publicación técnica P1**: auditorías, matrices y builds aprobaron. Se declarará listo para merge técnico cuando el smoke de producción y la comprobación de `main`/`origin/main` queden registrados. La preparación de P2 se evaluará por separado y no equivale a lanzamiento comercial Premium.
+P1 queda **listo para merge técnico**: auditorías, matrices, builds y smoke de producción aprobaron; el SHA funcional se envió a `main`/`origin/main` y se publicó como versión 29. Esto no equivale a declarar listo el lanzamiento comercial Premium ni autoriza iniciar P2.

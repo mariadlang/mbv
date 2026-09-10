@@ -46,7 +46,7 @@ El objetivo de esta fase es consolidar el sistema existente. No se rediseñó la
 | P1.7 | Continuidad amable, “No programado” separado y retos pausables |
 | P1.8 | Dirección visual e inventario de assets sin inventar recursos |
 | P1.9 | Arquitectura, ADR, índices y documentación operativa actualizados |
-| P1.10 | Auditorías, pruebas, matrices y builds aprobados; la publicación y su smoke se documentan al desplegar |
+| P1.10 | Auditorías, pruebas, matrices, builds, publicación y smoke aprobados |
 
 ## Deuda heredada y alcance progresivo
 
@@ -86,4 +86,4 @@ El inventario exacto de archivos, comandos, publicación y smoke se encuentra en
 
 ## Estado de cierre
 
-Los diez bloques P1 están implementados y cuentan con validación local completa. Auditorías, lint, tipos, 140 pruebas unitarias, 22 pares de contraste, matrices y builds aprobaron; la evidencia completa está en `docs/qa/p1-release-report.md` y se completará allí con el commit, la publicación y el smoke de producción. Las dependencias comerciales externas no bloquean el release técnico P1, pero sí impiden declarar listo un lanzamiento Premium autoservicio.
+Los diez bloques P1 están implementados y validados. Auditorías, lint, tipos, 140 pruebas unitarias, 22 pares de contraste, matrices, builds y smoke de producción aprobaron; la evidencia completa está en `docs/qa/p1-release-report.md`. Las dependencias comerciales externas no bloquean el release técnico P1, pero sí impiden declarar listo un lanzamiento Premium autoservicio.

@@ -87,7 +87,7 @@ Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalment
 
 ## Deployment
 
-Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. Vinext/Cloudflare Sites es un destino explícito adicional. El último despliegue comprobado en la evidencia P0 fue Sites versión 27 en la URL `chatgpt.site`; la configuración no demuestra por sí sola qué SHA está activo en Vercel. `mybestversion.life` todavía no está confirmado como dominio adjunto al Site.
+Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. Vinext/Cloudflare Sites es un destino explícito adicional. El último despliegue comprobado es P1, SHA funcional `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, Sites versión 29 y despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4`, disponible en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. Esta evidencia no demuestra por sí sola qué SHA está activo en Vercel. `mybestversion.life` todavía no está confirmado como dominio adjunto al Site.
 
 ## CI
 

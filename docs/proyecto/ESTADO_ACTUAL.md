@@ -10,7 +10,7 @@
 - `main` y `origin/main`: alineados en `8e6ede1` antes de comenzar P1.
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
-- Entrega P1: `MBV-H-023` consolida tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA; está validada localmente y su SHA final se registra al cerrar el despliegue.
+- Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
 
 Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-023` en [`HISTORIAL.md`](HISTORIAL.md). P1 conserva el release P0 y no incorpora alcance P2.
 
@@ -259,6 +259,7 @@ Para el candidato P1 del 2026-09-10:
 - Matriz pública: 10 rutas × 9 viewports aprobada.
 - Matriz de producto: 16 rutas × 9 viewports × claro/oscuro aprobada tras corregir un overflow de 3 px en Ajustes a 320×568.
 - Recorridos funcionales de onboarding, cuenta existente, planificación, Hábitos, Meta → mes → semana → Mi día → Progreso e inglés Beta aprobados en las ejecuciones registradas.
+- Builds Next y Vinext aprobados; smoke de producción aprobado sobre portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos, sin errores de consola observados.
 
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
@@ -280,6 +281,6 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 ## Entrega vigente y siguiente paso
 
-La producción confirmada antes de P1 corresponde a la versión 28 de Sites, asociada al cierre documental P0 `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`, en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El candidato P1 está validado localmente y se sustituirá aquí por su SHA y versión una vez aprobado el smoke de producción.
+La entrega funcional P1 confirmada es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, publicada como versión 29 mediante el despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4` en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El smoke de producción aprobó portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos; `main` y `origin/main` quedaron alineados al publicar el SHA funcional.
 
 Siguiente paso después del cierre técnico P1: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.

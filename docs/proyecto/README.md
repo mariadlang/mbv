@@ -20,7 +20,7 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Historial en la base P1: 65 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
 - Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el candidato técnico P1 `MBV-H-023`.
 
-El SHA base identifica el release P0 documentado desde el que comenzó P1. El SHA funcional P1, su versión de Sites y el smoke de producción se incorporan a esta memoria después de completar publicación.
+El SHA base identifica el release P0 documentado desde el que comenzó P1. El SHA funcional P1 es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`; se publicó como versión 29 mediante `appgdep_6aa2f93962bc81919311825a6c2bc6b4` y aprobó el smoke de producción.
 
 ## Fuentes utilizadas
 
@@ -37,7 +37,7 @@ No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas dispo
 - El historial incluye dos raíces y varias líneas paralelas de trabajo/publicación que después se fusionaron. Se documentan como tales y no como funcionalidades independientes.
 - Los mensajes de commit casi nunca explican el motivo. Cuando no existe ADR, documento o evidencia de producto, el historial indica **“Motivo no documentado”**.
 - Que un commit añada o modifique pruebas demuestra cobertura versionada, no que esas pruebas se ejecutaran en aquel momento. Sólo se atribuyen resultados cuando quedaron documentados o se ejecutaron durante esta revisión.
-- La existencia de configuración de despliegue no demuestra por sí sola qué SHA está publicado; para P0 se registraron explícitamente el SHA, versión de Sites, despliegue y smoke verificables.
+- La existencia de configuración de despliegue no demuestra por sí sola qué SHA está publicado; para P0 y P1 se registraron explícitamente SHA, versión de Sites, despliegue y smoke verificables.
 - La presencia de migraciones Supabase no confirma por sí sola que todas estén aplicadas en producción.
 
 ## Cómo actualizar estos documentos
