@@ -1,6 +1,6 @@
 # Integración bidireccional con Google Calendar
 
-Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada como versión 30 de Sites el 14 de septiembre de 2026. La activación real de producción requiere aplicar la migración Supabase y configurar credenciales/secrets del entorno; ninguna credencial real se incluye en el repositorio.
+Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada como versión 30 de Sites el 14 de septiembre de 2026. El hotfix `83860806234c4aebea274803192a908d12294b4f` añade compatibilidad con calendarios delegados `writerWithoutPrivateAccess`. La API de Google Calendar ya está habilitada en el proyecto Google Cloud usado por My Best Version. La activación real de producción todavía requiere aplicar la migración Supabase y configurar credenciales/secrets del entorno; ninguna credencial real se incluye en el repositorio.
 
 ## 1. Arquitectura utilizada
 
@@ -39,7 +39,7 @@ El planner sigue siendo local-first. Los eventos locales viven en IndexedDB; Sup
 
 ## 4. Cambios en database/schema
 
-La migración crea cuatro tablas server-only:
+La migración crea cinco tablas server-only:
 
 - `calendar_integrations`: cuenta Google, estado, generaciones de conexión/selección y tokens AES-GCM.
 - `connected_calendars`: calendarios disponibles/visibles, predeterminado, permisos, sync token, canal webhook y lease de sincronización.
@@ -128,6 +128,7 @@ Sin red o ante un fallo temporal, el evento permanece utilizable localmente y se
 - Tokens de acceso se renuevan server-side; dos fallos de autenticación pasan a `reconnect_required`.
 - Eventos all-day usan fin exclusivo en Google y fin inclusivo en MBV.
 - Instantes RFC3339 se muestran en la zona IANA del evento, incluidos cambios DST y eventos nocturnos/multidía.
+- Los calendarios delegados con rol `writerWithoutPrivateAccess` completan OAuth y se consideran escribibles, aunque Google oculte los detalles de eventos privados.
 - Instancias expandidas de recurrencia conservan identidad Google sin duplicar un único ID local.
 - El cron diario reintenta grants pendientes de revocación con backoff; las interacciones normales también drenan la cola oportunísticamente.
 
@@ -176,3 +177,12 @@ Las pruebas automatizadas cubren dominio, cifrado/configuración, acceso trial, 
 - Suite de integración contra un proyecto Google/Supabase aislado y pruebas de concurrencia a nivel PostgreSQL.
 - Políticas de retención/exportación específicas para la caché de Calendar revisadas jurídica y operativamente.
 - IA o auto-planificación, únicamente como alcance posterior y con consentimiento separado.
+
+## 16. Estado operativo comprobado el 14 de septiembre de 2026
+
+- Google Calendar API quedó habilitada y se verificó con estado `Habilitada` en el proyecto Google Cloud que ya contiene el cliente `My Best Version · Supabase`.
+- El runtime Sites continúa en la revisión 1 con únicamente `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; no se añadieron secretos parciales.
+- Las rutas privadas bloquean solicitudes anónimas con `401`. `/maintenance` y `/webhook` responden de forma controlada con `503` mientras falta la configuración server-only.
+- Falta iniciar sesión en el Supabase correcto, comprobar que no exista una aplicación parcial, aplicar `202609110001_google_calendar_integration.sql` dentro de una transacción y obtener la clave server-side del mismo proyecto.
+- Falta crear un cliente OAuth web dedicado con la redirect URI exacta del dominio Sites, configurar las seis variables server-side juntas y volver a desplegar la versión guardada para aplicar la revisión de entorno.
+- El cron de `vercel.json` no acredita ejecución en Sites. OAuth, sincronización manual y webhooks pueden funcionar sin ese cron, pero el mantenimiento periódico requiere un scheduler HTTP autenticado o el runtime Vercel configurado.

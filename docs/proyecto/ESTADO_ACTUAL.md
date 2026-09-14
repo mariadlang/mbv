@@ -11,9 +11,9 @@
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
-- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. El código funcional quedó consolidado y enviado a `origin/main` en `14ec6226dfb433db6de0956cae223d7b6ca1a482`, y publicado como versión 30 de Sites mediante `appgdep_6aa82c3d545c819188a007479e6bc342`. Su habilitación real sigue condicionada a migración, credenciales y secretos del entorno; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. El código funcional quedó consolidado y enviado a `origin/main` en `14ec6226dfb433db6de0956cae223d7b6ca1a482`, y publicado como versión 30 de Sites mediante `appgdep_6aa82c3d545c819188a007479e6bc342`. `MBV-H-026` añade en `83860806234c4aebea274803192a908d12294b4f` compatibilidad con calendarios delegados escribibles y registra la activación de Google Calendar API. La habilitación real sigue condicionada a migración, cliente OAuth, credenciales y secretos del entorno; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-025` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-026` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
 
 ## Qué es el producto
 
@@ -117,6 +117,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - ETags y conflictos requieren una decisión explícita; IDs deterministas, marcadores privados completos, índices únicos, generations, leases y RPC atómicos previenen duplicados y escrituras obsoletas. Cada conflicto tiene un UUID propio que el cliente debe presentar al resolverlo, por lo que una decisión antigua no puede reclamar un conflicto nuevo sobre la misma fila.
 - Ningún `PATCH` o `DELETE` de resolución puede mutar un evento remoto sin validar las tres marcas privadas de ownership. Una colisión durante la eliminación de un alta pendiente termina sólo el vínculo local y nunca toca el evento Google ajeno.
 - La conexión no se activa hasta completar OAuth con una sesión Bearer de la misma cuenta MBV. Desconexión y OAuth abandonado usan una cola cifrada de revocación con reintento diario autenticado.
+- Los calendarios delegados con acceso `writerWithoutPrivateAccess` se aceptan durante OAuth y se conservan como destinos escribibles sin ampliar los scopes solicitados.
 - Guía operativa y de rollout: [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 
 ### Legal, soporte y plataforma
