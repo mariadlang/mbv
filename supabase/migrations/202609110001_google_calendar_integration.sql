@@ -664,7 +664,7 @@ begin
       nullif(left(coalesce(calendar_item->>'timeZone', ''), 255), ''),
       nullif(left(coalesce(calendar_item->>'backgroundColor', ''), 64), ''),
       false,
-      coalesce(calendar_item->>'accessRole', '') in ('writer', 'owner'),
+      coalesce(calendar_item->>'accessRole', '') in ('writerWithoutPrivateAccess', 'writer', 'owner'),
       false
     )
     on conflict (integration_id, external_calendar_id) do update set

@@ -7,7 +7,7 @@ const pendingCalendarSchema = z.object({
   id: z.string().trim().min(1).max(1024),
   summary: z.string().max(4096),
   primary: z.boolean().optional(),
-  accessRole: z.enum(["freeBusyReader", "reader", "writer", "owner"]).optional(),
+  accessRole: z.enum(["freeBusyReader", "reader", "writerWithoutPrivateAccess", "writer", "owner"]).optional(),
   timeZone: z.string().max(255).optional(),
   backgroundColor: z.string().max(64).optional(),
 });

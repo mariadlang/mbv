@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { revokeGoogleGrant } from "@/src/server/calendar/oauthCompletion";
+import { googleOAuthPendingPayloadSchema, revokeGoogleGrant } from "@/src/server/calendar/oauthCompletion";
 
 describe("Google Calendar grant revocation", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -21,5 +21,27 @@ describe("Google Calendar grant revocation", () => {
 
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     await expect(revokeGoogleGrant("offline-grant")).resolves.toBe(false);
+  });
+});
+
+describe("Google Calendar OAuth payload", () => {
+  it("accepts delegated calendars that can write without private-event access", () => {
+    const payload = googleOAuthPendingPayloadSchema.parse({
+      version: 1,
+      accountId: "google-account",
+      email: "calendar@example.com",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      tokenExpiresAt: "2026-09-14T18:00:00.000Z",
+      scopes: ["openid", "email", "https://www.googleapis.com/auth/calendar.events"],
+      calendars: [{
+        id: "delegated-calendar",
+        summary: "Equipo",
+        accessRole: "writerWithoutPrivateAccess",
+      }],
+      capturedAt: "2026-09-14T17:00:00.000Z",
+    });
+
+    expect(payload.calendars[0]?.accessRole).toBe("writerWithoutPrivateAccess");
   });
 });

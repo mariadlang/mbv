@@ -41,7 +41,7 @@ export interface GoogleCalendarListEntry {
   id: string;
   summary: string;
   primary?: boolean;
-  accessRole?: "freeBusyReader" | "reader" | "writer" | "owner";
+  accessRole?: "freeBusyReader" | "reader" | "writerWithoutPrivateAccess" | "writer" | "owner";
   timeZone?: string;
   backgroundColor?: string;
   deleted?: boolean;
