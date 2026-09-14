@@ -1,6 +1,6 @@
 # Integración bidireccional con Google Calendar
 
-Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada como versión 30 de Sites el 14 de septiembre de 2026. El hotfix `83860806234c4aebea274803192a908d12294b4f` añade compatibilidad con calendarios delegados `writerWithoutPrivateAccess`. La API de Google Calendar ya está habilitada en el proyecto Google Cloud usado por My Best Version. La activación real de producción todavía requiere aplicar la migración Supabase y configurar credenciales/secrets del entorno; ninguna credencial real se incluye en el repositorio.
+Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada inicialmente como versión 30 de Sites el 14 de septiembre de 2026. El hotfix `83860806234c4aebea274803192a908d12294b4f` añade compatibilidad con calendarios delegados `writerWithoutPrivateAccess`; la versión 31 incorpora ese estado. La API de Google Calendar y la migración `202609110001_google_calendar_integration.sql` están activas en producción. El cliente OAuth dedicado, la Redirect URI exacta y las variables privadas/operativas quedaron aplicados finalmente en la revisión 4 de Sites y la versión 31 se redeplegó mediante `appgdep_6aa8662a06d08191a8b3b9de6cedde6d`. Una cuenta real completó OAuth, selección del calendario principal, primera sincronización e importación visible. Ninguna credencial real se incluye en el repositorio. Para un lanzamiento abierto todavía faltan la verificación pública de Google OAuth y un scheduler de mantenimiento compatible con Sites.
 
 ## 1. Arquitectura utilizada
 
@@ -49,7 +49,7 @@ La migración crea cinco tablas server-only:
 
 RLS bloquea acceso directo desde `public`, `anon` y `authenticated`. Sólo `service_role` ejecuta los RPC de activación, selección, staging, sync, webhook, desconexión, cleanup y revocación. Los RPC usan locks, generaciones y compare-and-swap para no confirmar trabajo de una conexión o selección obsoleta.
 
-La migración aún debe aplicarse al Supabase de cada entorno antes de habilitar la integración.
+La migración quedó aplicada en el Supabase de producción el 14 de septiembre de 2026. Los demás entornos deben aplicarla mediante su runner de migraciones antes de habilitar la integración.
 
 ## 5. Variables de entorno necesarias
 
@@ -89,7 +89,7 @@ Para cada entorno debe registrarse exactamente:
 Ejemplo de producción:
 
 ```text
-https://mybestversion.life/api/integrations/google-calendar/callback
+https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site/api/integrations/google-calendar/callback
 ```
 
 No se admiten variantes con otro dominio, puerto, protocolo o slash final. El callback valida `state`, PKCE, scopes, entitlement y cuenta; guarda el grant pendiente cifrado. La activación final exige además la sesión Bearer de la misma cuenta MBV mediante `/complete`.
@@ -181,8 +181,12 @@ Las pruebas automatizadas cubren dominio, cifrado/configuración, acceso trial, 
 ## 16. Estado operativo comprobado el 14 de septiembre de 2026
 
 - Google Calendar API quedó habilitada y se verificó con estado `Habilitada` en el proyecto Google Cloud que ya contiene el cliente `My Best Version · Supabase`.
-- El runtime Sites continúa en la revisión 1 con únicamente `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; no se añadieron secretos parciales.
-- Las rutas privadas bloquean solicitudes anónimas con `401`. `/maintenance` y `/webhook` responden de forma controlada con `503` mientras falta la configuración server-only.
-- Falta iniciar sesión en el Supabase correcto, comprobar que no exista una aplicación parcial, aplicar `202609110001_google_calendar_integration.sql` dentro de una transacción y obtener la clave server-side del mismo proyecto.
-- Falta crear un cliente OAuth web dedicado con la redirect URI exacta del dominio Sites, configurar las seis variables server-side juntas y volver a desplegar la versión guardada para aplicar la revisión de entorno.
+- El preflight remoto confirmó `202609110001` ausente y las cinco tablas objetivo inexistentes, sin aplicación parcial. `supabase db push --linked --dry-run` enumeró únicamente esa migración; el push terminó correctamente y `migration list --linked` dejó local/remoto alineados en `202609110001`. Supabase muestra `google_calendar_integration` como última migración y `db lint --linked --level error` no reportó incidencias.
+- Se creó un cliente OAuth web dedicado para Calendar. La descarga inicial reveló una Redirect URI con un `5` final accidental; se corrigió en Google Cloud y una nueva descarga confirmó la URI exacta del dominio Sites antes de usar las credenciales.
+- Sites conserva las dos variables públicas Supabase y añade `APP_BASE_URL`, la clave server-side del proyecto correcto, ID/secreto del cliente OAuth, una clave de cifrado y `CRON_SECRET`. Las cuatro variables sensibles están marcadas como secret. La prueba autenticada detectó que Supabase CLI devolvía una representación ocultada de la clave privada; esa representación produjo `500` en las revisiones diagnósticas. La clave real se copió desde el Dashboard, se verificó por huella sin exponerla y el runtime quedó corregido en la revisión 4.
+- La versión guardada 31 se redeplegó sin rebuild ni cambio de fuente mediante `appgdep_6aa8662a06d08191a8b3b9de6cedde6d`; terminó en `succeeded`, conservó acceso público y aplicó la revisión 4.
+- El recorrido real `status → connect → callback → complete → configure → sync` respondió correctamente. Se autorizó una cuenta Google real, se eligió únicamente su calendario principal editable, la primera sincronización terminó y los eventos importados aparecen como `Sincronizado` en Mi espacio. No se creó, editó ni eliminó un evento remoto de prueba.
+- La suite dirigida de Calendar aprobó 8 archivos y 45 pruebas; TypeScript y ESLint ya estaban aprobados. `git diff --check` terminó sin errores.
+- No se registraron errores del Worker tras el despliegue corregido ni durante el recorrido autenticado.
+- Google muestra actualmente “app no verificada”. Para que cualquier persona conecte sin esa advertencia y sin el límite de usuarios no verificados, deben completarse la verificación de marca y la verificación de scopes sensibles de OAuth. En estado `Testing` sólo pueden autorizar los usuarios de prueba; en estado publicado pero no verificado existe un límite acumulado de 100 usuarios. Referencias oficiales: [estado de aplicaciones OAuth](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview) y [verificación de scopes sensibles](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification).
 - El cron de `vercel.json` no acredita ejecución en Sites. OAuth, sincronización manual y webhooks pueden funcionar sin ese cron, pero el mantenimiento periódico requiere un scheduler HTTP autenticado o el runtime Vercel configurado.

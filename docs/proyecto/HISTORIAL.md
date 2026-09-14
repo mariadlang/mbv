@@ -434,3 +434,41 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Avance de producción:** Google Calendar API quedó habilitada y verificada en el proyecto Google Cloud que ya contiene el cliente OAuth de Supabase. No se crearon credenciales nuevas ni se añadieron secretos parciales al runtime.
 - **Estado operativo:** la activación real continúa bloqueada hasta iniciar sesión en el Supabase correcto, comprobar/aplicar la migración sin drift, crear un cliente OAuth web dedicado, configurar juntas las seis variables server-side y redeplegar. El runtime Sites tampoco acredita la ejecución del cron declarado sólo para Vercel.
 - **Archivos principales:** `src/server/calendar/googleApi.ts`, `src/server/calendar/oauthCompletion.ts`, `supabase/migrations/202609110001_google_calendar_integration.sql`, `tests/calendar-oauth.test.ts`, `docs/integrations/google-calendar.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-14 — Aplicación segura de la migración Google Calendar
+
+- **Identificador estable:** `MBV-H-027`.
+- **Tipo de cambio:** activación operativa de base de datos y documentación; sin cambio de UI, lógica del planner ni datos personales existentes.
+- **Área afectada:** proyecto Supabase `yvrvetuzuinoinukrivo`, ledger de migraciones y documentación de Calendar.
+- **Preflight:** el Data Editor de Vercel y una consulta read-only en Supabase confirmaron `202609110001` ausente y las cinco tablas objetivo inexistentes. El historial remoto terminaba en `202609100001`, igual que las seis migraciones predecesoras locales.
+- **Qué se hizo:** se autorizó Supabase CLI de forma explícita, `migration list --linked` confirmó una única pendiente, `db push --linked --dry-run` enumeró exclusivamente `202609110001_google_calendar_integration.sql` y el runner oficial la aplicó de forma transaccional al proyecto enlazado.
+- **Validación ejecutada:** `migration list --linked` muestra local/remoto alineados hasta `202609110001`; el Dashboard muestra `google_calendar_integration` como última migración; `db lint --linked --level error` terminó sin incidencias y el proyecto permaneció `Healthy`.
+- **Seguridad:** no se pegó SQL manualmente en el ledger, no se incluyeron contraseñas/tokens en comandos ni archivos y no se modificaron o eliminaron datos existentes. Las tablas nuevas mantienen RLS y privilegios exclusivos de `service_role` según la migración versionada.
+- **Estado operativo:** base de datos lista. Permanecen pendientes el cliente OAuth web dedicado, la Redirect URI del dominio Sites, las seis variables server-only, el redeploy y la certificación real de conexión/sincronización.
+- **Archivos documentales:** `docs/integrations/google-calendar.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-14 — Activación del runtime Google Calendar en Sites
+
+- **Identificador estable:** `MBV-H-028`.
+- **Tipo de cambio:** configuración operativa de producción, despliegue y documentación; sin cambio de UI, lógica del planner, migraciones ni datos personales existentes.
+- **Área afectada:** cliente OAuth de Google Calendar, variables de runtime Sites y despliegue de la versión 31.
+- **Preflight:** se confirmó la versión 31 con archive guardado y fuente `496aca8a3857f981242756e428cba39f4eccf50f`; por tratarse sólo de variables no se reconstruyó, empaquetó ni guardó una versión nueva. La revisión 1 contenía exclusivamente las dos variables públicas de Supabase.
+- **Qué se hizo:** se creó un cliente OAuth web dedicado. La primera descarga detectó una Redirect URI con un `5` final accidental y se detuvo la activación; después de corregirla en Google Cloud, una segunda descarga verificó la coincidencia exacta. Se cargaron juntas `APP_BASE_URL`, la clave server-side de Supabase, ID/secreto OAuth y secretos aleatorios independientes de 48 bytes para cifrado y mantenimiento.
+- **Seguridad:** las cuatro variables sensibles quedaron marcadas como secret y no se escribieron en el repositorio ni se mostraron en logs o documentación. Las variables públicas existentes se preservaron. Una prueba autenticada posterior descubrió que la representación entregada por Supabase CLI estaba ocultada y no era una clave utilizable; este estado queda corregido y sucedido por `MBV-H-029`.
+- **Despliegue:** Sites creó la revisión 2 y redeplegó la versión 31 mediante `appgdep_6aa86141b1408191ba8c412c12d2e692`; el despliegue terminó en `succeeded`, pero la operación autenticada de Calendar devolvió `500` por la clave server-side ocultada. El intento diagnóstico con la clave legacy tampoco era válido porque las claves legacy están deshabilitadas.
+- **Estado operativo:** hito histórico superado por `MBV-H-029`. El mantenimiento periódico sigue necesitando un scheduler HTTP autenticado compatible con Sites.
+- **Archivos documentales:** `docs/integrations/google-calendar.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-14 — Certificación real de Google Calendar y diagnóstico de rollout público
+
+- **Identificador estable:** `MBV-H-029`.
+- **Tipo de cambio:** corrección de configuración sensible, redeploy sin cambio de fuente, certificación OAuth/sync real y documentación.
+- **Área afectada:** secreto server-side de Supabase en Sites, flujo OAuth de Calendar, selección de calendarios, sync inicial, Mi espacio y preparación del rollout público.
+- **Causa del bloqueo:** Supabase CLI ocultaba las claves `sb_secret_…` en su salida. Esa representación se había cargado como si fuera el valor real y provocaba `500` en `status` y `connect`; la clave legacy de `service_role` tampoco servía porque el proyecto la tiene deshabilitada.
+- **Qué se hizo:** se copió la clave real `app_server_rotated` desde el Dashboard de Supabase y se verificaron prefijo, longitud, ausencia de caracteres de redacción y huella esperada sin mostrar ni persistir el secreto. Se reemplazó únicamente `SUPABASE_SERVICE_ROLE_KEY`, creando la revisión 4 de Sites, y se redeplegó la misma versión 31 mediante `appgdep_6aa8662a06d08191a8b3b9de6cedde6d`.
+- **Certificación en producción:** `status`, `connect`, callback Google, `complete`, `configure`, webhook y `sync` respondieron sin error. Una cuenta real concedió los dos scopes de Calendar, seleccionó sólo su calendario principal editable y completó la primera sincronización. Mi espacio mostró los eventos importados con estado `Sincronizado` y el botón manual quedó habilitado. No se creó, editó ni eliminó un evento remoto de prueba.
+- **Validación local:** la suite dirigida aprobó 8 archivos y 45 pruebas; TypeScript y ESLint permanecen aprobados; `git diff --check` no encontró errores. No se modificó código de aplicación.
+- **Seguridad y privacidad:** el secreto real sólo transitó desde Supabase al almacén secreto de Sites con autorización explícita; Sites lo devuelve oculto. Se evitó activar automáticamente un calendario externo de sólo lectura y no se realizaron mutaciones en los eventos personales.
+- **Disponibilidad pública:** Google muestra “app no verificada”. La integración funciona para cuentas admitidas, pero no está lista para un onboarding público sin fricción: en `Testing` sólo acceden usuarios de prueba y, publicada sin verificación, la advertencia y el límite acumulado de 100 usuarios permanecen. Deben completarse la verificación de marca y la verificación de scopes sensibles antes del lanzamiento general.
+- **Pendientes externos:** someter OAuth a verificación de Google, configurar un scheduler HTTP autenticado para mantenimiento en Sites y, sólo con autorización explícita, ejecutar una prueba controlada de escritura Google ↔ MBV.
+- **Archivos documentales:** `docs/integrations/google-calendar.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
