@@ -1,6 +1,6 @@
 # Integración bidireccional con Google Calendar
 
-Estado: implementación preparada en código el 11 de septiembre de 2026. La activación real de producción requiere aplicar la migración Supabase y configurar credenciales/secrets del entorno; ninguna credencial real se incluye en el repositorio.
+Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada como versión 30 de Sites el 14 de septiembre de 2026. La activación real de producción requiere aplicar la migración Supabase y configurar credenciales/secrets del entorno; ninguna credencial real se incluye en el repositorio.
 
 ## 1. Arquitectura utilizada
 

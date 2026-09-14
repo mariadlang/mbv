@@ -11,7 +11,7 @@
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
-- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. Su habilitación real sigue condicionada a migración, credenciales y secretos del entorno; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. El código funcional quedó consolidado y enviado a `origin/main` en `14ec6226dfb433db6de0956cae223d7b6ca1a482`, y publicado como versión 30 de Sites mediante `appgdep_6aa82c3d545c819188a007479e6bc342`. Su habilitación real sigue condicionada a migración, credenciales y secretos del entorno; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 
 Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-025` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
 
@@ -309,6 +309,6 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 ## Entrega vigente y siguiente paso
 
-La entrega funcional P1 confirmada es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, publicada como versión 29 mediante el despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4` en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El smoke de producción aprobó portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos. La verificación posterior también confirmó recuperada la telemetría autenticada tras aplicar el hotfix SQL forward; no requirió un nuevo bundle de Sites.
+La entrega funcional vigente es `14ec6226dfb433db6de0956cae223d7b6ca1a482`, enviada a `origin/main` y publicada como versión 30 mediante el despliegue `appgdep_6aa82c3d545c819188a007479e6bc342` en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. El despliegue conserva acceso público y usa la revisión 1 de variables de Sites. La integración Google Calendar permanece cerrada de forma segura hasta aplicar `202609110001_google_calendar_integration.sql` y configurar las variables server-side, credenciales OAuth, Redirect URI y ejecución de mantenimiento; las dos variables públicas Supabase existentes no sustituyen esas dependencias.
 
-Siguiente paso después del cierre técnico P1: resolver las dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.
+Siguiente paso operativo para Calendar: aplicar la migración en Supabase, cargar secretos y credenciales del entorno, registrar la Redirect URI HTTPS y certificar OAuth/sync/webhook con una cuenta Google de prueba. Después, resolver las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, dominio personalizado y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.
