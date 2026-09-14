@@ -1,17 +1,19 @@
 # My Best Version — matriz legal y de privacidad para Colombia
 
-Fecha de auditoría técnica: 27 de agosto de 2026. Versión documental: `2026-08-27.co-1`.
+Fecha de actualización técnica: 11 de septiembre de 2026. Versión documental: `2026-09-11.co-2`.
 
 Este archivo documenta la implementación técnica y las tareas administrativas pendientes. No sustituye la revisión de una abogada o un abogado colombiano.
 
 ## Inventario verificado
 
-- Supabase: autenticación, perfiles, acceso, preferencias, consentimientos y solicitudes legales.
+- Supabase: autenticación, perfiles, acceso, preferencias, consentimientos, solicitudes legales y almacenamiento server-side de la integración de Google Calendar.
 - Vercel: hosting del dominio oficial `mybestversion.life`.
 - OpenAI Sites: publicación secundaria de la aplicación.
-- Google: inicio de sesión opcional con nombre, correo y foto de perfil.
+- Google Identity: inicio de sesión opcional con nombre, correo y foto de perfil; no concede acceso a Calendar.
+- Google Calendar API: conexión opcional e independiente para sincronizar los calendarios elegidos por la persona.
 - Mercado Pago: enlace externo de checkout; la aplicación no recibe números completos de tarjeta.
 - IndexedDB: metas, planificación, hábitos, tareas, journal, finanzas, fitness, alimentación, fotos y demás contenido detallado del planner.
+- Servidor: tokens de Google Calendar cifrados con AES-GCM y copia operativa de títulos, descripciones, fechas, horas, zonas horarias, estados e identificadores; este contenido se usa únicamente para la sincronización y no forma parte del respaldo local.
 - No se encontró proveedor externo activo de analítica publicitaria, marketing, correo transaccional o inteligencia artificial.
 - No existe conexión con bancos ni importación automática de movimientos.
 
@@ -20,6 +22,10 @@ Este archivo documenta la implementación técnica y las tareas administrativas 
 - Términos, política de tratamiento, aviso de privacidad, cookies, pagos, retracto, supresión, IA, seguridad, proveedor y PQR públicos.
 - Consentimientos separados y no preseleccionados para términos, tratamiento de datos, mayoría de edad y marketing opcional.
 - Autorización separada para datos sensibles antes de Fitness y Alimentación.
+- Autorización explícita, opcional e independiente para Google Calendar desde Ajustes. Rechazarla o retirarla no afecta el inicio de sesión ni el resto del planner.
+- Scopes limitados a `openid`, `email`, `calendar.calendarlist.readonly` y `calendar.events`; el producto limita el tratamiento a los calendarios seleccionados y no solicita Gmail, Drive ni Contactos.
+- Tokens cifrados exclusivamente server-side, tablas sin acceso directo desde el navegador y credenciales excluidas de IndexedDB y respaldos.
+- La desconexión desde la app intenta revocar el permiso en Google y elimina en cascada credenciales, calendarios vinculados y copia de sincronización. Revocar únicamente desde Google detiene el acceso futuro, pero requiere desconectar también en la app o solicitar supresión para eliminar la copia existente.
 - Evidencia versionada en `user_consents`; metadatos mínimos de cuenta y respaldo local si la migración remota aún no está aplicada.
 - Solicitudes trazables en `privacy_requests`, número de referencia, estado y cálculo inicial de 10 o 15 días hábiles.
 - Adjuntos privados validados con Zod: PDF, JPG, PNG o TXT, máximo 2 MB.
@@ -42,20 +48,29 @@ Configurar en los entornos de Vercel y Sites, sin inventar valores:
 - `NEXT_PUBLIC_LEGAL_PQR_EMAIL`
 - `NEXT_PUBLIC_LEGAL_SUPPORT_PHONE`
 
+Configurar además, exclusivamente como secretos o variables de servidor y nunca con prefijo `NEXT_PUBLIC_`:
+
+- `APP_BASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GOOGLE_CALENDAR_CLIENT_ID`
+- `GOOGLE_CALENDAR_CLIENT_SECRET`
+- `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`
+
 Mientras falten, los documentos muestran un aviso de preparación y no una identidad ficticia.
 
 ## Tareas administrativas y jurídicas pendientes
 
 1. Revisión y aprobación de todos los textos por asesoría jurídica colombiana.
 2. Determinar la persona natural o jurídica responsable, su NIT, domicilio y canales.
-3. Aplicar la migración `supabase/migrations/202608270001_legal_privacy.sql` al proyecto de producción.
+3. Aplicar las migraciones `supabase/migrations/202608270001_legal_privacy.sql` y `supabase/migrations/202609110001_google_calendar_integration.sql` al proyecto de producción.
 4. Confirmar región, DPA, subencargados, retención y salvaguardas internacionales de Supabase, Vercel, OpenAI Sites, Google y Mercado Pago.
 5. Evaluar obligación de inscripción o actualización en el Registro Nacional de Bases de Datos (RNBD) según naturaleza jurídica, activos y tratamientos reales.
 6. Documentar el procedimiento interno de atención, verificación de identidad, prórrogas, cierres y conservación de evidencias PQR.
 7. Definir oferta Premium real: precio total, impuestos, periodicidad, renovación, cancelación, retracto y reversión antes de promocionarla como disponible.
 8. Definir un procedimiento interno de incidentes, responsables, tiempos de escalamiento y notificación.
-9. Verificar y configurar en Google Cloud la marca, dominio, página principal, términos, privacidad, correo de soporte y dominios autorizados.
-10. Repetir la evaluación legal antes de activar analítica, marketing, correo, IA o cualquier proveedor nuevo.
+9. Verificar y configurar en Google Cloud la marca, dominio, página principal, términos, privacidad, correo de soporte, dominios autorizados, URIs de redirección y webhook.
+10. Completar la verificación de OAuth para los scopes de Google Calendar y validar el flujo de revocación y eliminación antes de producción.
+11. Repetir la evaluación legal antes de activar analítica, marketing, correo, IA o cualquier proveedor nuevo.
 
 ## Observación sobre plazos
 

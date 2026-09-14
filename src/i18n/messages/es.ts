@@ -2,6 +2,7 @@ import { BRAND_OPERATIONAL_MESSAGE, BRAND_POSITIONING, BRAND_PROMISE, BRAND_SLOG
 import { esHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { esNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { esPlanningMessages } from "@/src/i18n/messages/features/planning";
+import { esCalendarMessages } from "@/src/i18n/messages/features/calendar";
 
 export const esMessages = {
   "language.selector.label": "Idioma",
@@ -192,4 +193,5 @@ export const esMessages = {
   ...esHomeTodayMessages,
   ...esNavigationSpaceProgressMessages,
   ...esPlanningMessages,
+  ...esCalendarMessages,
 } as const satisfies Record<string, string>;

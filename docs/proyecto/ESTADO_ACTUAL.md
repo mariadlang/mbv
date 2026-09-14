@@ -1,6 +1,6 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-10, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-14, America/Bogota (UTC-05:00)**.
 
 ## Punto de continuidad
 
@@ -11,8 +11,9 @@
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
+- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. Su habilitación real sigue condicionada a migración, credenciales y secretos del entorno; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-023` en [`HISTORIAL.md`](HISTORIAL.md). P1 conserva el release P0 y no incorpora alcance P2.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-025` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
 
 ## Qué es el producto
 
@@ -107,6 +108,17 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Finanzas incluye cuentas, categorías, presupuesto mensual, movimientos, fondos, deudas, recurrentes, revisión y compras pendientes.
 - No hay conexión bancaria ni asesoría médica/nutricional automatizada.
 
+### Google Calendar
+
+- Ajustes → Integraciones permite iniciar OAuth independiente del login, elegir calendarios visibles y definir uno escribible como predeterminado.
+- Los eventos/citas se distinguen de tareas y prioridades. Se crean en Mi espacio y se muestran como contexto en Semana y Mi día sin convertir el producto en un calendario tradicional.
+- La sincronización MBV ↔ Google contempla alta, edición, cancelación, todo el día, multidía, zona IANA, recurrencias, múltiples calendarios, sync incremental, webhooks y reconexión.
+- El planner sigue local-first; la copia operativa, tokens AES-GCM e identidad remota son server-only. Los fallos externos dejan outbox y feedback recuperables sin bloquear la planificación.
+- ETags y conflictos requieren una decisión explícita; IDs deterministas, marcadores privados completos, índices únicos, generations, leases y RPC atómicos previenen duplicados y escrituras obsoletas. Cada conflicto tiene un UUID propio que el cliente debe presentar al resolverlo, por lo que una decisión antigua no puede reclamar un conflicto nuevo sobre la misma fila.
+- Ningún `PATCH` o `DELETE` de resolución puede mutar un evento remoto sin validar las tres marcas privadas de ownership. Una colisión durante la eliminación de un alta pendiente termina sólo el vínculo local y nunca toca el evento Google ajeno.
+- La conexión no se activa hasta completar OAuth con una sesión Bearer de la misma cuenta MBV. Desconexión y OAuth abandonado usan una cola cifrada de revocación con reintento diario autenticado.
+- Guía operativa y de rollout: [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+
 ### Legal, soporte y plataforma
 
 - Centro legal público para privacidad, tratamiento, cookies, pagos, retracto, IA, proveedor, seguridad y PQR.
@@ -135,6 +147,7 @@ Token de cuenta → rutas API → Supabase
    ├→ soporte/FAQ
    ├→ preferencias de marketing
    ├→ eventos minimizados y consentidos → hitos de activación v2
+   ├→ caché/identidad Calendar server-only ↔ Google Calendar API/webhook
    └→ plataforma superadmin
 ```
 
@@ -176,6 +189,7 @@ Token de cuenta → rutas API → Supabase
 - Zustand para preferencias de interfaz.
 - Recharts y Lucide.
 - Supabase JS para Auth y datos remotos mínimos.
+- Google Calendar API mediante OAuth 2.0/PKCE, sync incremental y channels/webhooks opcionales.
 - Mercado Pago mediante enlace externo configurable.
 - Vitest, Testing Library y Playwright.
 - Vercel como runtime principal configurado; Vinext/Cloudflare Sites como destino adicional explícito.
@@ -219,6 +233,8 @@ pnpm test:e2e
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
 - No anunciar Feed Hub como disponible, ni inventar precio, periodicidad o activación automática de Premium.
 - Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
+- Mantener tareas/prioridades separadas de eventos; sólo un evento/cita explícito puede sincronizarse con Google Calendar.
+- Conservar tokens y caché Calendar server-side, con acceso exclusivo de `service_role`, generaciones y resolución de conflictos explícita.
 - No considerar una tarea con cambios completa sin actualizar `HISTORIAL.md` y, si aplica, este archivo.
 
 ## Validación conocida
@@ -262,6 +278,16 @@ Para el candidato P1 del 2026-09-10:
 - Builds Next y Vinext aprobados; smoke de producción aprobado sobre portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos, sin errores de consola observados.
 - Verificación post-release: `db lint` identificó y luego confirmó resuelto el conflicto PL/pgSQL P0 de `record_user_event`; la migración forward `202609100001_fix_product_analytics_v2_ambiguity.sql` quedó aplicada, la base remota quedó al día y `/api/events` respondió `200` en siete envíos consecutivos.
 
+Para la integración Google Calendar `MBV-H-025`, iniciada el 2026-09-11 y cerrada técnicamente el 2026-09-14:
+
+- ESLint y TypeScript: aprobados.
+- Unitarias: 33 archivos y 184 pruebas aprobadas.
+- Auditoría i18n: 1.302 claves estables ES/EN y 803/803 entradas legacy; las cuatro advertencias corresponden a claves de uso dinámico conservadas.
+- Auditoría de tokens: 291/291 coincidencias dentro del baseline; contraste: 22/22 pares aprobados.
+- Builds de producción Next.js y Sites/Vinext: aprobados con las rutas API de Calendar incluidas.
+- La ejecución E2E global cerró 66 casos aprobados y 9 omisiones intencionales; el único caso no concluido perdió la sesión de navegador durante una suspensión de 10,5 horas. Su matriz de 16 rutas × viewports requeridos × claro/oscuro se repitió en una sesión continua y aprobó. El recorrido de evento local entre Mi espacio, Plan semanal y Mi día volvió a aprobar en desktop y mobile, incluida la preservación de la zona IANA al editar.
+- Cuatro revisiones independientes no encontraron bloqueadores P0/P1 estáticos tras cerrar ownership, ETag atómico, reintentos idempotentes, protección ABA por UUID de conflicto, desconexión/reconexión, OAuth, mantenimiento y SQL. Esto no sustituye aplicar y probar la migración contra la base remota ni completar un OAuth con una cuenta Google real.
+
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
 ## Problemas y limitaciones confirmados
@@ -277,6 +303,7 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 9. `mybestversion.life` no está adjunto al Site; la URL operativa confirmada sigue siendo la URL pública de Sites.
 10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
 11. Permanecen 291 coincidencias de color directo revisadas en 15 archivos; el baseline impide crecimiento y no autoriza una sustitución masiva sin QA visual.
+12. Google Calendar no queda operativo por publicar sólo el frontend: deben aplicarse la migración y variables server-side, registrar Redirect URI, servir webhook HTTPS y ejecutar el cron. Las pruebas locales no certifican una cuenta Google real.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 

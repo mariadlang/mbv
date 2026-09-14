@@ -30,6 +30,9 @@ import { Modal } from "@/src/components/ui/Modal";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, type UserAccess } from "@/src/domain/access";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { PlanningMessageKey } from "@/src/i18n/messages/features/planning";
+import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
+import { calendarEventOccursOnDate, calendarEventTimeLabel } from "@/src/domain/calendar";
+import { CalendarEventSyncFeedback } from "@/src/features/calendar/CalendarEventSyncFeedback";
 
 type WeeklyPlanViewProps = {
   planner: PlannerController;
@@ -92,6 +95,7 @@ function closeClosestDetails(target: EventTarget | null) {
 
 export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewInitiallyOpen = false, onAnchorDateChange, onBack, onEditTask }: WeeklyPlanViewProps) {
   const { snapshot } = planner;
+  const calendarIntegration = useCalendarIntegration();
   const { m, formatDate, formatNumber } = useI18n();
   const weekDates = useMemo(() => getWeekDates(anchorDate, 1), [anchorDate]);
   const weekKeys = useMemo(() => new Set(weekDates.map(toLocalDateKey)), [weekDates]);
@@ -113,6 +117,8 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
   const reviewReferenceDateAllowed = canPlanDate(toLocalDateKey(weekDates[0]));
 
   const [openComposerDate, setOpenComposerDate] = useState<string | null>(null);
+  const [openEventComposerDate, setOpenEventComposerDate] = useState<string | null>(null);
+  const [openAddMenuDate, setOpenAddMenuDate] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [pendingDraft, setPendingDraft] = useState("");
   const [pendingOpen, setPendingOpen] = useState(true);
@@ -271,7 +277,11 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
             const isToday = key === todayKey;
             const dayReadOnly = !canPlanDate(key);
             const dayTasks = weekTasks.filter((task) => task.date === key);
+            const dayPriorityTasks = dayTasks.filter((task) => task.priority === "high" || Boolean(task.focusPriority));
+            const dayRegularTasks = dayTasks.filter((task) => !dayPriorityTasks.includes(task));
             const dayHabits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, date));
+            const localEvents = snapshot.events.filter((event) => event.status !== "cancelled" && event.startDate <= key && (event.endDate ?? event.startDate) >= key);
+            const externalEvents = calendarIntegration.events.filter((event) => calendarEventOccursOnDate(event, key) && (!event.localEventId || !localEvents.some((local) => local.id === event.localEventId)));
             return <section id={`weekly-day-${key}`} className={`weekly-day-group ${isToday ? "is-today" : ""} ${dayReadOnly ? "is-readonly" : ""}`} key={key} aria-labelledby={`weekly-day-title-${key}`}>
               <header className="weekly-day-label">
                 <span id={`weekly-day-title-${key}`}>{capitalize(formatDate(date, { weekday: "long" }))}</span>
@@ -279,9 +289,14 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
                 {isToday && <em>{m("planning.common.today")}</em>}
               </header>
               <div className="weekly-day-content">
-                <div className="weekly-day-toolbar">{dayReadOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</span> : <button type="button" onClick={() => setOpenComposerDate(key)}><Plus size={16} aria-hidden="true" /> {m("planning.week.addTask")}</button>}</div>
+                <div className="weekly-day-toolbar">{dayReadOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</span> : <div className="weekly-add-control"><button type="button" aria-expanded={openAddMenuDate === key} onClick={() => setOpenAddMenuDate((current) => current === key ? null : key)}><Plus size={16} aria-hidden="true" /> {m("today.timeline.add")}</button>{openAddMenuDate === key && <div className="weekly-add-menu" role="group" aria-label={m("calendar.week.addQuestion")}><button type="button" onClick={() => { setOpenComposerDate(key); setOpenEventComposerDate(null); setOpenAddMenuDate(null); }}><Check size={15} aria-hidden="true" /> {m("calendar.week.addTask")}</button><button type="button" onClick={() => { setOpenEventComposerDate(key); setOpenComposerDate(null); setOpenAddMenuDate(null); }}><CalendarDays size={15} aria-hidden="true" /> {m("calendar.week.addEvent")}</button></div>}</div>}</div>
                 <div className="weekly-day-items">
-                  {dayTasks.map((task) => <WeeklyTaskRow key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} readOnly={dayReadOnly} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}
+                  {(localEvents.length > 0 || externalEvents.length > 0) && <section className="weekly-item-group"><h3>{m("calendar.week.events")}</h3><div className="weekly-event-list">
+                    {localEvents.map((event) => <article key={`local-${event.id}`}><CalendarDays size={15} aria-hidden="true" /><div><strong data-no-translate="true" translate="no">{event.title}</strong><small>{calendarEventTimeLabel({ allDay: event.allDay ?? !(event.startTime ?? event.time), startTime: event.startTime ?? event.time, endTime: event.endTime }, m("calendar.event.allDay"))}{event.calendarProvider === "google" ? ` · ${event.calendarName ?? m("calendar.origin.google")}` : ""}</small></div><CalendarEventSyncFeedback event={event} /></article>)}
+                    {externalEvents.map((event) => <article key={`google-${event.id}`}><CalendarDays size={15} aria-hidden="true" /><div><strong data-no-translate="true" translate="no">{event.title}</strong><small>{calendarEventTimeLabel(event, m("calendar.event.allDay"))} · {event.calendarName}</small></div></article>)}
+                  </div></section>}
+                  {dayPriorityTasks.length > 0 && <section className="weekly-item-group"><h3>{m("calendar.week.priorities")}</h3>{dayPriorityTasks.map((task) => <WeeklyTaskRow key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} readOnly={dayReadOnly} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}</section>}
+                  {dayRegularTasks.length > 0 && <section className="weekly-item-group"><h3>{m("calendar.week.tasks")}</h3>{dayRegularTasks.map((task) => <WeeklyTaskRow key={task.id} task={task} planner={planner} weekDates={weekDates} saving={savingKey === `task-${task.id}`} readOnly={dayReadOnly} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={moveTask} onUpdate={updateTask} onToggle={toggleTask} onEdit={onEditTask} />)}</section>}
                   {dayHabits.map((habit) => {
                     const log = snapshot.habitLogs.find((item) => item.habitId === habit.id && item.date === key);
                     const complete = isHabitLogComplete(habit, log);
@@ -291,13 +306,14 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
                       <span>{m("planning.week.habitPrefix")} <span data-no-translate="true" translate="no">{habit.name}</span></span>
                     </div>;
                   })}
-                  {!dayTasks.length && !dayHabits.length && openComposerDate !== key && <p className="weekly-day-empty">{m("planning.week.dayEmpty")}</p>}
+                  {!dayTasks.length && !dayHabits.length && !localEvents.length && !externalEvents.length && openComposerDate !== key && openEventComposerDate !== key && <p className="weekly-day-empty">{m("planning.week.dayEmpty")}</p>}
                 </div>
                 {!dayReadOnly && openComposerDate === key && <form className="weekly-inline-composer" onSubmit={(event) => { event.preventDefault(); void createTask(key); }}>
                   <input ref={composerRef} value={drafts[key] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [key]: event.target.value }))} placeholder={m("planning.week.taskPlaceholder")} aria-label={m("planning.week.taskLabel", { date: formatDate(date, { weekday: "long", day: "numeric", month: "long" }) })} />
                   <Button type="submit" size="sm" loading={savingKey === `create-${key}`} disabled={!drafts[key]?.trim()}>{m("planning.common.save")}</Button>
                   <button type="button" className="weekly-composer-cancel" onClick={() => setOpenComposerDate(null)} aria-label={m("planning.week.cancelNewTask")}><X size={18} /></button>
                 </form>}
+                {!dayReadOnly && openEventComposerDate === key && <WeeklyEventComposer date={key} dateBounds={dateBounds} canPlanDate={canPlanDate} onClose={() => setOpenEventComposerDate(null)} />}
               </div>
             </section>;
           })}
@@ -336,6 +352,61 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
       </form>
     </Modal>
   </section>;
+}
+
+function WeeklyEventComposer({ date, dateBounds, canPlanDate, onClose }: { date: string; dateBounds: ReturnType<typeof getTrialPlanningDateBounds>; canPlanDate: (date: string) => boolean; onClose: () => void }) {
+  const calendarIntegration = useCalendarIntegration();
+  const { m } = useI18n();
+  const defaultCalendar = calendarIntegration.snapshot.calendars.find((calendar) => calendar.isDefault && calendar.isWritable)
+    ?? calendarIntegration.snapshot.calendars.find((calendar) => calendar.isVisible && calendar.isWritable);
+  const [title, setTitle] = useState("");
+  const [eventDate, setEventDate] = useState(date);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
+  const [allDay, setAllDay] = useState(false);
+  const [calendarId, setCalendarId] = useState(defaultCalendar?.id ?? "");
+  const [syncWithGoogle, setSyncWithGoogle] = useState(Boolean(defaultCalendar));
+  const [validationError, setValidationError] = useState("");
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!canPlanDate(eventDate)) {
+      setValidationError(m("planning.trial.limit"));
+      return;
+    }
+    if (!allDay && endTime <= startTime) {
+      setValidationError(m("calendar.event.invalidTime"));
+      return;
+    }
+    setValidationError("");
+    try {
+      await calendarIntegration.createEvent({
+        title,
+        startDate: eventDate,
+        endDate: eventDate,
+        startTime: allDay ? undefined : startTime,
+        endTime: allDay ? undefined : endTime,
+        allDay,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        category: "personal",
+        connectedCalendarId: calendarId || undefined,
+        syncWithGoogle: syncWithGoogle && Boolean(calendarId),
+      });
+      onClose();
+    } catch {
+      setValidationError(m("planning.trial.limit"));
+    }
+  };
+
+  return <form className="weekly-event-composer" onSubmit={(event) => void submit(event)}>
+    <label className="weekly-event-composer__title"><span>{m("calendar.event.title")}</span><input required minLength={2} value={title} onChange={(event) => setTitle(event.target.value)} placeholder={m("calendar.event.titlePlaceholder")} /></label>
+    <label><span>{m("calendar.event.date")}</span><input required type="date" min={dateBounds?.min} max={dateBounds?.max} value={eventDate} onChange={(event) => setEventDate(event.target.value)} /></label>
+    {!allDay && <><label><span>{m("calendar.event.startTime")}</span><input required type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label><label><span>{m("calendar.event.endTime")}</span><input required type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} /></label></>}
+    <label className="weekly-event-composer__check"><input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} /><span>{m("calendar.event.allDay")}</span></label>
+    {calendarIntegration.connected && <><label><span>{m("calendar.event.calendar")}</span><select value={calendarId} onChange={(event) => setCalendarId(event.target.value)}>{calendarIntegration.snapshot.calendars.filter((calendar) => calendar.isVisible && calendar.isWritable).map((calendar) => <option key={calendar.id} value={calendar.id} data-no-translate="true" translate="no">{calendar.name}</option>)}</select></label><label className="weekly-event-composer__check weekly-event-composer__sync"><input type="checkbox" checked={syncWithGoogle} disabled={!calendarId} onChange={(event) => setSyncWithGoogle(event.target.checked)} /><span>{m("calendar.event.sync")}</span></label></>}
+    {(validationError || calendarIntegration.error) && <p className="weekly-error" role="alert">{validationError || m("calendar.error.generic")}</p>}
+    <div className="weekly-event-composer__actions"><Button type="submit" size="sm" loading={calendarIntegration.saving} disabled={title.trim().length < 2}>{m("calendar.event.save")}</Button><button type="button" className="weekly-composer-cancel" onClick={onClose} aria-label={m("calendar.event.cancel")}><X size={18} /></button></div>
+  </form>;
 }
 
 type TaskOperationProps = {

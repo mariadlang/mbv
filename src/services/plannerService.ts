@@ -1,6 +1,7 @@
 import { createDemoSnapshot } from "@/src/domain/demo";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { CalendarEvent } from "@/src/domain/calendar";
 import { habitRecommendation } from "@/src/domain/cascadeRules";
 import { applyDailyFocusPriority } from "@/src/domain/guidanceRules";
 import { defaultFinanceCategories, mergeDefaultFinanceCategories } from "@/src/domain/financeRules";
@@ -37,6 +38,88 @@ const repository = new IndexedDbPlannerRepository();
 const writes = createSnapshotWriteQueue(repository);
 const id = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
+
+function detachCalendarMetadata(event: PlannerEvent): PlannerEvent {
+  return {
+    id: event.id,
+    title: event.title,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    time: event.time,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    allDay: event.allDay,
+    timezone: event.timezone,
+    category: event.category,
+    notes: event.notes,
+    status: "confirmed",
+    origin: "mbv",
+    syncState: "local",
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+  };
+}
+
+type ActiveCalendarConnection = {
+  integrationId: string | null;
+  visibleCalendarIds: string[];
+};
+
+export function reconcilePlannerCalendarEvents(
+  localEvents: PlannerEvent[],
+  remoteEvents: CalendarEvent[],
+  connection?: ActiveCalendarConnection,
+): PlannerEvent[] {
+  const activeIntegrationId = connection?.integrationId ?? null;
+  const visibleCalendarIds = new Set(connection?.visibleCalendarIds ?? []);
+  const belongsToActiveConnection = (integrationId?: string, connectedCalendarId?: string) => Boolean(
+    activeIntegrationId
+    && integrationId === activeIntegrationId
+    && connectedCalendarId
+    && visibleCalendarIds.has(connectedCalendarId),
+  );
+  const byLocalId = new Map(remoteEvents
+    .filter((event) => event.localEventId && belongsToActiveConnection(event.integrationId, event.connectedCalendarId))
+    .map((event) => [event.localEventId as string, event]));
+
+  return localEvents.map((event) => {
+    if (event.calendarProvider === "google" && !belongsToActiveConnection(event.integrationId, event.connectedCalendarId)) {
+      return detachCalendarMetadata(event);
+    }
+    const remote = byLocalId.get(event.id);
+    if (!remote) return event;
+    const metadata = {
+      calendarProvider: "google" as const,
+      integrationId: remote.integrationId,
+      connectedCalendarId: remote.connectedCalendarId,
+      externalCalendarId: remote.externalCalendarId,
+      externalEventId: remote.externalEventId,
+      calendarName: remote.calendarName,
+      origin: remote.origin,
+      syncState: remote.syncState,
+      etag: remote.etag,
+      lastSyncedAt: remote.lastSyncedAt,
+      googleUpdatedAt: remote.googleUpdatedAt,
+      pendingAction: remote.pendingAction,
+      status: remote.status,
+    };
+    if (remote.syncState === "conflict") return { ...event, ...metadata };
+    return {
+      ...event,
+      ...metadata,
+      title: remote.title,
+      notes: remote.description,
+      startDate: remote.startDate,
+      endDate: remote.endDate,
+      time: remote.startTime,
+      startTime: remote.startTime,
+      endTime: remote.endTime,
+      allDay: remote.allDay,
+      timezone: remote.timezone,
+      updatedAt: remote.googleUpdatedAt ?? event.updatedAt,
+    };
+  });
+}
 
 async function updateSnapshot(
   updater: (snapshot: PlannerSnapshot) => PlannerSnapshot,
@@ -1016,15 +1099,19 @@ export const plannerService = {
     });
   },
 
-  createEvent(input: EventFormInput): Promise<PlannerSnapshot> {
+  createEvent(input: EventFormInput, sync: PlannerEventSyncOptions = {}): Promise<PlannerSnapshot> {
+    const parsed = eventFormSchema.parse(input);
     return updateSnapshot((snapshot) => {
       const now = nowIso();
       return {
         ...snapshot,
         events: [...snapshot.events, {
-          id: id(), title: input.title.trim(), startDate: input.startDate,
-          endDate: input.endDate || undefined,
-          category: input.category, notes: input.notes || undefined,
+          id: sync.id ?? id(), title: parsed.title.trim(), startDate: parsed.startDate,
+          endDate: parsed.endDate || undefined, time: (parsed.startTime ?? parsed.time) || undefined,
+          startTime: (parsed.startTime ?? parsed.time) || undefined, endTime: parsed.endTime || undefined,
+          allDay: parsed.allDay ?? !(parsed.startTime ?? parsed.time), timezone: parsed.timezone || undefined,
+          category: parsed.category, notes: parsed.notes || undefined, status: sync.status ?? "confirmed",
+          ...sync,
           createdAt: now, updatedAt: now,
         }],
       };
@@ -1128,15 +1215,45 @@ export const plannerService = {
     });
   },
 
-  updateEvent(eventId: string, input: EventFormInput): Promise<PlannerSnapshot> {
+  updateEvent(eventId: string, input: EventFormInput, sync: PlannerEventSyncOptions = {}): Promise<PlannerSnapshot> {
     const parsed = eventFormSchema.parse(input);
     return updateSnapshot((snapshot) => ({
       ...snapshot,
       events: snapshot.events.map((event) => event.id === eventId ? {
         ...event,
         title: parsed.title.trim(), startDate: parsed.startDate, endDate: parsed.endDate || undefined,
-        category: parsed.category, notes: parsed.notes || undefined, updatedAt: nowIso(),
+        time: (parsed.startTime ?? parsed.time) || undefined, startTime: (parsed.startTime ?? parsed.time) || undefined,
+        endTime: parsed.endTime || undefined, allDay: parsed.allDay ?? !(parsed.startTime ?? parsed.time), timezone: parsed.timezone || undefined,
+        category: parsed.category, notes: parsed.notes || undefined, ...sync, updatedAt: nowIso(),
       } : event),
+    }));
+  },
+
+  updateEventSync(eventId: string, patch: Partial<PlannerEvent>): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      events: snapshot.events.map((event) => event.id === eventId ? { ...event, ...patch, id: event.id, updatedAt: patch.updatedAt ?? nowIso() } : event),
+    }));
+  },
+
+  reconcileCalendarEvents(remoteEvents: CalendarEvent[], connection?: { integrationId: string | null; visibleCalendarIds: string[] }): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      events: reconcilePlannerCalendarEvents(snapshot.events, remoteEvents, connection),
+    }));
+  },
+
+  deleteEvent(eventId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({ ...snapshot, events: snapshot.events.filter((event) => event.id !== eventId) }));
+  },
+
+  detachGoogleCalendar(): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      events: snapshot.events.filter((event) => event.status !== "cancelled").map((event) => {
+        if (event.calendarProvider !== "google") return event;
+        return detachCalendarMetadata(event);
+      }),
     }));
   },
 

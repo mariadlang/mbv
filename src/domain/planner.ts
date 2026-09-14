@@ -280,11 +280,33 @@ export interface PlannerEvent {
   startDate: string;
   endDate?: string;
   time?: string;
+  startTime?: string;
+  endTime?: string;
+  allDay?: boolean;
+  timezone?: string;
   category: "medical" | "birthday" | "social" | "work" | "wellness" | "personal";
   notes?: string;
+  status?: "confirmed" | "tentative" | "cancelled";
+  calendarProvider?: "google";
+  integrationId?: string;
+  connectedCalendarId?: string;
+  externalCalendarId?: string;
+  externalEventId?: string;
+  calendarName?: string;
+  origin?: "mbv" | "google";
+  syncState?: "local" | "pending" | "synced" | "error" | "conflict" | "reconnect_required";
+  pendingAction?: "create" | "update" | "delete";
+  etag?: string;
+  lastSyncedAt?: string;
+  googleUpdatedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export type PlannerEventSyncOptions = Partial<Pick<PlannerEvent,
+  "id" | "calendarProvider" | "integrationId" | "connectedCalendarId" | "externalCalendarId" | "externalEventId" |
+  "calendarName" | "origin" | "syncState" | "pendingAction" | "etag" | "lastSyncedAt" | "googleUpdatedAt" | "status"
+>>;
 
 export interface VisionBoardItem {
   id: string;

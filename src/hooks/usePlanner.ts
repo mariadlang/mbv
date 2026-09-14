@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
-import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
+import type { CalendarEvent } from "@/src/domain/calendar";
 import type {
   BodyCheckInFormInput,
   BrainDumpFormInput,
@@ -309,12 +310,17 @@ export function usePlanner(access: UserAccess | null = null) {
     },
     createRoutine: (input: RoutineFormInput) => commitTracked("routine_created", (service) => service.createRoutine(input)),
     updateRoutine: (routineId: string, input: RoutineFormInput) => commit((service) => service.updateRoutine(routineId, input)),
-    createEvent: (input: EventFormInput) => { assertPlanningDateAllowed(input.startDate); return commit((service) => service.createEvent(input)); },
-    updateEvent: (eventId: string, input: EventFormInput) => {
+    createEvent: (input: EventFormInput, sync: PlannerEventSyncOptions = {}) => { assertPlanningDateAllowed(input.startDate); assertPlanningDateAllowed(input.endDate); return commit((service) => service.createEvent(input, sync)); },
+    updateEvent: (eventId: string, input: EventFormInput, sync: PlannerEventSyncOptions = {}) => {
       assertPlanningDateAllowed(snapshot.events.find((item) => item.id === eventId)?.startDate);
       assertPlanningDateAllowed(input.startDate);
-      return commit((service) => service.updateEvent(eventId, input));
+      assertPlanningDateAllowed(input.endDate);
+      return commit((service) => service.updateEvent(eventId, input, sync));
     },
+    updateEventSync: (eventId: string, patch: Partial<PlannerEvent>) => commit((service) => service.updateEventSync(eventId, patch)),
+    reconcileCalendarEvents: (events: CalendarEvent[], connection?: { integrationId: string | null; visibleCalendarIds: string[] }) => commit((service) => service.reconcileCalendarEvents(events, connection)),
+    deleteEvent: (eventId: string) => commit((service) => service.deleteEvent(eventId)),
+    detachGoogleCalendar: () => commit((service) => service.detachGoogleCalendar()),
     createVisionBoardItem: (input: { type: "quote" | "image" | "mixed"; content: string; caption?: string; reminderEnabled?: boolean; reminderFrequency?: "daily" | "weekly" | "monthly" | "quarterly" }) =>
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),

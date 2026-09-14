@@ -1,7 +1,8 @@
 import type { UserAccess } from "@/src/domain/access";
 import type { AccountPreferences, AccountUser, AuthRepository } from "@/src/repositories/interfaces/AuthRepository";
+import { LEGAL_VERSION } from "@/src/lib/legalConfig";
 
-const user: AccountUser = { id: "e2e-user", email: "e2e@mybestversion.test", displayName: "María", emailVerified: true, emailVerifiedAt: new Date().toISOString(), legalVersion: "2026-08-27.co-1", termsAcceptedAt: new Date().toISOString(), dataProcessingAcceptedAt: new Date().toISOString(), adultDeclaredAt: new Date().toISOString(), marketingConsent: false, onboardingCompleted: false };
+const user: AccountUser = { id: "e2e-user", email: "e2e@mybestversion.test", displayName: "María", emailVerified: true, emailVerifiedAt: new Date().toISOString(), legalVersion: LEGAL_VERSION, termsAcceptedAt: new Date().toISOString(), dataProcessingAcceptedAt: new Date().toISOString(), adultDeclaredAt: new Date().toISOString(), marketingConsent: false, onboardingCompleted: false };
 const access: UserAccess = { userId: user.id, email: user.email, displayName: user.displayName, role: "user", accessStatus: "active", subscriptionStatus: "active", trialStartedAt: null, trialEndsAt: null, serverNow: new Date().toISOString() };
 
 export class E2EAuthRepository implements AuthRepository {

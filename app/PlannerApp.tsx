@@ -24,6 +24,7 @@ import { useI18n } from "@/src/i18n/I18nProvider";
 import { QuickCaptureDrawer, type QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import { publicConfig } from "@/src/lib/publicConfig";
 import { CTA } from "@/src/lib/cta";
+import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -176,6 +177,7 @@ function ProtectedPlannerApp() {
   const openQuickCapture = (defaults: QuickCaptureDefaults) => setQuickCapture(defaults);
 
   return (
+    <CalendarIntegrationProvider planner={planner}>
     <>
       <AppShell
         userName={profile.name}
@@ -235,6 +237,7 @@ function ProtectedPlannerApp() {
         <div className="logout-confirm"><div className="modal__actions"><Button variant="ghost" disabled={loggingOut} onClick={() => setLogoutOpen(false)}>{t("Cancelar")}</Button><Button variant="danger" disabled={loggingOut} onClick={async () => { setLoggingOut(true); await account.signOut(); navigate("/login", { replace: true }); navigate("/login"); setLoggingOut(false); }}>{loggingOut ? t("Un momento…") : t("Cerrar sesión")}</Button></div></div>
       </Modal>
     </>
+    </CalendarIntegrationProvider>
   );
 }
 

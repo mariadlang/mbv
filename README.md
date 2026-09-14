@@ -14,6 +14,7 @@ La documentación vigente para continuar el proyecto comienza en [`docs/proyecto
 - Vitest para pruebas unitarias y Playwright para E2E
 - Vinext y Cloudflare Sites como destino de publicación adicional, mediante scripts explícitos
 - Supabase Auth para identidad, acceso, preferencias, soporte y metadatos mínimos de producto
+- Google Calendar API para sincronización opcional y bidireccional de eventos/citas
 - Catálogos ES/EN tipados con un bridge temporal para superficies legacy
 
 ## Sistema de experiencia P1
@@ -67,6 +68,12 @@ El acceso actual requiere una cuenta administrada por Supabase. El contenido det
 
 Las imágenes locales se limitan por tipo y tamaño para evitar respaldos excesivos. Consulta el inventario y las precauciones en [`docs/proyecto/ESTADO_ACTUAL.md`](docs/proyecto/ESTADO_ACTUAL.md).
 
+## Google Calendar
+
+La integración opcional diferencia eventos/citas de tareas y prioridades. Extiende Mi espacio, Semana y Mi día; usa OAuth independiente del login, selección de calendarios, tokens cifrados server-side, outbox local, ETags, sync incremental, webhooks y resolución explícita de conflictos. La guía completa de arquitectura, configuración, endpoints, pruebas y rollout está en [`docs/integrations/google-calendar.md`](docs/integrations/google-calendar.md).
+
+El código por sí solo no habilita la conexión: cada entorno debe aplicar `supabase/migrations/202609110001_google_calendar_integration.sql`, configurar Google Cloud, secrets y Redirect URI, y disponer de un runtime HTTPS que ejecute API routes, webhooks y el cron autenticado.
+
 ## Cuenta, prueba y Premium
 
 Supabase Auth gestiona registro, verificación de correo, recuperación y sesión. La prueba de 15 días comienza con el primer acceso después de verificar el correo, no pide tarjeta y limita la planificación editable a un horizonte de tres meses. Premium añade planificación a cinco años. `feed_hub` existe como gate técnico, pero no está accesible ni se comunica como disponible.
@@ -83,7 +90,7 @@ Ajustes permite exportar e importar JSON versionado. La importación valida el a
 
 ## Variables de entorno
 
-Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalmente, la URL de Mercado Pago y datos legales. Nunca uses `service_role` en el navegador ni versiones secretos. Cada entorno debe validar sus Redirect URLs y migraciones por separado.
+Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalmente, la URL de Mercado Pago y datos legales; Google Calendar añade variables exclusivamente server-side y `CRON_SECRET`. Nunca uses `service_role` en el navegador ni versiones secretos. Cada entorno debe validar sus Redirect URLs y migraciones por separado.
 
 ## Deployment
 
@@ -99,6 +106,7 @@ GitHub Actions valida pull requests hacia `main` y pushes a `main` con lint, typ
 - La facturación autoservicio no concilia pagos ni activa Premium automáticamente.
 - Falta el vector maestro aprobado del logo.
 - La migración i18n explícita es progresiva y no equivale aún a cobertura EN total.
+- Google Calendar requiere migración, credenciales OAuth, cifrado, cron y webhook HTTPS configurados por entorno; sin ellos la tarjeta se muestra como no disponible y el planner local continúa funcionando.
 - La operación comercial requiere decisiones de precio/condiciones, dominio y revisión legal.
 
-Consulta [el estado de arquitectura](docs/architecture/current-state.md), [la persistencia](docs/architecture/persistence.md), [la tipografía vigente](docs/brand/typography.md), [el diccionario de producto](docs/brand/product-language-dictionary.md), [los primitives](docs/design-system/primitives.md), [el registro de ADR](docs/decisions/README.md), [la fuente de verdad de marca](docs/brand/README.md) y [el informe de release P1](docs/qa/p1-release-report.md).
+Consulta [la integración Google Calendar](docs/integrations/google-calendar.md), [el estado de arquitectura](docs/architecture/current-state.md), [la persistencia](docs/architecture/persistence.md), [la tipografía vigente](docs/brand/typography.md), [el diccionario de producto](docs/brand/product-language-dictionary.md), [los primitives](docs/design-system/primitives.md), [el registro de ADR](docs/decisions/README.md), [la fuente de verdad de marca](docs/brand/README.md) y [el informe de release P1](docs/qa/p1-release-report.md).

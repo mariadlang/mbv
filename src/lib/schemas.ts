@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BackupEnvelope, PlannerSnapshot } from "@/src/domain/planner";
+import { isValidCalendarDateKey, isValidCalendarTimezone } from "@/src/domain/calendar";
 
 const timestampSchema = z.string().min(1);
 const optionalId = z.string().optional();
@@ -148,10 +149,21 @@ export const routineFormSchema = z.object({
   steps: z.array(z.string().trim().min(1)).min(1),
 });
 
+const calendarDateSchema = z.string().refine(isValidCalendarDateKey, "INVALID_EVENT_DATE");
+const calendarTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "INVALID_EVENT_TIME");
+
 export const eventFormSchema = z.object({
-  title: z.string().trim().min(2), startDate: z.string().min(1), endDate: z.string().optional(),
-  time: z.string().optional(), category: z.enum(["medical", "birthday", "social", "work", "wellness", "personal"]),
-  notes: z.string().trim().optional(),
+  title: z.string().trim().min(2).max(500), startDate: calendarDateSchema, endDate: calendarDateSchema.optional(),
+  time: calendarTimeSchema.optional(), startTime: calendarTimeSchema.optional(), endTime: calendarTimeSchema.optional(), allDay: z.boolean().optional(), timezone: z.string().trim().max(100).refine(isValidCalendarTimezone, "INVALID_EVENT_TIMEZONE").optional(),
+  category: z.enum(["medical", "birthday", "social", "work", "wellness", "personal"]),
+  notes: z.string().trim().max(8000).optional(),
+}).superRefine((event, context) => {
+  const startTime = event.startTime ?? event.time;
+  if (event.endDate && event.endDate < event.startDate) context.addIssue({ code: "custom", message: "EVENT_END_BEFORE_START" });
+  if (event.allDay === false && (!startTime || !event.endTime)) context.addIssue({ code: "custom", message: "EVENT_TIME_REQUIRED" });
+  if (event.allDay === false && (!event.endDate || event.endDate === event.startDate) && startTime && event.endTime && event.endTime <= startTime) {
+    context.addIssue({ code: "custom", message: "EVENT_END_BEFORE_START" });
+  }
 });
 
 export const workoutFormSchema = z.object({
@@ -317,7 +329,12 @@ const routineSchema = z.object({
 
 const plannerEventSchema = z.object({
   id: z.string(), title: z.string(), startDate: z.string(), endDate: z.string().optional(), time: z.string().optional(),
+  startTime: z.string().optional(), endTime: z.string().optional(), allDay: z.boolean().optional(), timezone: z.string().optional(),
   category: z.enum(["medical", "birthday", "social", "work", "wellness", "personal"]), notes: z.string().optional(),
+  status: z.enum(["confirmed", "tentative", "cancelled"]).optional(), calendarProvider: z.literal("google").optional(),
+  integrationId: z.string().optional(), connectedCalendarId: z.string().optional(), externalCalendarId: z.string().optional(), externalEventId: z.string().optional(), calendarName: z.string().optional(),
+  origin: z.enum(["mbv", "google"]).optional(), syncState: z.enum(["local", "pending", "synced", "error", "conflict", "reconnect_required"]).optional(),
+  pendingAction: z.enum(["create", "update", "delete"]).optional(), etag: z.string().optional(), lastSyncedAt: timestampSchema.optional(), googleUpdatedAt: timestampSchema.optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

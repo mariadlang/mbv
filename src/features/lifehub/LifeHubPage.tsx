@@ -8,6 +8,7 @@ import {
   Bell,
   BookOpen,
   CalendarDays,
+  Cloud,
   Camera,
   Check,
   ChevronRight,
@@ -25,6 +26,7 @@ import {
   Sun,
   Pencil,
   Save,
+  Trash2,
   X,
   Utensils,
   Wrench,
@@ -41,6 +43,8 @@ import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDraw
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, isTrialPlanningMonthAllowed, type UserAccess } from "@/src/domain/access";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
+import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
+import { calendarEventTimeLabel } from "@/src/domain/calendar";
 
 type HubTab = "summary" | "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
 type ListDateMode = "flexible" | "month" | "date";
@@ -99,6 +103,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function LifeHubPage({ planner, access, onQuickCapture }: { planner: PlannerController; access: UserAccess; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { m, formatDate } = useI18n();
   const { snapshot } = planner;
+  const calendarIntegration = useCalendarIntegration();
   const today = toLocalDateKey(new Date());
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
@@ -124,6 +129,12 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const [visionFrequency, setVisionFrequency] = useState<"daily" | "weekly" | "monthly" | "quarterly">("weekly");
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState(today);
+  const [eventEndDate, setEventEndDate] = useState(today);
+  const [eventStartTime, setEventStartTime] = useState("09:00");
+  const [eventEndTime, setEventEndTime] = useState("10:00");
+  const [eventAllDay, setEventAllDay] = useState(false);
+  const [eventCalendarId, setEventCalendarId] = useState("");
+  const [eventSyncWithGoogle, setEventSyncWithGoogle] = useState<boolean | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventCategory, setEventCategory] = useState<keyof typeof eventLabelKeys>("personal");
   const [fitnessDate, setFitnessDate] = useState(today);
@@ -147,6 +158,11 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const canPlanTentativeDate = (date: string) => date.length === 7
     ? isTrialPlanningMonthAllowed(access, date)
     : isTrialPlanningDateAllowed(access, date);
+
+  const defaultEventCalendar = calendarIntegration.snapshot.calendars.find((item) => item.isDefault && item.isWritable);
+  const selectedEventCalendarId = eventCalendarId || defaultEventCalendar?.id || "";
+  const shouldSyncEventWithGoogle = eventSyncWithGoogle ?? Boolean(!editingEventId && calendarIntegration.connected && defaultEventCalendar);
+  const editingPlannerEvent = editingEventId ? snapshot.events.find((item) => item.id === editingEventId) : undefined;
 
   const selectedWorkout = snapshot.workoutLogs.find((item) => item.date === fitnessDate);
   const selectedNutrition = snapshot.nutritionLogs.find((item) => item.date === fitnessDate);
@@ -228,12 +244,21 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const addEvent = async (event: FormEvent) => {
     event.preventDefault();
     if (!eventTitle.trim()) return;
-    if (!canPlanDate(eventDate)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+    if (!canPlanDate(eventDate) || !canPlanDate(eventEndDate)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+    if (eventEndDate < eventDate || (!eventAllDay && eventEndDate === eventDate && eventEndTime <= eventStartTime)) {
+      setPlanningError(m("calendar.event.invalidTime"));
+      return;
+    }
     setPlanningError("");
-    const input = { title: eventTitle, startDate: eventDate, category: eventCategory };
-    if (editingEventId) await planner.updateEvent(editingEventId, input);
-    else await planner.createEvent(input);
-    setEventTitle("");
+    const input = {
+      title: eventTitle, startDate: eventDate, endDate: eventEndDate !== eventDate ? eventEndDate : undefined,
+      startTime: eventAllDay ? undefined : eventStartTime, endTime: eventAllDay ? undefined : eventEndTime,
+      allDay: eventAllDay, timezone: editingPlannerEvent?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), category: eventCategory,
+      connectedCalendarId: selectedEventCalendarId || undefined, syncWithGoogle: shouldSyncEventWithGoogle,
+    };
+    if (editingEventId) await calendarIntegration.updateEvent(editingEventId, input);
+    else await calendarIntegration.createEvent(input);
+    setEventTitle(""); setEventEndDate(eventDate); setEventStartTime("09:00"); setEventEndTime("10:00"); setEventAllDay(false); setEventSyncWithGoogle(null);
     setEditingEventId(null);
     setMessage(m("space.message.eventSaved"));
   };
@@ -357,7 +382,43 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
 
       {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addVisionItem}><label className="form-field"><span>{m("space.vision.quote")}</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder={m("space.vision.quote.placeholder")} /></label><label className="button button--secondary"><ImagePlus size={16} /> {visionImage ? m("space.vision.changeImage") : m("space.vision.chooseImage")}<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label>{visionImage && <figure className="vision-upload-preview"><img src={visionImage} alt={m("space.vision.previewAlt")} /><figcaption>{m("space.vision.imageReady")}</figcaption></figure>}<label className="vision-reminder-control"><input type="checkbox" checked={visionReminder} onChange={(event) => setVisionReminder(event.target.checked)} /> {m("space.vision.reminders")}</label>{visionReminder && <label className="form-field"><span>{m("space.vision.frequency")}</span><select value={visionFrequency} onChange={(event) => setVisionFrequency(event.target.value as typeof visionFrequency)} aria-label={m("space.vision.frequencyLabel")}><option value="daily">{m("space.vision.frequency.daily")}</option><option value="weekly">{m("space.vision.frequency.weekly")}</option><option value="monthly">{m("space.vision.frequency.monthly")}</option><option value="quarterly">{m("space.vision.frequency.quarterly")}</option></select></label>}<Button type="submit"><Plus size={16} /> {m("space.vision.add")}</Button></form>{visionReminder && <Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> {m("space.vision.allowNotifications")}</Button>}</Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type !== "quote" ? <><img src={item.content} alt={item.caption || m("space.vision.itemAlt")} />{item.caption && <blockquote>“{item.caption}”</blockquote>}</> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || m("space.vision.defaultCaption")}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? m("space.vision.remember", { frequency: m(item.reminderFrequency === "daily" ? "space.vision.frequency.daily" : item.reminderFrequency === "monthly" ? "space.vision.frequency.monthly" : item.reminderFrequency === "quarterly" ? "space.vision.frequency.quarterly" : "space.vision.frequency.weekly") }) : m("space.vision.noReminder")}</button></footer></Card>)}</div></>}
 
-      {tab === "events" && <div className="hub-two-column"><Card className="hub-form-card"><CalendarDays size={22} /><p className="eyebrow">{m(editingEventId ? "space.event.edit" : "space.event.new")}</p><h2>{m("space.event.title")}</h2><form onSubmit={addEvent}><label className="form-field"><span>{m("space.event.name")}</span><input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder={m("space.event.placeholder")} /></label><label className="form-field"><span>{m("space.event.date")}</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} value={eventDate} onChange={(event) => { setPlanningError(""); setEventDate(event.target.value); }} /></label><label className="form-field"><span>{m("space.event.category")}</span><select value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabelKeys).map(([value, labelKey]) => <option value={value} key={value}>{m(labelKey)}</option>)}</select></label><div className="modal__actions"><Button type="submit">{m("space.event.save")}</Button>{editingEventId && <Button type="button" variant="ghost" onClick={() => { setEditingEventId(null); setEventTitle(""); }}>{m("space.action.cancel")}</Button>}</div></form><div className="event-list">{snapshot.events.map((item) => { const readOnly = !canPlanDate(item.startDate); return <p key={item.id}><span><i className={`event-dot event-dot--${item.category}`} />{item.title}</span><strong>{formatDate(item.startDate, { dateStyle: "medium" })}</strong><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => { setPlanningError(""); setEditingEventId(item.id); setEventTitle(item.title); setEventDate(item.startDate); setEventCategory(item.category); }} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button></p>; })}</div></Card><Card className="all-tasks-card"><p className="eyebrow">{m("space.tasks.eyebrow")}</p><h2>{m("space.tasks.title")}</h2>{snapshot.tasks.map((task) => { const readOnly = Boolean(task.date && !canPlanDate(task.date)); return <div className="all-task-row" key={task.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.toggleTask(task.id)} aria-label={readOnly ? m("space.readOnly") : m(task.status === "completed" ? "space.action.reopenNamed" : "space.action.completeNamed", { name: task.title })}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><span>{task.title}</span><Badge tone={task.status === "completed" ? "sage" : task.status === "in_progress" ? "rose" : "neutral"}>{m(task.status === "completed" ? "space.tasks.status.completed" : task.status === "in_progress" ? "space.tasks.status.inProgress" : "space.tasks.status.notStarted")}</Badge></div>; })}</Card></div>}
+      {tab === "events" && <div className="hub-two-column">
+        <Card className="hub-form-card calendar-event-manager">
+          <CalendarDays size={22} />
+          <p className="eyebrow">{m(editingEventId ? "space.event.edit" : "space.event.new")}</p>
+          <h2>{m("space.event.title")}</h2>
+          <form onSubmit={addEvent}>
+            <div className="calendar-event-fields">
+              <label className="form-field form-field--wide"><span>{m("space.event.name")}</span><input required value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder={m("space.event.placeholder")} /></label>
+              <label className="form-field"><span>{m("space.event.date")}</span><input required type="date" min={dateBounds?.min} max={dateBounds?.max} value={eventDate} onChange={(event) => { setPlanningError(""); setEventDate(event.target.value); if (eventEndDate < event.target.value) setEventEndDate(event.target.value); }} /></label>
+              <label className="form-field"><span>{m("calendar.event.endDate")}</span><input type="date" min={eventDate} max={dateBounds?.max} value={eventEndDate} onChange={(event) => setEventEndDate(event.target.value)} /></label>
+              {!eventAllDay && <><label className="form-field"><span>{m("calendar.event.startTime")}</span><input required type="time" value={eventStartTime} onChange={(event) => setEventStartTime(event.target.value)} /></label><label className="form-field"><span>{m("calendar.event.endTime")}</span><input required type="time" value={eventEndTime} onChange={(event) => setEventEndTime(event.target.value)} /></label></>}
+              <label className="calendar-event-sync-control form-field--wide"><span><input type="checkbox" checked={eventAllDay} onChange={(event) => setEventAllDay(event.target.checked)} /> {m("calendar.event.allDay")}</span></label>
+              <label className="form-field"><span>{m("space.event.category")}</span><select value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabelKeys).map(([value, labelKey]) => <option value={value} key={value}>{m(labelKey)}</option>)}</select></label>
+              {calendarIntegration.connected && <label className="form-field"><span>{m("calendar.event.calendar")}</span><select value={selectedEventCalendarId} disabled={editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventCalendarId(event.target.value)}>{calendarIntegration.snapshot.calendars.filter((item) => item.isVisible && item.isWritable).map((item) => <option value={item.id} key={item.id} data-no-translate="true">{item.name}</option>)}</select></label>}
+              {calendarIntegration.connected && <div className="calendar-event-sync-control form-field--wide"><label><input type="checkbox" checked={shouldSyncEventWithGoogle} disabled={editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventSyncWithGoogle(event.target.checked)} /> {m("calendar.event.sync")}</label><small>{m("calendar.event.syncHint")}</small></div>}
+            </div>
+            <div className="modal__actions"><Button type="submit" loading={calendarIntegration.saving}>{m("space.event.save")}</Button>{editingEventId && <Button type="button" variant="ghost" onClick={() => { setEditingEventId(null); setEventTitle(""); }}>{m("space.action.cancel")}</Button>}</div>
+          </form>
+          {calendarIntegration.error && <p className="form-error">{m("calendar.error.generic")}</p>}
+          <div className="event-list">{
+            [
+              ...snapshot.events.filter((item) => item.status !== "cancelled").map((item) => ({ key: `local-${item.id}`, local: item, remote: undefined, title: item.title, startDate: item.startDate, startTime: item.startTime ?? item.time, endTime: item.endTime, allDay: item.allDay ?? !(item.startTime ?? item.time), calendarName: item.calendarName, origin: item.calendarProvider ? "google" as const : "mbv" as const, syncState: item.syncState, category: item.category })),
+              ...calendarIntegration.events.filter((item) => !item.localEventId || !snapshot.events.some((local) => local.id === item.localEventId)).map((item) => ({ key: `remote-${item.id}`, local: undefined, remote: item, title: item.title, startDate: item.startDate, startTime: item.startTime, endTime: item.endTime, allDay: item.allDay, calendarName: item.calendarName, origin: "google" as const, syncState: item.syncState, category: "personal" as const })),
+            ].sort((a, b) => `${a.startDate}${a.startTime ?? ""}`.localeCompare(`${b.startDate}${b.startTime ?? ""}`)).map((item) => {
+              const readOnly = !canPlanDate(item.startDate);
+              const local = item.local;
+              return <article key={item.key} className="calendar-event-list-item">
+                <span className={`event-dot event-dot--${item.category}`} />
+                <div><strong data-no-translate="true" translate="no">{item.title}</strong><small>{formatDate(item.startDate, { dateStyle: "medium" })} · {calendarEventTimeLabel(item, m("calendar.event.allDay"))}</small>{item.origin === "google" && <span className="calendar-origin"><Cloud size={12} aria-hidden="true" /> {item.calendarName || m("calendar.origin.google")}</span>}{item.syncState && item.syncState !== "local" && <span className={`calendar-sync-badge calendar-sync-badge--${item.syncState}`}>{m(item.syncState === "pending" ? "calendar.state.pending" : item.syncState === "synced" ? "calendar.state.synced" : item.syncState === "conflict" ? "calendar.state.conflict" : item.syncState === "reconnect_required" ? "calendar.state.reconnectRequired" : "calendar.state.error")}</span>}</div>
+                {local && <div className="calendar-event-list-actions"><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => { setPlanningError(""); setEditingEventId(local.id); setEventTitle(local.title); setEventDate(local.startDate); setEventEndDate(local.endDate ?? local.startDate); setEventStartTime(local.startTime ?? local.time ?? "09:00"); setEventEndTime(local.endTime ?? "10:00"); setEventAllDay(local.allDay ?? !(local.startTime ?? local.time)); setEventCalendarId(local.connectedCalendarId ?? selectedEventCalendarId); setEventSyncWithGoogle(local.calendarProvider === "google"); setEventCategory(local.category); }} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button><button type="button" disabled={readOnly} onClick={() => { if (window.confirm(m("calendar.event.deleteConfirm", { event: item.title }))) void calendarIntegration.deleteEvent(local.id); }} aria-label={m("calendar.event.delete")}><Trash2 size={14} /></button></div>}
+                {local?.syncState === "conflict" && <div className="calendar-conflict-actions"><Button size="sm" variant="outline" onClick={() => void calendarIntegration.resolveConflict(local.id, "google")}>{m("calendar.event.keepGoogle")}</Button><Button size="sm" variant="secondary" onClick={() => void calendarIntegration.resolveConflict(local.id, "mbv")}>{m("calendar.event.keepMbv")}</Button></div>}
+              </article>;
+            })
+          }</div>
+        </Card>
+        <Card className="all-tasks-card"><p className="eyebrow">{m("space.tasks.eyebrow")}</p><h2>{m("space.tasks.title")}</h2>{snapshot.tasks.map((task) => { const readOnly = Boolean(task.date && !canPlanDate(task.date)); return <div className="all-task-row" key={task.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.toggleTask(task.id)} aria-label={readOnly ? m("space.readOnly") : m(task.status === "completed" ? "space.action.reopenNamed" : "space.action.completeNamed", { name: task.title })}>{task.status === "completed" ? <Check size={15} /> : <Circle size={15} />}</button><span>{task.title}</span><Badge tone={task.status === "completed" ? "sage" : task.status === "in_progress" ? "rose" : "neutral"}>{m(task.status === "completed" ? "space.tasks.status.completed" : task.status === "in_progress" ? "space.tasks.status.inProgress" : "space.tasks.status.notStarted")}</Badge></div>; })}</Card>
+      </div>}
 
     </div>
   );

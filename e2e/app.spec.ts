@@ -782,15 +782,45 @@ test("daily close updates one journal entry instead of creating duplicates", asy
   await expect(dailyCloseEntries).toContainText("Terminé y revisé una tarea importante.");
 });
 
-test("date-only planning, habit recurrence and Brain Dump conversion stay consistent", async ({ page }) => {
+test("tasks stay date-only while calendar events support times and all-day mode", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
 
-  for (const route of ["/app/tasks", "/app/today", "/app/planning?view=day", "/app/life-hub?tab=events"]) {
-    await page.goto(route);
-    await expect(page.locator('input[type="time"]')).toHaveCount(0);
-    await expect(page.getByText(/Sin hora|Todo el día|Hora opcional/)).toHaveCount(0);
-  }
+  await page.goto("/app/tasks");
+  await page.getByRole("button", { name: "Nueva tarea" }).click();
+  const taskForm = page.locator(".advanced-task-form");
+  await expect(taskForm.locator('input[type="date"]')).toHaveCount(1);
+  await expect(taskForm.locator('input[type="time"]')).toHaveCount(0);
+
+  await page.goto("/app/planning?view=day");
+  await expect(page.locator(".daily-date-plan").locator('input[type="date"]')).toHaveCount(1);
+  await expect(page.locator(".daily-date-plan").locator('input[type="time"]')).toHaveCount(0);
+
+  await page.goto("/app/life-hub?tab=events");
+  const calendarForm = page.locator(".calendar-event-manager form");
+  const calendarAllDay = calendarForm.getByRole("checkbox", { name: "Todo el día" });
+  await expect(calendarForm.locator('input[type="time"]')).toHaveCount(2);
+  await expect(calendarAllDay).not.toBeChecked();
+  await calendarAllDay.check();
+  await expect(calendarForm.locator('input[type="time"]')).toHaveCount(0);
+  await calendarAllDay.uncheck();
+  await expect(calendarForm.locator('input[type="time"]')).toHaveCount(2);
+
+  await page.goto("/app/today");
+  await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Evento" }).click();
+  const todayEventForm = page.locator(".day-inline-composer");
+  const todayAllDay = todayEventForm.getByRole("checkbox", { name: "Todo el día" });
+  await expect(todayAllDay).toBeChecked();
+  await expect(todayEventForm.locator('input[type="time"]')).toHaveCount(0);
+  await todayAllDay.uncheck();
+  await expect(todayEventForm.locator('input[type="time"]')).toHaveCount(2);
+  await todayAllDay.check();
+  await expect(todayEventForm.locator('input[type="time"]')).toHaveCount(0);
+
+  await page.goto("/app/settings");
+  const calendarIntegration = page.locator(".google-calendar-integration");
+  await expect(calendarIntegration.getByRole("heading", { name: "Google Calendar" })).toBeVisible();
+  await expect(calendarIntegration).toContainText("Sólo accederemos a los calendarios que elijas.");
 
   await page.goto("/app/today");
   await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Hábito" }).click();
@@ -844,6 +874,106 @@ test("date-only planning, habit recurrence and Brain Dump conversion stay consis
   await expect(page.getByText(/Convertido en Mi día/)).toBeVisible();
 });
 
+test("a calendar event stays consistent across Mi espacio, Semana and Mi día", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.clock.setFixedTime(new Date("2026-09-11T12:00:00-05:00"));
+  await completeOnboarding(page);
+  const dates = await page.evaluate(() => {
+    const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return { start: key(start), end: key(end) };
+  });
+
+  await page.goto("/app/life-hub?tab=events");
+  const manager = page.locator(".calendar-event-manager");
+  const form = manager.locator("form");
+  await form.getByLabel("Evento", { exact: true }).fill("Revisión de calendario");
+  await form.getByLabel("Fecha", { exact: true }).fill(dates.start);
+  await form.getByLabel("Fecha final", { exact: true }).fill(dates.end);
+  await form.getByLabel("Hora inicial", { exact: true }).fill("23:00");
+  await form.getByLabel("Hora final", { exact: true }).fill("01:00");
+  await form.locator("select").first().selectOption("work");
+  await form.getByRole("button", { name: "Guardar evento", exact: true }).click();
+  await expect(manager.getByText("Revisión de calendario", { exact: true })).toHaveCount(1);
+
+  await page.goto("/app/planning/weekly");
+  await expect(page.getByText("Revisión de calendario", { exact: true })).toHaveCount(2);
+
+  await page.goto("/app/today");
+  await expect(page.getByText("Revisión de calendario", { exact: true })).toBeVisible();
+  await page.getByLabel("Editar Revisión de calendario", { exact: true }).click();
+  const todayForm = page.locator(".day-inline-composer");
+  await todayForm.getByLabel("Nombre", { exact: true }).fill("Revisión actualizada");
+  await todayForm.getByRole("button", { name: "Guardar en Mi día", exact: true }).click();
+  await expect(page.getByText("Revisión actualizada", { exact: true })).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction("events", "readonly");
+    const events = await new Promise<Array<{ title: string; startDate: string; endDate?: string; category: string }>>((resolve, reject) => {
+      const request = transaction.objectStore("events").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return events.find((event) => event.title === "Revisión actualizada");
+  });
+  expect(stored).toMatchObject({ startDate: dates.start, endDate: dates.end, category: "work" });
+
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction("events", "readwrite");
+    const store = transaction.objectStore("events");
+    const events = await new Promise<Array<{ id: string; title: string; timezone?: string }>>((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const saved = events.find((event) => event.title === "Revisión actualizada");
+    if (!saved) throw new Error("Expected calendar event");
+    store.put({ ...saved, timezone: "Pacific/Honolulu" });
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    database.close();
+  });
+
+  await page.goto("/app/life-hub?tab=events");
+  const eventRow = page.locator(".calendar-event-list-item").filter({ hasText: "Revisión actualizada" });
+  await eventRow.getByLabel("Editar Revisión actualizada", { exact: true }).click();
+  await page.locator(".calendar-event-manager form").getByRole("button", { name: "Guardar evento", exact: true }).click();
+  const preservedTimezone = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const events = await new Promise<Array<{ title: string; timezone?: string }>>((resolve, reject) => {
+      const request = database.transaction("events", "readonly").objectStore("events").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return events.find((event) => event.title === "Revisión actualizada")?.timezone;
+  });
+  expect(preservedTimezone).toBe("Pacific/Honolulu");
+  page.once("dialog", (dialog) => dialog.accept());
+  await eventRow.getByRole("button", { name: "Eliminar evento", exact: true }).click();
+  await expect(eventRow).toHaveCount(0);
+});
+
 test("weekly plan option B creates, assigns and preserves the same task across Mi día", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
@@ -855,7 +985,8 @@ test("weekly plan option B creates, assigns and preserves the same task across M
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const todayGroup = page.locator(`#weekly-day-${todayKey}`);
-  await todayGroup.getByRole("button", { name: "Añadir tarea" }).click();
+  await todayGroup.getByRole("button", { name: "Añadir", exact: true }).click();
+  await todayGroup.getByRole("button", { name: "Tarea", exact: true }).click();
   await todayGroup.getByPlaceholder("Título de la tarea").fill("Tarea semanal de prueba");
   await todayGroup.getByRole("button", { name: "Guardar" }).click();
   await expect(todayGroup.getByText("Tarea semanal de prueba", { exact: true })).toBeVisible();

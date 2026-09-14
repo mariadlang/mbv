@@ -2,6 +2,7 @@ import type { esMessages } from "@/src/i18n/messages/es";
 import { enHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { enNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { enPlanningMessages } from "@/src/i18n/messages/features/planning";
+import { enCalendarMessages } from "@/src/i18n/messages/features/calendar";
 
 export const enMessages = {
   "language.selector.label": "Language",
@@ -192,4 +193,5 @@ export const enMessages = {
   ...enHomeTodayMessages,
   ...enNavigationSpaceProgressMessages,
   ...enPlanningMessages,
+  ...enCalendarMessages,
 } as const satisfies { [Key in keyof typeof esMessages]: string };
