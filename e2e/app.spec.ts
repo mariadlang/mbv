@@ -628,8 +628,43 @@ test("public legal resources and signup consent are available", async ({ page })
   await expect(page.getByRole("heading", { name: "Centro Legal y de Privacidad" })).toBeVisible();
   await page.goto("/data-policy");
   await expect(page.getByRole("heading", { name: "Política de Tratamiento de Datos Personales" })).toBeVisible();
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: "Política de Privacidad de My Best Version" })).toBeVisible();
+  const googleCalendarPrivacy = page.locator("#google-calendar");
+  await expect(googleCalendarPrivacy).toContainText("Uso Limitado");
+  await expect(googleCalendarPrivacy.getByRole("link", { name: /Política de Datos del Usuario/ })).toHaveAttribute("href", "https://developers.google.com/terms/api-services-user-data-policy");
+  await expect(page.getByRole("link", { name: "exportar, desconectar o eliminar tus datos" })).toHaveAttribute("href", "/data-deletion");
+  await page.goto("/terms");
+  await expect(page.getByRole("heading", { name: "Términos y Condiciones" })).toBeVisible();
   await page.goto("/pqr");
   await expect(page.getByRole("heading", { name: "Peticiones, quejas y reclamos" })).toBeVisible();
+});
+
+test("privacy and crawler resources are server-readable", async ({ request }) => {
+  const privacy = await request.get("/privacy");
+  expect(privacy.status()).toBe(200);
+  expect(privacy.headers()["content-type"]).toContain("text/html");
+
+  const privacyHtml = await privacy.text();
+  expect(privacyHtml).toContain("Política de Privacidad de My Best Version");
+  expect(privacyHtml).toContain("Google Calendar");
+  expect(privacyHtml).toContain("Uso Limitado");
+  expect(privacyHtml).toContain("/data-deletion");
+  expect(privacyHtml).toContain("https://mybestversion.life/privacy");
+  expect(privacyHtml).toContain("https://developers.google.com/terms/api-services-user-data-policy");
+  expect(privacyHtml).not.toContain("Documento en preparación");
+
+  const robots = await request.get("/robots.txt");
+  expect(robots.status()).toBe(200);
+  expect(robots.headers()["content-type"]).toContain("text/plain");
+  expect(await robots.text()).toContain("Sitemap: https://mybestversion.life/sitemap.xml");
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  expect(sitemap.headers()["content-type"]).toMatch(/xml/);
+  const sitemapXml = await sitemap.text();
+  expect(sitemapXml).toContain("<loc>https://mybestversion.life/privacy</loc>");
+  expect(sitemapXml).toContain("<loc>https://mybestversion.life/data-deletion</loc>");
 });
 
 test("creates a gentle challenge and records today", async ({ page }) => {
@@ -820,7 +855,11 @@ test("tasks stay date-only while calendar events support times and all-day mode"
   await page.goto("/app/settings");
   const calendarIntegration = page.locator(".google-calendar-integration");
   await expect(calendarIntegration.getByRole("heading", { name: "Google Calendar" })).toBeVisible();
-  await expect(calendarIntegration).toContainText("Sólo accederemos a los calendarios que elijas.");
+  await expect(calendarIntegration).toContainText("Google nos permitirá consultar tu lista de calendarios");
+  await expect(calendarIntegration.getByRole("link", { name: "Cómo usamos tus datos de Google" })).toHaveAttribute("href", "/privacy#google-calendar");
+
+  await page.goto("/app/settings?calendar=error&reason=access_denied#integrations");
+  await expect(calendarIntegration).toContainText("Cancelaste la conexión con Google. No hicimos cambios en tus calendarios.");
 
   await page.goto("/app/today");
   await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Hábito" }).click();
@@ -1094,7 +1133,7 @@ test("P1 public routes remain clear across the required visual matrix", async ({
     { path: "/verify-email", ready: () => page.getByRole("heading", { name: "Revisa tu correo.", exact: true }) },
     { path: "/forgot-password", ready: () => page.getByRole("heading", { name: "Recupera tu acceso.", exact: true }) },
     { path: "/upgrade", ready: () => page.getByRole("heading", { name: "Amplía tu horizonte cuando estés lista.", exact: true }) },
-    { path: "/privacy", ready: () => page.getByRole("heading", { name: "Tu privacidad, en claro", exact: true }) },
+    { path: "/privacy", ready: () => page.getByRole("heading", { name: "Política de Privacidad de My Best Version", exact: true }) },
     { path: "/terms", ready: () => page.getByRole("heading", { name: "Términos y Condiciones", exact: true }) },
     { path: "/legal", ready: () => page.getByRole("heading", { name: "Centro Legal y de Privacidad", exact: true }) },
   ];

@@ -1,6 +1,6 @@
 # Integración bidireccional con Google Calendar
 
-Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada inicialmente como versión 30 de Sites el 14 de septiembre de 2026. El hotfix `83860806234c4aebea274803192a908d12294b4f` añade compatibilidad con calendarios delegados `writerWithoutPrivateAccess`; la versión 31 incorpora ese estado. La API de Google Calendar y la migración `202609110001_google_calendar_integration.sql` están activas en producción. El cliente OAuth dedicado, la Redirect URI exacta y las variables privadas/operativas quedaron aplicados finalmente en la revisión 4 de Sites y la versión 31 se redeplegó mediante `appgdep_6aa8662a06d08191a8b3b9de6cedde6d`. Una cuenta real completó OAuth, selección del calendario principal, primera sincronización e importación visible. Ninguna credencial real se incluye en el repositorio. Para un lanzamiento abierto todavía faltan la verificación pública de Google OAuth y un scheduler de mantenimiento compatible con Sites.
+Estado: implementación consolidada en `14ec6226dfb433db6de0956cae223d7b6ca1a482` y publicada inicialmente como versión 30 de Sites el 14 de septiembre de 2026. El hotfix `83860806234c4aebea274803192a908d12294b4f` añade compatibilidad con calendarios delegados `writerWithoutPrivateAccess`; la versión 31 incorpora ese estado. La API de Google Calendar y la migración `202609110001_google_calendar_integration.sql` están activas en producción. El cliente OAuth dedicado de Sites, la Redirect URI exacta y las variables privadas/operativas quedaron aplicados en la revisión 4 de Sites; una cuenta real completó OAuth, selección del calendario principal, primera sincronización e importación visible. Para el dominio oficial se creó el proyecto independiente `MBV Calendar Production` (`mbv-calendar-production`), se habilitó Google Calendar API, se validó un cliente web con callback exacto de `mybestversion.life` y se guardó la pareja ID/secreto junto con las tres variables operativas en Vercel Production. La política de privacidad ahora tiene HTML server-side rastreable, canonical, `robots.txt` y `sitemap.xml`. Ninguna credencial real se incluye en el repositorio. Antes del acceso general todavía faltan la verificación pública de Google, la identidad legal verificable, el smoke OAuth del nuevo deployment y el scheduler de mantenimiento aplicable al entorno.
 
 ## 1. Arquitectura utilizada
 
@@ -86,13 +86,19 @@ Para cada entorno debe registrarse exactamente:
 {APP_BASE_URL}/api/integrations/google-calendar/callback
 ```
 
-Ejemplo de producción:
+Producción en el dominio oficial:
+
+```text
+https://mybestversion.life/api/integrations/google-calendar/callback
+```
+
+Entorno secundario de Sites:
 
 ```text
 https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site/api/integrations/google-calendar/callback
 ```
 
-No se admiten variantes con otro dominio, puerto, protocolo o slash final. El callback valida `state`, PKCE, scopes, entitlement y cuenta; guarda el grant pendiente cifrado. La activación final exige además la sesión Bearer de la misma cuenta MBV mediante `/complete`.
+No se admiten variantes con otro dominio, puerto, protocolo o slash final. Cada entorno debe usar su propio cliente y secretos; el callback valida `state`, PKCE, scopes, entitlement y cuenta, y guarda el grant pendiente cifrado. La activación final exige además la sesión Bearer de la misma cuenta MBV mediante `/complete`.
 
 ## 8. Endpoints creados
 
@@ -190,3 +196,14 @@ Las pruebas automatizadas cubren dominio, cifrado/configuración, acceso trial, 
 - No se registraron errores del Worker tras el despliegue corregido ni durante el recorrido autenticado.
 - Google muestra actualmente “app no verificada”. Para que cualquier persona conecte sin esa advertencia y sin el límite de usuarios no verificados, deben completarse la verificación de marca y la verificación de scopes sensibles de OAuth. En estado `Testing` sólo pueden autorizar los usuarios de prueba; en estado publicado pero no verificado existe un límite acumulado de 100 usuarios. Referencias oficiales: [estado de aplicaciones OAuth](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview) y [verificación de scopes sensibles](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification).
 - El cron de `vercel.json` no acredita ejecución en Sites. OAuth, sincronización manual y webhooks pueden funcionar sin ese cron, pero el mantenimiento periódico requiere un scheduler HTTP autenticado o el runtime Vercel configurado.
+
+## 17. Preparación del rollout en `mybestversion.life`
+
+- Se creó el proyecto Google Cloud independiente `MBV Calendar Production`, con ID `mbv-calendar-production`, y se verificó Google Calendar API como habilitada.
+- En Vercel Production quedaron las cinco variables requeridas: `APP_BASE_URL=https://mybestversion.life`, `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`, `CRON_SECRET`, `GOOGLE_CALENDAR_CLIENT_ID` y `GOOGLE_CALENDAR_CLIENT_SECRET`. Todas están limitadas a Production y almacenadas como tipo `Secret`; sus valores no se guardaron en código, documentación, commits ni archivos `.env`.
+- El JSON descargado se validó sin imprimir el secreto: proyecto `mbv-calendar-production`, cliente de tipo `web`, client ID esperado, secreto presente y única Redirect URI `https://mybestversion.life/api/integrations/google-calendar/callback`.
+- `/privacy` dejó de depender del shell cliente de `PlannerApp`: comparte una sola fuente de contenido con la SPA, tiene una ruta Next server-side con metadata y canonical propios, describe acceso/uso/almacenamiento/proveedores/seguridad/retención/eliminación de datos de Google y enlaza la [Política de Datos del Usuario de los Servicios API de Google](https://developers.google.com/terms/api-services-user-data-policy) con su declaración de Uso Limitado.
+- `app/robots.ts` y `app/sitemap.ts` entregan recursos de crawler reales; el sitemap incluye la política y las instrucciones de eliminación, mientras robots excluye APIs y rutas privadas.
+- Validación local: TypeScript, ESLint, 33 archivos/185 pruebas unitarias, 8 suites Calendar/45 casos, i18n, tokens, contraste, builds Next/Vinext, HTML crudo, recursos de crawler, recorrido Calendar dirigido y matriz pública en 390×844, 430×932, 768×1024 y 1440×900.
+- Antes de enviar la verificación deben completarse con datos reales las variables `NEXT_PUBLIC_LEGAL_*`, verificar la propiedad de `mybestversion.life` en Search Console, confirmar que el nombre público de OAuth es `My Best Version`, probar el flujo con cuentas de prueba y preparar el video/justificación de scopes exigidos por Google.
+- El envío final desde Verification Center representa públicamente a My Best Version y requiere una autorización específica en el momento de enviarlo.

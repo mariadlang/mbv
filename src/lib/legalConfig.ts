@@ -4,6 +4,7 @@ const clean = (value: string | undefined) => value?.trim() || null;
 
 export const LEGAL_VERSION = "2026-09-11.co-2";
 export const COOKIE_POLICY_VERSION = "2026-09-11.co-2";
+export const GOOGLE_API_USER_DATA_POLICY_URL = "https://developers.google.com/terms/api-services-user-data-policy";
 
 export const legalConfig = {
   brandName: "My Best Version",
@@ -48,7 +49,7 @@ export const verifiedProviders = [
   { name: "Vercel", purpose: "Hosting del dominio oficial", data: "Solicitudes web, IP y registros técnicos necesarios para operar y proteger el servicio", role: "Proveedor de infraestructura", location: "Red global", retention: "Según el plan y la configuración del proyecto", policyUrl: "https://vercel.com/legal/privacy-policy", international: true },
   { name: "OpenAI Sites", purpose: "Publicación secundaria de la aplicación", data: "Solicitudes web y registros técnicos de la versión publicada en Sites", role: "Proveedor de infraestructura", location: "Infraestructura internacional", retention: "Según la configuración del servicio", policyUrl: "https://openai.com/policies/privacy-policy/", international: true },
   { name: "Google (inicio de sesión)", purpose: "Inicio de sesión opcional e independiente de Calendar", data: "Nombre, correo y foto de perfil cuando la persona autoriza el acceso de identidad", role: "Proveedor de identidad", location: "Infraestructura internacional", retention: "Según la cuenta de Google y la sesión de My Best Version", policyUrl: "https://policies.google.com/privacy", international: true },
-  { name: "Google Calendar API", purpose: "Sincronización opcional y bidireccional de los calendarios elegidos por la persona", data: "Correo de la cuenta conectada, lista de calendarios y títulos, descripciones, fechas, horas, zonas horarias, estados e identificadores de eventos", role: "Proveedor de integración bajo autorización independiente", location: "Infraestructura internacional", retention: "Mientras la conexión permanezca activa; la revocación desde Google detiene accesos futuros y la desconexión desde la app elimina la copia del servidor", policyUrl: "https://policies.google.com/privacy", international: true },
+  { name: "Google Calendar API", purpose: "Sincronización opcional y bidireccional de los calendarios elegidos por la persona", data: "Correo de la cuenta conectada, lista de calendarios y títulos, descripciones, fechas, horas, zonas horarias, estados e identificadores de eventos", role: "Proveedor de integración bajo autorización independiente", location: "Infraestructura internacional", retention: "Mientras la conexión permanezca activa; la revocación desde Google detiene accesos futuros y la desconexión desde la app elimina la copia del servidor", policyUrl: GOOGLE_API_USER_DATA_POLICY_URL, international: true },
   { name: "Mercado Pago", purpose: "Checkout externo cuando la persona decide continuar con una compra", data: "Los datos de pago se entregan directamente a Mercado Pago; la app no recibe números completos de tarjeta", role: "Proveedor de pagos independiente", location: "Según la infraestructura de Mercado Pago", retention: "Según sus obligaciones legales y contractuales", policyUrl: "https://www.mercadopago.com.co/privacidad", international: true },
 ] as const;
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarCheck, ChevronDown, RefreshCw, ShieldCheck } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Alert, Badge, Button, Card, LoadingState } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
@@ -22,6 +22,12 @@ const errorKeys: Record<string, CalendarMessageKey> = {
   CALENDAR_COMPLETION_IN_PROGRESS: "calendar.error.completionInProgress",
 };
 
+const callbackErrorKeys: Record<string, CalendarMessageKey> = {
+  access_denied: "calendar.settings.connectionCancelled",
+  missing_scope: "calendar.settings.connectionMissingScope",
+  invalid_state: "calendar.settings.connectionExpired",
+};
+
 export function GoogleCalendarIntegrationCard() {
   const { m, formatDate } = useI18n();
   const location = useLocation();
@@ -35,6 +41,7 @@ export function GoogleCalendarIntegrationCard() {
   const [defaultId, setDefaultId] = useState("");
 
   const callbackState = useMemo(() => new URLSearchParams(location.search).get("calendar"), [location.search]);
+  const callbackReason = useMemo(() => new URLSearchParams(location.search).get("reason"), [location.search]);
   const configurationRequired = Boolean(calendar.snapshot.integration && calendar.snapshot.calendars.length && !calendar.snapshot.calendars.some((item) => item.isVisible));
   const selectedDefault = calendar.snapshot.calendars.find((item) => item.id === defaultId);
   const selectionValid = visibleIds.length > 0 && Boolean(selectedDefault?.isWritable && visibleIds.includes(defaultId));
@@ -71,11 +78,11 @@ export function GoogleCalendarIntegrationCard() {
 
       {callbackState === "connected" && <Alert tone="success">{m("calendar.settings.connectionSuccess")}</Alert>}
       {callbackState === "pending" && <Alert tone="info">{m("calendar.settings.completing")}</Alert>}
-      {callbackState === "error" && <Alert tone="danger">{m("calendar.settings.connectionError")}</Alert>}
+      {callbackState === "error" && <Alert tone="danger">{m(callbackErrorKeys[callbackReason ?? ""] ?? "calendar.settings.connectionError")}</Alert>}
       {errorMessage && <Alert tone={calendar.error === "RECONNECT_REQUIRED" ? "warning" : "danger"}>{errorMessage}</Alert>}
 
       {!calendar.snapshot.integration ? <div className="google-calendar-integration__disconnected">
-        <p><ShieldCheck size={16} aria-hidden="true" /> {m("calendar.settings.privacy")}</p>
+        <p><ShieldCheck size={16} aria-hidden="true" /> {m("calendar.settings.privacy")} <Link to="/privacy#google-calendar">{m("calendar.settings.privacyLink")}</Link></p>
         {!calendar.snapshot.configured && <small>{m("calendar.settings.unavailable")}</small>}
         <Button onClick={() => void calendar.connect()} loading={calendar.saving} disabled={!calendar.snapshot.configured}>{m(calendar.saving ? "calendar.settings.connecting" : "calendar.settings.connect")}</Button>
       </div> : <>

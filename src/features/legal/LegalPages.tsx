@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ExternalLink, FileCheck2, LockKeyhole, Mail, ShieldCheck, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PublicFrame } from "@/src/features/account/AccountPages";
+import { PrivacyPolicyContent } from "@/src/features/legal/PrivacyPolicyContent";
 import { useAccount } from "@/src/hooks/useAccount";
 import { useLegalPrivacy } from "@/src/hooks/useLegalPrivacy";
 import type { PlannerController } from "@/src/hooks/usePlanner";
@@ -82,12 +83,7 @@ export function DataPolicyPage() {
 }
 
 export function PrivacyPage() {
-  return <LegalArticle eyebrow="AVISO DE PRIVACIDAD" title="Tu privacidad, en claro" lead="My Best Version usa la información mínima necesaria para darte acceso y permitirte organizar tu vida con control sobre tus datos.">
-    <section><h2>Quién trata tus datos</h2><ResponsibleInfo /></section>
-    <section><h2>Qué usamos y para qué</h2><p>Usamos nombre, correo, sesión y preferencias para autenticar y operar la cuenta. Tus metas, hábitos, tareas, journal, finanzas, fitness y alimentación se guardan principalmente en el navegador. No vendemos datos ni los usamos para publicidad personalizada.</p></section>
-    <section><h2>Google: identidad y Calendar son permisos separados</h2><p>Si eliges iniciar sesión con Google, recibimos únicamente nombre, correo y foto de perfil autorizados. Ese acceso básico no habilita Google Calendar.</p><p>Conectar Calendar es opcional y exige una autorización expresa adicional desde Ajustes. Solicitamos <code>openid</code> y <code>email</code> para identificar la cuenta conectada, <code>calendar.calendarlist.readonly</code> para consultar su lista de calendarios y <code>calendar.events</code> para leer y administrar eventos. Dentro del producto usamos esos permisos sólo sobre los calendarios que elijas y no solicitamos acceso a Gmail, Drive ni Contactos.</p><p>Los tokens se cifran en el servidor y la copia de títulos, descripciones, fechas, horas, zonas horarias e identificadores se conserva exclusivamente para sincronizar. El uso de información de APIs de Google cumple los requisitos de Uso Limitado aplicables.</p></section>
-    <section><h2>Decisiones bajo tu control</h2><p>Puedes exportar o borrar datos, retirar consentimientos opcionales y solicitar acceso, corrección, revocación o supresión desde el Centro de Privacidad. También puedes desconectar Calendar desde Ajustes: intentaremos revocar el permiso en Google y eliminaremos del servidor los tokens y la copia sincronizada sin borrar tus eventos locales. Si revocas primero desde Google, debes desconectar también en la app o solicitar supresión para borrar esa copia. Lee la <Link to="/data-policy">política completa de tratamiento</Link>.</p></section>
-  </LegalArticle>;
+  return <PublicFrame><PrivacyPolicyContent /></PublicFrame>;
 }
 
 export function CookiesPage() {
