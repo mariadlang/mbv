@@ -2,7 +2,7 @@
 
 **Fecha de apertura:** 2026-09-16 (America/Bogota, UTC-05:00).
 
-**Estado:** validación técnica local cerrada; no existe deploy ni activación P2.
+**Estado:** release técnico publicado en producción con los cinco flags P2 apagados; no existe activación P2.
 
 ## Alcance y baseline
 
@@ -10,10 +10,10 @@
 - SHA base: `36abeec35a839a8425ab6960f73953034e1e4cbd`.
 - `origin/main` apuntaba al mismo SHA al iniciar el cierre.
 - Flags P2: apagados por defecto en runtime/configuración.
-- Commit/push/deploy P2: no realizados.
+- Commit funcional publicado: `7628074708e379dd5c79b9b76f3102022e25a5a6` (`feat: pause Calendar and prepare P2 retention`), enviado a `origin/main` y desplegado por Vercel Production.
 - Migración `202609160001_p2_growth_analytics.sql`: aplicada al proyecto enlazado `yvrvetuzuinoinukrivo`; ledger alineado, dry-run posterior sin pendientes y lint remoto sin errores.
 
-Este informe cubre Weekly Recap, retorno, share cards, referral, analytics P2, aislamiento local por cuenta, la variante contextual Premium y los contratos documentales de lifecycle/brand/growth. El flag `premium_contextual_prompts` cambia únicamente el copy del gate real de planificación a 5 años; no controla acceso, no cambia Feed Hub y permanece apagado por defecto. Los cambios independientes de Google Calendar que coexisten en el working tree quedan fuera de esta evidencia.
+Este informe cubre Weekly Recap, retorno, share cards, referral, analytics P2, aislamiento local por cuenta, la variante contextual Premium y los contratos documentales de lifecycle/brand/growth. El flag `premium_contextual_prompts` cambia únicamente el copy del gate real de planificación a 5 años; no controla acceso, no cambia Feed Hub y permanece apagado por defecto. La pausa independiente de Google Calendar comparte el commit de release, pero queda fuera de los criterios funcionales P2 de este informe.
 
 ## Resultado por superficie
 
@@ -47,7 +47,8 @@ Este informe cubre Weekly Recap, retorno, share cards, referral, analytics P2, a
 | `pnpm test` completo | Aprobado: 44 archivos, 243 pruebas |
 | `pnpm build:vinext` | Aprobado con configuración pública de prueba no persistida |
 | `pnpm test:e2e` completo | Aprobado: 82 pruebas, 12 saltadas por diseño, 0 fallos (17,6 min) |
-| Smoke de producción | No ejecutado: P2 no fue desplegado ni activado |
+| CI del commit publicado | GitHub Actions `35160635628`: lint, typecheck, unit-tests y build aprobados; E2E omitido por diseño en push directo |
+| Smoke público de producción | Aprobado: dominio y 21 rutas públicas `200`; política/robots/sitemap correctos; Calendar status `404 CALENDAR_DISABLED` y mantenimiento `204` |
 | Supabase lint/dry-run/push | Aprobado: migración aplicada; ledger local/remoto hasta `202609160001`, dry-run posterior al día y lint remoto sin errores |
 
 Los resultados dirigidos, la suite completa previa y la certificación del esquema remoto son evidencia válida, pero no sustituyen el smoke autenticado ni autorizan activar flags.
@@ -105,7 +106,7 @@ La herramienta `agent-browser` no estaba instalada en el entorno. La validación
 3. La prueba E2E de aislamiento entre dos identidades está aplazada porque el repositorio E2E actual representa una sola cuenta; las pruebas unitarias cubren namespace, adopción legacy y carrera de escrituras.
 4. EN sigue siendo Beta. El cruce visual completo se ejecutó en ES y EN para seis viewports y ambos temas; esto no cambia su estatus comercial.
 5. La versión visible de la política fue actualizada, mientras `LEGAL_VERSION`/versión de cookies permanece en la versión anterior. Debe decidirse con revisión legal si el cambio material exige reconsentimiento antes del rollout.
-6. Existe evidencia remota del ledger y lint de la migración SQL P2. No existe todavía telemetría de producción ni smoke autenticado de flags, porque no hubo deploy ni activación.
+6. Existe evidencia remota del ledger y lint de la migración SQL P2, además del smoke público del deployment. No existe todavía telemetría P2 ni smoke autenticado de flags porque las superficies permanecen apagadas.
 7. Alternar Vinext con los tipos generados por Next deja `.next/types` incompatible para un `tsc` posterior; el cierre regeneró rutas con `next typegen`, repitió TypeScript en verde y restauró el import estable de Vinext en `next-env.d.ts`.
 8. Referral valida un código opaco, pero el backend todavía no registra su propiedad ni fuerza en SQL el orden visita → signup dentro de una ventana propia. El flag permanece apagado y no existe recompensa; endurecer esta relación es requisito para incentivos o rollout amplio.
 
@@ -133,6 +134,6 @@ La herramienta `agent-browser` no estaba instalada en el entorno. La validación
 
 ## Criterio provisional de salida
 
-P2-A presenta evidencia técnica local y de esquema remoto sólida y queda **listo para revisión/merge con flags apagados**. No está listo para activar en producción: la revisión legal, el smoke autenticado y el plan de rollout son gates obligatorios. Lifecycle multicanal, assets finales, campañas, partnerships y experimentos activos permanecen fuera del release operativo; `premium_contextual_prompts` ya controla su variante de copy, pero no está activado.
+P2-A presenta evidencia técnica local, de esquema remoto y de publicación sólida y quedó **publicado con flags apagados**. No está listo para activar: la revisión legal, el smoke autenticado y el plan de rollout son gates obligatorios. Lifecycle multicanal, assets finales, campañas, partnerships y experimentos activos permanecen fuera del release operativo; `premium_contextual_prompts` ya controla su variante de copy, pero no está activado.
 
-No se hizo commit, push ni deploy durante este cierre.
+El release funcional se consolidó en `7628074708e379dd5c79b9b76f3102022e25a5a6`, pasó CI, se envió a `origin/main` y Vercel lo publicó en Production. Esta publicación no activó ningún flag P2.

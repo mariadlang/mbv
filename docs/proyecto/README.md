@@ -12,15 +12,15 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Última revisión documental: **2026-09-10, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-09-16, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `main`.
-- SHA base anterior al candidato P1: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2`.
-- Sincronización observada: `main` y `origin/main` coincidían en ese SHA antes de P1.
-- Historial en la base P1: 65 commits alcanzables desde `main`, repositorio no superficial, dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el candidato técnico P1 `MBV-H-023`.
+- SHA funcional vigente: `7628074708e379dd5c79b9b76f3102022e25a5a6`.
+- Sincronización observada al publicar: `main` y `origin/main` alineados; CI y Vercel Production aprobados.
+- Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release técnico `MBV-H-034`.
 
-El SHA base identifica el release P0 documentado desde el que comenzó P1. El SHA funcional P1 es `8f240f5b1516d212da65630e36ea3d5a15fd40e9`; se publicó como versión 29 mediante `appgdep_6aa2f93962bc81919311825a6c2bc6b4` y aprobó el smoke de producción.
+P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7628074708e379dd5c79b9b76f3102022e25a5a6` publica la pausa de Calendar y el código P2 detrás de flags apagados; GitHub Actions, Vercel y el smoke público aprobaron.
 
 ## Fuentes utilizadas
 
@@ -28,7 +28,7 @@ El SHA base identifica el release P0 documentado desde el que comenzó P1. El SH
 - Estado preparado, no preparado y archivos nuevos del working tree.
 - Código actual de `app/`, `src/`, `tests/`, `e2e/`, `supabase/` y configuración del proyecto.
 - README, documentos de arquitectura, ADR, notas de producto, documentos legales, soporte y autenticación existentes.
-- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-10.
+- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-16.
 
 No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas disponibles localmente. No se consultaron archivos `.env`, credenciales, tokens ni datos personales. Los documentos fuente externos mencionados por `docs/product/source-notes.md` no están versionados y, por tanto, no se revisaron directamente.
 

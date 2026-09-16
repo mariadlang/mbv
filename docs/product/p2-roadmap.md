@@ -1,6 +1,6 @@
 # Roadmap P2 — Retención y crecimiento amable
 
-**Estado:** candidato local P2-A validado detrás de flags apagados; P2-B/P2-C documentados o parciales. **Fecha de corte:** 2026-09-16. **Owner:** Producto e Ingeniería.
+**Estado:** P2-A publicado detrás de flags apagados; P2-B/P2-C documentados o parciales. **Fecha de corte:** 2026-09-16. **Owner:** Producto e Ingeniería.
 
 P2 convierte valor ya recibido en retorno, reconocimiento y descubrimiento orgánico. No añade una red social, rankings, publicidad ni automatizaciones comerciales sin consentimiento.
 
@@ -18,8 +18,8 @@ P2 convierte valor ya recibido en retorno, reconocimiento y descubrimiento orgá
 - **P2-B parcial/documentado:** motion, diseño social, sistema de contenido y reglas lifecycle tienen contratos y documentación; no se han conectado proveedor, email/push ni preferencias granulares de canal.
 - **P2-C parcial/documentado:** portal de marca, guías de fotografía/assets, campañas, partnerships, reporting y experimentación tienen fuentes de verdad reutilizables. No se fabricaron assets finales, licencias, campañas, presupuestos ni acuerdos externos.
 - **Infraestructura aplicada:** `supabase/migrations/202609160001_p2_growth_analytics.sql` quedó aplicada al proyecto enlazado, con ledger alineado, dry-run posterior sin pendientes y lint remoto sin errores. Analytics/referrals P2 continúan apagados hasta smoke autenticado y revisión legal.
-- **Validación local cerrada:** lint, tipos, unitarias, builds Next/Vinext, E2E global y matriz visual P2 aprobaron. No hubo commit, push, deploy, smoke de producción ni activación de flags.
-- **Calendar:** Google Calendar continúa apagado según `MBV-H-032`; P2 no modifica esa decisión ni el funcionamiento del calendario local.
+- **Validación y publicación cerradas:** lint, tipos, unitarias, builds Next/Vinext, E2E global y matriz visual P2 aprobaron. El commit funcional `7628074708e379dd5c79b9b76f3102022e25a5a6` pasó CI, llegó a `origin/main` y Vercel Production; el smoke público aprobó. No se activó ningún flag.
+- **Calendar:** Google Calendar continúa apagado según `MBV-H-032`; la pausa quedó publicada y verificada con `404 CALENDAR_DISABLED`, sin modificar el funcionamiento del calendario local.
 
 ## Etapas
 

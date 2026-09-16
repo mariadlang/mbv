@@ -12,9 +12,9 @@
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
 - Integración Google Calendar: `MBV-H-025` a `MBV-H-031` documentan su implementación, hardening y validación histórica. Por decisión expresa del 16 de septiembre, `MBV-H-032` pausa la integración, retira sus superficies activas y programa el cierre del proyecto Google Cloud `mbv-calendar-production`. El calendario local permanece disponible; no se purgaron datos históricos de Supabase ni secretos de Vercel. Consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
-- P2: `MBV-H-033` prepara en el working tree la primera entrega de retención y crecimiento amable sobre la base publicada `36abeec`. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los flags apagados. La validación final aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa más el E2E Premium final desktop/mobile y la matriz visual P2. P2-B/P2-C quedan documentados o parciales donde dependen de canales, activos, derechos o decisiones externas. La migración P2 está aplicada y certificada en Supabase; no hubo commit, push ni deploy.
+- Release P2/Calendar: `MBV-H-032` y `MBV-H-033` quedaron consolidados en el commit funcional `7628074708e379dd5c79b9b76f3102022e25a5a6`, enviado a `origin/main` y publicado en Vercel Production. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los cinco flags apagados. La validación aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa, el E2E Premium final desktop/mobile y la matriz visual P2. La migración P2 está aplicada y certificada en Supabase; el smoke público del release aprobó y Calendar externo quedó efectivamente desactivado.
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-033` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-034` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
 
 ## Qué es el producto
 
@@ -91,7 +91,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Constancia y **Mayor continuidad** cuentan únicamente días programados; “No programado” se representa como estado separado y nunca como 0 %.
 - Progreso reúne evidencia de metas, hitos, tareas y hábitos.
 - Journal admite entrada libre, gratitud y revisiones; el contenido permanece local.
-- La entrada rápida del Journal exige contenido en el working tree actual.
+- La entrada rápida del Journal exige contenido.
 
 ### Mi espacio y herramientas
 
@@ -105,7 +105,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 
 - Bienestar (`/app/health`) incluye autorización de datos sensibles, entrenamiento, comidas/macros y medidas/fotos locales.
 - Entrenamiento admite fuerza con ejercicios o cardio/deporte sin ejercicios individuales obligatorios.
-- Comidas pueden crearse, copiarse y eliminarse; el working tree actual añade confirmación y feedback al borrar.
+- Comidas pueden crearse, copiarse y eliminarse; el borrado incluye confirmación y feedback.
 - Finanzas incluye cuentas, categorías, presupuesto mensual, movimientos, fondos, deudas, recurrentes, revisión y compras pendientes.
 - No hay conexión bancaria ni asesoría médica/nutricional automatizada.
 
@@ -303,12 +303,12 @@ Para la implementación histórica Google Calendar `MBV-H-025`, iniciada el 2026
 - Cuatro revisiones independientes no encontraron bloqueadores P0/P1 estáticos tras cerrar ownership, ETag atómico, reintentos idempotentes, protección ABA por UUID de conflicto, desconexión/reconexión, OAuth, mantenimiento y SQL. La migración y el OAuth/primer sync con una cuenta real quedaron certificados históricamente; no se ejecutó una mutación remota controlada ni una prueba concurrente PostgreSQL real.
 - Para `MBV-H-032`, TypeScript, ESLint, 33 archivos/185 pruebas unitarias, i18n, tokens, contraste y builds Next/Vinext aprobaron. El E2E dirigido pasó 4/4 casos en desktop y mobile, tanto para la ausencia de Calendar externo/sus llamadas API como para el CRUD local entre Mi espacio, Semana y Mi día.
 
-Para el candidato P2 local `MBV-H-033`:
+Para el release P2 publicado `MBV-H-033`:
 
 - Las pruebas dirigidas de Weekly Recap, regreso amable, share cards, referrals, analítica/lifecycle y aislamiento de cuenta están incorporadas; los recorridos P2 dirigidos ya aprobaron en desktop y mobile durante la implementación.
 - La matriz visual P2 cubre 375×812, 390×844, 430×932, 768×1024, 1366×768 y 1440×900, en claro/oscuro y ES/EN Beta, con evidencia en `docs/qa/screenshots/`.
 - Lint, tipos, 44 archivos/243 pruebas unitarias, builds Next/Vinext y Playwright (82 aprobadas, 12 saltadas por diseño, 0 fallos en la suite completa previa) quedaron aprobados. Después del cableado Premium, su recorrido dirigido volvió a aprobar 2/2 en desktop/mobile. Esto no implica activación pública.
-- La migración P2 se aplicó y pasó postchecks remotos; no hubo smoke autenticado de producto ni activación de flags.
+- La migración P2 se aplicó y pasó postchecks remotos. El smoke público de producción aprobó; no hubo smoke autenticado de producto ni activación de flags.
 
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
@@ -336,6 +336,6 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 ## Entrega vigente y siguiente paso
 
-La entrega publicada vigente continúa siendo `36abeec` en Vercel/Sites; todavía incluye el rollout histórico de Calendar. El working tree reúne `MBV-H-032`, que apaga la integración externa sin eliminar el calendario local, y `MBV-H-033`, candidato P2 detrás de flags apagados. No se ha hecho commit, push ni deploy de estos cambios.
+La entrega funcional vigente es `7628074708e379dd5c79b9b76f3102022e25a5a6` en `origin/main` y Vercel Production. Publica `MBV-H-032`, que apaga la integración externa sin eliminar el calendario local, y `MBV-H-033`, con P2 detrás de flags apagados. GitHub Actions aprobó lint, tipos, unitarias y build; Vercel completó el deployment y `mybestversion.life` respondió `200`. El smoke público confirmó `/privacy`, `/robots.txt` y `/sitemap.xml`, además de `404 {"error":"CALENDAR_DISABLED"}` en status y `204` en mantenimiento de Calendar.
 
-Siguiente paso operativo: revisar el diff conjunto, consolidar el commit y decidir por separado el push/deploy. Si se despliega, mantener los cinco flags apagados y ejecutar smoke autenticado de `/api/events` y métricas antes de cualquier rollout. Las demás dependencias externas del lanzamiento comercial —revisión legal, webhook/conciliación de Mercado Pago, condiciones comerciales, identidad legal, canales lifecycle y master vectorial— siguen separadas.
+Siguiente paso operativo: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. También deben definirse owner/rollback por flag y resolverse el hardening y la revisión legal de referral. Las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, identidad legal, canales lifecycle y master vectorial— siguen separadas.

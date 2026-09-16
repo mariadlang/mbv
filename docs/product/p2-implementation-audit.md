@@ -2,13 +2,13 @@
 
 **Fecha de revisión:** 2026-09-16 (America/Bogota, UTC-05:00).
 
-**Estado:** candidato técnico P2 detrás de flags; migración remota aplicada, sin publicación ni activación de superficies P2.
+**Estado:** release técnico P2 publicado detrás de flags apagados; migración remota aplicada y superficies P2 sin activar.
 
 ## Estado previo y alcance auditado
 
 P2 se construyó sobre `main` en `36abeec35a839a8425ab6960f73953034e1e4cbd` (`docs: record Calendar production smoke`), con `origin/main` en el mismo commit al iniciar el cierre. La auditoría preserva el baseline P0/P1: arquitectura local-first, jerarquía de CTA, matriz Trial/Premium, design system, cinco destinos principales, español canónico e inglés Beta.
 
-El working tree contiene además trabajo independiente de Google Calendar. Ese trabajo no se atribuye a P2 ni forma parte de sus criterios de aceptación en este documento.
+El commit de release contiene además la pausa independiente de Google Calendar. Ese trabajo no se atribuye a P2 ni forma parte de sus criterios de aceptación en este documento.
 
 ## Resumen ejecutivo
 
@@ -16,7 +16,7 @@ El working tree contiene además trabajo independiente de Google Calendar. Ese t
 - **P2-B, sistema:** implementado como reglas, contratos y documentación: lifecycle, motion, social design system, content system y dirección de assets.
 - **P2-C, escala:** preparado documental y técnicamente, pero no operativo de extremo a extremo: Brand Portal, campañas, partnerships, dashboard de métricas y experimentación.
 - **No activado:** los cinco flags P2 continúan en `false` por defecto.
-- **Infraestructura aplicada sin rollout:** `202609160001_p2_growth_analytics.sql` se aplicó al proyecto Supabase enlazado después de revisión, dry-run y lint; no se hizo commit, push, deploy ni activación de flags.
+- **Infraestructura publicada sin rollout:** `202609160001_p2_growth_analytics.sql` se aplicó al proyecto Supabase enlazado después de revisión, dry-run y lint. El código se publicó en `7628074708e379dd5c79b9b76f3102022e25a5a6`; no se activó ningún flag.
 
 ## Decisiones de implementación
 
@@ -120,11 +120,11 @@ Cada flag conserva control por variable de entorno. Como son variables públicas
 | --- | --- | --- |
 | P0 | Baseline accesible y responsive conservado; matriz histórica completa en verde | Sin regresión detectada |
 | P1 | Flujos de activación, Trial/Premium, planificación y rutas públicas conservados | Sin regresión detectada |
-| Smoke remoto P2 no ejecutado | La migración está aplicada, pero no se activaron flags ni se generó telemetría sintética en producción | **BLOQUEADOR DE ACTIVACIÓN**, no de merge detrás de flags |
+| Smoke autenticado P2 no ejecutado | El smoke público aprobó y la migración está aplicada, pero no se activaron flags ni se generó telemetría sintética en producción | **BLOQUEADOR DE ACTIVACIÓN**, no de publicación detrás de flags |
 | Revisión legal de referral/política | Requiere decisión de responsable legal/fundadora | **BLOQUEADOR DE ACTIVACIÓN** |
 | Lifecycle externo, assets, campañas y experimentos activos | Dependencias/owners externos aún no disponibles | **DEUDA P2-B/P2-C** |
 | E2E de dos cuentas reales | Cubierto unitariamente; repositorio E2E sólo modela una identidad | **DEUDA DE QA** |
-| Google Calendar apagado | Cambio independiente presente en el mismo working tree | **NO RELACIONADO CON P2** |
+| Google Calendar apagado | Cambio independiente publicado en el mismo commit | **NO RELACIONADO CON P2** |
 
 ## Archivos principales P2
 
@@ -145,7 +145,7 @@ Cada flag conserva control por variable de entorno. Como son variables públicas
 - Persistencia: `src/repositories/local/IndexedDbPlannerRepository.ts`, interfaces, servicio del planner, cola de escrituras y repositorio E2E.
 - Configuración/QA: `.env.example`, `playwright.config.ts`, `e2e/app.spec.ts`, catálogos ES/EN y estilos semánticos existentes.
 
-El inventario anterior es P2, no el listado completo del working tree compartido.
+El inventario anterior es P2, no el listado completo del commit de release compartido.
 
 ## Riesgos residuales y decisiones externas
 
@@ -164,4 +164,4 @@ El inventario anterior es P2, no el listado completo del working tree compartido
 
 El alcance P2-A está implementado detrás de flags y sus flujos dirigidos tienen evidencia favorable. P2-B queda listo como sistema de reglas y documentación, no como operación multicanal. P2-C establece gobierno, contratos y medición, pero todavía depende de smoke autenticado, assets, owners, proveedor y decisiones comerciales/jurídicas.
 
-La suite unitaria completa (44 archivos, 243 pruebas), el build Next, el build Vinext y la suite Playwright completa previa (82 aprobadas, 12 saltadas por diseño, 0 fallos) quedaron aprobados; después de cablear el flag Premium, su E2E dirigido volvió a aprobar en desktop y mobile. El código queda **listo para revisión/merge técnico con flags apagados**, pero no listo para activar P2 en producción hasta completar smoke autenticado, revisión legal y ownership de rollout. No hubo commit, push ni deploy en este cierre.
+La suite unitaria completa (44 archivos, 243 pruebas), el build Next, el build Vinext y la suite Playwright completa previa (82 aprobadas, 12 saltadas por diseño, 0 fallos) quedaron aprobados; después de cablear el flag Premium, su E2E dirigido volvió a aprobar en desktop y mobile. El código quedó **publicado con flags apagados** en `7628074708e379dd5c79b9b76f3102022e25a5a6`, pasó CI y smoke público, pero no está listo para activar P2 hasta completar smoke autenticado, revisión legal y ownership de rollout.
