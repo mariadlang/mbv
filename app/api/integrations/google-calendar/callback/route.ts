@@ -19,6 +19,7 @@ import {
 } from "@/src/server/calendar/googleApi";
 import { drainGoogleGrantRevocations, googleOAuthPendingPayloadSchema, queueGoogleGrantRevocation, revokeGoogleGrant } from "@/src/server/calendar/oauthCompletion";
 import { calendarAccessAllowed } from "@/src/server/calendar/access";
+import { calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 
 class CalendarOAuthCallbackError extends Error {
   constructor(readonly reason: string) {
@@ -66,6 +67,8 @@ function hasRequiredScopes(scope: string | undefined) {
 }
 
 export async function GET(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) return disabled;
   let baseUrl = request.nextUrl.origin;
   let returnTo = "/app/settings";
   let tokenToRevoke = "";

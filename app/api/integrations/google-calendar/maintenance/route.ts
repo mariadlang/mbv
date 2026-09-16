@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCalendarServiceClient, requireCalendarServerConfig } from "@/src/server/calendar/config";
 import { constantTimeEqual } from "@/src/server/calendar/crypto";
 import { cleanupGoogleOAuthStates, drainGoogleGrantRevocations } from "@/src/server/calendar/oauthCompletion";
+import { calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse({ acknowledge: true });
+  if (disabled) return disabled;
   const cronSecret = process.env.CRON_SECRET?.trim();
   if (!cronSecret || cronSecret.length < 32) {
     return NextResponse.json({ error: "CALENDAR_MAINTENANCE_NOT_CONFIGURED" }, { status: 503 });

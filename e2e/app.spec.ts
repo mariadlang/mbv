@@ -129,6 +129,11 @@ test("onboarding creates a real first action and activation journey", async ({ p
   await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
 });
 
+test.fixme("keeps local planner content isolated while switching between two authenticated accounts", async () => {
+  // Requires the E2E auth repository to model two independent users in one browser session.
+  // Cover: seed an A-only canary, switch to B without a cross-account frame, clear B, then return to A.
+});
+
 test("a returning account opens its existing space without repeating onboarding", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
@@ -137,7 +142,7 @@ test("a returning account opens its existing space without repeating onboarding"
 
   await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -272,7 +277,7 @@ test("habits dashboard records measured progress, edits habits and updates one w
 
   const todayMoodCount = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -667,6 +672,19 @@ test("privacy and crawler resources are server-readable", async ({ request }) =>
   expect(sitemapXml).toContain("<loc>https://mybestversion.life/data-deletion</loc>");
 });
 
+test("Google Calendar stays unavailable while the integration is paused", async ({ request }) => {
+  const status = await request.get("/api/integrations/google-calendar/status");
+  expect(status.status()).toBe(404);
+  await expect(status.json()).resolves.toEqual({ error: "CALENDAR_DISABLED" });
+
+  const connect = await request.post("/api/integrations/google-calendar/connect", { data: {} });
+  expect(connect.status()).toBe(404);
+  await expect(connect.json()).resolves.toEqual({ error: "CALENDAR_DISABLED" });
+
+  const webhook = await request.post("/api/integrations/google-calendar/webhook");
+  expect(webhook.status()).toBe(204);
+});
+
 test("creates a gentle challenge and records today", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app/challenges");
@@ -819,6 +837,10 @@ test("daily close updates one journal entry instead of creating duplicates", asy
 
 test("tasks stay date-only while calendar events support times and all-day mode", async ({ page }) => {
   test.setTimeout(90_000);
+  const googleCalendarRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/integrations/google-calendar/")) googleCalendarRequests.push(request.url());
+  });
   await completeOnboarding(page);
 
   await page.goto("/app/tasks");
@@ -854,12 +876,11 @@ test("tasks stay date-only while calendar events support times and all-day mode"
 
   await page.goto("/app/settings");
   const calendarIntegration = page.locator(".google-calendar-integration");
-  await expect(calendarIntegration.getByRole("heading", { name: "Google Calendar" })).toBeVisible();
-  await expect(calendarIntegration).toContainText("Google nos permitirá consultar tu lista de calendarios");
-  await expect(calendarIntegration.getByRole("link", { name: "Cómo usamos tus datos de Google" })).toHaveAttribute("href", "/privacy#google-calendar");
+  await expect(calendarIntegration).toHaveCount(0);
 
   await page.goto("/app/settings?calendar=error&reason=access_denied#integrations");
-  await expect(calendarIntegration).toContainText("Cancelaste la conexión con Google. No hicimos cambios en tus calendarios.");
+  await expect(calendarIntegration).toHaveCount(0);
+  expect(googleCalendarRequests).toEqual([]);
 
   await page.goto("/app/today");
   await page.locator(".today-timeline-add-menu").getByRole("button", { name: "Hábito" }).click();
@@ -892,7 +913,7 @@ test("tasks stay date-only while calendar events support times and all-day mode"
 
   const readMatchingTaskIds = () => page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -950,7 +971,7 @@ test("a calendar event stays consistent across Mi espacio, Semana and Mi día", 
 
   const stored = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -967,7 +988,7 @@ test("a calendar event stays consistent across Mi espacio, Semana and Mi día", 
 
   await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -995,7 +1016,7 @@ test("a calendar event stays consistent across Mi espacio, Semana and Mi día", 
   await page.locator(".calendar-event-manager form").getByRole("button", { name: "Guardar evento", exact: true }).click();
   const preservedTimezone = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -1063,7 +1084,7 @@ test("weekly plan option B creates, assigns and preserves the same task across M
 
   const matchingTasks = await page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -1076,6 +1097,337 @@ test("weekly plan option B creates, assigns and preserves the same task across M
     return tasks.filter((task) => task.title === "Pendiente semanal de prueba").map((task) => task.id);
   });
   expect(matchingTasks).toHaveLength(1);
+});
+
+test("weekly recap uses evidence only through today and prepares the following week", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/planning/weekly");
+
+  const range = page.locator(".weekly-period-navigation strong");
+  const currentRange = await range.textContent();
+  const reviewButton = page.getByRole("button", { name: "Revisión semanal" });
+  await expect(reviewButton).toBeEnabled();
+  await reviewButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "Revisión semanal" });
+  await expect(dialog.getByText("Lo que realmente ocurrió")).toBeVisible();
+  await expect(dialog.getByText("Metas con avance", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Hitos completados", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Acciones reprogramadas", { exact: true })).toBeVisible();
+  const reviewedDays = ((new Date().getDay() + 6) % 7) + 1;
+  await expect(dialog.getByText(`Evidencia disponible hasta hoy: ${reviewedDays} días de esta semana.`)).toBeVisible();
+
+  await dialog.getByLabel("¿Qué sí avanzó?").fill("Mi primera acción quedó visible.");
+  await dialog.getByLabel("¿Qué quieres conservar tal como está?").fill("Una prioridad clara.");
+  await dialog.getByLabel("¿Qué quieres mover o cambiar?").fill("Mover un pendiente.");
+  await dialog.getByLabel("¿Qué ya no importa?").fill("Soltar sin borrar.");
+  await dialog.getByRole("button", { name: "Preparar mi semana" }).click();
+
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => range.textContent()).not.toBe(currentRange);
+  await expect(page.getByRole("button", { name: "Esta semana" })).toBeEnabled();
+  await expect(reviewButton).toBeDisabled();
+  await expect(reviewButton).toHaveAttribute("title", "Podrás revisar esta semana cuando haya comenzado.");
+});
+
+test("return experience is detected globally and leaves an open action without deleting it", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.evaluate(() => {
+    const lastSeenAt = new Date(Date.now() - 4 * 86_400_000).toISOString();
+    localStorage.setItem("mbv-return-experience-v1:e2e-user", JSON.stringify({ lastSeenAt }));
+    sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
+  });
+  await page.goto("/app/today");
+  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
+  await page.goto("/app/dashboard");
+
+  const card = page.getByRole("region", { name: "Retoma con una sola decisión" });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Escribir mi primer paso", { exact: true })).toBeVisible();
+  await card.getByRole("button", { name: "Dejar atrás" }).click();
+  await expect(card.getByText("La acción seguirá guardada como cancelada; no se borrará.")).toBeVisible();
+  await card.getByRole("button", { name: "Sí, dejar atrás" }).click();
+  await expect(card).toHaveCount(0);
+
+  const storedTask = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tasks = await new Promise<Array<{ title: string; status: string }>>((resolve, reject) => {
+      const request = database.transaction("tasks", "readonly").objectStore("tasks").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return tasks.find((task) => task.title === "Escribir mi primer paso") ?? null;
+  });
+  expect(storedTask).toMatchObject({ title: "Escribir mi primer paso", status: "cancelled" });
+});
+
+test("[P2-A] share cards keep private text out and export every supported format", async ({ page }) => {
+  test.setTimeout(120_000);
+  await completeOnboarding(page);
+  await page.goto("/app/today");
+  await page.getByLabel("Completar Escribir mi primer paso").click();
+
+  await page.goto("/app/progress");
+  await page.getByRole("button", { name: "Crear tarjeta", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Crea tu tarjeta de progreso" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("radio", { name: "Mi semana" })).toBeChecked();
+  await expect(dialog.getByRole("radio", { name: "Mis hábitos" })).toBeVisible();
+  await expect(dialog.getByRole("radio", { name: "Mi progreso" })).toBeVisible();
+  await expect(dialog).toContainText("Privacidad por diseño");
+  await expect(dialog).not.toContainText("Escribir mi primer paso");
+
+  const canvas = dialog.getByRole("img", { name: /Vista previa de la tarjeta de progreso/ });
+  const formats = [
+    { name: "Story", width: 1080, height: 1920 },
+    { name: "Feed vertical", width: 1080, height: 1350 },
+    { name: "Cuadrada", width: 1080, height: 1080 },
+  ] as const;
+
+  for (const format of formats) {
+    await dialog.getByRole("radio", { name: format.name, exact: true }).check();
+    await expect.poll(() => canvas.evaluate((element) => ({
+      width: (element as HTMLCanvasElement).width,
+      height: (element as HTMLCanvasElement).height,
+    }))).toEqual({ width: format.width, height: format.height });
+  }
+
+  const downloadPromise = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Descargar PNG", exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("my-best-version-progreso-square.png");
+  await expect(dialog.getByRole("status")).toContainText("La tarjeta se descargó en PNG.");
+});
+
+test("[P2-A] referrals stay opaque, support copy fallback and record a consented referral visit during signup", async ({ page }) => {
+  test.setTimeout(120_000);
+  await completeOnboarding(page);
+  await page.goto("/app/today");
+  await page.getByLabel("Completar Escribir mi primer paso").click();
+  await page.goto("/app/progress");
+
+  const referral = page.locator(".referral-prompt");
+  await referral.getByRole("button", { name: "Crear enlace de invitación", exact: true }).click();
+  const linkInput = referral.getByLabel("Tu enlace de invitación");
+  const invitationLink = await linkInput.inputValue();
+  const invitationUrl = new URL(invitationLink);
+  const referralCode = invitationUrl.searchParams.get("ref");
+  expect(invitationUrl.origin + invitationUrl.pathname).toBe("https://mybestversion.life/signup");
+  expect([...invitationUrl.searchParams.keys()]).toEqual(["ref"]);
+  expect(referralCode).toMatch(/^ref_[a-f0-9]{32,64}$/);
+  expect(invitationLink).not.toContain("e2e-user");
+  expect(invitationLink).not.toContain("e2e%40mybestversion.test");
+
+  await page.evaluate(() => {
+    const copied: string[] = [];
+    (window as unknown as { __mbvCopiedLinks: string[] }).__mbvCopiedLinks = copied;
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (value: string) => { copied.push(value); } },
+    });
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+  });
+
+  await referral.getByRole("button", { name: "Copiar enlace", exact: true }).click();
+  await expect(referral.getByRole("status")).toHaveText("El enlace quedó copiado.");
+  await referral.getByRole("button", { name: "Compartir enlace", exact: true }).click();
+  await expect(referral.getByRole("status")).toHaveText("No se abrió el menú para compartir; copiamos el enlace.");
+  expect(await page.evaluate(() => (window as unknown as { __mbvCopiedLinks: string[] }).__mbvCopiedLinks)).toEqual([
+    invitationLink,
+    invitationLink,
+  ]);
+
+  await page.reload();
+  const reloadedReferral = page.locator(".referral-prompt");
+  await reloadedReferral.getByRole("button", { name: "Crear enlace de invitación", exact: true }).click();
+  await expect(reloadedReferral.getByLabel("Tu enlace de invitación")).toHaveValue(invitationLink);
+
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("mbv-legal-privacy-v1") ?? "{}") as Record<string, unknown>;
+    state.cookies = {
+      version: "2026-09-11.co-2",
+      essential: true,
+      functional: true,
+      analytics: true,
+      marketing: false,
+      decidedAt: new Date().toISOString(),
+    };
+    localStorage.setItem("mbv-legal-privacy-v1", JSON.stringify(state));
+  });
+
+  const eventBodies: Array<{ eventName?: string; metadata?: Record<string, string> }> = [];
+  await page.route("**/api/events", async (route) => {
+    if (route.request().method() === "POST") {
+      eventBodies.push(route.request().postDataJSON() as { eventName?: string; metadata?: Record<string, string> });
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+
+  await page.goto(signedOutPath(`/signup?ref=${encodeURIComponent(referralCode!)}`));
+  await expect(page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true })).toBeVisible();
+  await page.getByLabel("Nombre").fill("Invitada E2E");
+  await page.getByLabel("Correo").fill("invitada@example.com");
+  await page.getByLabel("Contraseña").fill("prueba-segura-123");
+  const requiredConsents = page.locator(".signup-consents input[type='checkbox']");
+  await requiredConsents.nth(0).check();
+  await requiredConsents.nth(1).check();
+  await requiredConsents.nth(2).check();
+  await page.locator(".auth-card form").getByRole("button", { name: "Crear mi cuenta", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/dashboard/);
+
+  await expect.poll(() => eventBodies.find((body) => body.eventName === "referral_visit_recorded") ?? null).toMatchObject({
+    eventName: "referral_visit_recorded",
+    metadata: { source: "referral_link", referral_id: referralCode, version: "2" },
+  });
+  expect(JSON.stringify(eventBodies.find((body) => body.eventName === "referral_visit_recorded"))).not.toContain("invitada@example.com");
+  expect(await page.evaluate(() => localStorage.getItem("mbv-referral-attribution-v1"))).toBeNull();
+});
+
+test("[P2-A] Premium appears only at the relevant limitation and never interrupts navigation", async ({ page }) => {
+  test.setTimeout(90_000);
+  await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
+  await page.goto("/app/planning");
+
+  await expect(page.getByRole("heading", { name: "Planificación", exact: true })).toBeVisible();
+  const contextualGate = page.locator(".premium-gate");
+  await expect(contextualGate).toHaveCount(1);
+  await expect(contextualGate.getByRole("heading", { name: "Planificación a 5 años", exact: true })).toBeVisible();
+  await expect(contextualGate).toContainText("No necesitas este horizonte para empezar. Premium lo abre cuando quieras planificar más allá de los próximos meses.");
+  await expect(contextualGate.getByRole("link", { name: "Desbloquear Premium", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis prioridades a 3 años", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  for (const path of ["/app/today", "/app/dashboard"] as const) {
+    await page.goto(path);
+    await expect(page).toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}$`));
+    await expect(page.locator(".premium-gate")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+
+  await page.goto("/app/planning");
+  await expect(page.locator(".premium-gate")).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator(".premium-gate")).toHaveCount(1);
+  await page.locator(".premium-gate").getByRole("link", { name: "Desbloquear Premium", exact: true }).click();
+  await expect(page).toHaveURL(/\/upgrade$/);
+});
+
+test("[P2-QA] growth surfaces reflow in every required viewport and color mode", async ({ page }) => {
+  test.skip(test.info().project.name !== "desktop", "A single browser covers the complete viewport matrix.");
+  test.setTimeout(900_000);
+  const runtimeErrors = collectRuntimeErrors(page);
+  const captureP2Screenshots = process.env.MBV_CAPTURE_P2_SCREENSHOTS === "1";
+  const viewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1366, height: 768 },
+    { width: 1440, height: 900 },
+  ];
+  const locales = [
+    {
+      key: "es",
+      light: "Claro",
+      dark: "Oscuro",
+      createCard: "Crear tarjeta",
+      createReferral: "Crear enlace de invitación",
+      shareDialog: "Crea tu tarjeta de progreso",
+      weeklyReview: "Revisión semanal",
+      weeklyEvidence: "Lo que realmente ocurrió",
+      returnRegion: "Retoma con una sola decisión",
+      close: "Cerrar",
+    },
+    {
+      key: "en",
+      light: "Light",
+      dark: "Dark",
+      createCard: "Create card",
+      createReferral: "Create invitation link",
+      shareDialog: "Create your progress card",
+      weeklyReview: "Weekly review",
+      weeklyEvidence: "What actually happened",
+      returnRegion: "Come back with one decision",
+      close: "Close",
+    },
+  ] as const;
+
+  await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
+  await page.goto("/app/today");
+  await page.getByLabel("Completar Escribir mi primer paso").click();
+
+  for (const locale of locales) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/app/settings");
+    if (locale.key === "en") {
+      await page.getByRole("button", { name: "Inglés, Beta", exact: true }).click();
+      await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    }
+
+    for (const colorMode of ["light", "dark"] as const) {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/app/settings");
+      const modeControl = page.locator(".color-mode-setting").getByRole("button", {
+        name: colorMode === "dark" ? locale.dark : locale.light,
+        exact: true,
+      });
+      if (await modeControl.getAttribute("aria-pressed") !== "true") await modeControl.click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", colorMode);
+
+      for (const viewport of viewports) {
+        await page.setViewportSize(viewport);
+
+        await page.goto("/app/progress");
+        await expect(page.getByRole("button", { name: locale.createCard, exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: locale.createReferral, exact: true })).toBeVisible();
+        await expectNoHorizontalOverflow(page, `P2 progress ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
+        await page.getByRole("button", { name: locale.createCard, exact: true }).click();
+        const shareDialog = page.getByRole("dialog", { name: locale.shareDialog });
+        await expect(shareDialog).toBeVisible();
+        await expectNoHorizontalOverflow(page, `P2 share preview ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
+        if (captureP2Screenshots && locale.key === "es" && colorMode === "light" && viewport.width === 390) {
+          await page.screenshot({ path: "docs/qa/screenshots/p2-share-390x844-light.png" });
+        }
+        await shareDialog.getByRole("button", { name: locale.close, exact: true }).click();
+
+        await page.goto("/app/planning/weekly");
+        await page.getByRole("button", { name: locale.weeklyReview, exact: true }).click();
+        const recapDialog = page.getByRole("dialog", { name: locale.weeklyReview });
+        await expect(recapDialog.getByText(locale.weeklyEvidence)).toBeVisible();
+        await expectNoHorizontalOverflow(page, `P2 weekly recap ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
+        if (captureP2Screenshots && locale.key === "es" && colorMode === "dark" && viewport.width === 1440) {
+          await page.screenshot({ path: "docs/qa/screenshots/p2-recap-1440x900-dark.png" });
+        }
+        await recapDialog.getByRole("button", { name: locale.close, exact: true }).click();
+
+        await page.evaluate(() => {
+          localStorage.setItem("mbv-return-experience-v1:e2e-user", JSON.stringify({ lastSeenAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }));
+          sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
+        });
+        await page.goto("/app/dashboard");
+        await expect(page.getByRole("region", { name: locale.returnRegion })).toBeVisible();
+        await expectNoHorizontalOverflow(page, `P2 return ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
+        if (captureP2Screenshots && locale.key === "es" && colorMode === "light" && viewport.width === 430) {
+          await page.screenshot({ path: "docs/qa/screenshots/p2-return-430x932-light.png" });
+        }
+
+        await page.goto("/app/planning");
+        await expect(page.locator(".premium-gate")).toHaveCount(1);
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await expectNoHorizontalOverflow(page, `P2 premium ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
+        if (captureP2Screenshots && locale.key === "es" && colorMode === "dark" && viewport.width === 1366) {
+          await page.screenshot({ path: "docs/qa/screenshots/p2-premium-1366x768-dark.png" });
+        }
+      }
+    }
+  }
+
+  expect(runtimeErrors).toEqual([]);
 });
 
 test("weekly plan option B remains legible across its responsive matrix", async ({ page }) => {
@@ -1340,7 +1692,7 @@ test("TasksPage rejects a trial date beyond its horizon without persistence", as
 
   const readTasks = () => page.evaluate(async () => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("my-best-version-planner");
+      const request = indexedDB.open("my-best-version-planner-v4:e2e-user");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -1468,6 +1820,8 @@ test("a goal connects its monthly result, weekly action, Mi día and Progress", 
 test("English mode covers the updated product flows", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
+  await page.goto("/app/today");
+  await page.getByLabel("Completar Escribir mi primer paso").click();
   await page.goto("/app/tasks");
   await page.getByRole("button", { name: "Nueva tarea" }).click();
   await page.getByLabel("Tarea", { exact: true }).fill("Hoy");
@@ -1477,8 +1831,13 @@ test("English mode covers the updated product flows", async ({ page }) => {
   await page.getByRole("button", { name: "Inglés, Beta", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
+  await page.evaluate(() => {
+    localStorage.setItem("mbv-return-experience-v1:e2e-user", JSON.stringify({ lastSeenAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }));
+    sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
+  });
   await page.goto("/app/dashboard");
   await expect(page.getByRole("heading", { name: /Good morning, María/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Come back with one decision" })).toBeVisible();
   const primaryNavigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
   await expect(primaryNavigation).toContainText("Home");
   await expect(primaryNavigation).toContainText("My day");
@@ -1502,6 +1861,18 @@ test("English mode covers the updated product flows", async ({ page }) => {
 
   await page.goto("/app/planning/weekly");
   await expect(page.getByRole("heading", { name: "Pending without a date" })).toBeVisible();
+  await page.getByRole("button", { name: "Weekly review", exact: true }).click();
+  const weeklyReview = page.getByRole("dialog", { name: "Weekly review" });
+  await expect(weeklyReview.getByText("What actually happened")).toBeVisible();
+  await weeklyReview.getByRole("button", { name: "Close", exact: true }).click();
+
+  await page.goto("/app/progress");
+  await expect(page.getByRole("button", { name: "Create card", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create invitation link", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Create card", exact: true }).click();
+  const shareDialog = page.getByRole("dialog", { name: "Create your progress card" });
+  await expect(shareDialog).toContainText("Private by design");
+  await shareDialog.getByRole("button", { name: "Close", exact: true }).click();
 
   await page.goto("/app/vision?guided=1");
   await expect(page.getByRole("heading", { name: "First, picture the life you want" })).toBeVisible();

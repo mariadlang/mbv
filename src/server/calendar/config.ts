@@ -34,6 +34,7 @@ export function isStrongCalendarEncryptionKey(value: string) {
 }
 
 export function getCalendarServerConfig(): CalendarServerConfig | null {
+  if (!publicConfig.googleCalendarEnabled) return null;
   const appBaseUrl = clean(process.env.APP_BASE_URL).replace(/\/$/, "");
   const googleClientId = clean(process.env.GOOGLE_CALENDAR_CLIENT_ID);
   const googleClientSecret = clean(process.env.GOOGLE_CALENDAR_CLIENT_SECRET);

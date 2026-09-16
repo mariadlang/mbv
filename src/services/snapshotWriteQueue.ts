@@ -24,5 +24,7 @@ export function createSnapshotWriteQueue(repository: SnapshotRepository) {
     return next;
   });
 
-  return { run, update };
+  const flush = () => tail;
+
+  return { run, update, flush };
 }

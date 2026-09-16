@@ -54,4 +54,19 @@ describe("snapshot write queue", () => {
     await writes.update((snapshot) => ({ ...snapshot, schemaVersion: 3 }));
     expect(stored.schemaVersion).toBe(3);
   });
+
+  it("flushes every queued write before a repository can be closed", async () => {
+    let stored = createEmptySnapshot();
+    let replaced = false;
+    const writes = createSnapshotWriteQueue({
+      async load() { return structuredClone(stored); },
+      async replace(snapshot) { await pause(); stored = structuredClone(snapshot); replaced = true; },
+    });
+
+    void writes.update((snapshot) => ({ ...snapshot, schemaVersion: 3 }));
+    await writes.flush();
+
+    expect(replaced).toBe(true);
+    expect(stored.schemaVersion).toBe(3);
+  });
 });

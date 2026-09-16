@@ -18,7 +18,11 @@ export class E2EAuthRepository implements AuthRepository {
   async getCurrentUser() { return this.signedIn ? user : null; }
   async getAccessToken() { return typeof window !== "undefined" && (new URLSearchParams(window.location.search).has("e2e-admin") || window.sessionStorage.getItem("mbv-e2e-admin") === "1") ? "e2e-admin" : "e2e-user"; }
   onAuthChange(callback: (user: AccountUser | null) => void) { this.listeners.add(callback); return () => this.listeners.delete(callback); }
-  async signUp() { return { emailVerificationRequired: false }; }
+  async signUp() {
+    this.signedIn = true;
+    this.listeners.forEach((listener) => listener(user));
+    return { emailVerificationRequired: false };
+  }
   async signIn() { this.signedIn = true; this.listeners.forEach((listener) => listener(user)); }
   async signInWithGoogle() {}
   async signInWithMagicLink() {}

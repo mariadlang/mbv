@@ -9,6 +9,7 @@ import { Card } from "@/src/components/ui/Primitives";
 import { analyticsService } from "@/src/services/analyticsService";
 import { useCookieConsent } from "@/src/features/legal/CookieConsent";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 const premiumFeatureMessageKeys = {
   five_year_planning: {
@@ -21,10 +22,18 @@ const premiumFeatureMessageKeys = {
   },
 } as const;
 
+export function resolvePremiumGateDescriptionKey(feature: PremiumFeature, contextualPromptsEnabled: boolean) {
+  if (feature === "five_year_planning" && contextualPromptsEnabled) {
+    return "premium.gate.fiveYear.contextualDescription" as const;
+  }
+  return premiumFeatureMessageKeys[feature].description;
+}
+
 export function PremiumFeatureGate({ access, feature, children, compact = false }: { access: UserAccess; feature: PremiumFeature; children: React.ReactNode; compact?: boolean }) {
   const allowed = canAccessFeature(access, feature);
   const { m } = useI18n();
   const copyKeys = premiumFeatureMessageKeys[feature];
+  const descriptionKey = resolvePremiumGateDescriptionKey(feature, publicConfig.productFeatureFlags.premium_contextual_prompts);
   const { preferences: cookiePreferences } = useCookieConsent();
   const trackedFeatures = useRef(new Set<PremiumFeature>());
   useEffect(() => {
@@ -35,7 +44,7 @@ export function PremiumFeatureGate({ access, feature, children, compact = false 
   if (allowed) return children;
   return <Card className={`premium-gate ${compact ? "premium-gate--compact" : ""}`} data-i18n-explicit="true">
     <span className="premium-gate__icon"><LockKeyhole size={20} /></span>
-    <div><p className="eyebrow"><Sparkles size={14} /> {m("premium.gate.available")}</p><h2>{m(copyKeys.title)}</h2><p>{m(copyKeys.description)}</p></div>
+    <div><p className="eyebrow"><Sparkles size={14} /> {m("premium.gate.available")}</p><h2>{m(copyKeys.title)}</h2><p>{m(descriptionKey)}</p></div>
     <Link className="button button--primary" to="/upgrade">{m("premium.gate.cta")}</Link>
   </Card>;
 }

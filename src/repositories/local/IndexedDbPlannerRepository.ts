@@ -38,10 +38,26 @@ import type {
 } from "@/src/domain/planner";
 import type { PlannerRepository } from "../interfaces/PlannerRepository";
 
-interface MetadataRecord {
+export const LEGACY_PLANNER_DATABASE_NAME = "my-best-version-planner";
+const SCOPED_PLANNER_DATABASE_PREFIX = "my-best-version-planner-v4:";
+
+export interface PlannerMetadataRecord {
   key: "planner";
   schemaVersion: 1 | 2 | 3;
   updatedAt: string;
+  ownerId?: string;
+  legacyClaimToken?: string;
+}
+
+export function plannerDatabaseNameForOwner(ownerId: string): string {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(ownerId)) throw new Error("INVALID_PLANNER_OWNER_ID");
+  return `${SCOPED_PLANNER_DATABASE_PREFIX}${ownerId}`;
+}
+
+export function assertPlannerMetadataOwner(metadata: PlannerMetadataRecord, expectedOwnerId: string | null): void {
+  if (expectedOwnerId !== null && metadata.ownerId !== expectedOwnerId) {
+    throw new Error("PLANNER_OWNER_MISMATCH");
+  }
 }
 
 class PlannerDatabase extends Dexie {
@@ -78,10 +94,10 @@ class PlannerDatabase extends Dexie {
   bodyCheckIns!: Table<BodyCheckIn, string>;
   challenges!: Table<Challenge, string>;
   pendingPurchases!: Table<PendingPurchase, string>;
-  metadata!: Table<MetadataRecord, string>;
+  metadata!: Table<PlannerMetadataRecord, string>;
 
-  constructor() {
-    super("my-best-version-planner");
+  constructor(databaseName: string) {
+    super(databaseName);
     this.version(1).stores({
       profiles: "id",
       lifeAreas: "id, active, order",
@@ -140,13 +156,26 @@ class PlannerDatabase extends Dexie {
 }
 
 export class IndexedDbPlannerRepository implements PlannerRepository {
-  private readonly db = new PlannerDatabase();
+  private readonly db: PlannerDatabase;
+
+  constructor(
+    private readonly databaseName = LEGACY_PLANNER_DATABASE_NAME,
+    private readonly expectedOwnerId: string | null = null,
+  ) {
+    this.db = new PlannerDatabase(databaseName);
+  }
+
+  static exists(databaseName: string): Promise<boolean> {
+    return Dexie.exists(databaseName);
+  }
 
   async load(): Promise<PlannerSnapshot> {
-    const metadata = await this.db.metadata.get("planner");
-    if (!metadata) return createEmptySnapshot();
+    return this.db.transaction("r", this.db.tables, async () => {
+      const metadata = await this.db.metadata.get("planner");
+      if (!metadata) return createEmptySnapshot();
+      assertPlannerMetadataOwner(metadata, this.expectedOwnerId);
 
-    const [
+      const [
       profiles, lifeAreas, habits, habitLogs, tasks, goals, milestones, moodLogs, journalEntries,
       projects, periodPlans, reviews, financialProfiles, financialAccounts, financeCategories,
       monthlyBudgets, budgetLines, transactions, savingsFunds, debts, recurringItems, financialReviews,
@@ -189,7 +218,7 @@ export class IndexedDbPlannerRepository implements PlannerRepository {
         this.db.pendingPurchases.toArray(),
       ]);
 
-    return {
+      return {
       schemaVersion: 3,
       profile: profiles[0] ?? null,
       lifeAreas,
@@ -224,10 +253,20 @@ export class IndexedDbPlannerRepository implements PlannerRepository {
       bodyCheckIns,
       challenges,
       pendingPurchases,
-    };
+      };
+    });
   }
 
   async replace(snapshot: PlannerSnapshot): Promise<void> {
+    await this.replaceInternal(snapshot);
+  }
+
+  async replaceFromLegacy(snapshot: PlannerSnapshot, claimToken: string): Promise<void> {
+    if (!this.expectedOwnerId) throw new Error("SCOPED_PLANNER_REQUIRED");
+    await this.replaceInternal(snapshot, claimToken);
+  }
+
+  private async replaceInternal(snapshot: PlannerSnapshot, legacyClaimToken?: string): Promise<void> {
     await this.db.transaction("rw", this.db.tables, async () => {
       await Promise.all(this.db.tables.map((table) => table.clear()));
       if (snapshot.profile) await this.db.profiles.add(snapshot.profile);
@@ -267,13 +306,36 @@ export class IndexedDbPlannerRepository implements PlannerRepository {
         key: "planner",
         schemaVersion: 3,
         updatedAt: new Date().toISOString(),
+        ...(this.expectedOwnerId ? { ownerId: this.expectedOwnerId } : {}),
+        ...(legacyClaimToken ? { legacyClaimToken } : {}),
       });
     });
+  }
+
+  async hasData(): Promise<boolean> {
+    const metadata = await this.db.metadata.get("planner");
+    if (!metadata) return false;
+    assertPlannerMetadataOwner(metadata, this.expectedOwnerId);
+    return true;
+  }
+
+  async getMetadata(): Promise<PlannerMetadataRecord | undefined> {
+    const metadata = await this.db.metadata.get("planner");
+    if (metadata) assertPlannerMetadataOwner(metadata, this.expectedOwnerId);
+    return metadata;
   }
 
   async clear(): Promise<void> {
     await this.db.transaction("rw", this.db.tables, async () => {
       await Promise.all(this.db.tables.map((table) => table.clear()));
     });
+  }
+
+  close(): void {
+    this.db.close();
+  }
+
+  get name(): string {
+    return this.databaseName;
   }
 }

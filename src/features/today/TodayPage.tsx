@@ -3,7 +3,7 @@
 /* eslint-disable jsx-a11y/no-autofocus -- The inline composer opens after an explicit user action. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CalendarDays, Check, ChevronRight, Circle, Cloud, Dumbbell, GripVertical, Heart, HeartPulse, Lightbulb, Pencil, Plus, Quote, Save, Sparkles, Utensils, X } from "lucide-react";
 import { isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
 import { getDailyTopThree } from "@/src/domain/guidanceRules";
@@ -18,6 +18,7 @@ import { useI18n } from "@/src/i18n/I18nProvider";
 import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
 import { calendarEventOccursOnDate, calendarEventTimeLabel } from "@/src/domain/calendar";
 import { CalendarEventSyncFeedback } from "@/src/features/calendar/CalendarEventSyncFeedback";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 type TimelineFilter = "all" | "tasks" | "training" | "meals" | "events";
 type TimelineItem = { id: string; type: Exclude<TimelineFilter, "all">; title: string; detail: string; completed?: boolean; action: ReactNode };
@@ -43,6 +44,7 @@ function habitRecurrence(days: number[], oneOffDate?: string): HabitRecurrence {
 
 export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void; onNeedHelp: () => void }) {
   const { m, formatDate, formatNumber, formatPlural } = useI18n();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { snapshot } = planner;
   const calendarIntegration = useCalendarIntegration();
   const today = new Date();
@@ -55,7 +57,9 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
   const [intention, setIntention] = useState(savedIntention);
   const [intentionEditing, setIntentionEditing] = useState(false);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("all");
-  const [minimumMode, setMinimumMode] = useState(false);
+  const minimumModeRequested = searchParams.get("mode") === "minimum";
+  const [minimumModeOverride, setMinimumModeOverride] = useState<boolean | null>(null);
+  const minimumMode = minimumModeOverride ?? minimumModeRequested;
   const [advancedToday, setAdvancedToday] = useState(initialDailyClose.advanced);
   const [rememberToday, setRememberToday] = useState(initialDailyClose.remember);
   const [closeSaved, setCloseSaved] = useState(false);
@@ -94,7 +98,7 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
     if (kind === "event") {
       const currentEvent = todayEvents.find((item) => item.id === itemId);
       const defaultCalendar = calendarIntegration.snapshot.calendars.find((item) => item.isDefault && item.isWritable);
-      setDayComposer({ ...emptyComposer(kind), id: currentEvent?.id, title: currentEvent?.title ?? "", startTime: currentEvent?.startTime ?? currentEvent?.time ?? "09:00", endTime: currentEvent?.endTime ?? "10:00", allDay: currentEvent?.allDay ?? !(currentEvent?.startTime ?? currentEvent?.time), connectedCalendarId: currentEvent?.connectedCalendarId ?? defaultCalendar?.id ?? "", syncWithGoogle: currentEvent?.calendarProvider === "google" || (!currentEvent && calendarIntegration.connected), linkedToGoogle: currentEvent?.calendarProvider === "google" });
+      setDayComposer({ ...emptyComposer(kind), id: currentEvent?.id, title: currentEvent?.title ?? "", startTime: currentEvent?.startTime ?? currentEvent?.time ?? "09:00", endTime: currentEvent?.endTime ?? "10:00", allDay: currentEvent?.allDay ?? !(currentEvent?.startTime ?? currentEvent?.time), connectedCalendarId: currentEvent?.connectedCalendarId ?? defaultCalendar?.id ?? "", syncWithGoogle: publicConfig.googleCalendarEnabled && (currentEvent?.calendarProvider === "google" || (!currentEvent && calendarIntegration.connected)), linkedToGoogle: publicConfig.googleCalendarEnabled && currentEvent?.calendarProvider === "google" });
       return;
     }
     const habit = snapshot.habits.find((item) => item.id === itemId);
@@ -145,7 +149,7 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
     return m("today.timeline.eventCategory.personal");
   };
   const eventItems: TimelineItem[] = [
-    ...todayEvents.map((event) => ({ id: event.id, type: "events" as const, title: event.title, detail: `${calendarEventTimeLabel({ allDay: event.allDay ?? !(event.startTime ?? event.time), startTime: event.startTime ?? event.time, endTime: event.endTime }, m("calendar.event.allDay"))} · ${event.calendarProvider === "google" ? event.calendarName ?? m("calendar.origin.google") : eventCategoryLabel(event.category)}`, action: <div className="timeline-actions"><CalendarEventSyncFeedback event={event} /><button type="button" onClick={() => openDayComposer("event", event.id)} aria-label={m("today.timeline.editAria", { title: event.title })}><Pencil size={15} /></button></div> })),
+    ...todayEvents.map((event) => ({ id: event.id, type: "events" as const, title: event.title, detail: `${calendarEventTimeLabel({ allDay: event.allDay ?? !(event.startTime ?? event.time), startTime: event.startTime ?? event.time, endTime: event.endTime }, m("calendar.event.allDay"))} · ${publicConfig.googleCalendarEnabled && event.calendarProvider === "google" ? event.calendarName ?? m("calendar.origin.google") : eventCategoryLabel(event.category)}`, action: <div className="timeline-actions"><CalendarEventSyncFeedback event={event} /><button type="button" onClick={() => openDayComposer("event", event.id)} aria-label={m("today.timeline.editAria", { title: event.title })}><Pencil size={15} /></button></div> })),
     ...todayExternalEvents.map((event) => ({ id: `google-${event.id}`, type: "events" as const, title: event.title, detail: `${calendarEventTimeLabel(event, m("calendar.event.allDay"))} · ${event.calendarName}`, action: <span className="calendar-origin"><Cloud size={13} aria-hidden="true" /><span className="sr-only">{m("calendar.origin.google")}</span></span> })),
   ].sort((a, b) => a.detail.localeCompare(b.detail));
   const timeline = [...taskItems, ...workoutItems, ...mealItems, ...eventItems];
@@ -180,7 +184,7 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
   return <div className={`page-stack today-command-center ${minimumMode ? "is-minimum" : ""}`} data-i18n-explicit="true">
     <SectionHeading eyebrow={m("today.header.eyebrow")} title={<>{m("today.header.greeting")} <span data-no-translate={profileName ? "true" : undefined}>{profileName ?? m("today.header.fallbackName")}</span> 👋</>} description={todayDateLabel} action={<span className="today-header-note">{m("today.header.note")} <Heart size={15} /></span>} />
 
-    {minimumMode && <Card className="minimum-banner"><HeartPulse size={22} /><div><p className="eyebrow">{m("today.minimum.eyebrow")}</p><h2>{m("today.minimum.title")}</h2><p>{m("today.minimum.description")}</p></div><Button variant="ghost" onClick={() => setMinimumMode(false)}>{m("today.minimum.exit")}</Button></Card>}
+    {minimumMode && <Card className="minimum-banner"><HeartPulse size={22} /><div><p className="eyebrow">{m("today.minimum.eyebrow")}</p><h2>{m("today.minimum.title")}</h2><p>{m("today.minimum.description")}</p></div><Button variant="ghost" onClick={() => { setMinimumModeOverride(false); const next = new URLSearchParams(searchParams); next.delete("mode"); setSearchParams(next, { replace: true }); }}>{m("today.minimum.exit")}</Button></Card>}
 
     <Card className={`today-next-action ${nextAction ? "" : "is-empty"}`}>
       <div><p className="eyebrow">{m("today.next.eyebrow")}</p>{nextAction ? <><h2 data-no-translate="true">{nextAction.title}</h2><p>{nextAction.focusPriority ? m("today.next.priorityDetail", { priority: nextAction.focusPriority }) : m("today.next.defaultDetail")}</p></> : <><h2>{m("today.next.emptyTitle")}</h2><p>{m("today.next.emptyDescription")}</p></>}</div>
@@ -223,7 +227,7 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
     {!minimumMode && overdue.length > 0 && <Card className="overdue-card"><div><p className="eyebrow">{m("today.overdue.eyebrow")}</p><h2>{m("today.overdue.title")}</h2><p>{m("today.overdue.description")}</p></div>{overdue.slice(0, 4).map((task) => <div className="overdue-row" key={task.id}><strong data-no-translate="true">{task.title}</strong><Button variant="secondary" onClick={() => planner.rescheduleTask(task.id, todayKey)}>{m("today.overdue.move")}</Button></div>)}</Card>}
 
     <section className="today-wellbeing-checkin" aria-label={m("today.wellbeing.ariaLabel")}>
-      <TodayMoodCard planner={planner} saveOnChange onLowEnergy={() => setMinimumMode(true)} />
+      <TodayMoodCard planner={planner} saveOnChange onLowEnergy={() => setMinimumModeOverride(true)} />
       <Card className="today-intention-card today-intention-card--standalone"><header><h2>{m("today.intention.title")} <Sparkles size={17} aria-hidden="true" /></h2><button type="button" className="today-icon-button" onClick={() => setIntentionEditing(true)} aria-label={m("today.intention.editAria")}><Pencil size={17} /></button></header>{intentionEditing ? <div className="today-intention-editor"><textarea value={intention} onChange={(event) => setIntention(event.target.value)} aria-label={m("today.intention.inputAria")} rows={3} placeholder={m("today.intention.placeholder")} translate="no" data-no-translate="true" /><Button variant="secondary" onClick={saveIntention}><Save size={16} /> {m("today.intention.save")}</Button></div> : <blockquote className={`today-intention-quote ${intention ? "" : "is-empty"}`}><Quote size={25} /><p data-no-translate={intention ? "true" : undefined}>{intention || m("today.intention.placeholder")}</p></blockquote>}</Card>
     </section>
 

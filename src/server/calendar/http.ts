@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { CalendarConfigurationError } from "@/src/server/calendar/config";
 import { GoogleCalendarApiError } from "@/src/server/calendar/googleApi";
+import { publicConfig } from "@/src/lib/publicConfig";
+
+export function calendarFeatureDisabledResponse(options: { acknowledge?: boolean } = {}) {
+  if (publicConfig.googleCalendarEnabled) return null;
+  return options.acknowledge
+    ? new NextResponse(null, { status: 204 })
+    : NextResponse.json({ error: "CALENDAR_DISABLED" }, { status: 404 });
+}
 
 export function calendarErrorResponse(error: unknown) {
   if (error instanceof Response) return error;

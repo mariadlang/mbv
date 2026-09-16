@@ -1,5 +1,7 @@
 # Fuente de verdad de marca y lenguaje
 
+El índice operativo completo de P2 está en [Brand Portal](index.md). Este archivo se conserva como acceso compatible para enlaces anteriores.
+
 Este índice separa decisiones vigentes, evidencia P0 y dependencias pendientes. El código implementado prevalece cuando un documento histórico ya no describe el producto.
 
 ## Vigente

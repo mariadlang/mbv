@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/src/lib/serverAuth";
 import { requireCalendarAccess } from "@/src/server/calendar/access";
 import { createCalendarServiceClient, requireCalendarServerConfig } from "@/src/server/calendar/config";
-import { calendarErrorResponse } from "@/src/server/calendar/http";
+import { calendarErrorResponse, calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 import { ensureGoogleCalendarWatch, loadCalendarIntegration, loadCalendarSnapshot, loadConnectedCalendars, syncGoogleCalendar } from "@/src/server/calendar/sync";
 
 export async function POST(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) return disabled;
   try {
     const auth = await authenticateRequest(request);
     if (auth.e2e) return NextResponse.json({ configured: false, integration: null, calendars: [], events: [] });

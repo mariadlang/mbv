@@ -6,7 +6,7 @@ import { requireCalendarAccess } from "@/src/server/calendar/access";
 import { createCalendarServiceClient, requireCalendarServerConfig, type CalendarServerConfig } from "@/src/server/calendar/config";
 import { decryptServerSecret, encryptServerSecret, GOOGLE_CALENDAR_COMPLETION_COOKIE, sha256 } from "@/src/server/calendar/crypto";
 import type { CalendarIntegrationRow } from "@/src/server/calendar/googleApi";
-import { calendarErrorResponse } from "@/src/server/calendar/http";
+import { calendarErrorResponse, calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 import { cleanupGoogleOAuthStates, drainGoogleGrantRevocations, googleOAuthPendingPayloadSchema } from "@/src/server/calendar/oauthCompletion";
 import {
   ensureGoogleCalendarWatch,
@@ -47,6 +47,8 @@ async function stopWatchesBestEffort(accessToken: string, calendars: Awaited<Ret
 }
 
 export async function POST(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) return disabled;
   let config: CalendarServerConfig | null = null;
   let service: SupabaseClient | null = null;
   let claim: CompletionClaim | null = null;

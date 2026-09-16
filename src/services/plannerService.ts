@@ -31,11 +31,10 @@ import type {
 } from "@/src/lib/schemas";
 import { cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
-import { IndexedDbPlannerRepository } from "@/src/repositories/local/IndexedDbPlannerRepository";
+import { IndexedDbPlannerRepository, plannerDatabaseNameForOwner } from "@/src/repositories/local/IndexedDbPlannerRepository";
+import type { PlannerRepository } from "@/src/repositories/interfaces/PlannerRepository";
 import { createSnapshotWriteQueue } from "@/src/services/snapshotWriteQueue";
 
-const repository = new IndexedDbPlannerRepository();
-const writes = createSnapshotWriteQueue(repository);
 const id = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
@@ -121,13 +120,13 @@ export function reconcilePlannerCalendarEvents(
   });
 }
 
-async function updateSnapshot(
-  updater: (snapshot: PlannerSnapshot) => PlannerSnapshot,
-): Promise<PlannerSnapshot> {
-  return writes.update(updater);
-}
+export function createPlannerService(repository: PlannerRepository) {
+  const writes = createSnapshotWriteQueue(repository);
+  const updateSnapshot = (
+    updater: (snapshot: PlannerSnapshot) => PlannerSnapshot,
+  ): Promise<PlannerSnapshot> => writes.update(updater);
 
-export const plannerService = {
+  const service = {
   async load(): Promise<PlannerSnapshot> {
     const snapshot = await repository.load();
     const financeCategories = mergeDefaultFinanceCategories(snapshot.financeCategories, id, nowIso());
@@ -502,6 +501,15 @@ export const plannerService = {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
       tasks: snapshot.tasks.filter((task) => task.id !== taskId),
+    }));
+  },
+
+  cancelTask(taskId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      tasks: snapshot.tasks.map((task) => task.id === taskId
+        ? { ...task, status: "cancelled" as const, focusPriority: undefined, updatedAt: nowIso() }
+        : task),
     }));
   },
 
@@ -1597,4 +1605,18 @@ export const plannerService = {
       return createEmptySnapshot();
     });
   },
-};
+  };
+
+  return Object.assign(service, {
+    close: async () => {
+      await writes.flush();
+      repository.close();
+    },
+  });
+}
+
+export function createLocalPlannerService(ownerId: string) {
+  return createPlannerService(new IndexedDbPlannerRepository(plannerDatabaseNameForOwner(ownerId), ownerId));
+}
+
+export type PlannerService = ReturnType<typeof createPlannerService>;

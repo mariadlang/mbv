@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { PlannerEvent } from "@/src/domain/planner";
 import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 type VisibleSyncState = Exclude<PlannerEvent["syncState"], "local" | undefined>;
 
@@ -19,6 +20,7 @@ export function CalendarEventSyncFeedback({ event }: { event: Pick<PlannerEvent,
   const { m } = useI18n();
   const calendar = useCalendarIntegration();
   const state = event.syncState;
+  if (!publicConfig.googleCalendarEnabled) return null;
   if (!state || state === "local") return null;
   const label = m(stateMessage(state));
   const className = `calendar-sync-badge calendar-sync-badge--${state}`;

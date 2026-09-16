@@ -213,7 +213,7 @@ export const analyticsService = {
     const queued: QueuedProductEvent = {
       id: uniqueId(),
       event,
-      properties: sanitizeProductMetadata(properties) as Record<string, string>,
+      properties: sanitizeProductMetadata(properties, event) as Record<string, string>,
       dedupeKey: resolvedDedupeKey.startsWith(event + ":") ? resolvedDedupeKey : event + ":" + resolvedDedupeKey,
       occurredAt: occurredAt && Number.isFinite(new Date(occurredAt).getTime()) ? new Date(occurredAt).toISOString() : new Date().toISOString(),
       sessionId: resolveProductSession(),

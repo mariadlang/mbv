@@ -1,17 +1,35 @@
 "use client";
 
-import { Award, CheckCircle2, ChevronRight, HeartPulse, Sparkles, Target } from "lucide-react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
+import { Award, CheckCircle2, ChevronRight, HeartPulse, Share2, Sparkles, Target } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { calculateGoalProgress } from "@/src/domain/rules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getRecentDates, toLocalDateKey } from "@/src/lib/dates";
-import { Badge, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
+import { Badge, Button, Card, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Link } from "react-router-dom";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import { buildProgressEvidence, type ProgressAchievement } from "@/src/domain/progressEvidence";
 import type { GoalProgressType } from "@/src/domain/planner";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
+import { publicConfig } from "@/src/lib/publicConfig";
+
+function ShareCardStudioLoader() {
+  const { m } = useI18n();
+  return <div className="share-card-loader" role="status">{m("sharing.studio.loading")}</div>;
+}
+
+const ShareCardStudio = dynamic(
+  () => import("@/src/features/sharing/ShareCardStudio").then((module) => module.ShareCardStudio),
+  { ssr: false, loading: ShareCardStudioLoader },
+);
+
+const ReferralPrompt = dynamic(
+  () => import("@/src/features/sharing/ReferralPrompt").then((module) => module.ReferralPrompt),
+  { ssr: false },
+);
 
 const achievementMessageKeys: Record<ProgressAchievement["id"], {
   title: NavigationSpaceProgressMessageKey;
@@ -33,8 +51,10 @@ const goalSourceMessageKeys: Record<GoalProgressType, NavigationSpaceProgressMes
 
 export function ProgressPage({ planner }: { planner: PlannerController }) {
   const { m, formatDate } = useI18n();
+  const [shareStudioOpen, setShareStudioOpen] = useState(false);
   const { snapshot } = planner;
   const dates = getRecentDates(7);
+  const dateKeys = dates.map(toLocalDateKey);
   const chartData = dates.map((date) => {
     const key = toLocalDateKey(date);
     return {
@@ -48,6 +68,9 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
   const activeGoalProgress = activeGoals.length
     ? Math.round(activeGoals.reduce((sum, goal) => sum + calculateGoalProgress(goal, snapshot.milestones, snapshot.tasks), 0) / activeGoals.length)
     : 0;
+  const hasShareableProgress = evidence.completedTasks > 0 || evidence.completedHabitLogs > 0 || activeGoalProgress > 0;
+  const shareCardsEnabled = publicConfig.productFeatureFlags.share_cards;
+  const referralsEnabled = publicConfig.productFeatureFlags.referrals;
 
   return (
     <div className="page-stack" data-i18n-explicit="true">
@@ -65,6 +88,15 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
         <Card className="metric-card"><span className="metric-card__icon"><HeartPulse size={20} /></span><p>{m("progress.metric.habits")}</p><strong>{snapshot.habitLogs.length}</strong><small>{m("progress.metric.habits.source")}</small></Card>
         <Card className="metric-card"><span className="metric-card__icon"><Award size={20} /></span><p>{m("progress.metric.milestones")}</p><strong>{evidence.completedMilestones}</strong><small>{m("progress.metric.milestones.source")}</small></Card>
       </div>
+
+      {hasShareableProgress && (shareCardsEnabled || referralsEnabled) ? <div className="progress-sharing-grid">
+        {shareCardsEnabled ? <Card className="share-card-prompt" data-i18n-explicit="true">
+          <span className="share-card-prompt__icon"><Share2 size={24} aria-hidden="true" /></span>
+          <div><p className="eyebrow">{m("sharing.prompt.eyebrow")}</p><h2>{m("sharing.prompt.title")}</h2><p>{m("sharing.prompt.description")}</p></div>
+          <Button onClick={() => setShareStudioOpen(true)}><Share2 size={17} aria-hidden="true" /> {m("sharing.prompt.action")}</Button>
+        </Card> : null}
+        {referralsEnabled ? <ReferralPrompt /> : null}
+      </div> : null}
 
       <div className="progress-layout" id="statistics">
         <Card className="progress-chart-card">
@@ -115,6 +147,7 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
         <Card><div className="card-heading"><div><p className="eyebrow">{m("progress.lifeAreas.eyebrow")}</p><h2>{m("progress.lifeAreas.title")}</h2><p>{m("progress.lifeAreas.description")}</p></div></div><div className="life-area-score-list">{snapshot.lifeAreas.filter((area) => area.active).map((area) => <div key={area.id}><span>{area.name}</span><strong>{area.currentScore ?? "—"}/10</strong></div>)}</div></Card>
         <Card className="weekly-review-cta"><Sparkles size={24} /><p className="eyebrow">{m("progress.review.eyebrow")}</p><h2>{evidence.completedTasks ? m("progress.review.withEvidence.title") : m("progress.review.empty.title")}</h2><p>{evidence.completedTasks ? m(evidence.completedTasks === 1 ? "progress.review.withEvidence.one" : "progress.review.withEvidence.many", { count: evidence.completedTasks }) : m("progress.review.empty.description")}</p><Link className="button button--secondary" to="/app/planning/weekly?reset=1">{m("progress.review.action")}</Link></Card>
       </div>
+      {shareCardsEnabled && shareStudioOpen ? <ShareCardStudio open evidence={snapshot} dateKeys={dateKeys} onClose={() => setShareStudioOpen(false)} /> : null}
     </div>
   );
 }

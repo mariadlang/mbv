@@ -10,6 +10,7 @@ import { Card, EmptyState, ProgressBar } from "@/src/components/ui/Primitives";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import { toLocalDateKey } from "@/src/lib/dates";
+import { ReturnExperienceCard } from "./ReturnExperienceCard";
 
 export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { m, formatDate, formatNumber, formatPlural } = useI18n();
@@ -44,6 +45,8 @@ export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerCon
       <div><p className="eyebrow">{m("dashboard.brand.eyebrow")}</p><h1>{m("dashboard.header.greeting")} <span data-no-translate={profileName ? "true" : undefined}>{profileName ?? m("dashboard.header.fallbackName")}</span></h1><p>{m("dashboard.header.description")}</p></div>
       <Link className="button button--secondary" to="/app/today">{m("dashboard.header.todayCta")} <ArrowRight size={16} /></Link>
     </header>
+
+    <ReturnExperienceCard planner={planner} onChoosePriority={() => onQuickCapture({ source: "dashboard", date: toLocalDateKey(new Date()), focusPriority: 1 })} />
 
     <section className="overview-kpis" aria-label={m("dashboard.summary.ariaLabel")}>
       <Link to="/app/progress"><Card><span><TrendingUp size={20} /></span><small>{m("dashboard.kpi.goalProgress.label")}</small><strong>{formatNumber(summary.averageGoalProgress)}%</strong><p>{m("dashboard.kpi.goalProgress.helper")}</p></Card></Link>

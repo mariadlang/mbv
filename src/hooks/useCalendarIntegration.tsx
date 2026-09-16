@@ -2,14 +2,30 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CalendarConfigurationInput, CalendarEvent, CalendarEventInput, CalendarIntegrationSnapshot } from "@/src/domain/calendar";
-import type { PlannerEvent } from "@/src/domain/planner";
+import type { PlannerEvent, PlannerEventSyncOptions } from "@/src/domain/planner";
 import type { EventFormInput } from "@/src/lib/schemas";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { useAccount } from "@/src/hooks/useAccount";
 import { calendarIntegrationService } from "@/src/services/calendarIntegrationService";
 import { CalendarHttpError } from "@/src/repositories/http/HttpGoogleCalendarRepository";
+import { publicConfig } from "@/src/lib/publicConfig";
 
-const emptySnapshot: CalendarIntegrationSnapshot = { configured: true, integration: null, calendars: [], events: [] };
+const emptySnapshot: CalendarIntegrationSnapshot = { configured: publicConfig.googleCalendarEnabled, integration: null, calendars: [], events: [] };
+const localOnlyEventSync: PlannerEventSyncOptions = {
+  calendarProvider: undefined,
+  integrationId: undefined,
+  connectedCalendarId: undefined,
+  externalCalendarId: undefined,
+  externalEventId: undefined,
+  calendarName: undefined,
+  origin: "mbv",
+  syncState: "local",
+  pendingAction: undefined,
+  etag: undefined,
+  lastSyncedAt: undefined,
+  googleUpdatedAt: undefined,
+  status: "confirmed",
+};
 
 export type ManagedCalendarEventInput = EventFormInput & {
   connectedCalendarId?: string;
@@ -71,7 +87,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   const snapshotRef = useRef<CalendarIntegrationSnapshot>(emptySnapshot);
   const syncingRef = useRef(false);
   const [snapshot, setSnapshot] = useState<CalendarIntegrationSnapshot>(emptySnapshot);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(publicConfig.googleCalendarEnabled);
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +151,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot]);
 
   const syncNow = useCallback(async () => {
+    if (!publicConfig.googleCalendarEnabled) return;
     if (!snapshotRef.current.integration || snapshotRef.current.integration.status !== "connected" || syncingRef.current || !navigator.onLine) return;
     syncingRef.current = true;
     setSyncing(true); setError(null);
@@ -158,6 +175,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot, flushPendingEvents, withToken]);
 
   const reloadStatus = useCallback(async () => {
+    if (!publicConfig.googleCalendarEnabled) return emptySnapshot;
     const next = await withToken((token) => calendarIntegrationService.getStatus(token));
     await applySnapshot(next);
     setError(null);
@@ -165,6 +183,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot, withToken]);
 
   useEffect(() => {
+    if (!publicConfig.googleCalendarEnabled) return;
     let active = true;
     const timer = window.setTimeout(() => {
       void reloadStatus()
@@ -175,6 +194,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [account.user?.id, reloadStatus]);
 
   useEffect(() => {
+    if (!publicConfig.googleCalendarEnabled) return;
     const recover = () => {
       void reloadStatus()
         .then((next) => { if (next.integration?.status === "connected") void syncNow(); })
@@ -195,6 +215,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [snapshot.integration?.id, snapshot.integration?.status, syncNow]);
 
   const connect = useCallback(async () => {
+    if (!publicConfig.googleCalendarEnabled) return;
     setSaving(true); setError(null);
     try {
       const authorizationUrl = await withToken((token) => calendarIntegrationService.beginConnection(token, `${window.location.pathname}${window.location.search}`));
@@ -206,6 +227,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [withToken]);
 
   const completeConnection = useCallback(async () => {
+    if (!publicConfig.googleCalendarEnabled) return false;
     setSaving(true); setError(null); setNotice(null);
     try {
       await applySnapshot(await withToken((token) => calendarIntegrationService.completeConnection(token)));
@@ -221,6 +243,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot, withToken]);
 
   const configure = useCallback(async (input: CalendarConfigurationInput) => {
+    if (!publicConfig.googleCalendarEnabled) return;
     setSaving(true); setError(null); setNotice(null);
     const hasPendingInRemovedCalendar = plannerRef.current.snapshot.events.some((event) => event.calendarProvider === "google" && Boolean(event.pendingAction) && Boolean(event.connectedCalendarId) && !input.visibleCalendarIds.includes(event.connectedCalendarId as string));
     if (hasPendingInRemovedCalendar) { setError("CALENDAR_PENDING_CHANGES"); setSaving(false); return; }
@@ -232,7 +255,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   const createEvent = useCallback(async (input: ManagedCalendarEventInput) => {
     const localEventId = crypto.randomUUID();
     const defaultCalendar = snapshot.calendars.find((calendar) => calendar.id === input.connectedCalendarId) ?? snapshot.calendars.find((calendar) => calendar.isDefault && calendar.isWritable);
-    const shouldQueue = Boolean(input.syncWithGoogle && snapshot.integration && defaultCalendar);
+    const shouldQueue = Boolean(publicConfig.googleCalendarEnabled && input.syncWithGoogle && snapshot.integration && defaultCalendar);
     const canPushNow = Boolean(shouldQueue && snapshot.integration?.status === "connected" && navigator.onLine);
     await plannerRef.current.createEvent(input, shouldQueue ? {
       id: localEventId, calendarProvider: "google", integrationId: snapshot.integration?.id,
@@ -258,6 +281,10 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   const updateEvent = useCallback(async (eventId: string, input: ManagedCalendarEventInput) => {
     const current = plannerRef.current.snapshot.events.find((event) => event.id === eventId);
     if (!current) return;
+    if (!publicConfig.googleCalendarEnabled) {
+      await plannerRef.current.updateEvent(eventId, input, localOnlyEventSync);
+      return;
+    }
     const requestedCalendar = snapshot.calendars.find((calendar) => calendar.id === input.connectedCalendarId && calendar.isWritable)
       ?? snapshot.calendars.find((calendar) => calendar.isDefault && calendar.isWritable);
     const linked = current.calendarProvider === "google" && Boolean(current.connectedCalendarId);
@@ -300,6 +327,10 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   const deleteEvent = useCallback(async (eventId: string) => {
     const current = plannerRef.current.snapshot.events.find((event) => event.id === eventId);
     if (!current) return;
+    if (!publicConfig.googleCalendarEnabled) {
+      await plannerRef.current.deleteEvent(eventId);
+      return;
+    }
     if (current.calendarProvider !== "google" || !current.connectedCalendarId) {
       await plannerRef.current.deleteEvent(eventId);
       return;
@@ -323,6 +354,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot, snapshot.integration, withToken]);
 
   const resolveConflict = useCallback(async (eventId: string, winner: "google" | "mbv") => {
+    if (!publicConfig.googleCalendarEnabled) return;
     const current = plannerRef.current.snapshot.events.find((event) => event.id === eventId);
     if (!current?.connectedCalendarId) return;
     const conflictId = snapshotRef.current.events.find((event) => event.localEventId === eventId && event.syncState === "conflict")?.conflict?.id;
@@ -347,6 +379,7 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
   }, [applySnapshot, reloadStatus, withToken]);
 
   const disconnect = useCallback(async () => {
+    if (!publicConfig.googleCalendarEnabled) return;
     setSaving(true); setError(null);
     try { await applySnapshot(await withToken((token) => calendarIntegrationService.disconnect(token))); await plannerRef.current.detachGoogleCalendar(); setNotice("disconnected"); }
     catch (caught) { setError(caught instanceof CalendarHttpError ? caught.code : "CALENDAR_DISCONNECT_FAILED"); }
@@ -355,8 +388,8 @@ export function CalendarIntegrationProvider({ planner, children }: { planner: Pl
 
   const value = useMemo<CalendarIntegrationController>(() => ({
     snapshot,
-    events: snapshot.events.filter((event) => event.status !== "cancelled"),
-    connected: snapshot.integration?.status === "connected",
+    events: publicConfig.googleCalendarEnabled ? snapshot.events.filter((event) => event.status !== "cancelled") : [],
+    connected: publicConfig.googleCalendarEnabled && snapshot.integration?.status === "connected",
     loading, syncing, saving, error, notice,
     connect, completeConnection, configure, syncNow, disconnect, createEvent, updateEvent, deleteEvent, resolveConflict,
   }), [completeConnection, configure, connect, createEvent, deleteEvent, disconnect, error, loading, notice, resolveConflict, saving, snapshot, syncNow, syncing, updateEvent]);

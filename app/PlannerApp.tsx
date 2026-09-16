@@ -25,6 +25,7 @@ import { QuickCaptureDrawer, type QuickCaptureDefaults } from "@/src/features/ta
 import { publicConfig } from "@/src/lib/publicConfig";
 import { CTA } from "@/src/lib/cta";
 import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
+import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -72,11 +73,37 @@ function useBrowserRouteLocation() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
+function ReturnActivityTracker({ accountId, routeKey }: { accountId: string; routeKey: string }) {
+  const enabled = publicConfig.productFeatureFlags.return_experience;
+
+  useEffect(() => {
+    if (!enabled) return;
+    const visit = registerReturnActivity(accountId);
+    window.dispatchEvent(new CustomEvent(RETURN_EXPERIENCE_UPDATED_EVENT, { detail: visit }));
+    const touchIfVisible = () => {
+      if (document.visibilityState === "visible") touchReturnActivity(accountId);
+    };
+    const interval = window.setInterval(touchIfVisible, 60_000);
+    document.addEventListener("visibilitychange", touchIfVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", touchIfVisible);
+    };
+  }, [accountId, enabled]);
+
+  useEffect(() => {
+    if (enabled) touchReturnActivity(accountId);
+  }, [accountId, enabled, routeKey]);
+
+  return null;
+}
+
 function ProtectedPlannerApp() {
   const account = useAccount();
   const navigate = useNavigate();
   const routeLocation = useBrowserRouteLocation();
-  const planner = usePlanner(account.access);
+  const activityRouteKey = typeof routeLocation === "string" ? routeLocation : `${routeLocation.pathname}${routeLocation.search}${routeLocation.hash}`;
+  const planner = usePlanner(account.user?.id ?? null, account.access);
   const mounted = useMounted();
   const [quickCapture, setQuickCapture] = useState<QuickCaptureDefaults | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -94,6 +121,7 @@ function ProtectedPlannerApp() {
   const accountLoading = account.loading;
   const markOnboardingCompleted = account.markOnboardingCompleted;
   const plannerLoading = planner.loading;
+  const legacyData = planner.legacyData;
   const resumeExistingSpace = planner.resumeExistingSpace;
   const accountUserId = account.user?.id;
   const accountDisplayName = account.user?.displayName ?? "";
@@ -103,7 +131,7 @@ function ProtectedPlannerApp() {
     || (!publicConfig.e2eAccess && account.preferences?.tutorialCompleted === true);
 
   useEffect(() => {
-    if (!mounted || plannerLoading || accountLoading || !accountUserId) return;
+    if (!mounted || plannerLoading || accountLoading || !accountUserId || legacyData) return;
 
     if (localOnboardingCompleted) {
       if (!accountOnboardingCompleted && !onboardingRecoveryStarted.current) {
@@ -123,7 +151,7 @@ function ProtectedPlannerApp() {
       .finally(() => {
         onboardingRecoveryStarted.current = false;
       });
-  }, [accountDisplayName, accountLoading, accountOnboardingCompleted, accountUserId, establishedAccount, localOnboardingCompleted, locallyClearedAccountId, markOnboardingCompleted, mounted, onboardingRecoveryNonce, plannerLoading, resumeExistingSpace]);
+  }, [accountDisplayName, accountLoading, accountOnboardingCompleted, accountUserId, establishedAccount, legacyData, localOnboardingCompleted, locallyClearedAccountId, markOnboardingCompleted, mounted, onboardingRecoveryNonce, plannerLoading, resumeExistingSpace]);
 
   if (account.loading) {
     return <main className="brand-loading" role="status" aria-live="polite" aria-label="Comprobando tu acceso"><BrandMark /><span className="brand-loading__ring" /><p>Preparando tu espacio…</p></main>;
@@ -150,13 +178,28 @@ function ProtectedPlannerApp() {
     );
   }
 
-  if (planner.error && !planner.snapshot.profile) {
+  if (planner.error && !planner.snapshot.profile && !legacyData) {
     return (
       <main className="error-page">
         <BrandMark />
         <h1>No pudimos abrir tu planner.</h1>
         <p>{planner.error}</p>
         <Button onClick={planner.retry}>Intentar de nuevo</Button>
+      </main>
+    );
+  }
+
+  if (legacyData) {
+    return (
+      <main className="error-page">
+        <BrandMark />
+        <h1>Encontramos datos locales de este navegador.</h1>
+        <p>Antes se guardaban en un único espacio sin identificar la cuenta. Para proteger tu privacidad, dinos qué quieres hacer.</p>
+        <p>{legacyData.goals} metas · {legacyData.habits} hábitos · {legacyData.tasks} tareas</p>
+        {planner.error && <p className="inline-message inline-message--error" role="alert">{planner.error}</p>}
+        <Button loading={planner.saving} onClick={() => void planner.claimLegacyData().catch(() => undefined)}>Copiar a esta cuenta</Button>
+        <Button variant="ghost" disabled={planner.saving} onClick={() => void planner.startFresh().catch(() => undefined)}>Empezar con un espacio vacío</Button>
+        <small>La copia original no se borrará. Ninguna opción asigna estos datos automáticamente.</small>
       </main>
     );
   }
@@ -228,6 +271,7 @@ function ProtectedPlannerApp() {
           </Routes>
         </Suspense>
       </AppShell>
+      {accountUserId && <ReturnActivityTracker accountId={accountUserId} routeKey={activityRouteKey} />}
       <GuidedTutorial replayNonce={tutorialReplayNonce} onComplete={() => account.updatePreferences({ tutorialCompleted: true })} />
       <QuickCaptureDrawer open={Boolean(quickCapture)} defaults={quickCapture ?? { source: "global" }} planner={planner} access={account.access} onClose={() => setQuickCapture(null)} />
       <Modal open={helpOpen} title="¿Qué necesitas ahora?" description="Elige lo que se parece más a este momento. Te mostraremos un paso breve." onClose={() => setHelpOpen(false)}>

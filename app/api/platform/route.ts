@@ -10,7 +10,23 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_category"), id: z.string().uuid(), label: z.string().trim().min(2).max(80), active: z.boolean(), sortOrder: z.number().int().min(0).max(10000) }),
 ]);
 
-const emptySummary = { total_users:0,new_users_week:0,new_users_month:0,active_today:0,active_7d:0,active_30d:0,analytics_v2_cohort_users:0,onboarding_rate:0,activation_rate:0,retention_7d:0,retention_30d:0,pending_suggestions:0,open_support:0 };
+const emptySummary = {
+  total_users: 0, new_users_week: 0, new_users_month: 0,
+  active_today: 0, active_7d: 0, weekly_active_users: 0, active_30d: 0,
+  analytics_v2_cohort_users: 0, onboarding_rate: null, activation_rate: null,
+  retention_1d_eligible_users: 0, retention_1d_users: 0, retention_1d: null,
+  retention_7d_eligible_users: 0, retention_7d_users: 0, retention_7d: null,
+  retention_30d_eligible_users: 0, retention_30d_users: 0, retention_30d: null,
+  weekly_review_eligible_users: 0, weekly_review_users: 0, weekly_review_events: 0, weekly_review_rate: null,
+  share_eligible_users: 0, share_users: 0, share_events: 0, share_rate: null,
+  paywall_view_users: 0, checkout_users: 0, payment_users: 0,
+  paywall_to_checkout_rate: null, checkout_to_payment_rate: null,
+  trial_users: 0, trial_conversion_rate: null,
+  renewal_eligible_users: 0, renewal_users: 0, renewal_rate: null,
+  referral_visit_users: 0, referral_signup_users: 0, referral_activation_users: 0,
+  referral_signup_rate: null, referral_activation_rate: null,
+  pending_suggestions: 0, open_support: 0,
+};
 
 export async function GET(request: NextRequest) {
   try {

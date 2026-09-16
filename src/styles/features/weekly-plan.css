@@ -158,6 +158,16 @@
 .weekly-review-dialog fieldset { display: grid; grid-template-columns: repeat(3, 1fr); border: 0; padding: 0; }
 .weekly-review-dialog fieldset legend { grid-column: 1 / -1; margin-bottom: 6px; }
 .weekly-review-observation { display: grid; gap: 4px; border-radius: 9px; background: var(--color-surface-muted); padding: 12px; color: var(--color-text-secondary); font-size: .76rem; }
+.weekly-recap-evidence { display: grid; grid-column: 1 / -1; gap: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-muted); padding: 15px; }
+.weekly-recap-evidence header { display: grid; gap: 3px; }
+.weekly-recap-evidence header :where(h3, p) { margin: 0; }
+.weekly-recap-evidence header h3 { font-size: 1rem; }
+.weekly-recap-evidence header p:last-child { color: var(--color-text-secondary); font-size: .76rem; line-height: 1.5; }
+.weekly-recap-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.weekly-recap-metrics article { display: grid; min-width: 0; gap: 3px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface-elevated); padding: 11px; }
+.weekly-recap-metrics strong { color: var(--color-brand-strong); font-size: 1.15rem; }
+.weekly-recap-metrics span { font-size: .74rem; font-weight: 650; }
+.weekly-recap-metrics small { color: var(--color-text-muted); font-size: .67rem; line-height: 1.35; }
 
 @media (hover: none), (pointer: coarse) {
   .weekly-task-actions { opacity: 1; }
@@ -211,6 +221,7 @@
   .weekly-review-dialog { grid-template-columns: 1fr; }
   .weekly-review-dialog > *, .weekly-review-dialog fieldset, .weekly-review-observation, .weekly-review-dialog .modal__actions { grid-column: 1; }
   .weekly-review-dialog fieldset { grid-template-columns: 1fr; }
+  .weekly-recap-metrics { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 430px) {

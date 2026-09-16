@@ -14,6 +14,7 @@ import { useAccount } from "@/src/hooks/useAccount";
 import { MarketingPreferenceControl } from "@/src/features/support/SupportPage";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { GoogleCalendarIntegrationCard } from "@/src/features/settings/GoogleCalendarIntegrationCard";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
@@ -70,7 +71,7 @@ export function SettingsPage({ planner, onReplayTutorial, onRequestLogout, onLoc
     <SectionHeading eyebrow="Tu planner, tus reglas" title="Ajustes y datos" description="Personaliza tu experiencia y administra tu información." action={<Badge tone="sage"><LockKeyhole size={14} /> Datos locales</Badge>} />
     {message && <div className="inline-message" role="status">{message}</div>}
     <div className="settings-reference-layout">
-      <GoogleCalendarIntegrationCard />
+      {publicConfig.googleCalendarEnabled && <GoogleCalendarIntegrationCard />}
       <Card id="account-settings" className="settings-list-card">
         <section><div><strong><Languages size={16} /> Idioma</strong><small>Selecciona el idioma de la aplicación.</small></div><LanguageSwitcher onChange={(locale) => void account.updatePreferences({ locale })} /></section>
         <section><div><strong><ShieldCheck size={16} /> Legal y privacidad</strong><small>Consulta documentos, autorizaciones, solicitudes y control de datos.</small></div><Link className="button button--secondary" to="/app/legal">Abrir centro</Link></section>

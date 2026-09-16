@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, Check, Heart, LockKeyhole, Mail, Sparkles } from "lucide-react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { Button, Card } from "@/src/components/ui/Primitives";
@@ -17,6 +17,8 @@ import { LEGAL_VERSION } from "@/src/lib/legalConfig";
 import { CTA } from "@/src/lib/cta";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { MessageKey } from "@/src/i18n/keys";
+import { captureReferralAttribution } from "@/src/services/referralAttributionService";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 const credentialsSchema = z.object({
   email: z.string().trim().email("Escribe un correo válido."),
@@ -151,10 +153,14 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const { m } = useI18n();
   const account = useAccount();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ name: "", email: "", password: "", acceptedTerms: false, acceptedData: false, adult: false, marketing: false });
   const [message, setMessage] = useState<MessageKey | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (mode === "signup" && publicConfig.productFeatureFlags.referrals) captureReferralAttribution(location.search);
+  }, [location.search, mode]);
   if (account.user && account.access) return <Navigate to="/app/dashboard" replace />;
 
   const submit = async (event: FormEvent) => {

@@ -4,4 +4,5 @@ export interface PlannerRepository {
   load(): Promise<PlannerSnapshot>;
   replace(snapshot: PlannerSnapshot): Promise<void>;
   clear(): Promise<void>;
+  close(): void;
 }

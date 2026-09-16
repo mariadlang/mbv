@@ -4,7 +4,7 @@ import { authenticateRequest } from "@/src/lib/serverAuth";
 import { calendarPlanningDateAllowedForProfile, requireCalendarAccess, type CalendarAccessProfile } from "@/src/server/calendar/access";
 import { createCalendarServiceClient, requireCalendarServerConfig } from "@/src/server/calendar/config";
 import { sha256 } from "@/src/server/calendar/crypto";
-import { calendarErrorResponse } from "@/src/server/calendar/http";
+import { calendarErrorResponse, calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 import { buildGoogleEventResource, googleApiJsonForIntegration, GoogleCalendarApiError, googleEventContentMatchesInput, googleEventIdForLocal, isOwnedGoogleEvent, normalizeGoogleEvent, type CalendarIntegrationRow, type ConnectedCalendarRow, type GoogleEventResource } from "@/src/server/calendar/googleApi";
 import { loadCalendarIntegration, loadCalendarSnapshot, loadConnectedCalendars, upsertGoogleEvent } from "@/src/server/calendar/sync";
 import { isValidCalendarDateKey, isValidCalendarTimezone } from "@/src/domain/calendar";
@@ -32,6 +32,8 @@ const eventInputSchema = z.object({
 });
 
 async function calendarContext(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) throw disabled;
   const auth = await authenticateRequest(request);
   if (auth.e2e) throw new Response(JSON.stringify({ error: "CALENDAR_NOT_CONFIGURED" }), { status: 503, headers: { "Content-Type": "application/json" } });
   const access = await requireCalendarAccess(auth.client, auth.userId);

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authenticateRequest } from "@/src/lib/serverAuth";
 import { requireCalendarAccess } from "@/src/server/calendar/access";
 import { createCalendarServiceClient, requireCalendarServerConfig } from "@/src/server/calendar/config";
-import { calendarErrorResponse } from "@/src/server/calendar/http";
+import { calendarErrorResponse, calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 import { accessTokenForIntegration } from "@/src/server/calendar/googleApi";
 import { ensureGoogleCalendarWatch, loadCalendarIntegration, loadCalendarSnapshot, loadConnectedCalendars, stopGoogleCalendarWatch, syncGoogleCalendar } from "@/src/server/calendar/sync";
 
@@ -13,6 +13,8 @@ const configurationSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) return disabled;
   try {
     const auth = await authenticateRequest(request);
     if (auth.e2e) return NextResponse.json({ error: "CALENDAR_NOT_CONFIGURED" }, { status: 503 });

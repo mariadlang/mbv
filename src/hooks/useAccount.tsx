@@ -9,6 +9,8 @@ import { clientProductEventNames, type ClientProductEventName } from "@/src/doma
 import { supportService } from "@/src/services/supportService";
 import { analyticsService, claimQueuedProductEvents, clearQueuedProductEvents, consumeAuthAnalyticsIntent, hasAnalyticsConsent, isPermanentAnalyticsFailure, readQueuedProductEvents, releaseAnalyticsAccount, removeQueuedProductEvent, resolveProductSession, startProductSessionHeartbeat, type ProductSessionHeartbeat, type QueuedProductEvent } from "@/src/services/analyticsService";
 import { useCookieConsent } from "@/src/features/legal/CookieConsent";
+import { clearPendingReferralAttribution, readPendingReferralAttribution } from "@/src/services/referralAttributionService";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 interface AccountContextValue {
   configured: boolean;
@@ -125,6 +127,18 @@ function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analy
     }
     if (!analyticsEnabled || !userId || typeof window === "undefined") return;
     claimQueuedProductEvents(userId);
+    const referralAttribution = publicConfig.productFeatureFlags.referrals
+      ? readPendingReferralAttribution()
+      : null;
+    if (referralAttribution && hasAnalyticsConsent()) {
+      analyticsService.track(
+        "referral_visit_recorded",
+        { source: "referral_link", referral_id: referralAttribution.code, version: 2 },
+        `visit:${referralAttribution.code}:v2`,
+        referralAttribution.capturedAt,
+      );
+      clearPendingReferralAttribution();
+    }
     let sessionHeartbeat: ProductSessionHeartbeat | null = null;
     let flushing = false;
     let retryAttempt = 0;
@@ -203,9 +217,12 @@ function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analy
 function featureForEvent(event: ClientProductEventName) {
   const featureMap: Partial<Record<ClientProductEventName, string>> = {
     landing_primary_cta_clicked: "acquisition", signup_started: "account", signup_completed: "account", email_verified: "account", trial_started: "account", login_succeeded: "account",
-    onboarding_started: "onboarding", onboarding_focus_selected: "onboarding", first_outcome_created: "onboarding", first_action_created: "actions", first_action_completed: "actions", first_habit_recorded: "habits", action_rescheduled: "actions",
+    onboarding_started: "onboarding", onboarding_focus_selected: "onboarding", first_outcome_created: "onboarding", onboarding_completed: "onboarding", first_action_created: "actions", first_action_completed: "actions", first_habit_recorded: "habits", action_rescheduled: "actions",
     premium_gate_viewed: "premium", upgrade_opened: "premium", checkout_started: "checkout",
     goal_created:"goals", annual_plan_updated:"annual_planning", monthly_plan_updated:"monthly_planning", week_planned:"weekly_planning", task_created:"tasks", task_completed:"tasks", today_view_opened:"today", journal_entry_created:"journal", progress_review_created:"progress", routine_created:"routines", workout_completed:"fitness", meal_logged:"nutrition", settings_updated:"settings", suggestion_submitted:"support", bug_report_submitted:"support", support_request_submitted:"support", app_session_started:"account", sign_up_completed:"account",
+    weekly_recap_viewed:"weekly_recap", weekly_recap_completed:"weekly_recap", return_experience_viewed:"return_experience", return_experience_action_clicked:"return_experience",
+    share_card_opened:"sharing", share_card_generated:"sharing", share_card_customized:"sharing", share_exported:"sharing", share_native_started:"sharing", share_card_created:"sharing", share_card_shared:"sharing",
+    referral_prompt_viewed:"referrals", referral_link_created:"referrals", referral_link_copied:"referrals", referral_share_started:"referrals", referral_visit_recorded:"referrals", experiment_exposure_recorded:"experimentation",
   };
   return featureMap[event] ?? "onboarding";
 }

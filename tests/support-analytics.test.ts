@@ -18,7 +18,40 @@ describe("soporte y analítica minimizada", () => {
 
   it("conserva sólo metadatos permitidos y elimina contenido privado", () => {
     expect(sanitizeProductMetadata({ route:"/app/journal?entry=private#note", result:"created", journalText:"contenido privado", token:"secreto", email:"persona@example.com" })).toEqual({ route:"/app/journal", result:"created" });
-    expect(sanitizeProductMetadata({ source:"persona@example.com" })).toEqual({ source:"redacted" });
+    expect(sanitizeProductMetadata({ source:"persona@example.com" })).toEqual({});
+  });
+
+  it("rechaza texto libre y PII incluso cuando usan una clave permitida", () => {
+    expect(sanitizeProductMetadata({
+      source: "María volvió porque quiere ordenar sus finanzas",
+      surface: "maria@example.com",
+      experiment_id: "experimento con espacios",
+      route: "https://example.com/app/today",
+      days_away: 3.5,
+    })).toEqual({});
+  });
+
+  it("acepta únicamente referral_id opacos y metadatos P2 acotados", () => {
+    const referralId = `ref_${"a1".repeat(16)}`;
+    expect(sanitizeProductMetadata({
+      referral_id: referralId,
+      experiment_id: "weekly_recap_v1",
+      variant: "control",
+      flag: "weekly_recap",
+      surface: "dashboard",
+      channel: "native_share",
+      days_away: 14,
+    })).toEqual({
+      referral_id: referralId,
+      experiment_id: "weekly_recap_v1",
+      variant: "control",
+      flag: "weekly_recap",
+      surface: "dashboard",
+      channel: "native_share",
+      days_away: "14",
+    });
+    expect(sanitizeProductMetadata({ referral_id: "maria@example.com" })).toEqual({});
+    expect(sanitizeProductMetadata({ referral_id: "codigo-amiga" })).toEqual({});
   });
 
   it("mantiene el marketing desactivable y la activación centralizada", () => {

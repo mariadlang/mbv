@@ -3,6 +3,7 @@ import { enHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { enNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { enPlanningMessages } from "@/src/i18n/messages/features/planning";
 import { enCalendarMessages } from "@/src/i18n/messages/features/calendar";
+import { enSharingMessages } from "@/src/i18n/messages/features/sharing";
 
 export const enMessages = {
   "language.selector.label": "Language",
@@ -194,4 +195,5 @@ export const enMessages = {
   ...enNavigationSpaceProgressMessages,
   ...enPlanningMessages,
   ...enCalendarMessages,
+  ...enSharingMessages,
 } as const satisfies { [Key in keyof typeof esMessages]: string };

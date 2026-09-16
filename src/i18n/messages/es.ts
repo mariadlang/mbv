@@ -3,6 +3,7 @@ import { esHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { esNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { esPlanningMessages } from "@/src/i18n/messages/features/planning";
 import { esCalendarMessages } from "@/src/i18n/messages/features/calendar";
+import { esSharingMessages } from "@/src/i18n/messages/features/sharing";
 
 export const esMessages = {
   "language.selector.label": "Idioma",
@@ -194,4 +195,5 @@ export const esMessages = {
   ...esNavigationSpaceProgressMessages,
   ...esPlanningMessages,
   ...esCalendarMessages,
+  ...esSharingMessages,
 } as const satisfies Record<string, string>;

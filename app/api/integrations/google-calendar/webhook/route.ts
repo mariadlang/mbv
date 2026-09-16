@@ -4,6 +4,7 @@ import { createCalendarServiceClient, getCalendarServerConfig } from "@/src/serv
 import { constantTimeEqual, sha256 } from "@/src/server/calendar/crypto";
 import { GoogleCalendarApiError, type ConnectedCalendarRow } from "@/src/server/calendar/googleApi";
 import { loadCalendarIntegration, syncGoogleCalendar } from "@/src/server/calendar/sync";
+import { calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 
 const RETRY_HEADERS = { "Retry-After": "5" };
 
@@ -16,6 +17,8 @@ function invalidChannel() {
 }
 
 export async function POST(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse({ acknowledge: true });
+  if (disabled) return disabled;
   const config = getCalendarServerConfig();
   if (!config) return retryableFailure();
 

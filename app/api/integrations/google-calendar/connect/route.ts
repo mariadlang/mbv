@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateRequest } from "@/src/lib/serverAuth";
 import { requireCalendarAccess } from "@/src/server/calendar/access";
-import { calendarErrorResponse } from "@/src/server/calendar/http";
+import { calendarErrorResponse, calendarFeatureDisabledResponse } from "@/src/server/calendar/http";
 import { createCalendarServiceClient, GOOGLE_CALENDAR_SCOPES, requireCalendarServerConfig } from "@/src/server/calendar/config";
 import { encryptServerSecret, GOOGLE_CALENDAR_COMPLETION_COOKIE, GOOGLE_CALENDAR_OAUTH_COOKIE, randomOpaqueValue, safeReturnPath, sha256 } from "@/src/server/calendar/crypto";
 import { googleAuthorizationUrl } from "@/src/server/calendar/googleApi";
@@ -11,6 +11,8 @@ import { cleanupGoogleOAuthStates, drainGoogleGrantRevocations } from "@/src/ser
 const requestSchema = z.object({ returnTo: z.string().max(500).optional() });
 
 export async function POST(request: NextRequest) {
+  const disabled = calendarFeatureDisabledResponse();
+  if (disabled) return disabled;
   try {
     const auth = await authenticateRequest(request);
     if (auth.e2e) return NextResponse.json({ error: "CALENDAR_NOT_CONFIGURED" }, { status: 503 });

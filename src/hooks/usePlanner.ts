@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type { CalendarEvent } from "@/src/domain/calendar";
@@ -33,12 +33,9 @@ import type { ClientProductEventName } from "@/src/domain/productAnalytics";
 import { isTrialPlanningDateAllowed, isTrialPlanningMonthAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 import { toLocalDateKey } from "@/src/lib/dates";
 
-type PlannerService = (typeof import("@/src/services/plannerService"))["plannerService"];
-
-async function getService(): Promise<PlannerService> {
-  const loadedService = await import("@/src/services/plannerService");
-  return loadedService.plannerService;
-}
+type PlannerService = import("@/src/services/plannerService").PlannerService;
+type LocalPlannerClaimService = import("@/src/services/localPlannerClaimService").LocalPlannerClaimService;
+type LegacyPlannerSummary = import("@/src/services/localPlannerClaimService").LegacyPlannerSummary;
 
 function reportPlannerError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "production") {
@@ -46,70 +43,107 @@ function reportPlannerError(context: string, error: unknown) {
   }
 }
 
-export function usePlanner(access: UserAccess | null = null) {
-  const [snapshot, setSnapshot] = useState<PlannerSnapshot>(createEmptySnapshot());
+export function usePlanner(ownerId: string | null, access: UserAccess | null = null) {
+  const [loaded, setLoaded] = useState<{ ownerId: string | null; snapshot: PlannerSnapshot }>({ ownerId: null, snapshot: createEmptySnapshot() });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [legacyState, setLegacyState] = useState<{ ownerId: string; summary: LegacyPlannerSummary } | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const generationRef = useRef(0);
+  const activeRef = useRef<{ ownerId: string; service: PlannerService; claimService: LocalPlannerClaimService } | null>(null);
+  const snapshot = useMemo(
+    () => loaded.ownerId === ownerId ? loaded.snapshot : createEmptySnapshot(),
+    [loaded, ownerId],
+  );
+  const visibleLoading = Boolean(ownerId && (loading || loaded.ownerId !== ownerId));
+  const legacyData = legacyState?.ownerId === ownerId ? legacyState.summary : null;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const service = await getService();
-      setSnapshot(await service.load());
-      setError(null);
-    } catch (caught) {
-      reportPlannerError("load", caught);
-      setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const getActiveService = useCallback(() => {
+    const active = activeRef.current;
+    if (!ownerId || !active || active.ownerId !== ownerId) throw new Error("PLANNER_OWNER_NOT_READY");
+    return active;
+  }, [ownerId]);
 
   useEffect(() => {
+    const generation = ++generationRef.current;
     let active = true;
-    getService()
-      .then((service) => service.load())
-      .then((data) => {
-        if (!active) return;
-        setSnapshot(data);
-        setError(null);
-      })
-      .catch((caught) => {
-        reportPlannerError("initial load", caught);
-        if (active) setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    queueMicrotask(() => {
+      if (!active || generationRef.current !== generation) return;
+      setSaving(false);
+      setError(null);
+      setLegacyState(null);
+      setLoading(Boolean(ownerId));
+      if (!ownerId) setLoaded({ ownerId: null, snapshot: createEmptySnapshot() });
+    });
+    if (!ownerId) {
+      activeRef.current = null;
+      return () => { active = false; };
+    }
+
+    void Promise.all([
+      import("@/src/services/plannerService"),
+      import("@/src/services/localPlannerClaimService"),
+    ]).then(async ([plannerModule, claimModule]) => {
+      const service = plannerModule.createLocalPlannerService(ownerId);
+      const claimService = claimModule.createIndexedDbLocalPlannerClaimService(ownerId);
+      if (!active || generationRef.current !== generation) {
+        void service.close();
+        claimService.close();
+        return;
+      }
+      activeRef.current = { ownerId, service, claimService };
+      const legacySummary = await claimService.inspect();
+      const data = legacySummary ? createEmptySnapshot() : await service.load();
+      if (!active || generationRef.current !== generation) return;
+      setLoaded({ ownerId, snapshot: data });
+      setLegacyState(legacySummary ? { ownerId, summary: legacySummary } : null);
+      setError(null);
+    }).catch((caught) => {
+      reportPlannerError("initial load", caught);
+      if (active && generationRef.current === generation) setError("No pudimos abrir tus datos locales. Inténtalo de nuevo.");
+    }).finally(() => {
+      if (active && generationRef.current === generation) setLoading(false);
+    });
+
     return () => {
       active = false;
+      const current = activeRef.current;
+      if (current?.ownerId === ownerId) {
+        activeRef.current = null;
+        void current.service.close();
+        current.claimService.close();
+      }
     };
-  }, []);
+  }, [ownerId, reloadNonce]);
 
   const commit = useCallback(
     async (operation: (service: PlannerService) => Promise<PlannerSnapshot>) => {
+      const current = getActiveService();
+      const generation = generationRef.current;
       setSaving(true);
       try {
-        const service = await getService();
-        const next = await operation(service);
-        setSnapshot(next);
-        setError(null);
+        const next = await operation(current.service);
+        if (generationRef.current === generation && activeRef.current === current) {
+          setLoaded({ ownerId: current.ownerId, snapshot: next });
+          setError(null);
+        }
         return next;
       } catch (caught) {
         reportPlannerError("save", caught);
-        setError("No pudimos guardar este cambio. Inténtalo de nuevo.");
+        if (generationRef.current === generation && activeRef.current === current) {
+          setError("No pudimos guardar este cambio. Inténtalo de nuevo.");
+        }
         throw caught;
       } finally {
-        setSaving(false);
+        if (generationRef.current === generation && activeRef.current === current) setSaving(false);
       }
     },
-    [],
+    [getActiveService],
   );
 
   const downloadBackup = useCallback(async () => {
-    const service = await getService();
-    const json = await service.exportBackup();
+    const json = await getActiveService().service.exportBackup();
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -117,7 +151,7 @@ export function usePlanner(access: UserAccess | null = null) {
     anchor.download = `my-best-version-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-  }, []);
+  }, [getActiveService]);
 
   const commitTracked = useCallback(async (event: ClientProductEventName, operation: (service: PlannerService) => Promise<PlannerSnapshot>, properties: Record<string, string | number | boolean> = {}, dedupeKey?: string) => {
     const next = await commit(operation);
@@ -136,9 +170,37 @@ export function usePlanner(access: UserAccess | null = null) {
 
   const previewBackup = useCallback(async (file: File) => {
     backupFileSchema.parse({ type: file.type, size: file.size });
-    const service = await getService();
-    return service.previewBackup(await file.text());
-  }, []);
+    return getActiveService().service.previewBackup(await file.text());
+  }, [getActiveService]);
+
+  const claimLegacyData = useCallback(async () => {
+    const current = getActiveService();
+    const generation = generationRef.current;
+    setSaving(true);
+    try {
+      const next = await current.claimService.claim();
+      if (generationRef.current === generation && activeRef.current === current) {
+        setLoaded({ ownerId: current.ownerId, snapshot: next });
+        setLegacyState(null);
+        setError(null);
+      }
+      return next;
+    } catch (caught) {
+      reportPlannerError("claim legacy data", caught);
+      if (generationRef.current === generation && activeRef.current === current) {
+        setError("No pudimos copiar los datos locales. No se eliminó nada; puedes intentarlo de nuevo.");
+      }
+      throw caught;
+    } finally {
+      if (generationRef.current === generation && activeRef.current === current) setSaving(false);
+    }
+  }, [getActiveService]);
+
+  const startFresh = useCallback(async () => {
+    const current = getActiveService();
+    await current.claimService.startFresh();
+    if (activeRef.current === current) setLegacyState(null);
+  }, [getActiveService]);
 
   const resumeExistingSpace = useCallback(
     (name: string) => commit((service) => service.resumeExistingSpace(name)),
@@ -170,10 +232,13 @@ export function usePlanner(access: UserAccess | null = null) {
 
   return {
     snapshot,
-    loading,
+    loading: visibleLoading,
     saving,
     error,
-    retry: load,
+    legacyData,
+    claimLegacyData,
+    startFresh,
+    retry: () => setReloadNonce((value) => value + 1),
     completeOnboarding: (
       input: OnboardingInput & { selectedAreaNames: string[]; priorities?: string[]; focus?: "today" | "goal" | "week" | "habit"; result?: string; action?: string },
     ) => commitTracked("onboarding_completed", (service) => service.completeOnboarding(input), { result: "completed", version: 2 }, "completed:v2"),
@@ -233,6 +298,7 @@ export function usePlanner(access: UserAccess | null = null) {
       commit((service) => service.createProject(input)),
     toggleTask: async (taskId: string) => { assertTaskWritable(taskId); const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") { analyticsService.track("task_completed", { source: "task_toggle" }); analyticsService.track("first_action_completed", { source: "task_toggle", version: 2 }, "completed:v2"); } return next; },
     deleteTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.deleteTask(taskId)); },
+    cancelTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.cancelTask(taskId)); },
     rescheduleTask: async (taskId: string, date: string) => {
       assertTaskWritable(taskId, date);
       const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
@@ -347,7 +413,13 @@ export function usePlanner(access: UserAccess | null = null) {
       commit((service) => service.addProjectChecklistItem(projectId, title)),
     toggleProjectChecklistItem: (itemId: string) =>
       commit((service) => service.toggleProjectChecklistItem(itemId)),
-    clearAll: () => commit((service) => service.clear()),
+    clearAll: async () => {
+      const current = getActiveService();
+      await current.claimService.startFresh();
+      const next = await commit((service) => service.clear());
+      if (activeRef.current === current) setLegacyState(null);
+      return next;
+    },
     downloadBackup,
     importBackup,
     previewBackup,

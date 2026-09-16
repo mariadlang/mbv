@@ -1,6 +1,6 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-14, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-16, America/Bogota (UTC-05:00)**.
 
 ## Punto de continuidad
 
@@ -11,9 +11,10 @@
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
 - Entrega P0: `MBV-H-022` quedó consolidada en `5c5f5a0bfd342a4b731fa927f992d7233959006d`, enviada a `origin/main` y publicada como versión 27 de Sites.
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
-- Integración Google Calendar: `MBV-H-025` implementa el MVP bidireccional sobre el planner existente. El código funcional quedó consolidado y enviado a `origin/main` en `14ec6226dfb433db6de0956cae223d7b6ca1a482`, y publicado como versión 30 de Sites mediante `appgdep_6aa82c3d545c819188a007479e6bc342`. `MBV-H-026` añade en `83860806234c4aebea274803192a908d12294b4f` compatibilidad con calendarios delegados escribibles y registra la activación de Google Calendar API. `MBV-H-027` aplica y valida la migración remota `202609110001`; `MBV-H-028` crea el cliente OAuth dedicado y registra la Redirect URI exacta. `MBV-H-029` corrige la clave server-side ocultada, aplica la revisión 4 de Sites y certifica OAuth y primera sincronización con una cuenta real. `MBV-H-030` completa la preparación del dominio `mybestversion.life`: proyecto Google Cloud/API, cliente OAuth web verificado contra su callback, cinco variables Production en Vercel, política server-side rastreable con Uso Limitado y deployment `ec22cb1` listo con smoke público y autenticado. Siguen pendientes la reautorización en el nuevo cliente, los datos legales verificables y la aprobación pública de Google; consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+- Integración Google Calendar: `MBV-H-025` a `MBV-H-031` documentan su implementación, hardening y validación histórica. Por decisión expresa del 16 de septiembre, `MBV-H-032` pausa la integración, retira sus superficies activas y programa el cierre del proyecto Google Cloud `mbv-calendar-production`. El calendario local permanece disponible; no se purgaron datos históricos de Supabase ni secretos de Vercel. Consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+- P2: `MBV-H-033` prepara en el working tree la primera entrega de retención y crecimiento amable sobre la base publicada `36abeec`. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los flags apagados. La validación final aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa más el E2E Premium final desktop/mobile y la matriz visual P2. P2-B/P2-C quedan documentados o parciales donde dependen de canales, activos, derechos o decisiones externas. La migración P2 está aplicada y certificada en Supabase; no hubo commit, push ni deploy.
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-030` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-033` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
 
 ## Qué es el producto
 
@@ -110,18 +111,27 @@ No existe sincronización del contenido del planner entre dispositivos.
 
 ### Google Calendar
 
-- Ajustes → Integraciones permite iniciar OAuth independiente del login, elegir calendarios visibles y definir uno escribible como predeterminado.
-- Los eventos/citas se distinguen de tareas y prioridades. Se crean en Mi espacio y se muestran como contexto en Semana y Mi día sin convertir el producto en un calendario tradicional.
-- La sincronización MBV ↔ Google contempla alta, edición, cancelación, todo el día, multidía, zona IANA, recurrencias, múltiples calendarios, sync incremental, webhooks y reconexión.
-- El planner sigue local-first; la copia operativa, tokens AES-GCM e identidad remota son server-only. Los fallos externos dejan outbox y feedback recuperables sin bloquear la planificación.
-- ETags y conflictos requieren una decisión explícita; IDs deterministas, marcadores privados completos, índices únicos, generations, leases y RPC atómicos previenen duplicados y escrituras obsoletas. Cada conflicto tiene un UUID propio que el cliente debe presentar al resolverlo, por lo que una decisión antigua no puede reclamar un conflicto nuevo sobre la misma fila.
-- Ningún `PATCH` o `DELETE` de resolución puede mutar un evento remoto sin validar las tres marcas privadas de ownership. Una colisión durante la eliminación de un alta pendiente termina sólo el vínculo local y nunca toca el evento Google ajeno.
-- La migración `202609110001_google_calendar_integration.sql` está aplicada y registrada en el proyecto Supabase `yvrvetuzuinoinukrivo`; el ledger local/remoto coincide y el lint remoto de nivel error está limpio.
-- La conexión no se activa hasta completar OAuth con una sesión Bearer de la misma cuenta MBV. Desconexión y OAuth abandonado usan una cola cifrada de revocación con reintento diario autenticado.
-- Los calendarios delegados con acceso `writerWithoutPrivateAccess` se aceptan durante OAuth y se conservan como destinos escribibles sin ampliar los scopes solicitados.
-- Una cuenta real completó OAuth, configuración del calendario principal y primera sincronización en producción; los eventos importados aparecen como sincronizados en Mi espacio.
-- La aplicación OAuth de Sites todavía no está verificada por Google. El flujo funciona para cuentas admitidas. Para el dominio oficial existe el proyecto separado `mbv-calendar-production`, con Calendar API habilitada, cliente web/callback validados, las cinco variables requeridas guardadas como Secret sólo en Vercel Production y el deployment público comprobado. El grant antiguo de Sites se marcó correctamente para reconexión tras el cambio de cliente/clave; falta completar esa reautorización de prueba. Un lanzamiento general requiere además completar la identidad legal y obtener la verificación de marca/scopes para retirar la advertencia y el límite de usuarios no verificados.
-- Guía operativa y de rollout: [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+- La integración está pausada por defecto con `NEXT_PUBLIC_GOOGLE_CALENDAR_ENABLED=0`. Ajustes no ofrece OAuth, las vistas no muestran calendarios/eventos remotos y el provider no consulta, sincroniza ni reintenta en segundo plano.
+- Los endpoints interactivos responden `404 CALENDAR_DISABLED`; webhook y mantenimiento responden `204` y el cron fue retirado de Vercel.
+- El proyecto Google Cloud `MBV Calendar Production` (`mbv-calendar-production`) quedó programado para cierre. Google conserva una ventana de recuperación de 30 días antes de la eliminación definitiva.
+- El calendario local continúa funcionando en Mi espacio, Semana y Mi día. Tareas, prioridades y eventos locales siguen separados. Editar un evento histórico vinculado durante la pausa lo convierte en copia local; borrarlo sólo afecta la copia local.
+- La implementación y migración histórica permanecen versionadas. No se purgaron credenciales/caché históricas de Supabase ni secretos de Vercel porque no se autorizó esa eliminación adicional; la app pausada no los usa y la supresión se canaliza por PQR/Centro de Privacidad.
+- Reactivar Calendar requiere una decisión nueva, proyecto OAuth válido, credenciales rotadas, revisión legal y repetición del QA completo; no basta con cambiar el flag.
+- Guía histórica y contrato de pausa: [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
+
+### P2 — Retención y crecimiento amable
+
+- Los cinco flags P2 —`weekly_recap`, `return_experience`, `share_cards`, `referrals` y `premium_contextual_prompts`— permanecen en `false` por defecto. Completar código o QA no los activa en producción.
+- `premium_contextual_prompts` sólo cambia la descripción del gate existente de planificación a 5 años. `canAccessFeature()` conserva toda la autoridad de acceso; el copy, CTA y comportamiento anteriores se mantienen cuando el flag está apagado y Feed Hub no cambia.
+- Weekly Recap usa evidencia real de tareas, prioridades, hábitos, metas, hitos y reprogramaciones hasta el día actual. Registra decisiones textuales de conservar, mover o soltar, no muta pendientes directamente y puede preparar la semana siguiente. Las acciones directas viven en Regreso amable.
+- La experiencia de regreso aparece tras inactividad y propone una acción real: retomar un pendiente o prioridad, elegir un mínimo viable, mover una acción a hoy, soltarla o descartar la sugerencia.
+- Las tarjetas compartibles se generan por opt-in con métricas agregadas permitidas, preview y formatos exactos para Story, Feed y cuadrado. No toman texto libre del planner; sólo admiten un titular opcional escrito/revisado explícitamente y excluido de analytics. Exportan PNG y usan Web Share cuando está disponible.
+- Referral usa un código opaco estable por cuenta y atribución first-touch local de hasta 29 días. La atribución sólo se transmite con consentimiento analítico; no existe todavía una recompensa comercial aprobada ni se presupone validación jurídica final.
+- La taxonomía P2 cierra nombres y metadatos aceptados, conserva cohortes observables y añade métricas agregadas de D1/D7/D30, WAU, recap, sharing, referrals y conversión. Las reglas lifecycle son deduplicables y separan mensajes transaccionales, pero no activan email/push ni un proveedor externo.
+- IndexedDB queda aislado por cuenta autenticada mediante un namespace propio. La reclamación del almacenamiento legacy es conservadora, conserva la base original y evita mezclar datos al cambiar de cuenta.
+- `supabase/migrations/202609160001_p2_growth_analytics.sql` se aplicó al proyecto enlazado `yvrvetuzuinoinukrivo`. El ledger quedó alineado hasta `202609160001`, el dry-run posterior confirmó que la base está al día y el lint remoto terminó sin errores. Analytics/referrals P2 siguen apagados hasta smoke autenticado y revisión legal.
+- P2-B/P2-C cuentan con sistema y documentación de motion, diseño social, contenido, fotografía/assets, portal de marca, campañas, partnerships y experimentación. La ejecución externa, los assets finales con derechos, el master vectorial, canales lifecycle, recompensas y campañas reales siguen fuera de esta entrega.
+- Fuentes de alcance: [`../product/p2-roadmap.md`](../product/p2-roadmap.md), [`../product/weekly-recap.md`](../product/weekly-recap.md), [`../product/shareable-progress.md`](../product/shareable-progress.md), [`../product/referrals.md`](../product/referrals.md), [`../product/lifecycle.md`](../product/lifecycle.md) y [`../analytics/event-taxonomy.md`](../analytics/event-taxonomy.md).
 
 ### Legal, soporte y plataforma
 
@@ -151,7 +161,7 @@ Token de cuenta → rutas API → Supabase
    ├→ soporte/FAQ
    ├→ preferencias de marketing
    ├→ eventos minimizados y consentidos → hitos de activación v2
-   ├→ caché/identidad Calendar server-only ↔ Google Calendar API/webhook
+   ├→ datos históricos Calendar server-only (integración pausada, sin tráfico)
    └→ plataforma superadmin
 ```
 
@@ -193,7 +203,7 @@ Token de cuenta → rutas API → Supabase
 - Zustand para preferencias de interfaz.
 - Recharts y Lucide.
 - Supabase JS para Auth y datos remotos mínimos.
-- Google Calendar API mediante OAuth 2.0/PKCE, sync incremental y channels/webhooks opcionales.
+- Código histórico de Google Calendar mediante OAuth 2.0/PKCE, actualmente desactivado por feature flag.
 - Mercado Pago mediante enlace externo configurable.
 - Vitest, Testing Library y Playwright.
 - Vercel como runtime principal configurado; Vinext/Cloudflare Sites como destino adicional explícito.
@@ -237,8 +247,8 @@ pnpm test:e2e
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
 - No anunciar Feed Hub como disponible, ni inventar precio, periodicidad o activación automática de Premium.
 - Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
-- Mantener tareas/prioridades separadas de eventos; sólo un evento/cita explícito puede sincronizarse con Google Calendar.
-- Conservar tokens y caché Calendar server-side, con acceso exclusivo de `service_role`, generaciones y resolución de conflictos explícita.
+- Mantener tareas/prioridades separadas de eventos y preservar el calendario local aunque la integración externa esté pausada.
+- No reactivar Google Calendar ni purgar datos históricos server-side sin una decisión y autorización específicas.
 - No considerar una tarea con cambios completa sin actualizar `HISTORIAL.md` y, si aplica, este archivo.
 
 ## Validación conocida
@@ -282,7 +292,7 @@ Para el candidato P1 del 2026-09-10:
 - Builds Next y Vinext aprobados; smoke de producción aprobado sobre portada, Trial, Dashboard, Mi día, Plan semanal y Hábitos, sin errores de consola observados.
 - Verificación post-release: `db lint` identificó y luego confirmó resuelto el conflicto PL/pgSQL P0 de `record_user_event`; la migración forward `202609100001_fix_product_analytics_v2_ambiguity.sql` quedó aplicada, la base remota quedó al día y `/api/events` respondió `200` en siete envíos consecutivos.
 
-Para la integración Google Calendar `MBV-H-025`, iniciada el 2026-09-11 y cerrada técnicamente el 2026-09-14:
+Para la implementación histórica Google Calendar `MBV-H-025`, iniciada el 2026-09-11 y cerrada técnicamente el 2026-09-14:
 
 - ESLint y TypeScript: aprobados.
 - Unitarias: 33 archivos y 184 pruebas aprobadas.
@@ -290,7 +300,15 @@ Para la integración Google Calendar `MBV-H-025`, iniciada el 2026-09-11 y cerra
 - Auditoría de tokens: 291/291 coincidencias dentro del baseline; contraste: 22/22 pares aprobados.
 - Builds de producción Next.js y Sites/Vinext: aprobados con las rutas API de Calendar incluidas.
 - La ejecución E2E global cerró 66 casos aprobados y 9 omisiones intencionales; el único caso no concluido perdió la sesión de navegador durante una suspensión de 10,5 horas. Su matriz de 16 rutas × viewports requeridos × claro/oscuro se repitió en una sesión continua y aprobó. El recorrido de evento local entre Mi espacio, Plan semanal y Mi día volvió a aprobar en desktop y mobile, incluida la preservación de la zona IANA al editar.
-- Cuatro revisiones independientes no encontraron bloqueadores P0/P1 estáticos tras cerrar ownership, ETag atómico, reintentos idempotentes, protección ABA por UUID de conflicto, desconexión/reconexión, OAuth, mantenimiento y SQL. La migración y el OAuth/primer sync con una cuenta real ya están certificados; no se ejecutó una mutación remota controlada ni una prueba concurrente PostgreSQL real.
+- Cuatro revisiones independientes no encontraron bloqueadores P0/P1 estáticos tras cerrar ownership, ETag atómico, reintentos idempotentes, protección ABA por UUID de conflicto, desconexión/reconexión, OAuth, mantenimiento y SQL. La migración y el OAuth/primer sync con una cuenta real quedaron certificados históricamente; no se ejecutó una mutación remota controlada ni una prueba concurrente PostgreSQL real.
+- Para `MBV-H-032`, TypeScript, ESLint, 33 archivos/185 pruebas unitarias, i18n, tokens, contraste y builds Next/Vinext aprobaron. El E2E dirigido pasó 4/4 casos en desktop y mobile, tanto para la ausencia de Calendar externo/sus llamadas API como para el CRUD local entre Mi espacio, Semana y Mi día.
+
+Para el candidato P2 local `MBV-H-033`:
+
+- Las pruebas dirigidas de Weekly Recap, regreso amable, share cards, referrals, analítica/lifecycle y aislamiento de cuenta están incorporadas; los recorridos P2 dirigidos ya aprobaron en desktop y mobile durante la implementación.
+- La matriz visual P2 cubre 375×812, 390×844, 430×932, 768×1024, 1366×768 y 1440×900, en claro/oscuro y ES/EN Beta, con evidencia en `docs/qa/screenshots/`.
+- Lint, tipos, 44 archivos/243 pruebas unitarias, builds Next/Vinext y Playwright (82 aprobadas, 12 saltadas por diseño, 0 fallos en la suite completa previa) quedaron aprobados. Después del cableado Premium, su recorrido dirigido volvió a aprobar 2/2 en desktop/mobile. Esto no implica activación pública.
+- La migración P2 se aplicó y pasó postchecks remotos; no hubo smoke autenticado de producto ni activación de flags.
 
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 
@@ -307,12 +325,17 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 9. `mybestversion.life` apunta al deployment Production de Vercel y no está adjunto al Site; la URL de Sites se conserva como runtime alternativo del despliegue anterior.
 10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
 11. Permanecen 291 coincidencias de color directo revisadas en 15 archivos; el baseline impide crecimiento y no autoriza una sustitución masiva sin QA visual.
-12. Google Calendar está operativo en Sites para cuentas admitidas y ya completó OAuth, selección, sync e importación real. El rollout del dominio oficial ya tiene proyecto Google, API, cliente OAuth/callback, cinco variables de Vercel Production y deployment público comprobado. El smoke autenticado confirmó configuración activa y solicitó reconectar el grant legado con el nuevo cliente; faltan completar esa autorización, la identidad legal verificable y la aprobación pública de Google. Una prueba real de escritura debe hacerse con un evento controlado y autorización explícita.
+12. Google Calendar está pausado. El proyecto `mbv-calendar-production` quedó programado para cierre, mientras las tablas históricas y secretos permanecen sin uso y sin purga destructiva. La política explica cómo solicitar su supresión.
+13. La migración P2 `202609160001_p2_growth_analytics.sql` ya está aplicada y el esquema remoto pasó lint. Antes de habilitar analytics o referrals P2 falta un smoke autenticado controlado y, para referral, revisión legal.
+14. Las reglas lifecycle están modeladas, pero faltan proveedor, preferencias granulares, consentimiento persistido y operación de baja antes de enviar email o push.
+15. Referrals no ofrece todavía recompensa, descuento ni días Premium; esas condiciones y cualquier ajuste de política/reconsentimiento necesitan decisión comercial y revisión legal expresa.
+16. Las guías P2 de fotografía, assets, campañas y partnerships no sustituyen producción final, licencias, permisos de imagen, presupuesto ni acuerdos externos.
+17. La atribución referral valida formato opaco y first-touch local, pero aún no registra propiedad server-side del código ni exige en SQL el orden visita → signup dentro de una ventana propia. Mantener el flag apagado y endurecer este contrato antes de incentivos o rollout amplio.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
 
-La entrega funcional vigente está publicada como versión 31 en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`, conserva acceso público y usa la revisión 4 de variables de Sites. La migración `202609110001_google_calendar_integration.sql`, el cliente OAuth dedicado, la Redirect URI exacta y las variables privadas/operativas están configurados; el redeploy `appgdep_6aa8662a06d08191a8b3b9de6cedde6d` terminó correctamente sin reconstruir ni cambiar la fuente validada. OAuth, selección del calendario principal, primera sincronización e importación visible quedaron certificados con una cuenta real.
+La entrega publicada vigente continúa siendo `36abeec` en Vercel/Sites; todavía incluye el rollout histórico de Calendar. El working tree reúne `MBV-H-032`, que apaga la integración externa sin eliminar el calendario local, y `MBV-H-033`, candidato P2 detrás de flags apagados. No se ha hecho commit, push ni deploy de estos cambios.
 
-Siguiente paso operativo para Calendar: desplegar esta entrega con las cinco variables Production, verificar que `/status` indique configuración activa y que `/connect` construya el client ID/callback oficiales, y completar OAuth con cuentas de prueba sin mutar eventos. Después deben completarse los datos legales reales, verificar el dominio en Search Console y preparar la verificación de marca/scopes sensibles; el envío final requiere autorización específica. La prueba controlada de escritura Google ↔ MBV también requiere autorización explícita. Después, resolver las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales y master vectorial— sin mezclarlas con el alcance P1 ni iniciar P2 por anticipado.
+Siguiente paso operativo: revisar el diff conjunto, consolidar el commit y decidir por separado el push/deploy. Si se despliega, mantener los cinco flags apagados y ejecutar smoke autenticado de `/api/events` y métricas antes de cualquier rollout. Las demás dependencias externas del lanzamiento comercial —revisión legal, webhook/conciliación de Mercado Pago, condiciones comerciales, identidad legal, canales lifecycle y master vectorial— siguen separadas.
