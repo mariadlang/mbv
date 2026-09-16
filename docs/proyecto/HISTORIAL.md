@@ -29,6 +29,7 @@ Reconstrucción realizada el **2026-09-04 (America/Bogota, UTC-05:00)**. El orde
 23. [Consolidación P1](#2026-09-09-a-2026-09-10--consolidación-p1-de-experiencia-y-sistema)
 24. [Google Calendar: implementación y pausa](#2026-09-11--integración-bidireccional-google-calendar)
 25. [P2: retención y crecimiento amable](#2026-09-16--implementación-p2-de-retención-y-crecimiento-amable)
+26. [Publicación controlada de Calendar y P2](#2026-09-16--publicación-controlada-de-la-pausa-calendar-y-p2-detrás-de-flags)
 
 ## Nota sobre el grafo
 
