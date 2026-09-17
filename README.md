@@ -30,7 +30,7 @@ La documentación vigente para continuar el proyecto comienza en [`docs/proyecto
 
 La nueva portada vive en `src/features/landing/` y organiza la navegación por los anchors `#inicio`, `#como-funciona`, `#que-incluye`, `#beneficios`, `#planes` y `#faq`. Usa capturas reales ya inspeccionadas por QA: `p0-dashboard-1440x900.png`, `p0-today-390x844.png` y `p0-habits-1440x900.png`, todas bajo `docs/qa/screenshots/`.
 
-La landing y su matriz comercial están implementadas en el working tree, pero **no se han desplegado en este task**. La producción pública continúa en el release `7628074708e379dd5c79b9b76f3102022e25a5a6` hasta que exista commit, push, CI y despliegue posteriores.
+La landing y su matriz comercial quedaron publicadas en el commit funcional `7abddae651f34ff4e086a5b6a278c7032c73466d`. GitHub Actions aprobó lint, tipos, unitarias y build; Vercel la sirve en Production desde `mybestversion.life`.
 
 ## Desarrollo
 
@@ -102,7 +102,7 @@ Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalment
 
 ## Deployment
 
-Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. El último release comprobado en `mybestversion.life` es `7628074708e379dd5c79b9b76f3102022e25a5a6`. Vinext/Cloudflare Sites permanece como destino explícito adicional del release anterior. La nueva landing editorial de este working tree todavía no forma parte de ninguno de esos despliegues.
+Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. El último release funcional comprobado en `mybestversion.life` es `7abddae651f34ff4e086a5b6a278c7032c73466d`. Vinext/Cloudflare Sites permanece como destino explícito adicional del release anterior y no se actualizó en esta publicación.
 
 ## CI
 

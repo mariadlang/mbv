@@ -15,12 +15,12 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Última revisión documental: **2026-09-16, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `main`.
-- SHA funcional vigente: `7628074708e379dd5c79b9b76f3102022e25a5a6`.
+- SHA funcional vigente: `7abddae651f34ff4e086a5b6a278c7032c73466d`.
 - Sincronización observada al publicar: `main` y `origin/main` alineados; CI y Vercel Production aprobados.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el estado local documentado en `MBV-H-035`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release de landing documentado en `MBV-H-036`.
 
-P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7628074708e379dd5c79b9b76f3102022e25a5a6` publica la pausa de Calendar y el código P2 detrás de flags apagados; GitHub Actions, Vercel y el smoke público aprobaron. `MBV-H-035` documenta la nueva landing editorial y la matriz comercial presentes en el working tree: **todavía no hubo commit, push ni despliegue de esa landing en este task**, por lo que no deben atribuirse al SHA publicado.
+P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7abddae651f34ff4e086a5b6a278c7032c73466d` conserva la pausa de Calendar y los flags P2 apagados, y publica la landing editorial y la matriz comercial descritas en `MBV-H-035`. `MBV-H-036` registra migración, commit, push, CI, Vercel Production y smoke público aprobados.
 
 ## Fuentes utilizadas
 

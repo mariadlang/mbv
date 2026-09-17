@@ -16,7 +16,7 @@
 
 `brand-icon.svg` y `brand-icon.png` contienen el mismo raster según la auditoría P0. Se conservan todos los archivos porque la ausencia de una referencia interna no descarta usos externos.
 
-Las tres capturas `MBV-PRODUCT-QA-*` son evidencia real del producto, no mockups recreados para marketing. `LandingProductVisuals.tsx` las importa desde `docs/qa/screenshots/`; Dashboard y Mi día componen el hero, y Dashboard/Mi día/Hábitos forman el showcase. Esta aprobación cubre la landing implementada en el working tree, que todavía no se ha desplegado en este task. Sustituirlas exige nueva inspección visual, revisión de datos visibles y actualización de este manifiesto.
+Las tres capturas `MBV-PRODUCT-QA-*` son evidencia real del producto, no mockups recreados para marketing. `LandingProductVisuals.tsx` las importa desde `docs/qa/screenshots/`; Dashboard y Mi día componen el hero, y Dashboard/Mi día/Hábitos forman el showcase publicado en `7abddae651f34ff4e086a5b6a278c7032c73466d`. Sustituirlas exige nueva inspección visual, revisión de datos visibles y actualización de este manifiesto.
 
 ## Dependencias externas
 

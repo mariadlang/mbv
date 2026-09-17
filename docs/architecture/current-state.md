@@ -1,6 +1,6 @@
 # Arquitectura vigente
 
-**Corte verificado:** 2026-09-16. Este documento describe el código del working tree; los ADR explican por qué existen sus límites. La landing editorial descrita aquí todavía no se ha desplegado en este task.
+**Corte verificado:** 2026-09-16. Este documento describe el release funcional `7abddae651f34ff4e086a5b6a278c7032c73466d`; los ADR explican por qué existen sus límites. La landing editorial está publicada en Vercel Production y `mybestversion.life`.
 
 ## Mapa de capas
 
@@ -80,7 +80,7 @@ Nunito Sans continúa como fuente del tracker autenticado y de las superficies p
 - La eliminación remota de cuenta requiere el procedimiento documentado para adjuntos privados.
 - La facturación autoservicio no está conciliada.
 - Los precios mensual/anual ya se comunican, pero impuestos, renovación, cancelación, reembolsos y condiciones legales siguen pendientes.
-- La landing editorial de este working tree todavía no está desplegada; producción continúa en el release `7628074708e379dd5c79b9b76f3102022e25a5a6`.
+- La landing editorial está desplegada en Vercel Production desde `7abddae651f34ff4e086a5b6a278c7032c73466d`; Cloudflare Sites conserva el release alternativo anterior.
 - `mybestversion.life` no está confirmado como dominio adjunto al Site publicado.
 - El logo activo depende de un raster dentro de SVG; falta el master vectorial.
 - La cobertura i18n explícita es progresiva y el bridge legacy sigue activo.
