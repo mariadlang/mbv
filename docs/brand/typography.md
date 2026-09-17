@@ -1,16 +1,21 @@
 # Tipografía de My Best Version
 
-## Familia oficial
+## Familias vigentes por superficie
 
-My Best Version utiliza **Nunito Sans** en toda la experiencia: producto, navegación, formularios, onboarding, autenticación y superficies de marketing. La fuente se carga una sola vez en `app/layout.tsx` mediante `next/font/google` y se expone como `--font-nunito-sans`.
+My Best Version mantiene **Nunito Sans** como familia del tracker autenticado, navegación de producto, formularios, onboarding, autenticación y superficies públicas legacy. La nueva landing editorial usa una combinación deliberadamente acotada: **Playfair Display** para titulares y acentos editoriales, e **Inter** para navegación, cuerpo, botones, tablas y controles.
 
-El CSS consume exclusivamente:
+Las tres familias se cargan en `app/layout.tsx` mediante `next/font/google` y se exponen como `--font-nunito-sans`, `--font-playfair` y `--font-inter`. La separación se realiza por alcance CSS:
 
 ```css
+/* Tracker y superficies compartidas */
 font-family: var(--font-family-primary);
+
+/* Landing editorial */
+.landing-page { font-family: var(--font-inter), "Segoe UI", Arial, sans-serif; }
+.landing-page :where(h1, h2) { font-family: var(--font-playfair), Georgia, serif; }
 ```
 
-La pila completa es Nunito Sans, `"Segoe UI"`, Arial y `sans-serif`. No hay una segunda familia editorial o serif.
+Playfair e Inter no redefinen los tokens globales del tracker y no deben filtrarse fuera de `.landing-page`. Nunito Sans conserva la pila `"Segoe UI"`, Arial y `sans-serif`; Playfair usa Georgia como fallback editorial e Inter usa `"Segoe UI"`, Arial y `sans-serif`.
 
 ## Pesos aprobados
 
@@ -23,13 +28,13 @@ La pila completa es Nunito Sans, `"Segoe UI"`, Arial y `sans-serif`. No hay una 
 | `--font-weight-bold` | 700 | Titulares y métricas principales |
 | `--font-weight-heavy` | 750 | Énfasis excepcional y cifras destacadas |
 
-Nunito Sans se usa como fuente variable, por lo que estos pesos no requieren imports adicionales.
+Nunito Sans, Inter y Playfair Display se cargan como fuentes variables, por lo que sus pesos usados no requieren imports adicionales. La escala de tokens anterior continúa siendo la autoridad del tracker. En la landing, Inter usa principalmente 400–800 y Playfair 500–600 según los estilos acotados de `landing.css`; esos valores no crean nuevos pesos globales.
 
 ## Roles de tamaño
 
 | Rol | Token de tamaño | Interlineado recomendado | Uso |
 | --- | --- | --- | --- |
-| Display | `--type-display-size` | `--line-height-tight` | Hero principal de marketing |
+| Display | `--type-display-size` | `--line-height-tight` | Displays del tracker o marketing legacy; la landing tiene escala editorial propia y acotada |
 | Display compacto | `--type-display-compact-size` | `--line-height-display-compact` | Planificación semanal |
 | H1 | `--type-h1-size` | `--line-height-heading` | Título principal de página |
 | H2 | `--type-h2-size` | `--line-height-title` | Secciones de primer nivel |
@@ -47,7 +52,7 @@ Nunito Sans se usa como fuente variable, por lo que estos pesos no requieren imp
 
 Los roles responsivos especializados (`--type-plan-display-size`, `--type-auth-display-size` y `--type-highlight-size`) mantienen escalas ya aprobadas en flujos concretos.
 
-`Body`, H1–H4, Button, Navigation, Eyebrow, Caption y Label ya tienen consumidores directos en foundations o primitives. `Body Large`, `Body Small` y `Quote / Highlight` son roles opt-in para componentes que ya necesiten esa jerarquía; P1 no los aplica de forma masiva a bloques heredados porque eso cambiaría la composición visual sin una revisión por pantalla.
+`Body`, H1–H4, Button, Navigation, Eyebrow, Caption y Label ya tienen consumidores directos en foundations o primitives. `Body Large`, `Body Small` y `Quote / Highlight` son roles opt-in para componentes que ya necesiten esa jerarquía. La landing conserva sus roles dentro de `src/styles/features/landing.css`; no deben promoverse a tokens globales sin revisar el tracker completo.
 
 ## Jerarquía y tono
 
@@ -56,6 +61,7 @@ Los roles responsivos especializados (`--type-plan-display-size`, `--type-auth-d
 - Eyebrows y marca pueden usar tracking amplio; el cuerpo y los controles conservan espaciado normal.
 - El énfasis se crea primero con tamaño, peso y espacio. El color es un apoyo y no la única señal.
 - En móvil se permiten overrides de tamaño cuando evitan cortes o desbordes, sin cambiar de familia.
+- La landing puede usar Playfair para jerarquía editorial e Inter para legibilidad operativa; el tracker no adopta esas familias por herencia accidental.
 
 ## Uso correcto
 
@@ -69,4 +75,4 @@ Los roles responsivos especializados (`--type-plan-display-size`, `--type-auth-d
 }
 ```
 
-No se deben importar fuentes dentro de componentes, declarar una fuente alternativa para una pantalla ni introducir pesos fuera de la escala sin una decisión de diseño revisada. Los valores tipográficos directos que aún existen son deuda heredada y se migran pantalla por pantalla con validación visual.
+No se deben importar fuentes dentro de componentes ni introducir una familia para una pantalla aislada. La excepción editorial aprobada se define una sola vez en `app/layout.tsx` y se consume únicamente bajo `.landing-page`. Cualquier ampliación de Playfair/Inter al tracker, o de Nunito a la landing, requiere una decisión de diseño y QA responsive. Los valores tipográficos directos heredados se migran pantalla por pantalla con validación visual.

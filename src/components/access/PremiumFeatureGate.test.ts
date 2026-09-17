@@ -8,6 +8,6 @@ describe("PremiumFeatureGate copy rollout", () => {
 
   it("uses contextual copy only for five-year planning when enabled", () => {
     expect(resolvePremiumGateDescriptionKey("five_year_planning", true)).toBe("premium.gate.fiveYear.contextualDescription");
-    expect(resolvePremiumGateDescriptionKey("feed_hub", true)).toBe("premium.gate.feedHub.description");
+    expect(resolvePremiumGateDescriptionKey("fitness_and_nutrition", true)).toBe("premium.gate.fitnessNutrition.description");
   });
 });

@@ -11,6 +11,6 @@ Estados permitidos: **propuesto**, **aceptado**, **reemplazado**, **histórico**
 | [0005](0005-versioned-backups.md) | Aceptado | Respaldos versionados y validados. |
 | [0006](0006-client-routing.md) | Aceptado | Navegación cliente y deep links bajo `/app`. |
 | [0007](0007-design-system.md) | Reemplazado | ADR 0008 formaliza tipografía, tokens y capas; la dirección cromática se conserva como antecedente histórico. |
-| [0008](0008-current-typography-system.md) | Aceptado | Nunito Sans como tipografía digital vigente. |
+| [0008](0008-current-typography-system.md) | Aceptado | Nunito Sans en el tracker; Playfair Display + Inter como excepción editorial acotada a la landing. |
 
 No se elimina un ADR reemplazado: conserva el contexto histórico y enlaza la decisión sucesora.

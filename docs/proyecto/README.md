@@ -18,9 +18,9 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - SHA funcional vigente: `7628074708e379dd5c79b9b76f3102022e25a5a6`.
 - Sincronización observada al publicar: `main` y `origin/main` alineados; CI y Vercel Production aprobados.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release técnico `MBV-H-034`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el estado local documentado en `MBV-H-035`.
 
-P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7628074708e379dd5c79b9b76f3102022e25a5a6` publica la pausa de Calendar y el código P2 detrás de flags apagados; GitHub Actions, Vercel y el smoke público aprobaron.
+P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7628074708e379dd5c79b9b76f3102022e25a5a6` publica la pausa de Calendar y el código P2 detrás de flags apagados; GitHub Actions, Vercel y el smoke público aprobaron. `MBV-H-035` documenta la nueva landing editorial y la matriz comercial presentes en el working tree: **todavía no hubo commit, push ni despliegue de esa landing en este task**, por lo que no deben atribuirse al SHA publicado.
 
 ## Fuentes utilizadas
 

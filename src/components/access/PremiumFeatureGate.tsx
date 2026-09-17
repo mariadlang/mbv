@@ -16,9 +16,9 @@ const premiumFeatureMessageKeys = {
     title: "premium.gate.fiveYear.title",
     description: "premium.gate.fiveYear.description",
   },
-  feed_hub: {
-    title: "premium.gate.feedHub.title",
-    description: "premium.gate.feedHub.description",
+  fitness_and_nutrition: {
+    title: "premium.gate.fitnessNutrition.title",
+    description: "premium.gate.fitnessNutrition.description",
   },
 } as const;
 

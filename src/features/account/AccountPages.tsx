@@ -1,9 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, Check, Heart, LockKeyhole, Mail, Sparkles } from "lucide-react";
+import { ArrowRight, Check, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { BrandMark } from "@/src/components/ui/BrandMark";
@@ -19,6 +17,7 @@ import { useI18n } from "@/src/i18n/I18nProvider";
 import type { MessageKey } from "@/src/i18n/keys";
 import { captureReferralAttribution } from "@/src/services/referralAttributionService";
 import { publicConfig } from "@/src/lib/publicConfig";
+export { LandingPage } from "@/src/features/landing/LandingPage";
 
 const credentialsSchema = z.object({
   email: z.string().trim().email("Escribe un correo válido."),
@@ -27,28 +26,7 @@ const credentialsSchema = z.object({
 const signupSchema = credentialsSchema.extend({ name: z.string().trim().min(2, "Cuéntanos cómo quieres que te llamemos.") });
 
 const trialCapabilityKeys = ["trial.capability.planning", "trial.capability.threeMonths", "trial.capability.visionGoals", "trial.capability.habits", "trial.capability.journal", "trial.capability.projects", "trial.capability.progress", "trial.capability.wellbeing", "trial.capability.finances"] satisfies MessageKey[];
-const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fiveYears"] satisfies MessageKey[];
-const landingSteps = [
-  ["01", "landing.how.look.title", "landing.how.look.description"],
-  ["02", "landing.how.act.title", "landing.how.act.description"],
-  ["03", "landing.how.observe.title", "landing.how.observe.description"],
-] as const satisfies ReadonlyArray<readonly [string, MessageKey, MessageKey]>;
-
-export function LandingPage() {
-  const { m } = useI18n();
-  const { user } = useAccount();
-  const destination = user ? "/app/dashboard" : "/signup";
-  const primaryLabel = m(user ? "public.cta.authenticated" : "public.cta.startTrial");
-  const trackAcquisition = (source: string) => { if (!user) analyticsService.track(CTA.acquisition.event, { source, route: "/signup", version: 2 }); };
-  return <main className="marketing-page" data-i18n-explicit="true">
-    <header className="marketing-header"><BrandMark compact /><nav aria-label={m("public.nav.label")}><LanguageSwitcher compact /><a href="#como-funciona">{m("public.nav.how")}</a><Link to="/trial">{m("public.nav.trial")}</Link><Link to="/login">{m("public.nav.login")}</Link><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_header")}>{primaryLabel}</Link></nav></header>
-    <section className="hero-section"><div className="hero-copy"><p className="eyebrow">{m("brand.positioning")}</p><h1>{m("brand.promise")}</h1><p>{m("brand.operationalMessage")}</p><div className="hero-actions"><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_hero")}>{primaryLabel} <ArrowRight size={17} /></Link><Link className="button button--secondary" to="/trial">{m("public.cta.features")}</Link></div><small><Check size={15} /> {m("landing.trial.note")}</small></div><div className="hero-visual" aria-label={m("landing.preview.label")}><img src="/brand-icon.svg" alt={m("landing.preview.logo")} /><Card><span>{m("landing.preview.direction")}</span><strong>{m("landing.preview.directionValue")}</strong><div className="hero-progress"><i /><i /><i /></div></Card><Card><span>{m("landing.preview.day")}</span><strong>{m("landing.preview.dayValue")}</strong></Card></div></section>
-    <section id="como-funciona" className="marketing-section"><p className="eyebrow">{m("landing.how.eyebrow")}</p><h2>{m("landing.how.title")}</h2><div className="marketing-grid">{landingSteps.map(([number, title, description]) => <Card key={number}><span>{number}</span><h3>{m(title)}</h3><p>{m(description)}</p></Card>)}</div></section>
-    <section className="marketing-cta"><Heart size={24} /><h2>{m("brand.slogan")}</h2><p>{m("landing.footer.note")}</p><Link className="button button--primary" to={destination} onClick={() => trackAcquisition("landing_footer")}>{primaryLabel}</Link></section>
-    <footer className="marketing-footer"><BrandMark compact /><span>© 2026 My Best Version</span><Link to="/legal">{m("public.nav.legal")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/cookies">{m("public.nav.cookies")}</Link><CookiePreferencesButton /><Link to="/pqr">{m("public.nav.pqr")}</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">SIC</a><Link to="/login">{m("public.nav.access")}</Link></footer>
-  </main>;
-}
-
+const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fitness", "premium.capability.fiveYears"] satisfies MessageKey[];
 export function TrialPage() {
   const { m } = useI18n();
   return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><ul>{trialCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card></div><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
@@ -235,8 +213,13 @@ export function UpgradePage() {
     if (!cookiePreferences?.analytics || trackedOpen.current) return;
     trackedOpen.current = true;
     analyticsService.track("upgrade_opened", { source: "upgrade_page", route: "/upgrade", version: 2 }, "page-opened:v2");
+    analyticsService.track("paywall_view", { source: "upgrade_page", route: "/upgrade", section: "planes", version: 2 }, "page-opened:v2");
   }, [cookiePreferences?.analytics]);
-  return <PublicFrame><section className="upgrade-page" data-i18n-explicit="true"><p className="eyebrow">{m("premium.eyebrow")}</p><h1>{m("premium.title")}</h1><p>{m("premium.description")}</p><Card><Sparkles size={28} /><h2>Premium</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={17} />{m(key)}</li>)}</ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, "mercado-pago:v2")}>{m("public.cta.checkout")} <ArrowRight size={16} /></a><small>{m("premium.checkout.note")}</small></Card></section></PublicFrame>;
+  const trackCheckout = () => {
+    analyticsService.track("premium_checkout_click", { source: "upgrade_page", route: "/upgrade", section: "monthly", version: 2 }, "mercado-pago:v2");
+    analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, "mercado-pago:v2");
+  };
+  return <PublicFrame><section className="upgrade-page" data-i18n-explicit="true"><p className="eyebrow">{m("premium.eyebrow")}</p><h1>{m("premium.title")}</h1><p>{m("premium.description")}</p><Card><Sparkles size={28} /><h2>Premium</h2><strong className="upgrade-price">USD 2,99 / mes · USD 30,99 / año</strong><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={17} />{m(key)}</li>)}</ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={trackCheckout}>{m("public.cta.checkout")} <ArrowRight size={16} /></a><small>{m("premium.checkout.note")}</small></Card></section></PublicFrame>;
 }
 
 export function PublicFrame({ children }: { children: React.ReactNode }) { const { m } = useI18n(); return <main className="public-frame"><header data-i18n-explicit="true"><Link to="/" aria-label={m("public.brand.home")}><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">{m("public.nav.trialShort")}</Link><Link to="/legal">{m("public.nav.legal")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/login">{m("public.nav.login")}</Link></nav></header>{children}<footer className="public-legal-footer" data-i18n-explicit="true"><span>© 2026 My Best Version</span><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/data-policy">{m("public.nav.dataPolicy")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/cookies">{m("public.nav.cookies")}</Link><CookiePreferencesButton /><Link to="/pqr">{m("public.nav.pqr")}</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">{m("public.nav.industryAuthority")}</a></footer></main>; }

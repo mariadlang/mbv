@@ -82,7 +82,7 @@ El commit de release contiene además la pausa independiente de Google Calendar.
 
 - El gate permanece dentro de la capacidad limitada y conduce a `/upgrade`.
 - No aparece en Mi día o Dashboard sin un límite real.
-- `premium_contextual_prompts` se consume únicamente para elegir la descripción del gate de planificación a 5 años. Apagado conserva el copy anterior; encendido usa el mensaje contextual P2. En ambos casos `canAccessFeature()` sigue siendo la única regla de acceso, el CTA continúa en `/upgrade` y Feed Hub no cambia.
+- `premium_contextual_prompts` se consume únicamente para elegir la descripción del gate de planificación a 5 años. Apagado conserva el copy anterior; encendido usa el mensaje contextual P2. En ambos casos `canAccessFeature()` sigue siendo la única regla de acceso, el CTA continúa en `/upgrade` y no se alteran otras capacidades Premium.
 - No existe asignación A/B activa.
 
 ## Persistencia y aislamiento por cuenta

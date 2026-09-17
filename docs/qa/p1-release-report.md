@@ -165,7 +165,7 @@ Ningún archivo de aplicación ni documentación. El artefacto temporal no versi
 3. IndexedDB continúa sin sincronización entre dispositivos; exportar respaldo sigue siendo necesario.
 4. Premium comercial autoservicio no está listo: faltan webhook, firma y conciliación de Mercado Pago, condiciones comerciales y revisión jurídica.
 5. Faltan el master vectorial aprobado y adjuntar `mybestversion.life` al despliegue.
-6. Feed Hub y cualquier iniciativa de growth permanecen fuera de P1.
+6. Una capacidad experimental sin ruta, retirada posteriormente, y cualquier iniciativa de growth permanecieron fuera de P1.
 
 ## Criterio de salida
 

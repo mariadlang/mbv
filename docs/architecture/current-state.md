@@ -1,6 +1,6 @@
 # Arquitectura vigente
 
-**Corte verificado:** 2026-09-09. Este documento describe el código actual; los ADR explican por qué existen sus límites.
+**Corte verificado:** 2026-09-16. Este documento describe el código del working tree; los ADR explican por qué existen sus límites. La landing editorial descrita aquí todavía no se ha desplegado en este task.
 
 ## Mapa de capas
 
@@ -21,13 +21,13 @@ Las pantallas no acceden directamente a IndexedDB, Supabase ni APIs externas. La
 
 ## Rutas y navegación
 
-React Router gestiona la experiencia cliente. Los cinco destinos conceptuales son Inicio (`/app/dashboard`), Mi día (`/app/today`), Planificar (`/app/planning` y sus vistas), Mi espacio (`/app/life-hub` y módulos personales) y Progreso (`/app/progress`). Bienestar (`/app/health`) y Finanzas (`/app/finance`) son accesos secundarios de Mi espacio, visibles también en escritorio.
+React Router gestiona la experiencia cliente. Los cinco destinos conceptuales son Inicio (`/app/dashboard`), Mi día (`/app/today`), Planificar (`/app/planning` y sus vistas), Mi espacio (`/app/life-hub` y módulos personales) y Progreso (`/app/progress`). Bienestar (`/app/health`) es el acceso secundario de Mi espacio a la capacidad Premium comercial “Fitness y alimentación”; Finanzas (`/app/finance`) continúa disponible como acceso secundario.
 
-Se conservan deep links y redirects, entre ellos `/app/challenges`, `/app/mood`, `/app/life-hub/fitness`, `/app/feed`, `/app/profile`, `/app/pqr` y `/admin`. El inventario ampliado está en `docs/information-architecture-refactor.md`.
+Se conservan deep links y redirects, entre ellos `/app/challenges`, `/app/mood`, `/app/life-hub/fitness`, `/app/profile`, `/app/pqr` y `/admin`. El inventario ampliado está en `docs/information-architecture-refactor.md`.
 
 ## Autenticación y acceso
 
-Supabase Auth ofrece email/contraseña y, cuando están configurados, Google y enlace mágico. El correo debe verificarse antes de acceder al producto. `useAccount` obtiene identidad y estado de acceso; la protección de rutas ocurre antes de montar el planner. La prueba dura 15 días desde el primer acceso verificado. Los estados `expired` y `blocked` bloquean el producto protegido; `superadmin` habilita la plataforma privada tras comprobación remota.
+Supabase Auth ofrece email/contraseña y, cuando están configurados, Google y enlace mágico. El correo debe verificarse antes de acceder al producto. `useAccount` obtiene identidad y estado de acceso; la protección de rutas ocurre antes de montar el planner. La prueba dura 15 días desde el primer acceso verificado, no exige tarjeta, no cobra automáticamente y permite editar planificación dentro de tres meses. `fitness_and_nutrition` y `five_year_planning` requieren Premium. Para cuentas no-superadmin, los estados `expired` y `blocked` bloquean el producto protegido; `superadmin` conserva el bypass de acceso y habilita la plataforma privada tras comprobación remota.
 
 ## Datos locales y remotos
 
@@ -40,9 +40,13 @@ Supabase Auth ofrece email/contraseña y, cuando están configurados, Google y e
 
 `/api/feedback`, `/api/events`, `/api/marketing-preference` y `/api/platform` vuelven a validar la sesión. `/platform` exige rol `superadmin` en servidor y RLS. La analítica propia es opcional, minimizada y no registra contenido personal, email, nombres, tokens ni texto libre. La referencia operativa completa está en `docs/PRODUCT_SUPPORT_PLATFORM.md`.
 
-## Facturación
+## Landing y oferta comercial
 
-Mercado Pago se abre como checkout externo mediante una URL configurable. No existe webhook, validación de firma ni conciliación automática; volver del proveedor no activa Premium. La activación vigente es una operación administrativa protegida. Precio, moneda comercial, periodicidad y condiciones no están definidos en el repositorio.
+La landing editorial usa los anchors `#inicio`, `#como-funciona`, `#que-incluye`, `#beneficios`, `#planes` y `#faq`. El hero y el showcase reutilizan tres capturas reales inspeccionadas por QA: Dashboard `p0-dashboard-1440x900.png`, Mi día `p0-today-390x844.png` y Hábitos `p0-habits-1440x900.png`.
+
+La matriz comercial comunica trial de 15 días, tres meses de horizonte, sin tarjeta y sin cobro automático. Premium cuesta USD 2.99/mes o USD 30.99/año. Fitness y alimentación y la planificación a cinco años están disponibles; análisis avanzado, recomendaciones con IA y planificación específica de un año aparecen como **Próximamente** y no tienen ruta ni acceso activo.
+
+Mercado Pago se abre como checkout externo. Landing y Upgrade consumen la URL centralizada mediante `billingService` → `MercadoPagoBillingRepository` → `publicConfig.mercadoPagoCheckoutUrl`, proveniente de `NEXT_PUBLIC_MERCADO_PAGO_URL` o del fallback público. Mensual y anual comparten hoy esa URL; el selector cambia copy/telemetría, pero no envía el periodo ni crea una preferencia distinta. No existe webhook, validación de firma ni conciliación automática; el frontend no activa Premium y volver del proveedor tampoco cambia el acceso. La activación vigente es una operación administrativa protegida.
 
 ## Internacionalización
 
@@ -67,7 +71,7 @@ Esta cobertura es transitoria. Añadir `data-i18n-explicit` a una superficie só
 
 ## Design System
 
-Nunito Sans es la fuente vigente. Los tokens se separan progresivamente por valores de marca, semántica y componentes. Lucide React es el sistema iconográfico principal; Recharts renderiza gráficas específicas. Las primitives compartidas viven en `src/components/ui` y sus contratos están en `docs/design-system`.
+Nunito Sans continúa como fuente del tracker autenticado y de las superficies públicas legacy. La nueva landing delimita una capa editorial: Playfair Display para titulares y recursos editoriales, e Inter para navegación, texto y controles. Las tres familias se cargan desde `app/layout.tsx`, pero Playfair/Inter sólo se consumen dentro de `.landing-page`. Los tokens se separan progresivamente por valores de marca, semántica y componentes. Lucide React es el sistema iconográfico principal; Recharts renderiza gráficas específicas. Las primitives compartidas viven en `src/components/ui` y sus contratos están en `docs/design-system`.
 
 ## Privacidad y límites actuales
 
@@ -75,6 +79,8 @@ Nunito Sans es la fuente vigente. Los tokens se separan progresivamente por valo
 - No hay sincronización multidispositivo.
 - La eliminación remota de cuenta requiere el procedimiento documentado para adjuntos privados.
 - La facturación autoservicio no está conciliada.
+- Los precios mensual/anual ya se comunican, pero impuestos, renovación, cancelación, reembolsos y condiciones legales siguen pendientes.
+- La landing editorial de este working tree todavía no está desplegada; producción continúa en el release `7628074708e379dd5c79b9b76f3102022e25a5a6`.
 - `mybestversion.life` no está confirmado como dominio adjunto al Site publicado.
 - El logo activo depende de un raster dentro de SVG; falta el master vectorial.
 - La cobertura i18n explícita es progresiva y el bridge legacy sigue activo.

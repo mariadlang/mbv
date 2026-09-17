@@ -17,14 +17,20 @@ La documentación vigente para continuar el proyecto comienza en [`docs/proyecto
 - Google Calendar API para sincronización opcional y bidireccional de eventos/citas
 - Catálogos ES/EN tipados con un bridge temporal para superficies legacy
 
-## Sistema de experiencia P1
+## Sistema de experiencia
 
-- Nunito Sans es la única familia tipográfica vigente para interfaz y marca digital.
+- El tracker autenticado mantiene Nunito Sans. La nueva landing editorial delimita una excepción propia: Playfair Display en titulares y recursos editoriales, e Inter en navegación, cuerpo y controles.
 - `app/globals.css` conserva sólo el orden de entrada; tokens, foundations, layout, primitives y features viven por capas en `src/styles/`.
 - Los componentes reutilizables de `src/components/ui/Primitives.tsx` comparten contratos de variantes, estados, foco y accesibilidad.
 - La navegación principal contiene exactamente cinco destinos en desktop y mobile: **Inicio, Mi día, Planificar, Mi espacio y Progreso**.
 - **Bienestar** y **Finanzas** siguen visibles como accesos secundarios asociados a Mi espacio, no como destinos principales adicionales.
 - `pnpm audit:i18n` y `pnpm audit:design-tokens` impiden nueva deuda fuera de los límites revisados.
+
+## Landing editorial
+
+La nueva portada vive en `src/features/landing/` y organiza la navegación por los anchors `#inicio`, `#como-funciona`, `#que-incluye`, `#beneficios`, `#planes` y `#faq`. Usa capturas reales ya inspeccionadas por QA: `p0-dashboard-1440x900.png`, `p0-today-390x844.png` y `p0-habits-1440x900.png`, todas bajo `docs/qa/screenshots/`.
+
+La landing y su matriz comercial están implementadas en el working tree, pero **no se han desplegado en este task**. La producción pública continúa en el release `7628074708e379dd5c79b9b76f3102022e25a5a6` hasta que exista commit, push, CI y despliegue posteriores.
 
 ## Desarrollo
 
@@ -76,9 +82,11 @@ El código por sí solo no habilita la conexión: cada entorno debe aplicar `sup
 
 ## Cuenta, prueba y Premium
 
-Supabase Auth gestiona registro, verificación de correo, recuperación y sesión. La prueba de 15 días comienza con el primer acceso después de verificar el correo, no pide tarjeta y limita la planificación editable a un horizonte de tres meses. Premium añade planificación a cinco años. `feed_hub` existe como gate técnico, pero no está accesible ni se comunica como disponible.
+Supabase Auth gestiona registro, verificación de correo, recuperación y sesión. La prueba dura 15 días desde el primer acceso después de verificar el correo, no pide tarjeta, no genera cobro automático y limita la planificación editable a un horizonte de tres meses. Premium se presenta a **USD 2.99/mes** o **USD 30.99/año** y habilita hoy Fitness y alimentación (`fitness_and_nutrition`) y planificación a cinco años (`five_year_planning`). El análisis avanzado, las recomendaciones con IA y la planificación específica de un año se muestran como **Próximamente** y no están disponibles.
 
-Mercado Pago se abre como checkout externo. No existe todavía webhook ni conciliación automática: volver del proveedor no activa Premium. Precio, moneda comercial, periodicidad, renovación y reembolsos no están definidos en el repositorio.
+Mercado Pago se abre como checkout externo. Landing y Upgrade obtienen una única URL mediante `billingService`, que resuelve `publicConfig.mercadoPagoCheckoutUrl` desde `NEXT_PUBLIC_MERCADO_PAGO_URL` o su fallback público. No existe todavía webhook ni conciliación automática: el frontend no activa Premium y volver del proveedor tampoco cambia el acceso. Renovación, impuestos, cancelación y reembolsos siguen pendientes de definición y revisión jurídica.
+
+El contenido detallado de Fitness, alimentación y del resto del planner permanece en IndexedDB en el dispositivo; anunciar una capacidad Premium no cambia esa arquitectura local-first.
 
 ## Idiomas
 
@@ -94,7 +102,7 @@ Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalment
 
 ## Deployment
 
-Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. Vinext/Cloudflare Sites es un destino explícito adicional. El último despliegue comprobado es P1, SHA funcional `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, Sites versión 29 y despliegue `appgdep_6aa2f93962bc81919311825a6c2bc6b4`, disponible en `https://my-best-version-habitos.maria-delosangelesgt.chatgpt.site`. Esta evidencia no demuestra por sí sola qué SHA está activo en Vercel. `mybestversion.life` todavía no está confirmado como dominio adjunto al Site.
+Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. El último release comprobado en `mybestversion.life` es `7628074708e379dd5c79b9b76f3102022e25a5a6`. Vinext/Cloudflare Sites permanece como destino explícito adicional del release anterior. La nueva landing editorial de este working tree todavía no forma parte de ninguno de esos despliegues.
 
 ## CI
 
@@ -107,6 +115,6 @@ GitHub Actions valida pull requests hacia `main` y pushes a `main` con lint, typ
 - Falta el vector maestro aprobado del logo.
 - La migración i18n explícita es progresiva y no equivale aún a cobertura EN total.
 - Google Calendar requiere migración, credenciales OAuth, cifrado, cron y webhook HTTPS configurados por entorno; sin ellos la tarjeta se muestra como no disponible y el planner local continúa funcionando.
-- La operación comercial requiere decisiones de precio/condiciones, dominio y revisión legal.
+- Aunque la landing ya muestra USD 2.99/mes y USD 30.99/año, la operación comercial todavía requiere condiciones de renovación, impuestos, cancelación y reembolsos, además de revisión legal.
 
 Consulta [la integración Google Calendar](docs/integrations/google-calendar.md), [el estado de arquitectura](docs/architecture/current-state.md), [la persistencia](docs/architecture/persistence.md), [la tipografía vigente](docs/brand/typography.md), [el diccionario de producto](docs/brand/product-language-dictionary.md), [los primitives](docs/design-system/primitives.md), [el registro de ADR](docs/decisions/README.md), [la fuente de verdad de marca](docs/brand/README.md) y [el informe de release P1](docs/qa/p1-release-report.md).

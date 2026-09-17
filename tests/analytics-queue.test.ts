@@ -15,6 +15,7 @@ import {
   setAnalyticsConsent,
   startProductSessionHeartbeat,
 } from "@/src/services/analyticsService";
+import { landingAnalyticsEventNames } from "@/src/domain/productAnalytics";
 
 describe("cola de analítica con consentimiento", () => {
   beforeEach(() => {
@@ -32,6 +33,18 @@ describe("cola de analítica con consentimiento", () => {
     setAnalyticsConsent(true);
     analyticsService.track("signup_started", { source: "email_form" }, "first:v2");
     expect(readQueuedProductEvents()).toHaveLength(1);
+    setAnalyticsConsent(false);
+    expect(readQueuedProductEvents()).toEqual([]);
+  });
+
+  it("mantiene toda la taxonomía de landing detrás del consentimiento analítico", () => {
+    for (const eventName of landingAnalyticsEventNames) analyticsService.track(eventName, {}, `${eventName}:without-consent`);
+    expect(readQueuedProductEvents()).toEqual([]);
+
+    setAnalyticsConsent(true);
+    for (const eventName of landingAnalyticsEventNames) analyticsService.track(eventName, {}, `${eventName}:with-consent`);
+    expect(readQueuedProductEvents().map((event) => event.event)).toEqual(landingAnalyticsEventNames);
+
     setAnalyticsConsent(false);
     expect(readQueuedProductEvents()).toEqual([]);
   });

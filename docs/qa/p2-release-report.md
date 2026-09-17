@@ -13,7 +13,7 @@
 - Commit funcional publicado: `7628074708e379dd5c79b9b76f3102022e25a5a6` (`feat: pause Calendar and prepare P2 retention`), enviado a `origin/main` y desplegado por Vercel Production.
 - Migración `202609160001_p2_growth_analytics.sql`: aplicada al proyecto enlazado `yvrvetuzuinoinukrivo`; ledger alineado, dry-run posterior sin pendientes y lint remoto sin errores.
 
-Este informe cubre Weekly Recap, retorno, share cards, referral, analytics P2, aislamiento local por cuenta, la variante contextual Premium y los contratos documentales de lifecycle/brand/growth. El flag `premium_contextual_prompts` cambia únicamente el copy del gate real de planificación a 5 años; no controla acceso, no cambia Feed Hub y permanece apagado por defecto. La pausa independiente de Google Calendar comparte el commit de release, pero queda fuera de los criterios funcionales P2 de este informe.
+Este informe cubre Weekly Recap, retorno, share cards, referral, analytics P2, aislamiento local por cuenta, la variante contextual Premium y los contratos documentales de lifecycle/brand/growth. El flag `premium_contextual_prompts` cambia únicamente el copy del gate real de planificación a 5 años; no controla acceso, no altera otras capacidades y permanece apagado por defecto. La pausa independiente de Google Calendar comparte el commit de release, pero queda fuera de los criterios funcionales P2 de este informe.
 
 ## Resultado por superficie
 

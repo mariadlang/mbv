@@ -42,7 +42,7 @@ La revisión cubre marca, CTA, trial/Premium, Open Graph, activos de logo, acces
 - El mismo horizonte se valida en periodos mensuales y fechas diarias o semanales, tanto en las vistas de planificación como en captura rápida y en el controlador del planner.
 - Los planes existentes fuera de ese horizonte se muestran en solo lectura; se conservan sus actividades históricas y las tareas o eventos enlazados sin presentar copias equivalentes. La información local no se elimina.
 - La planificación a cinco años continúa como Premium.
-- Feed Hub sigue identificado técnicamente como Premium, pero no se comunica como beneficio disponible porque no es accesible desde la navegación vigente.
+- Una capacidad Premium experimental sin ruta se mantuvo fuera de la oferta P0 y fue retirada posteriormente.
 
 ### Microcopy y accesibilidad
 
@@ -132,7 +132,7 @@ La revisión cubre marca, CTA, trial/Premium, Open Graph, activos de logo, acces
 2. Precio, periodicidad, impuestos, renovación, descuentos y demás condiciones comerciales Premium no están definidos en el repositorio.
 3. Mercado Pago no tiene webhook, validación de firma ni conciliación automática. Volver del checkout no activa Premium.
 4. `202609080001_product_analytics_v2.sql` fue aplicada en el proyecto remoto enlazado y un segundo dry-run confirmó `Remote database is up to date`; cualquier entorno remoto adicional debe verificarse por separado.
-5. Feed Hub no debe anunciarse como disponible hasta tener una ruta accesible y una decisión de producto explícita.
+5. La capacidad experimental sin ruta quedó fuera de la oferta y fue retirada posteriormente; este informe histórico no la considera disponible.
 6. Las ocho capturas P0 existen y fueron inspeccionadas. La suite integral final aprobó 66 casos, omitió 8 intencionalmente y tuvo 0 fallos. El commit funcional `5c5f5a0bfd342a4b731fa927f992d7233959006d` fue enviado, publicado como versión 27 de Sites y aprobado en smoke de producción; la evidencia está en `docs/qa/p0-release-report.md`.
 7. La analítica de adquisición propia no representa a visitantes anónimos que no autentican: el endpoint de eventos requiere sesión. La cohorte v2 tampoco equivale a consentimiento vigente.
 

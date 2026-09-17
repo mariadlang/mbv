@@ -13,8 +13,9 @@
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
 - Integración Google Calendar: `MBV-H-025` a `MBV-H-031` documentan su implementación, hardening y validación histórica. Por decisión expresa del 16 de septiembre, `MBV-H-032` pausa la integración, retira sus superficies activas y programa el cierre del proyecto Google Cloud `mbv-calendar-production`. El calendario local permanece disponible; no se purgaron datos históricos de Supabase ni secretos de Vercel. Consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 - Release P2/Calendar: `MBV-H-032` y `MBV-H-033` quedaron consolidados en el commit funcional `7628074708e379dd5c79b9b76f3102022e25a5a6`, enviado a `origin/main` y publicado en Vercel Production. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los cinco flags apagados. La validación aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa, el E2E Premium final desktop/mobile y la matriz visual P2. La migración P2 está aplicada y certificada en Supabase; el smoke público del release aprobó y Calendar externo quedó efectivamente desactivado.
+- Landing y matriz comercial local: `MBV-H-035` registra la portada editorial Playfair Display + Inter, manteniendo Nunito Sans en el tracker; sus anchors, capturas QA reales, precios y disponibilidad Premium. Este estado sólo existe en el working tree: **la landing no se ha desplegado en este task** y producción sigue sirviendo `7628074708e379dd5c79b9b76f3102022e25a5a6`.
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-034` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, IA ni auto-planificación.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-035` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, recomendaciones con IA ni auto-planificación; la IA sólo se comunica como capacidad futura no disponible.
 
 ## Qué es el producto
 
@@ -31,12 +32,14 @@ No existe sincronización del contenido del planner entre dispositivos.
 
 ### Entrada, cuenta y onboarding
 
-- Landing y páginas públicas de cuenta, trial, upgrade, recuperación y verificación.
+- Landing editorial y páginas públicas de cuenta, trial, upgrade, recuperación y verificación. La landing usa los anchors `#inicio`, `#como-funciona`, `#que-incluye`, `#beneficios`, `#planes` y `#faq`.
 - Registro/login con Supabase, además de Google y enlace mágico cuando el proveedor está configurado.
 - Consentimientos obligatorios separados y marketing opcional.
 - Trial de 15 días, estados de acceso y capacidades Premium calculados mediante reglas de dominio y funciones Supabase.
 - Landing y trial reutilizan el CTA “Comienza tu prueba gratis”; el formulario crea una cuenta y el onboarding crea una primera acción.
 - La prueba no requiere tarjeta ni cobro automático, comienza en el primer acceso verificado y limita la edición mensual a un horizonte de tres meses.
+- La landing muestra capturas reales inspeccionadas en QA de Dashboard (`p0-dashboard-1440x900.png`), Mi día (`p0-today-390x844.png`) y Hábitos (`p0-habits-1440x900.png`).
+- La matriz comercial comunica Premium a USD 2.99/mes o USD 30.99/año. Fitness y alimentación y la planificación a cinco años están disponibles; análisis avanzado, recomendaciones con IA y planificación específica de un año están **Próximamente** y no disponibles.
 - Onboarding en cuatro pasos que parte de `Mi día`, `Una meta`, `Mi semana` o `Un hábito`, pide un resultado y una primera acción, y aterriza en Mi día.
 - Una cuenta ya establecida recupera un perfil local mínimo si falta y evita repetir el onboarding. Borrar explícitamente los datos locales permite volver al estado inicial.
 - Importación de respaldo disponible desde el onboarding.
@@ -47,7 +50,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Metadata y Open Graph usan `mybestversion.life`, la promesa principal y “Una vida más tuya.”; la pieza social ya no incluye un monograma alternativo ni “Planea · Acciona · Logra”.
 - `src/lib/cta.ts` define los CTA principales de adquisición, cuenta, onboarding, acceso, paywall, checkout y recuperación.
 - `src/domain/access.ts` es la fuente reutilizable de trial, capacidades y feature gates. El horizonte se valida para periodos y fechas locales; un plan mensual existente fuera del horizonte se conserva en solo lectura con sus actividades históricas, tareas y eventos enlazados, sin duplicar equivalentes.
-- Feed Hub continúa identificado técnicamente como Premium, pero no se comunica como disponible porque no tiene acceso desde la navegación vigente.
+- `src/domain/access.ts` expone `fitness_and_nutrition` y `five_year_planning` como capacidades Premium reales. `/app/health` aplica el gate con `account.access` y conserva el bypass de superadmin.
 - Activación v2 requiere onboarding, acción conectada, progreso consciente y segunda sesión dentro de siete días; no exige crear una meta.
 - Onboarding y activación se calculan sobre la cohorte observable de cuentas con eventos v2, no sobre todas las cuentas; esa cohorte no equivale a un registro persistido de consentimiento.
 - La analítica propia se encola sólo con consentimiento, minimiza metadatos y reserva los hitos derivados al servidor. Retirar el consentimiento en otra pestaña detiene la captura y limpia la cola e intenciones de autenticación pendientes.
@@ -59,7 +62,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Cinco destinos principales: **Inicio, Mi día, Planificar, Mi espacio y Progreso**.
 - Desktop mantiene **Bienestar** y **Finanzas** visibles en un grupo secundario “En Mi espacio”; no cuentan como destinos principales.
 - Mobile conserva exactamente los cinco destinos principales en la barra inferior; el menú y Más herramientas exponen utilidades adicionales.
-- Rutas antiguas se conservan como redirects: `/app/challenges`, `/app/mood`, `/app/life-hub/fitness`, `/app/feed`, `/app/profile`, `/app/pqr` y `/admin`.
+- Rutas antiguas se conservan como redirects: `/app/challenges`, `/app/mood`, `/app/life-hub/fitness`, `/app/profile`, `/app/pqr` y `/admin`.
 
 ### Inicio y Mi día
 
@@ -103,7 +106,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 
 ### Bienestar y Finanzas
 
-- Bienestar (`/app/health`) incluye autorización de datos sensibles, entrenamiento, comidas/macros y medidas/fotos locales.
+- Fitness y alimentación (`/app/health`) es Premium mediante `fitness_and_nutrition` e incluye autorización de datos sensibles, entrenamiento, comidas/macros y medidas/fotos locales.
 - Entrenamiento admite fuerza con ejercicios o cardio/deporte sin ejercicios individuales obligatorios.
 - Comidas pueden crearse, copiarse y eliminarse; el borrado incluye confirmación y feedback.
 - Finanzas incluye cuentas, categorías, presupuesto mensual, movimientos, fondos, deudas, recurrentes, revisión y compras pendientes.
@@ -122,7 +125,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 ### P2 — Retención y crecimiento amable
 
 - Los cinco flags P2 —`weekly_recap`, `return_experience`, `share_cards`, `referrals` y `premium_contextual_prompts`— permanecen en `false` por defecto. Completar código o QA no los activa en producción.
-- `premium_contextual_prompts` sólo cambia la descripción del gate existente de planificación a 5 años. `canAccessFeature()` conserva toda la autoridad de acceso; el copy, CTA y comportamiento anteriores se mantienen cuando el flag está apagado y Feed Hub no cambia.
+- `premium_contextual_prompts` sólo cambia la descripción del gate existente de planificación a 5 años. `canAccessFeature()` conserva toda la autoridad de acceso; el copy, CTA y comportamiento anteriores se mantienen cuando el flag está apagado. El gate de Fitness y alimentación es independiente de esta variante de copy.
 - Weekly Recap usa evidencia real de tareas, prioridades, hábitos, metas, hitos y reprogramaciones hasta el día actual. Registra decisiones textuales de conservar, mover o soltar, no muta pendientes directamente y puede preparar la semana siguiente. Las acciones directas viven en Regreso amable.
 - La experiencia de regreso aparece tras inactividad y propone una acción real: retomar un pendiente o prioridad, elegir un mínimo viable, mover una acción a hoy, soltarla o descartar la sugerencia.
 - Las tarjetas compartibles se generan por opt-in con métricas agregadas permitidas, preview y formatos exactos para Story, Feed y cuadrado. No toman texto libre del planner; sólo admiten un titular opcional escrito/revisado explícitamente y excluido de analytics. Exportan PNG y usan Web Share cuando está disponible.
@@ -141,7 +144,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Eventos propios usan una taxonomía cerrada y excluyen textos de metas, journal, comidas, salud y finanzas.
 - La taxonomía v2 separa eventos aceptados del navegador de `second_session_started`, `activation_completed` y `payment_confirmed`, reservados al servidor.
 - `/platform` exige superadmin y ofrece métricas, usuarios, tickets, FAQ, categorías y parámetros respaldados por Supabase.
-- Mercado Pago es un enlace externo; volver del checkout no activa Premium.
+- Mercado Pago es un enlace externo centralizado por `billingService` y `publicConfig.mercadoPagoCheckoutUrl`. Landing y Upgrade comparten el mismo destino configurado para las modalidades mensual y anual; el selector cambia presentación/telemetría, no crea una preferencia de pago distinta. Volver del checkout no activa Premium y el frontend no modifica el acceso.
 
 ## Mapa de conexiones
 
@@ -238,14 +241,14 @@ pnpm test:e2e
 - No presentar datos demo como reales; su carga debe ser voluntaria.
 - No penalizar días no programados en la constancia.
 - Mantener exactamente cinco destinos principales en desktop/mobile; Bienestar y Finanzas son accesos secundarios visibles de Mi espacio.
-- Usar Nunito Sans como única familia tipográfica activa.
+- Mantener Nunito Sans en el tracker. La excepción editorial de la landing usa Playfair Display para titulares/acento e Inter para navegación, cuerpo y controles, siempre acotadas a `.landing-page`.
 - Introducir color, espacio, radio, sombra o control reutilizable mediante tokens y primitives antes de crear una variante aislada.
 - Mantener español como idioma canónico y EN visible como Beta mientras exista el bridge legacy.
 - No traducir contenido escrito o nombrado por la persona; usar límites explícitos también en portales.
 - Usar español claro, foco visible, nombres accesibles y estados vacíos útiles.
 - Validar imports y formularios con Zod; no registrar contenido sensible en consola o eventos.
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
-- No anunciar Feed Hub como disponible, ni inventar precio, periodicidad o activación automática de Premium.
+- Comunicar la matriz vigente sin mezclar estados: Fitness/alimentación y cinco años están disponibles con Premium; análisis avanzado, IA y un año permanecen **Próximamente**. Los precios son USD 2.99/mes y USD 30.99/año; no inventar impuestos, renovación, cancelación, reembolsos ni activación automática.
 - Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
 - Mantener tareas/prioridades separadas de eventos y preservar el calendario local aunque la integración externa esté pausada.
 - No reactivar Google Calendar ni purgar datos históricos server-side sin una decisión y autorización específicas.
@@ -315,12 +318,12 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 ## Problemas y limitaciones confirmados
 
 1. El planner no sincroniza entre dispositivos; borrar datos del sitio puede eliminar el contenido local si no existe respaldo.
-2. Mercado Pago no tiene webhook de activación automática; Premium se habilita mediante operación administrativa segura.
+2. Mercado Pago no tiene webhook de activación automática; Premium se habilita mediante operación administrativa segura. Mensual y anual abren hoy la misma URL centralizada, sin una preferencia server-side que distinga el periodo elegido.
 3. La migración analítica v2 y su hotfix forward de ambigüedad PL/pgSQL fueron aplicados; `db lint` quedó sin errores y un dry-run confirmó que la base remota está al día. Los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
 4. La auditoría legal enumera tareas administrativas y revisión jurídica pendientes; el cálculo SQL inicial de días hábiles no integra festivos colombianos.
-5. `AdminPage.tsx`, `FeedHubPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
+5. `AdminPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
 6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
-7. Feed Hub está modelado como Premium, pero no es accesible desde la navegación vigente.
+7. La landing editorial y la matriz comercial descritas en este documento sólo existen en el working tree; todavía no se han desplegado en este task.
 8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
 9. `mybestversion.life` apunta al deployment Production de Vercel y no está adjunto al Site; la URL de Sites se conserva como runtime alternativo del despliegue anterior.
 10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
@@ -336,6 +339,6 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 ## Entrega vigente y siguiente paso
 
-La entrega funcional vigente es `7628074708e379dd5c79b9b76f3102022e25a5a6` en `origin/main` y Vercel Production. Publica `MBV-H-032`, que apaga la integración externa sin eliminar el calendario local, y `MBV-H-033`, con P2 detrás de flags apagados. GitHub Actions aprobó lint, tipos, unitarias y build; Vercel completó el deployment y `mybestversion.life` respondió `200`. El smoke público confirmó `/privacy`, `/robots.txt` y `/sitemap.xml`, además de `404 {"error":"CALENDAR_DISABLED"}` en status y `204` en mantenimiento de Calendar.
+La entrega funcional vigente es `7628074708e379dd5c79b9b76f3102022e25a5a6` en `origin/main` y Vercel Production. Publica `MBV-H-032`, que apaga la integración externa sin eliminar el calendario local, y `MBV-H-033`, con P2 detrás de flags apagados. GitHub Actions aprobó lint, tipos, unitarias y build; Vercel completó el deployment y `mybestversion.life` respondió `200`. El smoke público confirmó `/privacy`, `/robots.txt` y `/sitemap.xml`, además de `404 {"error":"CALENDAR_DISABLED"}` en status y `204` en mantenimiento de Calendar. `MBV-H-035` describe cambios locales posteriores de landing/Premium y no cambia cuál SHA está publicado.
 
-Siguiente paso operativo: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. También deben definirse owner/rollback por flag y resolverse el hardening y la revisión legal de referral. Las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones comerciales, identidad legal, canales lifecycle y master vectorial— siguen separadas.
+Siguiente paso operativo: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. La landing necesita commit, push, CI y despliegue explícitos antes de atribuirla a producción. También deben definirse owner/rollback por flag y resolverse el hardening y la revisión legal de referral. Las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones de renovación/cancelación/reembolso, identidad legal, canales lifecycle y master vectorial— siguen separadas.

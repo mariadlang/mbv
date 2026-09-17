@@ -17,6 +17,15 @@
   --brand-taupe: #6f6964;
   --brand-sage: #7d9179;
 
+  /* Official public-site palette. Scoped consumers keep these separate from product UI semantics. */
+  --landing-blush: #f6cccc;
+  --landing-rose-dark: #a94555;
+  --landing-ivory: #fff6f2;
+  --landing-ink: #2f2f33;
+  --landing-success: #53765e;
+  --landing-warning: #9a651f;
+  --landing-error: #b13d4c;
+
   /* Level 2: semantic color tokens */
   --color-brand-soft: var(--brand-rose-soft);
   --color-brand: var(--brand-rose);

@@ -1,7 +1,7 @@
 export type AccountRole = "user" | "superadmin";
 export type AccessStatus = "trial" | "active" | "expired" | "blocked";
 export type SubscriptionStatus = "none" | "pending" | "active" | "cancelled";
-export type PremiumFeature = "five_year_planning" | "feed_hub";
+export type PremiumFeature = "five_year_planning" | "fitness_and_nutrition";
 
 export interface UserAccess {
   userId: string;
@@ -32,13 +32,13 @@ export const TRIAL_INCLUDED_CAPABILITIES = [
   "Diario y notas",
   "Proyectos y tareas",
   "Progreso",
-  "Bienestar",
   "Finanzas",
 ] as const;
 
 export const PREMIUM_AVAILABLE_CAPABILITIES = [
   "Todo lo incluido en la prueba",
   "Planificación a 5 años",
+  "Alimentación y entrenamiento",
 ] as const;
 
 export const PREMIUM_FEATURE_COPY: Record<PremiumFeature, { title: string; description: string; available: boolean }> = {
@@ -47,10 +47,10 @@ export const PREMIUM_FEATURE_COPY: Record<PremiumFeature, { title: string; descr
     description: "Amplía tu horizonte más allá de los 3 meses incluidos en la prueba.",
     available: true,
   },
-  feed_hub: {
-    title: "Feed Hub",
-    description: "Función Premium identificada técnicamente, todavía no accesible desde la navegación actual.",
-    available: false,
+  fitness_and_nutrition: {
+    title: "Alimentación y entrenamiento",
+    description: "Registra comidas, entrenamientos y progreso corporal con Premium.",
+    available: true,
   },
 };
 
@@ -67,7 +67,7 @@ export const ACCESS_COMMUNICATION = {
 
 export const FEATURE_ACCESS_MATRIX: Record<PremiumFeature, { trial: boolean; premium: boolean }> = {
   five_year_planning: { trial: false, premium: true },
-  feed_hub: { trial: false, premium: true },
+  fitness_and_nutrition: { trial: false, premium: true },
 };
 
 export function isPremiumAccess(access: UserAccess): boolean {
@@ -75,6 +75,7 @@ export function isPremiumAccess(access: UserAccess): boolean {
 }
 
 export function canAccessFeature(access: UserAccess, feature: PremiumFeature): boolean {
+  if (access.role === "superadmin") return FEATURE_ACCESS_MATRIX[feature].premium;
   if (access.accessStatus === "blocked" || access.accessStatus === "expired") return false;
   return isPremiumAccess(access) ? FEATURE_ACCESS_MATRIX[feature].premium : FEATURE_ACCESS_MATRIX[feature].trial;
 }

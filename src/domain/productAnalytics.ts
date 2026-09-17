@@ -1,5 +1,42 @@
+export const landingAnalyticsEventNames = [
+  "landing_view",
+  "landing_nav_click",
+  "landing_trial_cta_click",
+  "landing_login_click",
+  "benefits_view",
+  "how_it_works_view",
+  "premium_benefits_view",
+  "pricing_view",
+  "pricing_monthly_selected",
+  "pricing_annual_selected",
+  "premium_checkout_click",
+  "faq_open",
+  "paywall_view",
+  "trial_start",
+] as const;
+
+export type LandingAnalyticsEventName = typeof landingAnalyticsEventNames[number];
+
+export const landingAnalyticsFeatureMap = {
+  landing_view: "acquisition",
+  landing_nav_click: "acquisition",
+  landing_trial_cta_click: "acquisition",
+  landing_login_click: "acquisition",
+  benefits_view: "acquisition",
+  how_it_works_view: "acquisition",
+  premium_benefits_view: "premium",
+  pricing_view: "pricing",
+  pricing_monthly_selected: "pricing",
+  pricing_annual_selected: "pricing",
+  premium_checkout_click: "checkout",
+  faq_open: "acquisition",
+  paywall_view: "premium",
+  trial_start: "acquisition",
+} as const satisfies Record<LandingAnalyticsEventName, "acquisition" | "premium" | "pricing" | "checkout">;
+
 export const clientProductEventNames = [
   "landing_primary_cta_clicked",
+  ...landingAnalyticsEventNames,
   "signup_started",
   "signup_completed",
   "email_verified",
@@ -127,9 +164,25 @@ const sources = {
   auth: ["email_form", "google", "magic_link", "authenticated_access", "first_verified_access", "authenticated_app"],
   onboarding: ["welcome", "onboarding"],
   connectedAction: ["onboarding", "habit", "monthly_planning", "weekly_planning", "today", "goal"],
-  premium: ["five_year_planning", "feed_hub", "upgrade_page"],
+  premium: ["five_year_planning", "fitness_and_nutrition", "upgrade_page"],
   server: ["server"],
 } as const;
+const landingSources = [
+  "landing_header",
+  "landing_hero",
+  "landing_benefits",
+  "landing_how_it_works",
+  "landing_included",
+  "landing_showcase",
+  "landing_premium",
+  "landing_pricing",
+  "landing_comparison",
+  "landing_after_trial",
+  "landing_footer",
+  "landing_faq",
+] as const;
+const landingNavigationSections = ["como-funciona", "que-incluye", "beneficios", "planes", "faq"] as const;
+const landingRoutes = ["/", "/trial", "/login", "/upgrade"] as const;
 const p2Surfaces = ["dashboard", "progress", "weekly_plan"] as const;
 const shareFormats = ["story", "feed", "square"] as const;
 const shareViews = ["story", "feed", "square", "weekly", "habits", "progress"] as const;
@@ -144,6 +197,20 @@ const legacySafeValues: Partial<Record<MetadataKey, readonly string[]>> = { resu
 const policy = (definition: MetadataPolicy): MetadataPolicy => definition;
 const productMetadataPolicies: Record<ProductEventName, MetadataPolicy> = {
   landing_primary_cta_clicked: policy({ source: sources.acquisition, route: appRoutes, version: version2 }),
+  landing_view: policy({ source: ["landing_hero"], route: ["/"], version: version2 }),
+  landing_nav_click: policy({ source: ["landing_header"], route: landingRoutes, section: landingNavigationSections, version: version2 }),
+  landing_trial_cta_click: policy({ source: landingSources, route: ["/trial"], version: version2 }),
+  landing_login_click: policy({ source: ["landing_header", "landing_hero", "landing_after_trial", "landing_footer"], route: ["/login"], version: version2 }),
+  benefits_view: policy({ source: ["landing_benefits"], route: ["/"], section: ["que-incluye", "beneficios"], version: version2 }),
+  how_it_works_view: policy({ source: ["landing_how_it_works"], route: ["/"], section: ["como-funciona"], version: version2 }),
+  premium_benefits_view: policy({ source: ["landing_premium"], route: ["/"], section: ["que-incluye", "beneficios"], version: version2 }),
+  pricing_view: policy({ source: ["landing_pricing"], route: ["/"], section: ["planes"], version: version2 }),
+  pricing_monthly_selected: policy({ source: ["landing_pricing"], route: ["/"], section: ["monthly"], version: version2 }),
+  pricing_annual_selected: policy({ source: ["landing_pricing"], route: ["/"], section: ["annual"], version: version2 }),
+  premium_checkout_click: policy({ source: ["landing_premium", "landing_pricing", "landing_comparison", "landing_after_trial", "landing_faq", "upgrade_page"], route: ["/upgrade"], section: ["monthly", "annual"], version: version2 }),
+  faq_open: policy({ source: ["landing_faq"], route: ["/"], section: ["faq"], version: version2 }),
+  paywall_view: policy({ source: ["landing_premium", "landing_pricing", "landing_comparison", "upgrade_page"], route: ["/", "/upgrade"], section: ["planes"], version: version2 }),
+  trial_start: policy({ source: landingSources, route: ["/trial"], version: version2 }),
   signup_started: policy({ source: sources.auth, route: ["/signup"], version: version2 }),
   signup_completed: policy({ source: sources.auth, version: version2 }),
   sign_up_completed: policy({ source: sources.auth, version: version2 }),

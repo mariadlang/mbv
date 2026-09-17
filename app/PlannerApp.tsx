@@ -26,6 +26,7 @@ import { publicConfig } from "@/src/lib/publicConfig";
 import { CTA } from "@/src/lib/cta";
 import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
 import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
+import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -163,7 +164,7 @@ function ProtectedPlannerApp() {
   }
   const needsLegalAcceptance = account.user.legalVersion !== LEGAL_VERSION || !account.user.termsAcceptedAt || !account.user.dataProcessingAcceptedAt || !account.user.adultDeclaredAt;
   if (needsLegalAcceptance) return <LegalAcceptanceGate />;
-  if (account.access.accessStatus === "expired" || account.access.accessStatus === "blocked") {
+  if (account.access.role !== "superadmin" && (account.access.accessStatus === "expired" || account.access.accessStatus === "blocked")) {
     const blocked = account.access.accessStatus === "blocked";
     return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>{blocked ? "Este acceso necesita revisión." : ACCESS_COMMUNICATION.expired.title}</h1><p>{blocked ? "Contacta al equipo de soporte para revisar el estado de la cuenta. Tu información local permanece en este dispositivo." : ACCESS_COMMUNICATION.expired.note}</p><div><Link className="button button--primary" to={blocked ? "/pqr" : "/upgrade"}>{blocked ? "Contactar soporte" : CTA.paywall.label}</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
   }
@@ -251,7 +252,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
             <Route path="/app/finance" element={<FinancePage planner={planner} />} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
-            <Route path="/app/health" element={<FitnessPage planner={planner} />} />
+            <Route path="/app/health" element={<PremiumFeatureGate access={account.access} feature="fitness_and_nutrition"><FitnessPage planner={planner} /></PremiumFeatureGate>} />
             <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} access={account.access} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
@@ -264,7 +265,6 @@ function ProtectedPlannerApp() {
             <Route path="/app/help" element={<HelpPage planner={planner} />} />
             <Route path="/app/support" element={<SupportPage />} />
             <Route path="/app/learn" element={<LearnPage planner={planner} />} />
-            <Route path="/app/feed" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/more" element={<MorePage />} />
             <Route path="/admin" element={<Navigate to="/platform" replace />} />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />

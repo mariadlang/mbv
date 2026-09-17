@@ -5,7 +5,7 @@ import type { UserAccess } from "@/src/domain/access";
 import type { AccountPreferences, AccountUser, SignupLegalEvidence } from "@/src/repositories/interfaces/AuthRepository";
 import { authService } from "@/src/services/authService";
 import { useUiStore } from "@/src/stores/useUiStore";
-import { clientProductEventNames, type ClientProductEventName } from "@/src/domain/productAnalytics";
+import { clientProductEventNames, landingAnalyticsFeatureMap, type ClientProductEventName } from "@/src/domain/productAnalytics";
 import { supportService } from "@/src/services/supportService";
 import { analyticsService, claimQueuedProductEvents, clearQueuedProductEvents, consumeAuthAnalyticsIntent, hasAnalyticsConsent, isPermanentAnalyticsFailure, readQueuedProductEvents, releaseAnalyticsAccount, removeQueuedProductEvent, resolveProductSession, startProductSessionHeartbeat, type ProductSessionHeartbeat, type QueuedProductEvent } from "@/src/services/analyticsService";
 import { useCookieConsent } from "@/src/features/legal/CookieConsent";
@@ -216,7 +216,8 @@ function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analy
 
 function featureForEvent(event: ClientProductEventName) {
   const featureMap: Partial<Record<ClientProductEventName, string>> = {
-    landing_primary_cta_clicked: "acquisition", signup_started: "account", signup_completed: "account", email_verified: "account", trial_started: "account", login_succeeded: "account",
+    landing_primary_cta_clicked: "acquisition", ...landingAnalyticsFeatureMap,
+    signup_started: "account", signup_completed: "account", email_verified: "account", trial_started: "account", login_succeeded: "account",
     onboarding_started: "onboarding", onboarding_focus_selected: "onboarding", first_outcome_created: "onboarding", onboarding_completed: "onboarding", first_action_created: "actions", first_action_completed: "actions", first_habit_recorded: "habits", action_rescheduled: "actions",
     premium_gate_viewed: "premium", upgrade_opened: "premium", checkout_started: "checkout",
     goal_created:"goals", annual_plan_updated:"annual_planning", monthly_plan_updated:"monthly_planning", week_planned:"weekly_planning", task_created:"tasks", task_completed:"tasks", today_view_opened:"today", journal_entry_created:"journal", progress_review_created:"progress", routine_created:"routines", workout_completed:"fitness", meal_logged:"nutrition", settings_updated:"settings", suggestion_submitted:"support", bug_report_submitted:"support", support_request_submitted:"support", app_session_started:"account", sign_up_completed:"account",

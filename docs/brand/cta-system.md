@@ -8,14 +8,15 @@ Cada CTA debe describir el siguiente paso real. La taxonomía vive en `src/lib/c
 
 | Etapa | CTA | Destino o resultado | Evento analítico |
 | --- | --- | --- | --- |
-| Adquisición | **Comienza tu prueba gratis** | `/signup` | `landing_primary_cta_clicked` |
+| Adquisición | **Comienza tu prueba gratis** | `/trial` desde la landing; `/signup` desde Trial | `landing_primary_cta_clicked` o `landing_trial_cta_click` según superficie |
 | Formulario | **Crear mi cuenta** | Envía el registro | `signup_started`; `signup_completed` después del registro email exitoso |
 | Verificación | **Ir a verificar mi correo** | Abre el cliente de correo mediante `mailto:` | `email_verified` al volver con una cuenta verificada |
 | Primer acceso | **Crear mi primera acción** | Inicia el onboarding | `onboarding_started` |
 | Usuaria autenticada | **Ir a mi espacio** | `/app/dashboard` | Sin evento de clic específico |
 | Login | **Iniciar sesión** | `/login` o envío del formulario | `login_succeeded` después de autenticación exitosa |
 | Paywall | **Desbloquear Premium** | `/upgrade` | `premium_gate_viewed` en el gate y `upgrade_opened` al abrir la página |
-| Checkout externo | **Continuar en Mercado Pago** | URL externa de checkout | `checkout_started` |
+| Checkout desde landing | **Activar Premium** | URL externa centralizada de checkout | `premium_checkout_click` |
+| Checkout desde Upgrade | **Continuar con My Best Version** | La misma URL externa centralizada | `premium_checkout_click`; `checkout_started` |
 | Recuperación | **Volver a mi espacio** | `/login` | Sin evento específico |
 
 ## Uso por superficie
@@ -24,8 +25,8 @@ Cada CTA debe describir el siguiente paso real. La taxonomía vive en `src/lib/c
 
 - Landing y trial usan “Comienza tu prueba gratis” para una visitante sin sesión.
 - La landing usa “Ir a mi espacio” cuando ya existe una sesión.
-- `source` diferencia `landing_header`, `landing_hero`, `landing_footer` y `trial`.
-- “Ver qué incluye” es una acción secundaria informativa hacia `/trial`.
+- `source` diferencia header, hero, pricing, cierre y footer según la taxonomía cerrada.
+- “Ver qué incluye” es una acción secundaria informativa hacia `#que-incluye` dentro de la landing.
 
 ### Signup y verificación
 
@@ -43,8 +44,9 @@ Cada CTA debe describir el siguiente paso real. La taxonomía vive en `src/lib/c
 ### Premium
 
 - El gate usa “Desbloquear Premium” y dirige a `/upgrade`.
-- La página de upgrade usa “Continuar en Mercado Pago” únicamente para abandonar la app hacia el checkout.
-- No usar “Continuar”, “Comprar” o “Activar Premium” si la acción real sólo abre Mercado Pago.
+- La landing usa “Activar Premium” y Upgrade usa “Continuar con My Best Version”; ambos abandonan la app hacia exactamente el mismo `checkoutUrl`.
+- Mensual/anual sólo cambia precio visible y telemetría; no se envía el periodo a Mercado Pago ni se crea una preferencia distinta.
+- El copy cercano debe aclarar que abrir/pagar en el proveedor no activa Premium automáticamente. No usar “activado”, “pago confirmado” o equivalentes antes de una confirmación server-side confiable.
 
 ## Reglas de tracking
 

@@ -1,13 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
-import { Nunito_Sans } from "next/font/google";
+import { Inter, Nunito_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { BRAND_NAME, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
+
+const SITE_URL = "https://mybestversion.life";
 
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-nunito-sans",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: false,
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-playfair",
+  preload: false,
 });
 
 export const viewport: Viewport = {
@@ -18,14 +33,9 @@ export const viewport: Viewport = {
   ],
 };
 
-export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const metadataBase = new URL(`${protocol}://${host}`);
-
+export function generateMetadata(): Metadata {
   return {
-    metadataBase,
+    metadataBase: new URL(SITE_URL),
     title: `${BRAND_NAME} · ${BRAND_SLOGAN}`,
     description: BRAND_PROMISE,
     icons: {
@@ -48,7 +58,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={nunitoSans.variable} suppressHydrationWarning>
+    <html lang="es" className={`${nunitoSans.variable} ${inter.variable} ${playfairDisplay.variable}`} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

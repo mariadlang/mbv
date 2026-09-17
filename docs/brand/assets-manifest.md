@@ -10,8 +10,13 @@
 | `MBV-SOCIAL-001` | `public/og.png` | PNG, 1200 × 630 | Sin documentar | Sin referencia vigente | 2026-09-16 | Marca | `restricted`; alt pendiente | heredado | Master no identificado; sin derivados aprobados |
 | `MBV-SOCIAL-002` | `public/og-v2.jpg` | JPEG, 1730 × 909 | Sin documentar | Sin referencia vigente | 2026-09-16 | Marca | `restricted`; alt pendiente | heredado | Master no identificado; sin derivados aprobados |
 | `MBV-SOCIAL-GEN-001` | `app/opengraph-image.tsx` | Fuente generativa, 1200 × 630 | Código propio versionado | Open Graph vigente | 2026-09-16 | Ingeniería + Marca | `approved`; texto equivalente en metadata | v1 | Código es master; PNG servido es derivado runtime |
+| `MBV-PRODUCT-QA-001` | `docs/qa/screenshots/p0-dashboard-1440x900.png` | PNG, 1440 × 900 | Captura real del candidato P0, generada e inspeccionada por QA | Hero desktop y showcase de la nueva landing | 2026-09-16 | Ingeniería + Producto | `approved`; alt localizado describe Dashboard real | P0 QA | La captura QA es el master usado por `LandingProductVisuals.tsx` |
+| `MBV-PRODUCT-QA-002` | `docs/qa/screenshots/p0-today-390x844.png` | PNG, 390 × 844 | Captura real del candidato P0, generada e inspeccionada por QA | Hero móvil y showcase de la nueva landing | 2026-09-16 | Ingeniería + Producto | `approved`; alt localizado describe Mi día real | P0 QA | La captura QA es el master usado por `LandingProductVisuals.tsx` |
+| `MBV-PRODUCT-QA-003` | `docs/qa/screenshots/p0-habits-1440x900.png` | PNG, 1440 × 900 | Captura real del candidato P0, generada e inspeccionada por QA | Showcase de la nueva landing | 2026-09-16 | Ingeniería + Producto | `approved`; alt localizado describe Hábitos real | P0 QA | La captura QA es el master usado por `LandingProductVisuals.tsx` |
 
 `brand-icon.svg` y `brand-icon.png` contienen el mismo raster según la auditoría P0. Se conservan todos los archivos porque la ausencia de una referencia interna no descarta usos externos.
+
+Las tres capturas `MBV-PRODUCT-QA-*` son evidencia real del producto, no mockups recreados para marketing. `LandingProductVisuals.tsx` las importa desde `docs/qa/screenshots/`; Dashboard y Mi día componen el hero, y Dashboard/Mi día/Hábitos forman el showcase. Esta aprobación cubre la landing implementada en el working tree, que todavía no se ha desplegado en este task. Sustituirlas exige nueva inspección visual, revisión de datos visibles y actualización de este manifiesto.
 
 ## Dependencias externas
 

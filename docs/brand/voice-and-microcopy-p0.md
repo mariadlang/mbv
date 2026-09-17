@@ -54,7 +54,7 @@ My Best Version acompaña, ofrece opciones, explica y reconoce límites. La voz 
 ### Marketing y acceso
 
 - Decir duración, tarjeta, cobro e inicio del trial de forma explícita.
-- No inventar precio, renovación o activación inmediata.
+- Usar únicamente los precios vigentes de la matriz comercial; no inventar renovación, condiciones ni activación inmediata.
 - En expiración, explicar primero que la información local no se borró.
 
 ### Onboarding y estados vacíos

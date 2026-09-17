@@ -7,7 +7,7 @@
 | Necesito saber… | Fuente operativa |
 | --- | --- |
 | qué color usar | `src/styles/tokens.css`: usar tokens semánticos; rosa para énfasis, marfil para fondo, carbón para texto. [Dirección visual](visual-direction.md) |
-| qué tipografía usar | [Tipografía](typography.md): Nunito Sans en producto y comunicación digital |
+| qué tipografía usar | [Tipografía](typography.md): Nunito Sans en el tracker; Playfair Display + Inter sólo en la landing editorial |
 | cómo escribir | [Voz y microcopy](voice-and-microcopy-p0.md) + [diccionario](product-language-dictionary.md) |
 | cómo diseñar un CTA | [CTA system](cta-system.md) + [primitives](../design-system/primitives.md) |
 | qué promesa utilizar | [Messaging hierarchy](messaging-hierarchy.md) |
@@ -71,7 +71,7 @@ Los valores directos son referencia, no autorización para hardcodearlos. Compon
 
 ## Checklist antes de publicar o mergear
 
-Jerarquía y CTA canónicos; tokens sin hex nuevos; Nunito Sans; icono Lucide; contraste y focus; reduced motion; copy sin culpa; datos ficticios; asset/licencia/alt registrados; sin PII en URL ni analytics; responsive; revisión light/dark; owner y versión anotados.
+Jerarquía y CTA canónicos; tokens sin hex nuevos; tipografía correcta por superficie (Nunito en tracker, Playfair + Inter en landing); icono Lucide; contraste y focus; reduced motion; copy sin culpa; datos ficticios; asset/licencia/alt registrados; sin PII en URL ni analytics; responsive; revisión light/dark; owner y versión anotados.
 
 ## Cambios y evidencia
 

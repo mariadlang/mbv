@@ -55,14 +55,23 @@ describe("reglas de acceso", () => {
     expect(isTrialPlanningDateAllowed(trial, "2026-9-01")).toBe(false);
   });
 
-  it("reserva Feed Hub y el plan a cinco años para Premium", () => {
-    expect(canAccessFeature(trial, "feed_hub")).toBe(false);
+  it("reserva fitness, nutrición y el plan a cinco años para Premium", () => {
+    expect(canAccessFeature(trial, "fitness_and_nutrition")).toBe(false);
     const premium = { ...trial, accessStatus: "active" as const, subscriptionStatus: "active" as const };
     expect(canAccessFeature(premium, "five_year_planning")).toBe(true);
+    expect(canAccessFeature(premium, "fitness_and_nutrition")).toBe(true);
     expect(isTrialPlanningMonthAllowed(premium, "2032-04")).toBe(true);
     expect(isTrialPlanningDateAllowed(premium, "2032-04-15")).toBe(true);
     expect(getTrialPlanningDateBounds(premium)).toBeNull();
     expect(isTrialPlanningMonthAllowed({ ...premium, role: "superadmin" }, "2032-04")).toBe(true);
     expect(isTrialPlanningMonthAllowed(premium, "2032-13")).toBe(false);
+  });
+
+  it("conserva el bypass de todas las funciones Premium para superadmin", () => {
+    const trialSuperadmin = { ...trial, role: "superadmin" as const };
+    expect(canAccessFeature(trialSuperadmin, "five_year_planning")).toBe(true);
+    expect(canAccessFeature(trialSuperadmin, "fitness_and_nutrition")).toBe(true);
+    expect(canAccessFeature({ ...trialSuperadmin, accessStatus: "expired" }, "fitness_and_nutrition")).toBe(true);
+    expect(canAccessFeature({ ...trialSuperadmin, accessStatus: "blocked" }, "five_year_planning")).toBe(true);
   });
 });
