@@ -41,7 +41,7 @@ Es forward-only y:
 - sólo permite cerrar un checkout `ready` stale después de confirmar en el proveedor un estado terminal que corresponde exactamente al intent;
 - separa un fallo de correo del acceso comprado.
 
-Antes de aplicarla:
+Para aplicarla en un entorno nuevo o repetir una validación representativa:
 
 1. Crear un backup verificable del proyecto remoto.
 2. Ejecutar lint/dry-run de Supabase y revisar que sólo aparezca esta migración.
@@ -118,7 +118,7 @@ Este repositorio no tiene todavía un transporte live ni dominio/remitente verif
 - Confirmar que la cuenta Mercado Pago admite cobros en USD para Colombia y ambos intervalos.
 - Configurar credenciales y firma sandbox; completar mensual, anual, pendiente, rechazo, cancelación y webhook duplicado/desordenado.
 - Conectar un proveedor transaccional y remitente verificado.
-- Ejecutar una sola compra sandbox y un solo email real a `maria.delosangelesgtg@gmail.com` con el asunto y aviso de prueba acordados.
+- Ejecutar una sola compra sandbox y un solo email real al destinatario expresamente autorizado, con el asunto y aviso de prueba acordados.
 - Repetir la migración y los contratos en un proyecto de prueba representativo antes de cualquier cambio comercial posterior.
 - Realizar QA autenticado desktop/mobile y revisar logs antes de activar compras.
 

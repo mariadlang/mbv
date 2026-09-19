@@ -2,12 +2,12 @@
 
 Última revisión: **2026-09-19, America/Bogota (UTC-05:00)**.
 
-> **Trabajo local posterior al último release:** la rama `feat/commercial-access-v2`, basada en `5019a3b`, sustituye la oferta comercial activa por Gratis permanente, Premium USD 2.99/mes o USD 29.99/año y una recompensa manual de 30 días Premium después de 30 fechas consecutivas. Incluye migración, acceso central, landing, administración, checkout/webhook server-side, cancelación autoservicio con paid-through, recuperación segura de checkout stale, serialización por cuenta, revalidación de conflictos, cola de participación ligada a usuario y outbox con supresión previa al envío. No se ha aplicado la migración, configurado sandbox/email live, realizado un cobro o email real autorizado, hecho commit/push ni desplegado. Consulta [`../product/commercial-access-v2.md`](../product/commercial-access-v2.md), [`../product/trial-premium-matrix.md`](../product/trial-premium-matrix.md) y [`../AUTH_BILLING_SETUP.md`](../AUTH_BILLING_SETUP.md). Mientras este trabajo no se publique, las descripciones históricas del trial de 15 días que aparecen más abajo sólo representan el release anterior.
+> **Release comercial v2 vigente:** producción ofrece Gratis permanente, Premium USD 2.99/mes o USD 29.99/año y una recompensa manual de 30 días Premium después de 30 fechas consecutivas. Incluye migración, acceso central, landing, administración, checkout/webhook server-side, cancelación autoservicio con paid-through, recuperación segura de checkout stale, serialización por cuenta, revalidación de conflictos, cola de participación ligada a usuario y outbox con supresión previa al envío. La migración está aplicada y el commit funcional `7fba6e9` está publicado; Mercado Pago y el transporte de email real permanecen apagados hasta completar plan comercial, credenciales y certificación sandbox. Consulta [`../product/commercial-access-v2.md`](../product/commercial-access-v2.md), [`../product/trial-premium-matrix.md`](../product/trial-premium-matrix.md) y [`../AUTH_BILLING_SETUP.md`](../AUTH_BILLING_SETUP.md).
 
 ## Punto de continuidad
 
-- Repositorio real: `C:/Users/maria/Documents/Codex/2026-08-10/a-web-app-para-my-best`.
-- Rama: `main`, con upstream `origin/main`.
+- Repositorio remoto: `mariadlang/mbv`; la entrega productiva se promueve desde un worktree verificado y `origin/main` es la referencia publicada.
+- Rama de producción: `main`.
 - Base de la entrega P1: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2` (`docs: record P0 production release`).
 - `main` y `origin/main`: alineados en `8e6ede1` antes de comenzar P1.
 - Historial en la base P1: completo/no superficial, 65 commits alcanzables, dos raíces históricas y sin tags.
@@ -15,9 +15,9 @@
 - Entrega P1: `MBV-H-023`, consolidada en `8f240f5b1516d212da65630e36ea3d5a15fd40e9`, enviada a `origin/main` y publicada como versión 29 de Sites; tipografía, tokens, CSS, primitives, navegación, Mi espacio, i18n, lenguaje, gamificación amable, documentación y QA quedaron validados.
 - Integración Google Calendar: `MBV-H-025` a `MBV-H-031` documentan su implementación, hardening y validación histórica. Por decisión expresa del 16 de septiembre, `MBV-H-032` pausa la integración, retira sus superficies activas y programa el cierre del proyecto Google Cloud `mbv-calendar-production`. El calendario local permanece disponible; no se purgaron datos históricos de Supabase ni secretos de Vercel. Consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 - Release P2/Calendar: `MBV-H-032` y `MBV-H-033` quedaron consolidados en el commit funcional `7628074708e379dd5c79b9b76f3102022e25a5a6`, enviado a `origin/main` y publicado en Vercel Production. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los cinco flags apagados. La validación aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa, el E2E Premium final desktop/mobile y la matriz visual P2. La migración P2 está aplicada y certificada en Supabase; el smoke público del release aprobó y Calendar externo quedó efectivamente desactivado.
-- Landing y matriz comercial: `MBV-H-035` registra la portada editorial Playfair Display + Inter, manteniendo Nunito Sans en el tracker; sus anchors, capturas QA reales, precios y disponibilidad Premium. `MBV-H-036` registra su publicación controlada en `7abddae651f34ff4e086a5b6a278c7032c73466d`, con migración analítica, CI, Vercel Production y smoke público aprobados.
+- Landing y matriz comercial: `MBV-H-035`/`MBV-H-036` conservan el historial de la portada editorial inicial. `MBV-H-037` registra su sustitución por la oferta Gratis/Premium actual, la migración comercial, CI, Vercel Production y smoke público aprobados.
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-036` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, recomendaciones con IA ni auto-planificación; la IA sólo se comunica como capacidad futura no disponible.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-037` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, recomendaciones con IA ni auto-planificación; la IA sólo se comunica como capacidad futura no disponible.
 
 ## Qué es el producto
 
@@ -37,11 +37,11 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Landing editorial y páginas públicas de cuenta, trial, upgrade, recuperación y verificación. La landing usa los anchors `#inicio`, `#como-funciona`, `#que-incluye`, `#beneficios`, `#planes` y `#faq`.
 - Registro/login con Supabase, además de Google y enlace mágico cuando el proveedor está configurado.
 - Consentimientos obligatorios separados y marketing opcional.
-- Trial de 15 días, estados de acceso y capacidades Premium calculados mediante reglas de dominio y funciones Supabase.
-- Landing y trial reutilizan el CTA “Comienza tu prueba gratis”; el formulario crea una cuenta y el onboarding crea una primera acción.
-- La prueba no requiere tarjeta ni cobro automático, comienza en el primer acceso verificado y limita la edición mensual a un horizonte de tres meses.
+- Alta con acceso Gratis permanente, estados comerciales y capacidades Premium calculados mediante reglas de dominio y funciones Supabase.
+- Landing, registro y onboarding conducen desde la cuenta Gratis a una primera acción real; crear la cuenta no requiere tarjeta.
+- Los trials de 15 días sólo se conservan como compatibilidad para cuentas históricas. Sus fechas y su horizonte editable de tres meses no se aplican a nuevas altas Gratis.
 - La landing muestra capturas reales inspeccionadas en QA de Dashboard (`p0-dashboard-1440x900.png`), Mi día (`p0-today-390x844.png`) y Hábitos (`p0-habits-1440x900.png`).
-- El release publicado previo comunica Premium a USD 2.99/mes o USD 30.99/año y mantiene análisis avanzado/recomendaciones como **Próximamente**. La rama comercial v2 descrita al inicio sustituye esa matriz localmente; aún no está publicada.
+- El release vigente comunica Premium a USD 2.99/mes o USD 29.99/año. Análisis avanzado y recomendaciones deterministas basadas en datos disponibles forman parte de Premium; no se presentan como IA.
 - Onboarding en cuatro pasos que parte de `Mi día`, `Una meta`, `Mi semana` o `Un hábito`, pide un resultado y una primera acción, y aterriza en Mi día.
 - Una cuenta ya establecida recupera un perfil local mínimo si falta y evita repetir el onboarding. Borrar explícitamente los datos locales permite volver al estado inicial.
 - Importación de respaldo disponible desde el onboarding.
@@ -51,7 +51,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - La jerarquía verbal se centraliza en `src/lib/brand.ts`: promesa, idea rectora, posicionamiento, mensaje estratégico, slogan y explicación operativa.
 - Metadata y Open Graph usan `mybestversion.life`, la promesa principal y “Una vida más tuya.”; la pieza social ya no incluye un monograma alternativo ni “Planea · Acciona · Logra”.
 - `src/lib/cta.ts` define los CTA principales de adquisición, cuenta, onboarding, acceso, paywall, checkout y recuperación.
-- `src/domain/access.ts` es la fuente reutilizable de trial, capacidades y feature gates. El horizonte se valida para periodos y fechas locales; un plan mensual existente fuera del horizonte se conserva en solo lectura con sus actividades históricas, tareas y eventos enlazados, sin duplicar equivalentes.
+- `src/domain/access.ts` es la fuente reutilizable de acceso Gratis, compatibilidad de trial, capacidades y feature gates. El horizonte de tres meses se valida sólo para un trial legacy; un plan mensual existente fuera de ese horizonte se conserva en solo lectura con sus actividades históricas, tareas y eventos enlazados, sin duplicar equivalentes.
 - `src/domain/access.ts` expone `fitness_and_nutrition` y `five_year_planning` como capacidades Premium reales. `/app/health` aplica el gate con `account.access` y conserva el bypass de superadmin.
 - Activación v2 requiere onboarding, acción conectada, progreso consciente y segunda sesión dentro de siete días; no exige crear una meta.
 - Onboarding y activación se calculan sobre la cohorte observable de cuentas con eventos v2, no sobre todas las cuentas; esa cohorte no equivale a un registro persistido de consentimiento.
@@ -82,7 +82,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Planificación dispone de vistas año, mes, semana, día y revisión; siempre muestra los doce meses del año elegido.
 - Los planes incluyen horizontes de cinco años/Premium, tres años, mensual y semanal.
 - Un mes puede conservar intención, prioridades, áreas, acciones, eventos, reflexión y procedencia de una meta.
-- El trial aplica el mismo horizonte local de tres meses a creación, asignación y reprogramación desde mes, semana, día y captura rápida; `usePlanner` vuelve a validar la regla antes de persistir.
+- Un trial legacy aplica el mismo horizonte local de tres meses a creación, asignación y reprogramación desde mes, semana, día y captura rápida; `usePlanner` vuelve a validar la regla antes de persistir. Las cuentas Gratis nuevas no heredan ese límite temporal.
 - La ruta semanal usa una lista vertical de lunes a domingo con prioridades derivadas de las mismas tareas, creación rápida por día, hábitos recurrentes, edición y cambio de fecha, y un panel de pendientes sin fecha que permite asignar sin duplicar entidades.
 - Brain Dump conserva su conversión idempotente a tarea dentro del panel de pendientes y la revisión semanal se abre en modal sin ocupar espacio permanente.
 - Tareas pueden enlazar meta, proyecto y plan; Top 3 se expresa mediante `focusPriority`.
@@ -209,7 +209,7 @@ Token de cuenta → rutas API → Supabase
 - Recharts y Lucide.
 - Supabase JS para Auth y datos remotos mínimos.
 - Código histórico de Google Calendar mediante OAuth 2.0/PKCE, actualmente desactivado por feature flag.
-- Mercado Pago mediante enlace externo configurable.
+- Contratos de Mercado Pago server-side con checkout por intervalo, intentos idempotentes, webhook firmado, conciliación y cancelación autoservicio; la configuración productiva permanece apagada hasta su certificación.
 - Vitest, Testing Library y Playwright.
 - Vercel como runtime principal configurado; Vinext/Cloudflare Sites como destino adicional explícito.
 - GitHub Actions para lint, typecheck, unit y build; E2E en pull requests.
@@ -250,7 +250,7 @@ pnpm test:e2e
 - Usar español claro, foco visible, nombres accesibles y estados vacíos útiles.
 - Validar imports y formularios con Zod; no registrar contenido sensible en consola o eventos.
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
-- Para la rama comercial v2, comunicar Gratis permanente y un único Premium con las mismas capacidades por USD 2.99/mes o USD 29.99/año. Fitness/alimentación, Finanzas, análisis avanzado determinista y recomendaciones basadas en datos disponibles son Premium; no se anuncian como IA. Renovación y cancelación sólo se comunican conforme al contrato server-side implementado y todavía no certificado en sandbox.
+- Para el release comercial v2, comunicar Gratis permanente y un único Premium con las mismas capacidades por USD 2.99/mes o USD 29.99/año. Fitness/alimentación, Finanzas, análisis avanzado determinista y recomendaciones basadas en datos disponibles son Premium; no se anuncian como IA. Renovación y cancelación sólo se comunican conforme al contrato server-side implementado y todavía no certificado en sandbox.
 - Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
 - Mantener tareas/prioridades separadas de eventos y preservar el calendario local aunque la integración externa esté pausada.
 - No reactivar Google Calendar ni purgar datos históricos server-side sin una decisión y autorización específicas.

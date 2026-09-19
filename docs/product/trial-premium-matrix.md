@@ -69,4 +69,4 @@ Los estados `trial`, `active` y `expired` permanecen únicamente para compatibil
 
 ## Estado operativo de esta implementación
 
-La matriz describe el contrato implementado y probado localmente. Sigue bloqueada su certificación externa: faltan credenciales sandbox y soporte USD confirmado de Mercado Pago, un envío transaccional real autorizado, aplicar la migración en un entorno remoto y realizar commit, push y deploy. Ninguna de esas acciones se ejecutó desde esta rama.
+La matriz describe el contrato implementado, publicado y migrado en Production desde el commit funcional `7fba6e9`. La oferta Gratis y sus gates están activos. La certificación externa de cobros y correo continúa bloqueada: faltan un plan de hosting apto para operación comercial, credenciales sandbox, soporte USD confirmado de Mercado Pago, una compra/cancelación controlada y un envío transaccional real autorizado. Hasta completar esos gates, la configuración de checkout y transporte de email permanece apagada.

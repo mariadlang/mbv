@@ -67,13 +67,13 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 - Panel comercial móvil: validado a 390×844 sin overflow horizontal y con activación explícita operable.
 - Landing: inspeccionada en navegador a 1440×900 y 390×844, sin errores de página; precios, comparación, FAQ y recorrido de 30 días visibles.
 - La migración compiló y sus carreras/recuperación se comprobaron en PostgreSQL embebido antes de aplicarla en producción.
-- `pnpm build:vinext` queda `BLOCKED` localmente porque no están configuradas `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; no se usaron valores ficticios para presentarlo como validado.
+- El build de producción Next/Vercel aprobó. El build local del runtime alternativo Vinext quedó `BLOCKED` únicamente porque ese shell no tenía `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; no afecta el artefacto publicado en Vercel y no se usaron valores ficticios para presentarlo como validado.
 
 ## Evidencia del release de producción
 
-- Antes de migrar se exportaron los campos afectados de los 3 perfiles a `C:\Users\maria\Documents\Codex\2026-09-19-mbv-production-backup\profiles-before-commercial-v2.json`; SHA-256 `0F564B55161469844970A8DB83365D8B7D3F1FE023B7567BC49CC14CD3ACEEFA`.
+- Antes de migrar se creó un respaldo operativo no versionado de los campos afectados; SHA-256 `0F564B55161469844970A8DB83365D8B7D3F1FE023B7567BC49CC14CD3ACEEFA`.
 - `supabase db push` aplicó únicamente `202609190001_commercial_access_v2.sql`; el dry-run posterior confirmó que la base remota quedó al día.
-- Los postchecks remotos confirmaron 11 tablas comerciales, las RPC de acceso/plan/actividad/mantenimiento y nuevas altas con estado Gratis. Los perfiles existentes quedaron en 1 `active` y 2 `trial_expired`, tal como anticipó el preflight.
+- Los postchecks remotos confirmaron 11 tablas comerciales, las RPC de acceso/plan/actividad/mantenimiento, nuevas altas con estado Gratis y la normalización esperada de perfiles existentes según el preflight del 2026-09-19.
 - El commit funcional `7fba6e996217ddb8320bb2853d6caca05757f244` se publicó en `origin/main`.
 - Vercel aprobó el preview `A978GeJXmfLmHCm8GXptxRbo5HDW` y el deployment Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` (`vercel-upload-j6k1myfp2-mariadelosangelesgtg-4145s-projects.vercel.app`) en 54 segundos.
 - GitHub Actions `35460493277` aprobó lint, tipos, 357 pruebas unitarias y build; E2E se omitió por diseño en eventos `push`, después de haber aprobado localmente el recorrido comercial focal 8/8.
