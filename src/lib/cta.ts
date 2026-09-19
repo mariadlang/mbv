@@ -6,7 +6,7 @@ type TrackedCta = {
 };
 
 export const CTA = {
-  acquisition: { label: "Comienza tu prueba gratis", event: "landing_primary_cta_clicked" },
+  acquisition: { label: "Empieza gratis", event: "landing_primary_cta_clicked" },
   signupForm: { label: "Crear mi cuenta", event: "signup_started" },
   verification: { label: "Ir a verificar mi correo" },
   firstAccess: { label: "Crear mi primera acción", event: "onboarding_started" },

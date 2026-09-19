@@ -1,17 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { Activity, BarChart3, Headphones, Lightbulb, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
+import { Navigate, useSearchParams } from "react-router-dom";
+import { Activity, BarChart3, CreditCard, Headphones, Lightbulb, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { Button, Card } from "@/src/components/ui/Primitives";
 import type { PlatformData, PlatformTicket } from "@/src/domain/platform";
 import { useAccount } from "@/src/hooks/useAccount";
 import { platformService } from "@/src/services/platformService";
+import { AdminPage } from "@/src/features/admin/AdminPage";
 
-type View = "summary" | "users" | "usage" | "support" | "suggestions" | "audiences" | "settings";
+type View = "summary" | "users" | "usage" | "commercial" | "support" | "suggestions" | "audiences" | "settings";
 const views: Array<{ id: View; label: string; icon: typeof BarChart3 }> = [
   { id: "summary", label: "Resumen", icon: BarChart3 }, { id: "users", label: "Usuarios", icon: Users }, { id: "usage", label: "Uso del producto", icon: Activity },
+  { id: "commercial", label: "Acceso comercial", icon: CreditCard },
   { id: "support", label: "Soporte", icon: Headphones }, { id: "suggestions", label: "Sugerencias", icon: Lightbulb }, { id: "audiences", label: "Audiencias", icon: Users }, { id: "settings", label: "Configuración", icon: Settings },
 ];
 
@@ -32,7 +34,8 @@ const labels: Record<string, string> = { new:"Nuevo",in_review:"En revisión",wa
 
 export function PlatformPage() {
   const account = useAccount();
-  const [view, setView] = useState<View>("summary");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [view, setView] = useState<View>(() => searchParams.get("view") === "commercial" ? "commercial" : "summary");
   const [data, setData] = useState<PlatformData>(empty);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,11 +56,22 @@ export function PlatformPage() {
   if (!account.access || account.access.role !== "superadmin") return <Navigate to="/app/dashboard" replace />;
 
   const act = async (body: Record<string, unknown>) => { const token = await getAccessToken(); if (!token) return; await platformService.performAction(token, body); await load(); };
+  const selectView = (nextView: View) => {
+    setView(nextView);
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextView === "commercial") nextParams.set("view", "commercial");
+    else {
+      nextParams.delete("view");
+      nextParams.delete("user");
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return <div className="platform-shell">
-    <aside className="platform-nav"><BrandMark compact /><div><small>PLATAFORMA PRIVADA</small><strong>Administración</strong></div><nav aria-label="Administración">{views.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" className={view === item.id ? "is-active" : ""} onClick={() => setView(item.id)}><Icon size={18} />{item.label}</button>; })}</nav><Button variant="ghost" onClick={() => void account.signOut()}><LogOut size={17} /> Cerrar sesión</Button></aside>
+    <aside className="platform-nav"><BrandMark compact /><div><small>PLATAFORMA PRIVADA</small><strong>Administración</strong></div><nav aria-label="Administración">{views.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" className={view === item.id ? "is-active" : ""} onClick={() => selectView(item.id)}><Icon size={18} />{item.label}</button>; })}</nav><Button variant="ghost" onClick={() => void account.signOut()}><LogOut size={17} /> Cerrar sesión</Button></aside>
     <main className="platform-main"><header><div><p className="eyebrow">MY BEST VERSION</p><h1>{views.find((item) => item.id === view)?.label}</h1><p>Datos operativos reales y minimizados. El contenido privado de las usuarias no se consulta.</p></div><span><ShieldCheck size={18} /> Acceso protegido</span></header>
-      {loading && <div className="route-loading" role="status">Actualizando datos reales…</div>}{error && <div className="inline-message inline-message--error" role="alert">{error} <Button variant="ghost" onClick={() => void load()}>Reintentar</Button></div>}
+      {view === "commercial" && <AdminPage embedded focusUserId={searchParams.get("user")} />}
+      {view !== "commercial" && loading && <div className="route-loading" role="status">Actualizando datos reales…</div>}{view !== "commercial" && error && <div className="inline-message inline-message--error" role="alert">{error} <Button variant="ghost" onClick={() => void load()}>Reintentar</Button></div>}
       {!loading && !error && view === "summary" && <Summary data={data} />}
       {!loading && !error && view === "users" && <UsersView data={data} query={query} setQuery={setQuery} />}
       {!loading && !error && view === "usage" && <UsageView data={data} />}

@@ -1,4 +1,4 @@
-import type { UserAccess } from "@/src/domain/access";
+import type { CommercialActivityResult, CommercialActivityType, UserAccess } from "@/src/domain/access";
 import type { Language } from "@/src/stores/useUiStore";
 
 export interface AccountUser {
@@ -43,6 +43,8 @@ export interface AuthRepository {
   acceptLegal(input: SignupLegalEvidence): Promise<AccountUser>;
   markOnboardingCompleted(): Promise<AccountUser>;
   getOrStartAccess(): Promise<UserAccess>;
+  getMyCommercialPlan(): Promise<UserAccess>;
+  recordCommercialActivity(actionType: CommercialActivityType): Promise<CommercialActivityResult>;
   getPreferences(): Promise<AccountPreferences>;
   updatePreferences(input: Partial<AccountPreferences>): Promise<AccountPreferences>;
 }

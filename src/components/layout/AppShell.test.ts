@@ -27,11 +27,15 @@ describe("conceptual primary navigation", () => {
   it.each([
     ["Superadmin", { key: "navigation.access.superadmin" }],
     ["Premium", { key: "navigation.access.premium" }],
-    ["Prueba", { key: "navigation.access.trial" }],
-    ["Prueba · 1 día", { key: "navigation.access.trialDay", params: { count: 1 } }],
-    ["Prueba · 8 días", { key: "navigation.access.trialDays", params: { count: 8 } }],
+    ["Gratis", { key: "navigation.access.free" }],
+    ["Premium mensual", { key: "navigation.access.premiumMonthly" }],
+    ["Premium anual", { key: "navigation.access.premiumAnnual" }],
+    ["Premium gratis · 1 día", { key: "navigation.access.promotionDay", params: { count: 1 } }],
+    ["Premium gratis · 8 días", { key: "navigation.access.promotionDays", params: { count: 8 } }],
+    ["Premium gratis pendiente de activación", { key: "navigation.access.promotionPending" }],
+    ["Prueba anterior · 1 día", { key: "navigation.access.trialDay", params: { count: 1 } }],
     ["Acceso bloqueado", { key: "navigation.access.blocked" }],
-    ["Prueba finalizada", { key: "navigation.access.expired" }],
+    ["Gratis · prueba finalizada", { key: "navigation.access.expired" }],
   ])("maps the access label %s to a stable message", (accessText, expected) => {
     expect(getAccessMessageDescriptor(accessText)).toEqual(expected);
   });

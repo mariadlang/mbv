@@ -19,6 +19,8 @@ export const authService = {
   acceptLegal: (input: Parameters<AuthRepository["acceptLegal"]>[0]) => repository.acceptLegal(input),
   markOnboardingCompleted: () => repository.markOnboardingCompleted(),
   getOrStartAccess: () => repository.getOrStartAccess(),
+  getMyCommercialPlan: () => repository.getMyCommercialPlan(),
+  recordCommercialActivity: (actionType: Parameters<AuthRepository["recordCommercialActivity"]>[0]) => repository.recordCommercialActivity(actionType),
   getPreferences: () => repository.getPreferences(),
   updatePreferences: (input: Parameters<AuthRepository["updatePreferences"]>[0]) => repository.updatePreferences(input),
 };

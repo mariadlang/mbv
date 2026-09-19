@@ -180,6 +180,26 @@ test("a returning account opens its existing space without repeating onboarding"
   await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
 });
 
+test("Mi plan explains subscription cancellation before any provider request", async ({ page }) => {
+  await completeOnboarding(page);
+  await page.goto("/app/settings");
+  await expect(page.getByRole("heading", { name: "Mi plan", exact: true })).toBeVisible();
+
+  const cancelRenewal = page.getByRole("button", { name: "Cancelar renovación", exact: true });
+  await expect(cancelRenewal).toBeVisible();
+  await cancelRenewal.click();
+
+  const dialog = page.getByRole("dialog", { name: "Cancelar la renovación de Premium" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/Tu acceso Premium continuará hasta/)).toBeVisible();
+  await expect(dialog.getByText("Tus datos y avances no se eliminan al cancelar la renovación.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Sí, cancelar renovación" })).toBeVisible();
+  await expectNoHorizontalOverflow(page, "Mi plan cancellation dialog");
+
+  await dialog.getByRole("button", { name: "Mantener mi suscripción" }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test("each onboarding starting point creates a first action in Mi día", async ({ browser }) => {
   const choices = [
     /Mi día/,
@@ -758,6 +778,36 @@ test("platform rejects a normal user and allows an authenticated superadmin", as
   await expect(page.getByText("Acceso protegido")).toBeVisible();
 });
 
+test("commercial admin reviews evidence and activates the one-time trial explicitly", async ({ page }) => {
+  const userId = "10000000-0000-4000-8000-000000000001";
+  await page.goto(`/platform?e2e-admin=1&view=commercial&user=${userId}`);
+
+  await expect(page.getByRole("heading", { name: "Accesos, suscripciones y PQR", exact: true })).toBeVisible();
+  const row = page.locator(`#commercial-user-${userId}`);
+  await expect(row).toContainText("Cuenta elegible");
+  await expect(row).toContainText("30 / 30 días");
+  await expect(row).toContainText(/21\/08\/2026\s+–\s+19\/09\/2026/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await row.getByRole("button", { name: "Activar 30 días de Premium gratis", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Premium gratis quedó activo hasta");
+  await expect(row).toContainText("Prueba Premium activa");
+  await expect(row.getByRole("button", { name: "Activar 30 días de Premium gratis", exact: true })).toHaveCount(0);
+});
+
+test("the 30-day promotional trial unlocks Premium without creating a paid subscription", async ({ page }) => {
+  await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=reward-trial");
+
+  await page.goto("/app/health");
+  await expect(page.locator(".premium-gate")).toHaveCount(0);
+
+  await page.goto("/app/settings");
+  await expect(page.getByRole("heading", { name: "Mi plan", exact: true })).toBeVisible();
+  await expect(page.locator("#plan-settings").getByText("Premium · beneficio de 30 días", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancelar renovación", exact: true })).toHaveCount(0);
+});
+
 test("fitness saves cardio without individual exercises", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app/health?section=training");
@@ -1307,7 +1357,7 @@ test("[P2-A] Premium appears only at the relevant limitation and never interrupt
   const contextualGate = page.locator(".premium-gate");
   await expect(contextualGate).toHaveCount(1);
   await expect(contextualGate.getByRole("heading", { name: "Planificación a 5 años", exact: true })).toBeVisible();
-  await expect(contextualGate).toContainText("No necesitas este horizonte para empezar. Premium lo abre cuando quieras planificar más allá de los próximos meses.");
+  await expect(contextualGate).toContainText("Esta capacidad histórica conserva su permiso actual mientras se define su ubicación comercial definitiva.");
   await expect(contextualGate.getByRole("link", { name: "Desbloquear Premium", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mis prioridades a 3 años", exact: true })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -1490,7 +1540,7 @@ test("weekly plan option B remains legible across its responsive matrix", async 
   }
 });
 
-test("landing exposes its exact anchors and truthful Trial and Premium terms", async ({ page }) => {
+test("landing exposes its exact anchors and truthful Free and Premium terms", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop", "The public commercial contract is viewport-independent.");
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(signedOutPath("/"));
@@ -1498,15 +1548,13 @@ test("landing exposes its exact anchors and truthful Trial and Premium terms", a
 
   await expect(page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i })).toBeVisible();
 
-  const premiumSpotlight = page.getByRole("heading", { name: "Cuando quieras ir más lejos, Premium crece contigo", exact: true }).locator("xpath=ancestor::section");
-  for (const title of ["Fitness y alimentación", "Del próximo mes a los próximos años"]) {
-    await expect(premiumSpotlight.locator("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) })).toContainText("Disponible");
-  }
-  for (const title of ["Entiende mejor tu progreso", "Recomendaciones con contexto"]) {
-    await expect(premiumSpotlight.locator("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) })).toContainText("Próximamente");
+  const premiumSpotlight = page.getByRole("heading", { name: "Premium amplía tu experiencia", exact: true }).locator("xpath=ancestor::section");
+  for (const title of ["Fitness y alimentación", "Finanzas", "Análisis avanzado del progreso", "Recomendaciones para ti"]) {
+    await expect(premiumSpotlight.locator("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) })).toContainText("Premium");
   }
 
   const header = page.getByRole("banner");
+  await expect(header.getByRole("link", { name: "Empieza gratis", exact: true })).toHaveAttribute("href", "/signup");
   for (const item of [
     ["Cómo funciona", "como-funciona"],
     ["Qué incluye", "que-incluye"],
@@ -1523,44 +1571,32 @@ test("landing exposes its exact anchors and truthful Trial and Premium terms", a
   }
 
   const plans = page.locator("section#planes");
-  const trialCard = plans.locator("article").filter({ has: page.getByRole("heading", { name: "Prueba gratis", exact: true }) });
-  await expect(trialCard).toContainText("USD 0");
-  await expect(trialCard).toContainText("durante 15 días");
-  await expect(trialCard).toContainText("Sin tarjeta · Sin cobros automáticos");
-  await expect(trialCard).toContainText("Planificación de hasta 3 meses");
-  for (const excluded of [
-    "Fitness y alimentación",
-    "Análisis avanzado del progreso",
-    "Recomendaciones con IA",
-    "Planificación de 1 año",
-    "Planificación de 5 años",
-  ]) {
-    await expect(trialCard.getByText(excluded, { exact: true })).toBeVisible();
+  const freeCard = plans.locator("article").filter({ has: page.getByRole("heading", { name: "Gratis", exact: true }) });
+  await expect(freeCard).toContainText("USD 0");
+  await expect(freeCard).toContainText("sin vencimiento");
+  await expect(freeCard).toContainText("Sin tarjeta · Sin cobros automáticos");
+  for (const included of ["Visión", "Metas", "Hábitos y registro", "Mi día", "Dashboard"]) {
+    await expect(freeCard.getByText(included, { exact: true })).toBeVisible();
   }
 
   const premiumCard = plans.locator("article").filter({ has: page.getByRole("heading", { name: "Premium", exact: true }) });
-  const billing = plans.getByRole("group", { name: "Modalidad de Premium" });
-  const monthly = billing.getByRole("button", { name: "Mensual", exact: true });
-  const annual = billing.getByRole("button", { name: "Anual", exact: true });
-  await expect(monthly).toHaveAttribute("aria-pressed", "true");
   await expect(premiumCard.getByText("USD 2,99 / mes", { exact: true })).toBeVisible();
-  await annual.click();
-  await expect(annual).toHaveAttribute("aria-pressed", "true");
-  await expect(monthly).toHaveAttribute("aria-pressed", "false");
-  await expect(premiumCard.getByText("USD 30,99 / año", { exact: true })).toBeVisible();
-  await monthly.click();
-  await expect(monthly).toHaveAttribute("aria-pressed", "true");
+  await expect(premiumCard.getByText("USD 29,99 / año", { exact: true })).toBeVisible();
 
-  const checkout = premiumCard.getByRole("link", { name: "Activar Premium", exact: true });
-  await expect(checkout).toHaveAttribute("href", "https://link.mercadopago.com.co/mybestversion");
+  const monthlyCheckout = premiumCard.getByRole("link", { name: "Comprar mensual", exact: true });
+  const annualCheckout = premiumCard.getByRole("link", { name: "Comprar anual", exact: true });
+  await expect(monthlyCheckout).toHaveAttribute("href", "/signup?next=/upgrade&interval=monthly");
+  await expect(annualCheckout).toHaveAttribute("href", "/signup?next=/upgrade&interval=annual");
 
   const landingUrlBeforeCheckout = page.url();
   const accessStorageBefore = await page.evaluate(() => Object.fromEntries(
     [...Object.entries(localStorage), ...Object.entries(sessionStorage)]
       .filter(([key]) => /(premium|subscription|entitlement|mbv-e2e-access|mbv-e2e-admin)/i.test(key)),
   ));
-  await checkout.evaluate((element) => element.addEventListener("click", (event) => event.preventDefault(), { once: true }));
-  await checkout.click();
+  await monthlyCheckout.evaluate((element) => element.addEventListener("click", (event) => event.preventDefault(), { once: true }));
+  await monthlyCheckout.click();
+  await annualCheckout.evaluate((element) => element.addEventListener("click", (event) => event.preventDefault(), { once: true }));
+  await annualCheckout.click();
   const accessStorageAfter = await page.evaluate(() => Object.fromEntries(
     [...Object.entries(localStorage), ...Object.entries(sessionStorage)]
       .filter(([key]) => /(premium|subscription|entitlement|mbv-e2e-access|mbv-e2e-admin)/i.test(key)),
@@ -1614,7 +1650,7 @@ test("landing FAQ exposes its answer and state to keyboard users", async ({ page
   await dismissCookieBanner(page);
 
   const faq = page.locator("section#faq");
-  const question = faq.getByRole("button", { name: "¿Cuánto dura la prueba gratis?", exact: true });
+  const question = faq.getByRole("button", { name: "¿Gratis tiene límite de tiempo?", exact: true });
   await expect(question).toHaveAttribute("aria-expanded", "false");
   const answerId = await question.getAttribute("aria-controls");
   expect(answerId).toBeTruthy();
@@ -1622,8 +1658,8 @@ test("landing FAQ exposes its answer and state to keyboard users", async ({ page
   await question.focus();
   await page.keyboard.press("Enter");
   await expect(question).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator(`#${answerId}`)).toContainText("15 días");
-  await expect(page.locator(`#${answerId}`)).toContainText("planificar hasta 3 meses");
+  await expect(page.locator(`#${answerId}`)).toContainText("USD 0");
+  await expect(page.locator(`#${answerId}`)).toContainText("no vence");
   await page.keyboard.press("Space");
   await expect(question).toHaveAttribute("aria-expanded", "false");
 });
@@ -1652,12 +1688,12 @@ test("P1 public routes remain clear across the required visual matrix", async ({
   const runtimeErrors = collectRuntimeErrors(page);
   const screens = [
     { path: "/", ready: () => page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i }) },
-    { path: "/trial", ready: () => page.getByRole("heading", { name: "Explora lo esencial para convertir tu visión en acciones posibles.", exact: true }) },
+    { path: "/trial", ready: () => page.getByRole("heading", { name: "Empieza gratis y construye constancia a tu ritmo.", exact: true }) },
     { path: "/signup", ready: () => page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true }) },
     { path: "/login", ready: () => page.getByRole("heading", { name: "Vuelve a tu planner.", exact: true }) },
     { path: "/verify-email", ready: () => page.getByRole("heading", { name: "Revisa tu correo.", exact: true }) },
     { path: "/forgot-password", ready: () => page.getByRole("heading", { name: "Recupera tu acceso.", exact: true }) },
-    { path: "/upgrade", ready: () => page.getByRole("heading", { name: "Tu prueba terminó. Tu progreso sigue aquí.", exact: true }) },
+    { path: "/upgrade", ready: () => page.getByRole("heading", { name: "Elige tu acceso Premium.", exact: true }) },
     { path: "/privacy", ready: () => page.getByRole("heading", { name: "Política de Privacidad de My Best Version", exact: true }) },
     { path: "/terms", ready: () => page.getByRole("heading", { name: "Términos y Condiciones", exact: true }) },
     { path: "/legal", ready: () => page.getByRole("heading", { name: "Centro Legal y de Privacidad", exact: true }) },
@@ -1674,19 +1710,22 @@ test("P1 public routes remain clear across the required visual matrix", async ({
       if (screen.path === "/") {
         const header = page.getByRole("banner");
         if (viewport.width > 1180) {
-          await expect(header.getByRole("link", { name: "Comienza tu prueba gratis", exact: true })).toBeVisible();
+          await expect(header.getByRole("link", { name: "Empieza gratis", exact: true })).toBeVisible();
         } else if (viewport.width <= 900) {
           await expect(header.getByRole("button", { name: "Abrir menú", exact: true })).toBeVisible();
         } else {
           await expect(header.getByRole("navigation", { name: "Navegación principal" })).toBeVisible();
         }
       }
-      if (screen.path === "/trial") await expect(page.getByRole("link", { name: "Comienza tu prueba gratis", exact: true })).toBeVisible();
+      if (screen.path === "/trial") await expect(page.getByRole("link", { name: "Empieza gratis", exact: true })).toBeVisible();
       if (screen.path === "/signup") await expect(page.locator(".auth-card form").getByRole("button", { name: "Crear mi cuenta", exact: true })).toBeVisible();
       if (screen.path === "/login") await expect(page.locator(".auth-card form").getByRole("button", { name: "Iniciar sesión", exact: true })).toBeVisible();
       if (screen.path === "/verify-email") await expect(page.getByRole("link", { name: "Ir a verificar mi correo", exact: true })).toBeVisible();
       if (screen.path === "/forgot-password") await expect(page.getByRole("link", { name: "Volver a mi espacio", exact: true })).toBeVisible();
-      if (screen.path === "/upgrade") await expect(page.getByRole("link", { name: "Continuar con My Best Version", exact: true })).toBeVisible();
+      if (screen.path === "/upgrade") {
+        await expect(page.getByRole("button", { name: "Comprar mensual", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Comprar anual", exact: true })).toBeVisible();
+      }
     }
   }
 
@@ -1842,7 +1881,7 @@ test("P0 mobile drawer traps focus and critical touch targets are at least 44px"
   await expect(landingMenu).toHaveAccessibleName("Cerrar menú");
   const landingMenuId = await landingMenu.getAttribute("aria-controls");
   expect(landingMenuId).toBeTruthy();
-  await expectMinimumTouchTarget(page.locator(`#${landingMenuId}`).getByRole("link", { name: "Comienza tu prueba gratis", exact: true }), "CTA principal de adquisición");
+  await expectMinimumTouchTarget(page.locator(`#${landingMenuId}`).getByRole("link", { name: "Empieza gratis", exact: true }), "CTA principal de adquisición");
 });
 
 test("the trial permits three local calendar months and blocks the fourth", async ({ page }) => {
@@ -1960,11 +1999,11 @@ test("captures the eight P0 visual references", async ({ page }) => {
   await page.goto(signedOutPath("/"));
   await captureP0Reference(page, "landing", page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i }));
   await page.goto(signedOutPath("/trial"));
-  await captureP0Reference(page, "trial", page.getByRole("heading", { name: "Explora lo esencial para convertir tu visión en acciones posibles.", exact: true }));
+  await captureP0Reference(page, "trial", page.getByRole("heading", { name: "Empieza gratis y construye constancia a tu ritmo.", exact: true }));
   await page.goto(signedOutPath("/signup"));
   await captureP0Reference(page, "signup", page.getByRole("heading", { name: "Empieza una vida más tuya.", exact: true }));
   await page.goto(signedOutPath("/upgrade"));
-  await captureP0Reference(page, "upgrade", page.getByRole("heading", { name: "Tu prueba terminó. Tu progreso sigue aquí.", exact: true }));
+  await captureP0Reference(page, "upgrade", page.getByRole("heading", { name: "Elige tu acceso Premium.", exact: true }));
 });
 
 test("a goal connects its monthly result, weekly action, Mi día and Progress", async ({ page }) => {
@@ -2086,16 +2125,16 @@ test("English mode covers the updated product flows", async ({ page }) => {
 
   for (const [path, heading] of [
     ["/", "Your best version starts here"],
-    ["/trial", "Explore the essentials for turning your vision into realistic actions."],
+    ["/trial", "Start for free and build consistency at your pace."],
     ["/signup", "Start a life that feels more like yours."],
     ["/login", "Return to your planner."],
     ["/verify-email", "Check your email."],
     ["/forgot-password", "Recover your access."],
-    ["/upgrade", "Your trial ended. Your progress is still here."],
+    ["/upgrade", "Choose your Premium access."],
   ] as const) {
     await page.goto(signedOutPath(path));
     await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
   }
   await page.goto(signedOutPath("/"));
-  await expect(page.getByRole("link", { name: "Start your free trial", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start for free", exact: true }).first()).toBeVisible();
 });

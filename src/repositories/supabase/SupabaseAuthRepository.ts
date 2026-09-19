@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import type { UserAccess } from "@/src/domain/access";
+import type { CommercialActivityResult, UserAccess } from "@/src/domain/access";
 import { getSupabaseBrowserClient } from "@/src/lib/supabaseBrowserClient";
 import type { AccountPreferences, AccountUser, AuthRepository, SignupLegalEvidence } from "@/src/repositories/interfaces/AuthRepository";
 
@@ -22,6 +22,30 @@ function toAccountUser(user: User | null): AccountUser | null {
 
 function callbackUrl(path: string): string {
   return typeof window === "undefined" ? path : `${window.location.origin}${path}`;
+}
+
+function toUserAccess(row: Record<string, unknown>): UserAccess {
+  return {
+    userId: String(row.user_id),
+    email: String(row.email ?? ""),
+    displayName: String(row.display_name ?? ""),
+    role: row.role === "superadmin" ? "superadmin" : "user",
+    accessStatus: row.access_status as UserAccess["accessStatus"],
+    subscriptionStatus: row.subscription_status as UserAccess["subscriptionStatus"],
+    trialStartedAt: typeof row.trial_started_at === "string" ? row.trial_started_at : null,
+    trialEndsAt: typeof row.trial_ends_at === "string" ? row.trial_ends_at : null,
+    serverNow: String(row.server_now),
+    eligibilityStatus: (row.eligibility_status ?? null) as UserAccess["eligibilityStatus"],
+    planInterval: (row.plan_interval ?? null) as UserAccess["planInterval"],
+    premiumSource: (row.premium_source ?? null) as UserAccess["premiumSource"],
+    campaignKey: typeof row.campaign_key === "string" ? row.campaign_key : null,
+    currentStreakDays: Number(row.current_streak_days ?? 0),
+    eligibleAt: typeof row.eligible_at === "string" ? row.eligible_at : null,
+    currentPeriodStartsAt: typeof row.current_period_starts_at === "string" ? row.current_period_starts_at : null,
+    currentPeriodEndsAt: typeof row.current_period_ends_at === "string" ? row.current_period_ends_at : null,
+    nextPaymentAt: typeof row.next_payment_at === "string" ? row.next_payment_at : null,
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+  };
 }
 
 export class SupabaseAuthRepository implements AuthRepository {
@@ -119,16 +143,33 @@ export class SupabaseAuthRepository implements AuthRepository {
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) throw new Error("ACCESS_NOT_AVAILABLE");
+    return toUserAccess(row as Record<string, unknown>);
+  }
+
+  async getMyCommercialPlan(): Promise<UserAccess> {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { data, error } = await this.client.rpc("get_my_commercial_plan");
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error("ACCESS_NOT_AVAILABLE");
+    return toUserAccess(row as Record<string, unknown>);
+  }
+
+  async recordCommercialActivity(actionType: Parameters<AuthRepository["recordCommercialActivity"]>[0]): Promise<CommercialActivityResult> {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { data, error } = await this.client.rpc("record_commercial_activity", { next_action_type: actionType });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error("COMMERCIAL_ACTIVITY_NOT_AVAILABLE");
     return {
-      userId: row.user_id,
-      email: row.email,
-      displayName: row.display_name,
-      role: row.role,
+      localDate: row.local_date,
+      timezone: row.fixed_timezone,
+      recorded: Boolean(row.counted),
+      currentStreakDays: Number(row.streak_days ?? 0),
+      eligibilityStatus: row.eligibility_status ?? null,
       accessStatus: row.access_status,
-      subscriptionStatus: row.subscription_status,
-      trialStartedAt: row.trial_started_at,
-      trialEndsAt: row.trial_ends_at,
-      serverNow: row.server_now,
+      periodStartedOn: row.period_started_on ?? null,
+      periodEndedOn: row.period_ended_on ?? null,
     };
   }
 

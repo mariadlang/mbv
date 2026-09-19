@@ -24,6 +24,16 @@ const trialAccess: UserAccess = {
   trialStartedAt: "2026-09-01T12:00:00.000Z",
   trialEndsAt: "2026-09-16T12:00:00.000Z",
   serverNow: "2026-09-08T12:00:00.000Z",
+  eligibilityStatus: null,
+  planInterval: null,
+  premiumSource: "legacy",
+  campaignKey: null,
+  currentStreakDays: 0,
+  eligibleAt: null,
+  currentPeriodStartsAt: null,
+  currentPeriodEndsAt: null,
+  nextPaymentAt: null,
+  cancelAtPeriodEnd: false,
 };
 
 function ConsentProbe() {

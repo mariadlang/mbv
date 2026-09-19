@@ -161,7 +161,7 @@ type MetadataPolicy = Partial<Record<MetadataKey, readonly string[] | "route" | 
 
 const sources = {
   acquisition: ["landing_header", "landing_hero", "landing_footer", "trial"],
-  auth: ["email_form", "google", "magic_link", "authenticated_access", "first_verified_access", "authenticated_app"],
+  auth: ["email_form", "google", "magic_link", "authenticated_access", "first_verified_access", "authenticated_app", "commercial_trial_activation", "legacy_trial"],
   onboarding: ["welcome", "onboarding"],
   connectedAction: ["onboarding", "habit", "monthly_planning", "weekly_planning", "today", "goal"],
   premium: ["five_year_planning", "fitness_and_nutrition", "upgrade_page"],

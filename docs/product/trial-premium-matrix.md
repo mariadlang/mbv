@@ -1,90 +1,72 @@
-# Matriz de trial, Premium y acceso
+# Matriz Gratis, Premium y recompensa por constancia
 
-## Hechos de producto vigentes
+## Oferta vigente
 
-- La prueba dura **15 días**.
-- No requiere tarjeta.
-- No tiene cobro automático.
-- Comienza con el primer acceso después de verificar el correo.
-- Permite planificación en un horizonte de hasta **tres meses calendario**: el mes de inicio y los dos siguientes.
-- Premium cuesta **USD 2.99 al mes** o **USD 30.99 al año**.
-- Fitness y alimentación y la planificación a cinco años están disponibles con Premium.
-- El análisis avanzado del progreso, las recomendaciones con IA y la planificación específica de un año están **Próximamente** y no están disponibles.
-- El contenido detallado del planner permanece local en el dispositivo.
-- El checkout se abre fuera de la aplicación mediante Mercado Pago.
-- El checkout no activa Premium desde el frontend.
+| Capacidad | Gratis | Premium mensual | Premium anual | Nota |
+| --- | :---: | :---: | :---: | --- |
+| Visión | Sí | Sí | Sí | Crear y actualizar cuenta como día válido |
+| Objetivos y metas | Sí | Sí | Sí | Se reutiliza el modelo existente |
+| Hábitos y registro cotidiano | Sí | Sí | Sí | Registrar cuenta como día válido |
+| Mi día / Daily Plan | Sí | Sí | Sí | Crear, actualizar o completar una acción cuenta |
+| Dashboard básico | Sí | Sí | Sí | No incluye el análisis avanzado |
+| Fitness y alimentación | No | Sí | Sí | Gate `fitness_and_nutrition`; conserva consentimiento sensible |
+| Finanzas | No | Sí | Sí | Gate `finance`; sin conexión bancaria |
+| Análisis avanzado del progreso | No | Sí | Sí | Evidencia de los últimos 30 días; vacío honesto sin datos |
+| Recomendaciones para ti | No | Sí | Sí | Reglas deterministas basadas en datos disponibles; no se anuncia IA |
 
-## Capacidades
+Precios: Gratis USD 0; Premium mensual USD 2.99; Premium anual USD 29.99. Las dos modalidades Premium incluyen exactamente las mismas funciones.
 
-| Capacidad | Trial | Premium | Comportamiento y límite |
-| --- | :---: | :---: | --- |
-| Planificación mensual, semanal y diaria | Sí | Sí | El trial limita los meses editables |
-| Horizonte de planificación de hasta tres meses | Sí | Sí | En Premium no aplica este límite |
-| Visión y metas | Sí | Sí | No existe un límite Premium adicional documentado |
-| Hábitos | Sí | Sí | Incluido |
-| Diario y notas | Sí | Sí | Contenido local |
-| Proyectos y tareas | Sí | Sí | Incluido |
-| Progreso | Sí | Sí | Incluido |
-| Ánimo y bienestar cotidiano | Sí | Sí | Registros opcionales y locales fuera del módulo Premium de Fitness |
-| Finanzas | Sí | Sí | Sin conexión bancaria |
-| Planificación a cinco años | No | Sí | Feature gate `five_year_planning` |
-| Fitness y alimentación | No | Sí | `/app/health`, protegido por `fitness_and_nutrition`; después del gate exige consentimiento `sensitive_wellness`; entrenamiento, comidas/macros y medidas/fotos permanecen locales |
-| Análisis avanzado del progreso | No | No | `coming_soon`; la landing no lo presenta como activo |
-| Recomendaciones con IA | No | No | `coming_soon`; no hay recomendaciones automatizadas disponibles |
-| Planificación específica de un año | No | No | `coming_soon`; no confundir con vistas de calendario o planificación existentes |
+La planificación mensual, semanal y a largo plazo preexistente no se elimina. La planificación a cinco años conserva temporalmente su gate histórico Premium, pero no se usa como argumento de venta de la oferta nueva. La ubicación comercial definitiva de esos horizontes requiere una decisión separada.
 
-La lista pública Premium disponible hoy se limita a “Todo lo incluido durante la prueba”, “Fitness y alimentación” y “Planificación de 5 años”. Las tres capacidades en preparación se distinguen visual y verbalmente como no disponibles.
+## Recompensa por constancia
 
-## Estados de acceso
+La recompensa no es un tercer plan ni comienza al registrarse:
 
-| Estado | Acceso | Comunicación esperada |
-| --- | --- | --- |
-| `trial` | Producto protegido disponible dentro de la prueba; Fitness/alimentación y cinco años bloqueados | Mostrar días restantes y explicar el límite de tres meses |
-| `active` | `fitness_and_nutrition` y `five_year_planning` habilitadas | Identificar como Premium y separar lo disponible de lo próximo |
-| `expired` | Producto protegido bloqueado para cuentas no-superadmin | Explicar que la prueba terminó, que los datos locales no se borraron y ofrecer revisar Premium |
-| `blocked` | Producto protegido bloqueado para cuentas no-superadmin | Explicar que el acceso necesita revisión y dirigir a soporte; los datos locales permanecen |
-| `superadmin` | Bypass Premium y del bloqueo `expired`/`blocked` | Uso administrativo, no una oferta comercial |
+`Gratis → 30 fechas consecutivas → alerta interna → revisión → activación manual → 30 días Premium`
 
-`subscription_status=pending` existe en el modelo remoto, pero el flujo actual de Mercado Pago no lo establece ni reconcilia automáticamente.
+Un día válido exige una acción autenticada guardada correctamente en una función Gratis. Abrir una pestaña, visitar la landing o ejecutar un proceso automático no cuenta. Se registra como máximo una fecha local por día con hora del servidor y la zona persistida/fijada para la campaña. Una ausencia reinicia la secuencia siguiente sin borrar datos ni el mejor progreso.
 
-## Comportamiento de planificación mensual
+Al llegar a 30:
 
-- Un periodo debe usar el formato válido `YYYY-MM`.
-- Para trial, `isTrialPlanningMonthAllowed` compara el periodo con el mes calendario local de `trialStartedAt`, igual que las claves de fecha del planner.
-- `isTrialPlanningDateAllowed` y `getTrialPlanningDateBounds` aplican ese mismo calendario local a fechas diarias y semanales, incluida la captura rápida.
-- Un mes vacío fuera del horizonte muestra un estado bloqueado y el CTA “Desbloquear Premium”.
-- Un plan ya existente fuera del horizonte puede consultarse en modo solo lectura. La vista conserva las actividades guardadas históricamente y las tareas o eventos enlazados, y evita presentar copias equivalentes como registros distintos.
-- El bloqueo evita crear, editar, asignar, reprogramar o guardar acciones, eventos y planes fuera del límite desde las vistas mensual, semanal y diaria o desde la captura rápida; no elimina tareas, eventos ni planes locales.
+- la elegibilidad permanece mientras espera revisión;
+- sólo un superadmin puede activar con confirmación explícita;
+- el período comienza al activar y dura 30 días completos;
+- existe una sola concesión por cuenta para `consistency-30-v1`;
+- si ya hay Premium pagado o una compra/suscripción abierta, se registra/bloquea el conflicto sin tocar cobro ni consumir el beneficio;
+- `conflict_paid_premium` se revalida al conciliar, ejecutar mantenimiento, recalcular acceso o intentar activar: vuelve a `eligible` sólo si ya no hay checkout/suscripción abierta, período pagado, concesión previa ni Premium legacy;
+- finalizar la recompensa conserva datos y devuelve a Gratis salvo período pagado vigente.
 
-## Feature gates
+## Estados efectivos
 
-- La fuente de verdad vive en `src/domain/access.ts`.
-- `PremiumFeatureGate` reutiliza el copy de cada feature y registra `premium_gate_viewed` cuando existe consentimiento.
-- `PlanningPage` aplica el gate de cinco años y las vistas mensual, semanal y diaria reutilizan el límite del trial. `QuickCaptureDrawer` y `usePlanner` vuelven a validar las fechas para que una entrada alternativa no omita la regla de dominio.
-- `PlannerApp` aplica `PremiumFeatureGate` a `/app/health` con la feature `fitness_and_nutrition`; `superadmin` conserva el bypass definido por las reglas de dominio. Después del acceso Premium, `FitnessPage` exige el consentimiento sensible `sensitive_wellness` antes de mostrar o registrar datos.
-- Las capacidades marcadas `coming_soon` no forman parte de `PremiumFeature`, no tienen ruta ni gate de acceso y no deben inferirse por tener una tarjeta en la landing.
-- Para cuentas no-superadmin, los estados `expired` y `blocked` se resuelven antes de montar el producto protegido en `app/PlannerApp.tsx`; el bypass de `superadmin` se evalúa primero.
+| Estado | Acceso y comunicación |
+| --- | --- |
+| `free` | Funciones Gratis; progreso de constancia visible cuando exista |
+| `eligible` / `pending_activation` | Gratis; beneficio pendiente de revisión y activación |
+| `trial_active` | Premium promocional hasta la fecha del servidor; sin cobro |
+| `trial_expired` | Gratis; datos conservados; opción de contratar Premium |
+| `paid_monthly` | Premium dentro del período mensual confirmado |
+| `paid_annual` | Premium dentro del período anual confirmado |
+| `payment_pending` | No concede Premium por sí solo |
+| `payment_failed` | Conserva un período ya pagado hasta su fin; de otro modo Gratis |
+| `cancellation_scheduled` | Premium hasta el final del período pagado; puede originarse en la cancelación autoservicio reconciliada con el proveedor |
+| `subscription_ended` | Gratis salvo recompensa vigente |
+| `legacy_premium` | Acceso histórico conservado; requiere conciliación administrativa futura |
+| `blocked` | Bloqueo administrativo existente |
+| `superadmin` | Bypass administrativo auditado; no es una oferta comercial |
 
-## Flujo actual de Mercado Pago
+Los estados `trial`, `active` y `expired` permanecen únicamente para compatibilidad con accesos anteriores. Un trial legacy vigente conserva sus fechas y limitaciones; la oferta pública nueva no lo promociona.
 
-1. Landing y Upgrade solicitan la URL a la misma instancia de `billingService`.
-2. `MercadoPagoBillingRepository` devuelve `publicConfig.mercadoPagoCheckoutUrl`, resuelta una sola vez desde `NEXT_PUBLIC_MERCADO_PAGO_URL` o desde el fallback público configurado.
-3. “Activar Premium” en la landing y “Continuar con My Best Version” en Upgrade abren el checkout en una pestaña externa.
-4. Con consentimiento analítico, la landing registra `premium_checkout_click`; Upgrade emite `premium_checkout_click` y `checkout_started`.
-5. Volver a My Best Version no cambia `access_status` ni `subscription_status`.
-6. No existe webhook ni endpoint de confirmación de pago.
-7. Premium sólo puede habilitarse actualmente mediante una operación administrativa autorizada y auditada.
+## Autoridad y límites
 
-El selector mensual/anual de la landing sólo cambia precio visible y telemetría. Ambas opciones comparten el mismo `checkoutUrl`: no se envía el periodo al proveedor ni se genera una preferencia de pago diferenciada.
+- `src/domain/access.ts` define la matriz y el acceso efectivo del cliente.
+- Supabase es autoridad sobre elegibilidad, concesiones y facturación.
+- Las rutas Premium locales están protegidas por el gate central; las APIs comerciales autentican y autorizan en servidor.
+- La cancelación autoservicio verifica propiedad, usa idempotencia, vuelve a consultar Mercado Pago y conserva el paid-through canónico.
+- Los checkout `ready` stale no se liberan por reloj solamente: se consulta el proveedor, se reutilizan si siguen abiertos y sólo se cierran con estado terminal e identidad coincidente.
+- Las operaciones comerciales críticas por cuenta usan un advisory lock común para evitar carreras entre participación, recompensa y pago.
+- La exportación completa de datos locales permanece disponible como derecho de portabilidad y recuperación. No concede ejecución de cálculos Premium.
+- Como el planner detallado es local-first, el servidor recibe una señal autenticada sólo después de una mutación local satisfactoria, pero no puede demostrar por sí mismo el contenido de esa mutación. La cola local queda ligada al `userId` y no cruza eventos al cambiar de cuenta, pero este límite antiabuso debe resolverse con evidencia/sincronización server-side antes de usar la promoción con valor económico significativo.
 
-`payment_confirmed` está reservado como evento de servidor. No debe emitirse desde el cliente ni considerarse implementado hasta validar firma, importe, moneda, estado e idempotencia del proveedor.
+## Estado operativo de esta implementación
 
-## Decisiones comerciales y técnicas pendientes
-
-- Impuestos, renovación, cancelación, reembolsos y descuentos.
-- Gestión de pagos pendientes, rechazados o devueltos.
-- Webhook de Mercado Pago y validación criptográfica de firma.
-- Conciliación idempotente con el perfil y auditoría de acceso.
-- Condiciones jurídicas y operativas de los periodos mensual y anual comunicados.
-
-El precio, la moneda y los periodos sí están definidos por la matriz comercial vigente; no debe inferirse desde ellos ninguna de las condiciones pendientes anteriores.
+La matriz describe el contrato implementado y probado localmente. Sigue bloqueada su certificación externa: faltan credenciales sandbox y soporte USD confirmado de Mercado Pago, un envío transaccional real autorizado, aplicar la migración en un entorno remoto y realizar commit, push y deploy. Ninguna de esas acciones se ejecutó desde esta rama.

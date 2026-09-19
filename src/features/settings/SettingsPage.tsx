@@ -3,7 +3,7 @@
 
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, Download, FileUp, HelpCircle, Languages, LifeBuoy, LockKeyhole, LogOut, Mail, MoonStar, PlayCircle, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, CreditCard, Download, FileUp, HelpCircle, Languages, LifeBuoy, LockKeyhole, LogOut, Mail, MoonStar, PlayCircle, RefreshCw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
@@ -15,10 +15,84 @@ import { MarketingPreferenceControl } from "@/src/features/support/SupportPage";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { GoogleCalendarIntegrationCard } from "@/src/features/settings/GoogleCalendarIntegrationCard";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { isPremiumAccess, type SubscriptionStatus, type UserAccess } from "@/src/domain/access";
+import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
+import { SubscriptionManagement } from "@/src/features/settings/SubscriptionManagement";
 
 interface BackupPreview { exportedAt: string; name: string; areas: number; goals: number; habits: number; tasks: number; transactions: number; migrated: boolean }
 
-export function SettingsPage({ planner, onReplayTutorial, onRequestLogout, onLocalDataCleared }: { planner: PlannerController; onReplayTutorial: () => void; onRequestLogout: () => void; onLocalDataCleared: () => void }) {
+const freeFeatureKeys: NavigationSpaceProgressMessageKey[] = [
+  "settings.plan.feature.vision",
+  "settings.plan.feature.goals",
+  "settings.plan.feature.habits",
+  "settings.plan.feature.today",
+  "settings.plan.feature.dashboard",
+];
+
+const premiumFeatureKeys: NavigationSpaceProgressMessageKey[] = [
+  ...freeFeatureKeys,
+  "settings.plan.feature.fitness",
+  "settings.plan.feature.finance",
+  "settings.plan.feature.analysis",
+  "settings.plan.feature.recommendations",
+];
+
+const paymentStatusMessageKeys: Record<SubscriptionStatus, NavigationSpaceProgressMessageKey> = {
+  none: "settings.plan.status.free",
+  pending: "settings.plan.status.pending",
+  active: "settings.plan.status.active",
+  past_due: "settings.plan.status.pastDue",
+  failed: "settings.plan.status.failed",
+  cancel_at_period_end: "settings.plan.status.cancelScheduled",
+  cancelled: "settings.plan.status.cancelled",
+  ended: "settings.plan.status.ended",
+};
+
+function planNameMessageKey(access: UserAccess): NavigationSpaceProgressMessageKey {
+  if (access.accessStatus === "trial_active") return "settings.plan.premiumTrial";
+  if (access.planInterval === "monthly" || access.accessStatus === "paid_monthly") return "settings.plan.premiumMonthly";
+  if (access.planInterval === "annual" || access.accessStatus === "paid_annual") return "settings.plan.premiumAnnual";
+  return isPremiumAccess(access) ? "settings.plan.premium" : "settings.plan.free";
+}
+
+function PlanSettingsCard({ access }: { access: UserAccess }) {
+  const { formatDate, m } = useI18n();
+  const premium = isPremiumAccess(access);
+  const hasBillingRelationship = access.subscriptionStatus !== "none";
+  const features = premium ? premiumFeatureKeys : freeFeatureKeys;
+  const participationCopy = access.eligibilityStatus === "eligible"
+    ? m("settings.plan.participationEligible")
+    : access.eligibilityStatus === "activated"
+      ? m("settings.plan.participationActivated")
+      : access.eligibilityStatus === "conflict_paid_premium"
+        ? m("settings.plan.participationConflict")
+        : m("settings.plan.participationProgress", { count: Math.min(30, access.currentStreakDays) });
+  const periodCopy = access.accessStatus === "trial_active" && access.trialStartedAt && access.trialEndsAt
+    ? m("settings.plan.trialPeriod", { start: formatDate(access.trialStartedAt, { dateStyle: "medium" }), end: formatDate(access.trialEndsAt, { dateStyle: "medium" }) })
+    : access.cancelAtPeriodEnd && access.currentPeriodEndsAt
+      ? m("settings.plan.endsOn", { date: formatDate(access.currentPeriodEndsAt, { dateStyle: "medium" }) })
+      : access.nextPaymentAt
+        ? m("settings.plan.renewsOn", { date: formatDate(access.nextPaymentAt, { dateStyle: "medium" }) })
+        : access.currentPeriodEndsAt && premium
+          ? m("settings.plan.endsOn", { date: formatDate(access.currentPeriodEndsAt, { dateStyle: "medium" }) })
+          : null;
+
+  return <Card id="plan-settings" className="settings-plan-card" data-i18n-explicit="true">
+    <header><span className="settings-plan-card__icon"><CreditCard size={22} /></span><div><p className="eyebrow">{m("settings.plan.eyebrow")}</p><h2>{m("settings.plan.title")}</h2><p>{m("settings.plan.description")}</p></div></header>
+    <dl>
+      <div><dt>{m("settings.plan.planLabel")}</dt><dd>{m(planNameMessageKey(access))}</dd></div>
+      <div><dt>{m("settings.plan.paymentLabel")}</dt><dd>{access.accessStatus === "blocked" ? m("settings.plan.status.blocked") : m(paymentStatusMessageKeys[access.subscriptionStatus])}</dd></div>
+      {periodCopy ? <div><dt>{m("settings.plan.periodLabel")}</dt><dd>{periodCopy}</dd></div> : null}
+      <div><dt>{m("settings.plan.participation")}</dt><dd>{participationCopy}</dd></div>
+    </dl>
+    <div className="settings-plan-card__features"><strong>{m("settings.plan.functionsLabel")}</strong><ul>{features.map((key) => <li key={key}><CheckCircle2 size={15} /> {m(key)}</li>)}</ul></div>
+    {premium || hasBillingRelationship
+      ? <SubscriptionManagement access={access} />
+      : <Link className="button button--secondary" to="/upgrade">{m("settings.plan.manage")}</Link>}
+  </Card>;
+}
+
+export function SettingsPage({ planner, access, onReplayTutorial, onRequestLogout, onLocalDataCleared }: { planner: PlannerController; access: UserAccess; onReplayTutorial: () => void; onRequestLogout: () => void; onLocalDataCleared: () => void }) {
   const { formatDate, m } = useI18n();
   const account = useAccount();
   const colorMode = useUiStore((state) => state.colorMode);
@@ -71,7 +145,9 @@ export function SettingsPage({ planner, onReplayTutorial, onRequestLogout, onLoc
     <SectionHeading eyebrow="Tu planner, tus reglas" title="Ajustes y datos" description="Personaliza tu experiencia y administra tu información." action={<Badge tone="sage"><LockKeyhole size={14} /> Datos locales</Badge>} />
     {message && <div className="inline-message" role="status">{message}</div>}
     <div className="settings-reference-layout">
+      <div className="settings-main-column">
       {publicConfig.googleCalendarEnabled && <GoogleCalendarIntegrationCard />}
+      <PlanSettingsCard access={access} />
       <Card id="account-settings" className="settings-list-card">
         <section><div><strong><Languages size={16} /> Idioma</strong><small>Selecciona el idioma de la aplicación.</small></div><LanguageSwitcher onChange={(locale) => void account.updatePreferences({ locale })} /></section>
         <section><div><strong><ShieldCheck size={16} /> Legal y privacidad</strong><small>Consulta documentos, autorizaciones, solicitudes y control de datos.</small></div><Link className="button button--secondary" to="/app/legal">Abrir centro</Link></section>
@@ -93,6 +169,7 @@ export function SettingsPage({ planner, onReplayTutorial, onRequestLogout, onLoc
         <section><div><strong>Restaurar datos de demostración</strong><small>Carga contenido ficticio para explorar la aplicación.</small></div><Button variant="secondary" onClick={async()=>{await planner.loadDemo();setMessage("Los datos ficticios de ejemplo están listos.");}}><RefreshCw size={16}/> Restaurar</Button></section>
         <section className="delete-setting"><div><strong>Eliminar todos los datos</strong><small>Esta acción no se puede deshacer.</small></div><Button variant="danger" onClick={()=>setDeleteOpen(true)}><Trash2 size={16}/> Eliminar</Button></section>
       </Card>
+      </div>
       <aside className="settings-aside"><Card><ShieldCheck size={24}/><p className="eyebrow">Aviso de privacidad</p><h2>El control es tuyo</h2><p>Tus metas, hábitos, finanzas y reflexiones se guardan en este navegador. No se conectan cuentas bancarias.</p><Link className="button button--secondary" to="/legal">Ver Centro Legal</Link></Card><Card><LockKeyhole size={24}/><p className="eyebrow">Privacidad local</p><h2>Tu cuenta protege el acceso</h2><p>Los datos detallados del planner permanecen en este dispositivo. Exporta un respaldo para conservarlos o trasladarlos.</p><Button variant="secondary" onClick={async () => { await planner.downloadBackup(); setMessage("Tu respaldo se descargó correctamente."); }}><Download size={16} /> Exportar respaldo</Button><Link className="button button--ghost" to="/data-deletion">Cómo eliminar mis datos</Link></Card><Card><HelpCircle size={24}/><h2>¿Necesitas ayuda?</h2><p>Aprende los conceptos clave o reinicia el recorrido guiado.</p><Link className="button button--secondary" to="/app/help">Ir al centro de ayuda</Link></Card></aside>
     </div>
 

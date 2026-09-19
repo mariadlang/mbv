@@ -32,6 +32,8 @@ import { analyticsService } from "@/src/services/analyticsService";
 import type { ClientProductEventName } from "@/src/domain/productAnalytics";
 import { isTrialPlanningDateAllowed, isTrialPlanningMonthAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 import { toLocalDateKey } from "@/src/lib/dates";
+import { participationService } from "@/src/services/participationService";
+import type { QualifyingActivityType } from "@/src/domain/participation";
 
 type PlannerService = import("@/src/services/plannerService").PlannerService;
 type LocalPlannerClaimService = import("@/src/services/localPlannerClaimService").LocalPlannerClaimService;
@@ -159,6 +161,16 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
     return next;
   }, [commit]);
 
+  const recordParticipation = useCallback((activity: QualifyingActivityType) => {
+    if (ownerId) participationService.record(ownerId, activity);
+  }, [ownerId]);
+
+  const commitParticipating = useCallback(async (activity: QualifyingActivityType, operation: (service: PlannerService) => Promise<PlannerSnapshot>) => {
+    const next = await commit(operation);
+    recordParticipation(activity);
+    return next;
+  }, [commit, recordParticipation]);
+
   const importBackup = useCallback(
     async (file: File) => {
       backupFileSchema.parse({ type: file.type, size: file.size });
@@ -255,19 +267,28 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
     toggleHabit: async (habitId: string, date: string) => {
       assertPlanningDateAllowed(date);
       const next = await commit((service) => service.toggleHabit(habitId, date));
-      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) analyticsService.track("first_habit_recorded", { source: "habit_toggle", version: 2 }, "recorded:v2");
+      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) {
+        analyticsService.track("first_habit_recorded", { source: "habit_toggle", version: 2 }, "recorded:v2");
+        recordParticipation("habit_recorded");
+      }
       return next;
     },
     setHabitProgress: async (habitId: string, date: string, value: number) => {
       assertPlanningDateAllowed(date);
       const next = await commit((service) => service.setHabitProgress(habitId, date, value));
-      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) analyticsService.track("first_habit_recorded", { source: "habit_progress", version: 2 }, "recorded:v2");
+      if (next.habitLogs.some((log) => log.habitId === habitId && log.date === date && log.value > 0)) {
+        analyticsService.track("first_habit_recorded", { source: "habit_progress", version: 2 }, "recorded:v2");
+        recordParticipation("habit_recorded");
+      }
       return next;
     },
     createTask: async (title: string, date?: string, focusPriority?: 1 | 2 | 3) => {
       assertPlanningDateAllowed(date);
       const next = await commitTracked("task_created", (service) => service.createTask(title, date, focusPriority), { source: "quick_add" });
-      if (date) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+      if (date) {
+        analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
+        recordParticipation("daily_action_created");
+      }
       return next;
     },
     createTaskDetailed: async (input: TaskFormInput) => {
@@ -276,6 +297,7 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       if (input.date || input.goalId || input.projectId || input.periodPlanId || input.focusPriority) {
         analyticsService.track("first_action_created", { source: input.periodPlanId ? "monthly_planning" : input.goalId ? "goal" : "today", result: "connected", version: 2 }, "first:v2");
       }
+      if (input.date) recordParticipation("daily_action_created");
       return next;
     },
     updateTask: async (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>) => {
@@ -284,6 +306,7 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       const next = await commit((service) => service.updateTask(taskId, input));
       if (!previousDate && input.date) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
       else if (previousDate && input.date !== undefined && input.date !== previousDate) analyticsService.track("action_rescheduled", { source: "task_edit", version: 2 }, "first:v2");
+      if (previousDate || input.date) recordParticipation("daily_action_updated");
       return next;
     },
     assignTaskFocusPriority: async (taskId: string, date: string, focusPriority?: 1 | 2 | 3) => {
@@ -292,11 +315,12 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       const next = await commit((service) => service.assignTaskFocusPriority(taskId, date, focusPriority));
       if (!previousDate) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
       else if (date !== previousDate) analyticsService.track("action_rescheduled", { source: "priority_assignment", version: 2 }, "first:v2");
+      recordParticipation("daily_action_updated");
       return next;
     },
     createProject: (input: ProjectFormInput) =>
       commit((service) => service.createProject(input)),
-    toggleTask: async (taskId: string) => { assertTaskWritable(taskId); const next = await commit((service) => service.toggleTask(taskId)); if (next.tasks.find((task) => task.id === taskId)?.status === "completed") { analyticsService.track("task_completed", { source: "task_toggle" }); analyticsService.track("first_action_completed", { source: "task_toggle", version: 2 }, "completed:v2"); } return next; },
+    toggleTask: async (taskId: string) => { assertTaskWritable(taskId); const next = await commit((service) => service.toggleTask(taskId)); const completedTask = next.tasks.find((task) => task.id === taskId); if (completedTask?.status === "completed") { analyticsService.track("task_completed", { source: "task_toggle" }); analyticsService.track("first_action_completed", { source: "task_toggle", version: 2 }, "completed:v2"); if (completedTask.date) recordParticipation("daily_action_completed"); } return next; },
     deleteTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.deleteTask(taskId)); },
     cancelTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.cancelTask(taskId)); },
     rescheduleTask: async (taskId: string, date: string) => {
@@ -305,20 +329,24 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       const next = await commit((service) => service.rescheduleTask(taskId, date));
       if (!previousDate) analyticsService.track("first_action_created", { source: "today", result: "connected", version: 2 }, "first:v2");
       else if (previousDate !== date) analyticsService.track("action_rescheduled", { source: "reschedule", version: 2 }, "first:v2");
+      recordParticipation("daily_action_updated");
       return next;
     },
     saveMood: (mood: MoodName, energy: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, factors: string[] = [], note?: string, sleep?: 1 | 2 | 3 | 4 | 5, concentration?: 1 | 2 | 3 | 4 | 5) =>
       commit((service) => service.saveMood(mood, energy, factors, note, sleep, concentration)),
-    createGoal: (input: GoalFormInput, milestoneTitles: string[] = []) =>
-      commitTracked("goal_created", (service) => service.createGoal(input, milestoneTitles)),
+    createGoal: async (input: GoalFormInput, milestoneTitles: string[] = []) => {
+      const next = await commitTracked("goal_created", (service) => service.createGoal(input, milestoneTitles));
+      recordParticipation("goal_created");
+      return next;
+    },
     updateGoalStatus: (goalId: string, status: EntityStatus) =>
-      commit((service) => service.updateGoalStatus(goalId, status)),
+      commitParticipating("goal_updated", (service) => service.updateGoalStatus(goalId, status)),
     updateGoalProgress: (goalId: string, value: number) =>
-      commit((service) => service.updateGoalProgress(goalId, value)),
+      commitParticipating("goal_updated", (service) => service.updateGoalProgress(goalId, value)),
     updateLifeArea: (lifeAreaId: string, input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string; category?: string }) =>
-      commit((service) => service.updateLifeArea(lifeAreaId, input)),
+      commitParticipating("vision_updated", (service) => service.updateLifeArea(lifeAreaId, input)),
     createLifeArea: (input: { name: string; category: string; vision?: string; dream?: string; currentScore?: number; desiredScore?: number; imageDataUrl?: string }) =>
-      commit((service) => service.createLifeArea(input)),
+      commitParticipating("vision_updated", (service) => service.createLifeArea(input)),
     updateProfileSettings: (input: { name?: string; weekStartsOn?: 0 | 1; theme?: "light" | "rose" | "taupe"; baseCurrency?: "COP" | "USD" | "EUR" | "MXN"; financePrivacy?: boolean; fitnessEnabled?: boolean; fitnessProfile?: FitnessSettingsFormInput; usePurpose?: string; avatarDataUrl?: string; activationCompleted?: boolean }) =>
       commitTracked("settings_updated", (service) => service.updateProfileSettings(input), { section: "profile" }),
     updateLifeAreaSettings: (lifeAreaId: string, input: { name?: string; active?: boolean; direction?: "up" | "down" }) =>
@@ -359,6 +387,7 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       actions.forEach((action) => assertPlanningDateAllowed(action.date));
       const next = await commit((service) => service.upsertPlanActions(planId, goalId, actions));
       if (actions.some((action) => !action.taskId && action.title.trim())) analyticsService.track("first_action_created", { source: "monthly_planning", result: "connected", version: 2 }, "first:v2");
+      if (actions.some((action) => action.date && action.title.trim())) recordParticipation("daily_action_updated");
       return next;
     },
     deleteCascadePlan: (planId: string) => { assertPlanWritable(planId); return commit((service) => service.deleteCascadePlan(planId)); },

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import type { ImgHTMLAttributes } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { CookieConsentProvider, useCookieConsent } from "@/src/features/legal/Co
 import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { COOKIE_POLICY_VERSION } from "@/src/lib/legalConfig";
 import { analyticsService, setAnalyticsConsent } from "@/src/services/analyticsService";
+import { landingContent } from "@/src/features/landing/landingContent";
+import { LandingPricing } from "@/src/features/landing/LandingConversionSections";
 
 vi.mock("@/src/hooks/useAccount", () => ({
   useAccount: () => ({ user: null }),
@@ -94,5 +96,69 @@ describe("analítica de la landing y consentimiento", () => {
     persistPreference(true);
     await waitFor(() => expect(view.getByTestId("analytics-consent").textContent).toBe("on"));
     expect(track.mock.calls.filter(([event]) => event === "landing_view")).toHaveLength(1);
+  });
+});
+
+describe("oferta comercial de la landing", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("mantiene el contrato bilingüe de Gratis, Premium y la recompensa de constancia", () => {
+    const { es, en } = landingContent;
+
+    expect(es.actions).toMatchObject({ start: "Empieza gratis", login: "Iniciar sesión", included: "Ver qué incluye" });
+    expect(es.pricing).toMatchObject({ freePrice: "USD 0", monthlyPrice: "USD 2,99 / mes", annualPrice: "USD 29,99 / año" });
+    expect(es.pricing.freeIncludes).toEqual(["Visión", "Metas", "Hábitos y registro", "Mi día", "Dashboard"]);
+    expect(es.pricing.premiumIncludes.map(({ title }) => title)).toEqual([
+      "Todo lo incluido en Gratis",
+      "Fitness y alimentación",
+      "Finanzas",
+      "Análisis avanzado del progreso",
+      "Recomendaciones para ti",
+    ]);
+    expect(es.reward.steps.map(({ title }) => title)).toEqual([
+      "Empieza en Gratis",
+      "Completa 30 días consecutivos",
+      "El equipo recibe una alerta",
+      "Recibe 30 días Premium",
+    ]);
+    expect(JSON.stringify(es)).not.toMatch(/15 días|30,99|con IA|planificación de (?:1|3|5) (?:año|años|meses)/i);
+    expect(en.pricing.annualPrice).toBe("USD 29.99 / year");
+    expect(JSON.stringify(en)).not.toMatch(/15-day trial|30\.99|AI recommendations|(?:one|three|five)-(?:month|year) planning/i);
+  });
+
+  it("conserva el periodo al dirigir compras anónimas hacia el registro", () => {
+    const getPurchaseDestination = vi.fn((period: "monthly" | "annual") => `/signup?next=/upgrade&interval=${period}`);
+    const onCheckout = vi.fn();
+    const onPricingChange = vi.fn();
+    const view = render(
+      <MemoryRouter>
+        <LandingPricing
+          content={landingContent.es}
+          authenticated={false}
+          getPurchaseDestination={getPurchaseDestination}
+          onTrialAction={vi.fn()}
+          onCheckout={onCheckout}
+          onPricingChange={onPricingChange}
+        />
+      </MemoryRouter>,
+    );
+
+    const plans = within(view.getByRole("region", { name: "Elige cómo quieres empezar" }));
+    const free = plans.getAllByRole("link", { name: /^Empieza gratis$/ })[0];
+    const monthly = plans.getByRole("link", { name: /Comprar mensual/i });
+    const annual = plans.getByRole("link", { name: /Comprar anual/i });
+    expect(free.getAttribute("href")).toBe("/signup");
+    expect(monthly.getAttribute("href")).toBe("/signup?next=/upgrade&interval=monthly");
+    expect(annual.getAttribute("href")).toBe("/signup?next=/upgrade&interval=annual");
+
+    monthly.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    annual.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(monthly);
+    fireEvent.click(annual);
+    expect(onPricingChange.mock.calls).toEqual([["monthly"], ["annual"]]);
+    expect(onCheckout.mock.calls).toEqual([["landing_pricing", "monthly"], ["landing_pricing", "annual"]]);
   });
 });

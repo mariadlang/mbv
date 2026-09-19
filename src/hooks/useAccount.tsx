@@ -11,6 +11,7 @@ import { analyticsService, claimQueuedProductEvents, clearQueuedProductEvents, c
 import { useCookieConsent } from "@/src/features/legal/CookieConsent";
 import { clearPendingReferralAttribution, readPendingReferralAttribution } from "@/src/services/referralAttributionService";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { COMMERCIAL_ACCESS_UPDATED_EVENT, participationService } from "@/src/services/participationService";
 
 interface AccountContextValue {
   configured: boolean;
@@ -51,6 +52,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     analyticsUserIdRef.current = nextUser?.id ?? null;
     setUser(nextUser);
     if (!nextUser || !nextUser.emailVerified) { setAccess(null); setPreferences(null); setPreferencesLoading(false); return; }
+    void participationService.flush(nextUser.id);
     setPreferencesLoading(true);
     try {
       setAccess(await authService.getOrStartAccess());
@@ -80,6 +82,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const unsubscribe = authService.onAuthChange((nextUser) => { if (active) void loadForUser(nextUser); });
     return () => { active = false; unsubscribe(); };
   }, [loadForUser]);
+
+  useEffect(() => {
+    if (!user || typeof window === "undefined") return;
+    const refreshCommercialAccess = () => { void loadForUser(user); };
+    window.addEventListener(COMMERCIAL_ACCESS_UPDATED_EVENT, refreshCommercialAccess);
+    return () => window.removeEventListener(COMMERCIAL_ACCESS_UPDATED_EVENT, refreshCommercialAccess);
+  }, [loadForUser, user]);
 
   const markOnboardingCompleted = useCallback(async () => {
     setUser((current) => current ? { ...current, onboardingCompleted: true } : current);
@@ -113,12 +122,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       try { setPreferences(await authService.updatePreferences(input)); } catch { /* La preferencia local mantiene la experiencia disponible. */ }
     },
   }), [access, configured, error, getAccessToken, loadForUser, loading, markOnboardingCompleted, preferences, preferencesLoading, user]);
-  return <AccountContext.Provider value={value}>{children}<ProductAnalyticsBridge userId={user?.id ?? null} emailVerifiedAt={user?.emailVerifiedAt ?? null} trialStartedAt={access?.trialStartedAt ?? null} analyticsEnabled={cookiePreferences ? cookiePreferences.analytics : null} getAccessToken={getAccessToken} /></AccountContext.Provider>;
+  const activeTrialStartedAt = access && (access.accessStatus === "trial_active" || access.accessStatus === "trial")
+    ? access.trialStartedAt
+    : null;
+  const trialSource = access?.accessStatus === "trial_active" ? "commercial_trial_activation" : "legacy_trial";
+  return <AccountContext.Provider value={value}>{children}<ProductAnalyticsBridge userId={user?.id ?? null} emailVerifiedAt={user?.emailVerifiedAt ?? null} trialStartedAt={activeTrialStartedAt} trialSource={trialSource} analyticsEnabled={cookiePreferences ? cookiePreferences.analytics : null} getAccessToken={getAccessToken} /></AccountContext.Provider>;
 }
 
 export { resolveProductSession } from "@/src/services/analyticsService";
 
-function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analyticsEnabled, getAccessToken }: { userId: string | null; emailVerifiedAt: string | null; trialStartedAt: string | null; analyticsEnabled: boolean | null; getAccessToken(): Promise<string | null> }) {
+function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, trialSource, analyticsEnabled, getAccessToken }: { userId: string | null; emailVerifiedAt: string | null; trialStartedAt: string | null; trialSource: "commercial_trial_activation" | "legacy_trial"; analyticsEnabled: boolean | null; getAccessToken(): Promise<string | null> }) {
   const emittedSessionIds = useRef(new Set<string>());
   useEffect(() => {
     if (analyticsEnabled === false) {
@@ -202,7 +215,7 @@ function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analy
     if (authIntent?.kind === "login") analyticsService.track("login_succeeded", { source: authIntent.source, version: 2 }, `callback:${authIntent.source}:v2`);
     emitSessionStarted(sessionHeartbeat.getSessionId());
     analyticsService.track("email_verified", { source: "authenticated_access", version: 2 }, "verified:v2", emailVerifiedAt ?? undefined);
-    if (trialStartedAt) analyticsService.track("trial_started", { source: "first_verified_access", version: 2 }, "started:v2", trialStartedAt);
+    if (trialStartedAt) analyticsService.track("trial_started", { source: trialSource, version: 2 }, `started:${trialSource}:v2`, trialStartedAt);
     return () => {
       abortController.abort();
       sessionHeartbeat?.stop();
@@ -210,7 +223,7 @@ function ProductAnalyticsBridge({ userId, emailVerifiedAt, trialStartedAt, analy
       window.removeEventListener("mbv:product-event", listener);
       window.removeEventListener("online", retryOnline);
     };
-  }, [analyticsEnabled, emailVerifiedAt, getAccessToken, trialStartedAt, userId]);
+  }, [analyticsEnabled, emailVerifiedAt, getAccessToken, trialSource, trialStartedAt, userId]);
   return null;
 }
 

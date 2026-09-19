@@ -24,7 +24,7 @@ export default function PrivacyRoute() {
     <header>
       <Link href="/" aria-label="Ir al inicio de My Best Version"><BrandMark /></Link>
       <nav aria-label="Navegación pública">
-        <Link href="/trial">Prueba gratis</Link>
+        <Link href="/trial">Beneficio Premium</Link>
         <Link href="/legal">Centro Legal</Link>
         <Link href="/privacy" aria-current="page">Privacidad</Link>
         <Link href="/terms">Términos</Link>

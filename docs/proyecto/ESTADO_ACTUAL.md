@@ -1,6 +1,8 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-16, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-19, America/Bogota (UTC-05:00)**.
+
+> **Trabajo local posterior al último release:** la rama `feat/commercial-access-v2`, basada en `5019a3b`, sustituye la oferta comercial activa por Gratis permanente, Premium USD 2.99/mes o USD 29.99/año y una recompensa manual de 30 días Premium después de 30 fechas consecutivas. Incluye migración, acceso central, landing, administración, checkout/webhook server-side, cancelación autoservicio con paid-through, recuperación segura de checkout stale, serialización por cuenta, revalidación de conflictos, cola de participación ligada a usuario y outbox con supresión previa al envío. No se ha aplicado la migración, configurado sandbox/email live, realizado un cobro o email real autorizado, hecho commit/push ni desplegado. Consulta [`../product/commercial-access-v2.md`](../product/commercial-access-v2.md), [`../product/trial-premium-matrix.md`](../product/trial-premium-matrix.md) y [`../AUTH_BILLING_SETUP.md`](../AUTH_BILLING_SETUP.md). Mientras este trabajo no se publique, las descripciones históricas del trial de 15 días que aparecen más abajo sólo representan el release anterior.
 
 ## Punto de continuidad
 
@@ -39,7 +41,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Landing y trial reutilizan el CTA “Comienza tu prueba gratis”; el formulario crea una cuenta y el onboarding crea una primera acción.
 - La prueba no requiere tarjeta ni cobro automático, comienza en el primer acceso verificado y limita la edición mensual a un horizonte de tres meses.
 - La landing muestra capturas reales inspeccionadas en QA de Dashboard (`p0-dashboard-1440x900.png`), Mi día (`p0-today-390x844.png`) y Hábitos (`p0-habits-1440x900.png`).
-- La matriz comercial comunica Premium a USD 2.99/mes o USD 30.99/año. Fitness y alimentación y la planificación a cinco años están disponibles; análisis avanzado, recomendaciones con IA y planificación específica de un año están **Próximamente** y no disponibles.
+- El release publicado previo comunica Premium a USD 2.99/mes o USD 30.99/año y mantiene análisis avanzado/recomendaciones como **Próximamente**. La rama comercial v2 descrita al inicio sustituye esa matriz localmente; aún no está publicada.
 - Onboarding en cuatro pasos que parte de `Mi día`, `Una meta`, `Mi semana` o `Un hábito`, pide un resultado y una primera acción, y aterriza en Mi día.
 - Una cuenta ya establecida recupera un perfil local mínimo si falta y evita repetir el onboarding. Borrar explícitamente los datos locales permite volver al estado inicial.
 - Importación de respaldo disponible desde el onboarding.
@@ -144,7 +146,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Eventos propios usan una taxonomía cerrada y excluyen textos de metas, journal, comidas, salud y finanzas.
 - La taxonomía v2 separa eventos aceptados del navegador de `second_session_started`, `activation_completed` y `payment_confirmed`, reservados al servidor.
 - `/platform` exige superadmin y ofrece métricas, usuarios, tickets, FAQ, categorías y parámetros respaldados por Supabase.
-- Mercado Pago es un enlace externo centralizado por `billingService` y `publicConfig.mercadoPagoCheckoutUrl`. Landing y Upgrade comparten el mismo destino configurado para las modalidades mensual y anual; el selector cambia presentación/telemetría, no crea una preferencia de pago distinta. Volver del checkout no activa Premium y el frontend no modifica el acceso.
+- En la rama local comercial v2, Mercado Pago se integra mediante rutas server-side por intervalo, intents idempotentes, consulta canónica, webhook firmado y cancelación autoservicio reconciliada; volver del checkout no activa Premium y el frontend no modifica el acceso. El enlace externo único descrito en releases anteriores sigue siendo sólo referencia histórica mientras esta rama no se publique.
 
 ## Mapa de conexiones
 
@@ -248,7 +250,7 @@ pnpm test:e2e
 - Usar español claro, foco visible, nombres accesibles y estados vacíos útiles.
 - Validar imports y formularios con Zod; no registrar contenido sensible en consola o eventos.
 - Usar la jerarquía de `src/lib/brand.ts`, la taxonomía de `src/lib/cta.ts` y la matriz de `src/domain/access.ts` antes de introducir copy equivalente.
-- Comunicar la matriz vigente sin mezclar estados: Fitness/alimentación y cinco años están disponibles con Premium; análisis avanzado, IA y un año permanecen **Próximamente**. Los precios son USD 2.99/mes y USD 30.99/año; no inventar impuestos, renovación, cancelación, reembolsos ni activación automática.
+- Para la rama comercial v2, comunicar Gratis permanente y un único Premium con las mismas capacidades por USD 2.99/mes o USD 29.99/año. Fitness/alimentación, Finanzas, análisis avanzado determinista y recomendaciones basadas en datos disponibles son Premium; no se anuncian como IA. Renovación y cancelación sólo se comunican conforme al contrato server-side implementado y todavía no certificado en sandbox.
 - Mantener la analítica opcional apagada hasta consentimiento y no usarla como una medición completa de visitantes anónimos.
 - Mantener tareas/prioridades separadas de eventos y preservar el calendario local aunque la integración externa esté pausada.
 - No reactivar Google Calendar ni purgar datos históricos server-side sin una decisión y autorización específicas.
@@ -318,12 +320,12 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 ## Problemas y limitaciones confirmados
 
 1. El planner no sincroniza entre dispositivos; borrar datos del sitio puede eliminar el contenido local si no existe respaldo.
-2. Mercado Pago no tiene webhook de activación automática; Premium se habilita mediante operación administrativa segura. Mensual y anual abren hoy la misma URL centralizada, sin una preferencia server-side que distinga el periodo elegido.
+2. El release público todavía conserva el flujo histórico de Mercado Pago. La rama local comercial v2 añade checkout server-side mensual/anual, webhook, conciliación, recuperación stale y cancelación autoservicio, pero faltan credenciales sandbox, confirmación USD y una compra/cancelación real autorizada; no está certificada ni desplegada.
 3. La migración analítica v2 y su hotfix forward de ambigüedad PL/pgSQL fueron aplicados; `db lint` quedó sin errores y un dry-run confirmó que la base remota está al día. Los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
 4. La auditoría legal enumera tareas administrativas y revisión jurídica pendientes; el cálculo SQL inicial de días hábiles no integra festivos colombianos.
 5. `AdminPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
 6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
-7. La landing editorial y la matriz comercial están publicadas en Vercel Production; análisis avanzado, recomendaciones con IA y planificación específica de un año continúan marcados como `coming_soon`, sin acceso activo.
+7. La landing editorial del release previo sigue publicada. En la rama local comercial v2, análisis avanzado determinista y recomendaciones basadas en datos disponibles pasan a Premium; no se presenta IA. Esta descripción local no equivale a publicación ni activación productiva.
 8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
 9. `mybestversion.life` apunta al deployment Production de Vercel y no está adjunto al Site; la URL de Sites se conserva como runtime alternativo del despliegue anterior.
 10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
@@ -341,4 +343,4 @@ No quedó un defecto funcional bloqueante reproducible dentro de los flujos audi
 
 La entrega funcional vigente es `7abddae651f34ff4e086a5b6a278c7032c73466d` en `origin/main` y Vercel Production. Conserva `MBV-H-032`/`MBV-H-033` con Calendar externo pausado y P2 detrás de flags apagados, y publica `MBV-H-035` con la landing y acceso Premium alineado. GitHub Actions `35168586376` aprobó lint, tipos, 254 pruebas unitarias y build. Vercel publicó el deployment `5sUK7zBYxYyeQC5sRBkiVsw8R5u4` como `Ready`, `Production` y `Latest`, asociado al SHA exacto y al dominio `mybestversion.life`. El smoke público validó landing desktop/mobile, rutas públicas y checkout; Calendar status conserva `404 {"error":"CALENDAR_DISABLED"}` y mantenimiento `204`.
 
-Siguiente paso operativo: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. También deben definirse owner/rollback por flag y resolverse el hardening y la revisión legal de referral. Las demás dependencias externas del lanzamiento comercial —webhook/conciliación de Mercado Pago, condiciones de renovación/cancelación/reembolso, identidad legal, canales lifecycle y master vectorial— siguen separadas.
+Siguiente paso operativo del release vigente: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. Para certificar la rama comercial v2 hacen falta, por separado, aplicar la migración primero en prueba, configurar Mercado Pago sandbox/webhook y validar compra/cancelación mensual y anual, conectar un transporte de email verificado y realizar un único envío autorizado. No corresponde hacer commit, push ni deploy hasta cerrar esos gates y obtener aprobación.

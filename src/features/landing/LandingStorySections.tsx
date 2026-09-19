@@ -12,7 +12,7 @@ interface LandingStorySectionsProps {
 }
 
 export function LandingHero({ content, authenticated, onTrialAction, onLogin }: LandingStorySectionsProps) {
-  const destination = authenticated ? "/app/dashboard" : "/trial";
+  const destination = authenticated ? "/app/dashboard" : "/signup";
   return (
     <section id="inicio" className="landing-hero landing-shell" aria-labelledby="landing-title">
       <div className="landing-hero__copy">

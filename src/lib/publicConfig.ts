@@ -9,7 +9,6 @@ export const publicConfig = {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
     "",
-  mercadoPagoCheckoutUrl: process.env.NEXT_PUBLIC_MERCADO_PAGO_URL ?? "https://link.mercadopago.com.co/mybestversion",
   googleCalendarEnabled: process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_ENABLED === "1",
   productFeatureFlags: resolveProductFeatureFlags({
     weekly_recap: process.env.NEXT_PUBLIC_FEATURE_WEEKLY_RECAP,

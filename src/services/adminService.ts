@@ -1,8 +1,13 @@
 import { SupabaseAdminRepository } from "@/src/repositories/supabase/SupabaseAdminRepository";
+import { E2EAdminRepository } from "@/src/repositories/testing/E2EAdminRepository";
+import type { AdminRepository } from "@/src/repositories/interfaces/AdminRepository";
+import { publicConfig } from "@/src/lib/publicConfig";
 
-const repository = new SupabaseAdminRepository();
+const repository: AdminRepository = publicConfig.e2eAccess
+  ? new E2EAdminRepository()
+  : new SupabaseAdminRepository();
 
 export const adminService = {
   listAccounts: () => repository.listAccounts(),
-  setPremium: (input: Parameters<typeof repository.setPremium>[0]) => repository.setPremium(input),
+  activateCommercialTrial: (input: Parameters<typeof repository.activateCommercialTrial>[0]) => repository.activateCommercialTrial(input),
 };

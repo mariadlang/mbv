@@ -34,7 +34,7 @@ export function LandingNavigation({ content, authenticated, onNavigation, onPrim
   }, [open]);
 
   const close = () => setOpen(false);
-  const destination = authenticated ? "/app/dashboard" : "/trial";
+  const destination = authenticated ? "/app/dashboard" : "/signup";
   const primaryLabel = authenticated ? content.actions.openSpace : content.actions.start;
 
   return (

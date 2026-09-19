@@ -33,10 +33,24 @@ export function getAccessMessageDescriptor(accessText?: string): { key: Navigati
   if (!accessText) return undefined;
   if (accessText === "Superadmin") return { key: "navigation.access.superadmin" };
   if (accessText === "Premium") return { key: "navigation.access.premium" };
-  if (accessText === "Prueba") return { key: "navigation.access.trial" };
+  if (accessText === "Premium mensual") return { key: "navigation.access.premiumMonthly" };
+  if (accessText === "Premium anual") return { key: "navigation.access.premiumAnnual" };
+  if (accessText === "Premium · cancelación programada") return { key: "navigation.access.cancellationScheduled" };
+  if (accessText === "Gratis") return { key: "navigation.access.free" };
+  if (accessText === "Premium gratis") return { key: "navigation.access.promotion" };
+  if (accessText === "Premium gratis pendiente de activación") return { key: "navigation.access.promotionPending" };
+  if (accessText === "Pago pendiente") return { key: "navigation.access.paymentPending" };
+  if (accessText === "Pago con novedad") return { key: "navigation.access.paymentFailed" };
+  if (accessText === "Gratis · suscripción finalizada") return { key: "navigation.access.subscriptionEnded" };
+  if (accessText === "Prueba anterior") return { key: "navigation.access.legacyTrial" };
   if (accessText === "Acceso bloqueado") return { key: "navigation.access.blocked" };
-  if (accessText === "Prueba finalizada") return { key: "navigation.access.expired" };
-  const trialDays = /^Prueba · (\d+) d(?:ía|ías)$/.exec(accessText);
+  if (accessText === "Gratis · prueba finalizada") return { key: "navigation.access.expired" };
+  const promotionDays = /^Premium gratis · (\d+) d(?:ía|ías)$/.exec(accessText);
+  if (promotionDays) {
+    const count = Number(promotionDays[1]);
+    return { key: count === 1 ? "navigation.access.promotionDay" : "navigation.access.promotionDays", params: { count } };
+  }
+  const trialDays = /^Prueba anterior · (\d+) d(?:ía|ías)$/.exec(accessText);
   if (trialDays) {
     const count = Number(trialDays[1]);
     return { key: count === 1 ? "navigation.access.trialDay" : "navigation.access.trialDays", params: { count } };

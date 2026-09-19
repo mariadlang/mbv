@@ -20,6 +20,18 @@ const premiumFeatureMessageKeys = {
     title: "premium.gate.fitnessNutrition.title",
     description: "premium.gate.fitnessNutrition.description",
   },
+  finance: {
+    title: "premium.gate.finance.title",
+    description: "premium.gate.finance.description",
+  },
+  advanced_progress: {
+    title: "premium.gate.advancedProgress.title",
+    description: "premium.gate.advancedProgress.description",
+  },
+  recommendations: {
+    title: "premium.gate.recommendations.title",
+    description: "premium.gate.recommendations.description",
+  },
 } as const;
 
 export function resolvePremiumGateDescriptionKey(feature: PremiumFeature, contextualPromptsEnabled: boolean) {

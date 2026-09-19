@@ -3,7 +3,27 @@ import type { AccountPreferences, AccountUser, AuthRepository } from "@/src/repo
 import { LEGAL_VERSION } from "@/src/lib/legalConfig";
 
 const user: AccountUser = { id: "e2e-user", email: "e2e@mybestversion.test", displayName: "María", emailVerified: true, emailVerifiedAt: new Date().toISOString(), legalVersion: LEGAL_VERSION, termsAcceptedAt: new Date().toISOString(), dataProcessingAcceptedAt: new Date().toISOString(), adultDeclaredAt: new Date().toISOString(), marketingConsent: false, onboardingCompleted: false };
-const access: UserAccess = { userId: user.id, email: user.email, displayName: user.displayName, role: "user", accessStatus: "active", subscriptionStatus: "active", trialStartedAt: null, trialEndsAt: null, serverNow: new Date().toISOString() };
+const access: UserAccess = {
+  userId: user.id,
+  email: user.email,
+  displayName: user.displayName,
+  role: "user",
+  accessStatus: "paid_monthly",
+  subscriptionStatus: "active",
+  trialStartedAt: null,
+  trialEndsAt: null,
+  serverNow: new Date().toISOString(),
+  eligibilityStatus: null,
+  planInterval: "monthly",
+  premiumSource: "paid_subscription",
+  campaignKey: null,
+  currentStreakDays: 0,
+  eligibleAt: null,
+  currentPeriodStartsAt: new Date().toISOString(),
+  currentPeriodEndsAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  nextPaymentAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+  cancelAtPeriodEnd: false,
+};
 
 export class E2EAuthRepository implements AuthRepository {
   private preferences: AccountPreferences = { locale: "es", tutorialCompleted: true };
@@ -33,23 +53,55 @@ export class E2EAuthRepository implements AuthRepository {
   async getOrStartAccess() {
     const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
     const isAdmin = Boolean(params?.has("e2e-admin") || (typeof window !== "undefined" && window.sessionStorage.getItem("mbv-e2e-admin") === "1"));
-    const isTrial = Boolean(params?.get("e2e-access") === "trial" || (typeof window !== "undefined" && window.sessionStorage.getItem("mbv-e2e-access") === "trial"));
+    const requestedAccess = params?.get("e2e-access")
+      ?? (typeof window !== "undefined" ? window.sessionStorage.getItem("mbv-e2e-access") : null);
+    const isLegacyTrial = requestedAccess === "trial";
+    const isRewardTrial = requestedAccess === "reward-trial";
     if (typeof window !== "undefined") {
       if (isAdmin) window.sessionStorage.setItem("mbv-e2e-admin", "1");
-      if (isTrial) window.sessionStorage.setItem("mbv-e2e-access", "trial");
+      if (isLegacyTrial || isRewardTrial) {
+        window.sessionStorage.setItem("mbv-e2e-access", isRewardTrial ? "reward-trial" : "trial");
+      }
     }
-    if (isTrial && !isAdmin) {
+    if ((isLegacyTrial || isRewardTrial) && !isAdmin) {
       const now = new Date();
+      if (isLegacyTrial) {
+        return {
+          ...access,
+          accessStatus: "trial" as const,
+          subscriptionStatus: "none" as const,
+          premiumSource: "legacy" as const,
+          planInterval: null,
+          trialStartedAt: now.toISOString(),
+          trialEndsAt: new Date(now.getTime() + 15 * 86_400_000).toISOString(),
+          serverNow: now.toISOString(),
+        };
+      }
       return {
         ...access,
-        accessStatus: "trial" as const,
+        accessStatus: "trial_active" as const,
         subscriptionStatus: "none" as const,
+        premiumSource: "promotional_trial" as const,
+        planInterval: null,
         trialStartedAt: now.toISOString(),
-        trialEndsAt: new Date(now.getTime() + 15 * 86_400_000).toISOString(),
+        trialEndsAt: new Date(now.getTime() + 30 * 86_400_000).toISOString(),
         serverNow: now.toISOString(),
       };
     }
     return { ...access, role: isAdmin ? "superadmin" as const : "user" as const };
+  }
+  async getMyCommercialPlan() { return this.getOrStartAccess(); }
+  async recordCommercialActivity() {
+    return {
+      localDate: new Date().toISOString().slice(0, 10),
+      timezone: "America/Bogota",
+      recorded: true,
+      currentStreakDays: 1,
+      eligibilityStatus: "tracking" as const,
+      accessStatus: "free" as const,
+      periodStartedOn: null,
+      periodEndedOn: null,
+    };
   }
   async getPreferences() {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("first-run")) {

@@ -10,7 +10,7 @@ import { Modal } from "@/src/components/ui/Modal";
 import { Onboarding } from "@/src/features/onboarding/Onboarding";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { AccountProvider, useAccount } from "@/src/hooks/useAccount";
-import { ACCESS_COMMUNICATION, accessLabel } from "@/src/domain/access";
+import { accessLabel } from "@/src/domain/access";
 import { ForgotPasswordPage, LandingPage, LoginPage, SignupPage, TrialPage, UpgradePage, VerifyEmailPage } from "@/src/features/account/AccountPages";
 import { AiPrivacyPage, CookiesPage, DataDeletionPage, DataPolicyPage, LegalCenterPage, LegalNoticesPage, LegalPrivacyPage, PaymentsPage, PqrPage, PrivacyCenterPage, PrivacyPage, ProviderInfoPage, RetractPage, SecurityPage, TermsPage } from "@/src/features/legal/LegalPages";
 import { CookieConsentProvider } from "@/src/features/legal/CookieConsent";
@@ -23,7 +23,6 @@ import { useUiStore } from "@/src/stores/useUiStore";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { QuickCaptureDrawer, type QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import { publicConfig } from "@/src/lib/publicConfig";
-import { CTA } from "@/src/lib/cta";
 import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
 import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
@@ -164,9 +163,8 @@ function ProtectedPlannerApp() {
   }
   const needsLegalAcceptance = account.user.legalVersion !== LEGAL_VERSION || !account.user.termsAcceptedAt || !account.user.dataProcessingAcceptedAt || !account.user.adultDeclaredAt;
   if (needsLegalAcceptance) return <LegalAcceptanceGate />;
-  if (account.access.role !== "superadmin" && (account.access.accessStatus === "expired" || account.access.accessStatus === "blocked")) {
-    const blocked = account.access.accessStatus === "blocked";
-    return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>{blocked ? "Este acceso necesita revisión." : ACCESS_COMMUNICATION.expired.title}</h1><p>{blocked ? "Contacta al equipo de soporte para revisar el estado de la cuenta. Tu información local permanece en este dispositivo." : ACCESS_COMMUNICATION.expired.note}</p><div><Link className="button button--primary" to={blocked ? "/pqr" : "/upgrade"}>{blocked ? "Contactar soporte" : CTA.paywall.label}</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
+  if (account.access.role !== "superadmin" && account.access.accessStatus === "blocked") {
+    return <main className="access-ended"><BrandMark /><div><p className="eyebrow">TU ESPACIO ESTÁ A SALVO</p><h1>Este acceso necesita revisión.</h1><p>Contacta al equipo de soporte para revisar el estado de la cuenta. Tu información local permanece en este dispositivo.</p><div><Link className="button button--primary" to="/pqr">Contactar soporte</Link><Button variant="ghost" onClick={async () => { await account.signOut(); navigate("/"); }}>Cerrar sesión</Button></div></div></main>;
   }
 
   if (!mounted || planner.loading) {
@@ -250,14 +248,14 @@ function ProtectedPlannerApp() {
             <Route path="/app/habits" element={<HabitsErrorBoundary><HabitsPage planner={planner} access={account.access} /></HabitsErrorBoundary>} />
             <Route path="/app/challenges" element={<Navigate to="/app/life-hub?tab=challenges" replace />} />
             <Route path="/app/mood" element={<Navigate to="/app/habits" replace />} />
-            <Route path="/app/finance" element={<FinancePage planner={planner} />} />
+            <Route path="/app/finance" element={<PremiumFeatureGate access={account.access} feature="finance"><FinancePage planner={planner} /></PremiumFeatureGate>} />
             <Route path="/app/life-hub" element={<LifeHubPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/health" element={<PremiumFeatureGate access={account.access} feature="fitness_and_nutrition"><FitnessPage planner={planner} /></PremiumFeatureGate>} />
             <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} access={account.access} />} />
-            <Route path="/app/progress" element={<ProgressPage planner={planner} />} />
+            <Route path="/app/progress" element={<ProgressPage planner={planner} access={account.access} />} />
             <Route path="/app/journal" element={<JournalPage planner={planner} />} />
-            <Route path="/app/settings" element={<SettingsPage planner={planner} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} onLocalDataCleared={() => setLocallyClearedAccountId(accountUserId ?? null)} />} />
+            <Route path="/app/settings" element={<SettingsPage planner={planner} access={account.access} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} onLocalDataCleared={() => setLocallyClearedAccountId(accountUserId ?? null)} />} />
             <Route path="/app/profile" element={<Navigate to="/app/settings" replace />} />
             <Route path="/app/legal" element={<LegalPrivacyPage />} />
             <Route path="/app/privacy-center" element={<PrivacyCenterPage planner={planner} />} />

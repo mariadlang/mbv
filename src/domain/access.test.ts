@@ -6,6 +6,9 @@ const trial: UserAccess = {
   accessStatus: "trial", subscriptionStatus: "none",
   trialStartedAt: "2026-08-23T12:00:00.000Z", trialEndsAt: "2026-09-07T12:00:00.000Z",
   serverNow: "2026-08-25T12:00:00.000Z",
+  eligibilityStatus: null, planInterval: null, premiumSource: "legacy",
+  campaignKey: null, currentStreakDays: 0, eligibleAt: null,
+  currentPeriodStartsAt: null, currentPeriodEndsAt: null, nextPaymentAt: null, cancelAtPeriodEnd: false,
 };
 
 describe("reglas de acceso", () => {
@@ -65,6 +68,61 @@ describe("reglas de acceso", () => {
     expect(getTrialPlanningDateBounds(premium)).toBeNull();
     expect(isTrialPlanningMonthAllowed({ ...premium, role: "superadmin" }, "2032-04")).toBe(true);
     expect(isTrialPlanningMonthAllowed(premium, "2032-13")).toBe(false);
+  });
+
+  it("conserva Finanzas hasta el vencimiento de una prueba legacy ya concedida", () => {
+    expect(canAccessFeature(trial, "finance")).toBe(true);
+    expect(canAccessFeature({ ...trial, serverNow: trial.trialEndsAt! }, "finance")).toBe(false);
+    expect(canAccessFeature(trial, "fitness_and_nutrition")).toBe(false);
+  });
+
+  it("mantiene las capacidades base disponibles para Gratis sin el horizonte legacy", () => {
+    const free = {
+      ...trial,
+      accessStatus: "free" as const,
+      trialStartedAt: null,
+      trialEndsAt: null,
+      premiumSource: null,
+    };
+    expect(isTrialPlanningMonthAllowed(free, "2032-04")).toBe(true);
+    expect(isTrialPlanningDateAllowed(free, "2032-04-15")).toBe(true);
+    expect(getTrialPlanningDateBounds(free)).toBeNull();
+    expect(canAccessFeature(free, "fitness_and_nutrition")).toBe(false);
+    expect(canAccessFeature(free, "finance")).toBe(false);
+  });
+
+  it("concede las capacidades Premium durante la prueba promocional de 30 días", () => {
+    const promotionalTrial = {
+      ...trial,
+      accessStatus: "trial_active" as const,
+      premiumSource: "promotional_trial" as const,
+      trialStartedAt: "2026-09-01T12:00:00.000Z",
+      trialEndsAt: "2026-10-01T12:00:00.000Z",
+      serverNow: "2026-09-16T12:00:00.000Z",
+    };
+    expect(remainingTrialDays(promotionalTrial)).toBe(15);
+    expect(canAccessFeature(promotionalTrial, "fitness_and_nutrition")).toBe(true);
+    expect(canAccessFeature(promotionalTrial, "advanced_progress")).toBe(true);
+    expect(canAccessFeature({
+      ...promotionalTrial,
+      serverNow: promotionalTrial.trialEndsAt!,
+    }, "advanced_progress")).toBe(false);
+  });
+
+  it("exige un período pagado vigente incluso si el estado almacenado era Premium", () => {
+    const paid = {
+      ...trial,
+      accessStatus: "paid_monthly" as const,
+      subscriptionStatus: "active" as const,
+      trialStartedAt: null,
+      trialEndsAt: null,
+      premiumSource: "paid_subscription" as const,
+      planInterval: "monthly" as const,
+      currentPeriodStartsAt: "2026-09-01T12:00:00.000Z",
+      currentPeriodEndsAt: "2026-10-01T12:00:00.000Z",
+    };
+    expect(canAccessFeature(paid, "finance")).toBe(true);
+    expect(canAccessFeature({ ...paid, serverNow: paid.currentPeriodEndsAt }, "finance")).toBe(false);
   });
 
   it("conserva el bypass de todas las funciones Premium para superadmin", () => {

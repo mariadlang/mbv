@@ -17,6 +17,8 @@ import { useI18n } from "@/src/i18n/I18nProvider";
 import type { MessageKey } from "@/src/i18n/keys";
 import { captureReferralAttribution } from "@/src/services/referralAttributionService";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { isBillingInterval, type BillingInterval } from "@/src/domain/commercialOffer";
+import { buildAuthEntryPath, DEFAULT_AUTH_DESTINATION, resolveAuthDestination } from "@/src/lib/authRedirect";
 export { LandingPage } from "@/src/features/landing/LandingPage";
 
 const credentialsSchema = z.object({
@@ -24,12 +26,89 @@ const credentialsSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
 });
 const signupSchema = credentialsSchema.extend({ name: z.string().trim().min(2, "Cuéntanos cómo quieres que te llamemos.") });
+const PENDING_AUTH_DESTINATION_KEY = "mbv-pending-auth-destination-v1";
 
-const trialCapabilityKeys = ["trial.capability.planning", "trial.capability.threeMonths", "trial.capability.visionGoals", "trial.capability.habits", "trial.capability.journal", "trial.capability.projects", "trial.capability.progress", "trial.capability.wellbeing", "trial.capability.finances"] satisfies MessageKey[];
-const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fitness", "premium.capability.fiveYears"] satisfies MessageKey[];
+function rememberAuthDestination(destination: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PENDING_AUTH_DESTINATION_KEY, JSON.stringify({ destination, expiresAt: Date.now() + 86_400_000 }));
+  } catch {
+    // The query string remains the primary return path when storage is unavailable.
+  }
+}
+
+function readPendingAuthDestination() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PENDING_AUTH_DESTINATION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { destination?: unknown; expiresAt?: unknown };
+    if (typeof parsed.destination !== "string" || typeof parsed.expiresAt !== "number" || parsed.expiresAt < Date.now()) {
+      window.localStorage.removeItem(PENDING_AUTH_DESTINATION_KEY);
+      return null;
+    }
+    const loginPath = buildAuthEntryPath("/login", parsed.destination);
+    if (loginPath === "/login") return null;
+    return resolveAuthDestination(new URL(loginPath, window.location.origin).search);
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingAuthDestination() {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.removeItem(PENDING_AUTH_DESTINATION_KEY); } catch { /* Storage can be unavailable. */ }
+}
+
+const freeCapabilityKeys = ["free.capability.vision", "free.capability.goals", "free.capability.habits", "free.capability.today", "free.capability.dashboard"] satisfies MessageKey[];
+const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fitness", "premium.capability.finances", "premium.capability.analysis", "premium.capability.recommendations"] satisfies MessageKey[];
+const rewardStepKeys = ["trial.reward.free", "trial.reward.streak", "trial.reward.alert", "trial.reward.activation"] satisfies MessageKey[];
+type BillingConfirmationState = "checking" | "pending" | "confirmed" | "auth" | "error";
+
+async function readBillingConfirmationState(): Promise<BillingConfirmationState> {
+  try {
+    const status = await billingService.getStatus();
+    return status.accessStatus === "paid_monthly" || status.accessStatus === "paid_annual" ? "confirmed" : "pending";
+  } catch (caught) {
+    return caught instanceof Error && caught.message === "AUTH_REQUIRED" ? "auth" : "error";
+  }
+}
+
+async function syncBillingConfirmation(refreshAccess: () => Promise<void>): Promise<BillingConfirmationState> {
+  const state = await readBillingConfirmationState();
+  if (state !== "confirmed") return state;
+  try {
+    await refreshAccess();
+    return "confirmed";
+  } catch {
+    return "error";
+  }
+}
+
+function BillingConfirmationCard() {
+  const { m } = useI18n();
+  const { refreshAccess } = useAccount();
+  const refreshAccessRef = useRef(refreshAccess);
+  const [state, setState] = useState<BillingConfirmationState>("checking");
+
+  useEffect(() => { refreshAccessRef.current = refreshAccess; }, [refreshAccess]);
+  useEffect(() => {
+    let active = true;
+    void syncBillingConfirmation(() => refreshAccessRef.current()).then((nextState) => { if (active) setState(nextState); });
+    return () => { active = false; };
+  }, []);
+
+  const retry = async () => {
+    setState("checking");
+    setState(await syncBillingConfirmation(() => refreshAccessRef.current()));
+  };
+
+  return <Card className="billing-confirmation" role="status" aria-live="polite"><p className="eyebrow">{m("premium.confirmation.eyebrow")}</p><h2>{m("premium.confirmation.title")}</h2><p>{m("premium.confirmation.description")}</p>{state === "checking" ? <p>{m("premium.confirmation.checking")}</p> : null}{state === "pending" ? <p>{m("premium.confirmation.pending")}</p> : null}{state === "confirmed" ? <p className="billing-confirmation__confirmed">{m("premium.confirmation.confirmed")}</p> : null}{state === "auth" ? <p>{m("premium.confirmation.auth")}</p> : null}{state === "error" ? <p role="alert">{m("premium.confirmation.error")}</p> : null}<div className="billing-confirmation__actions">{state !== "checking" && state !== "confirmed" ? <Button type="button" variant="secondary" onClick={() => void retry()}>{m("premium.confirmation.retry")}</Button> : null}{state === "auth" ? <Link className="button button--primary" to={buildAuthEntryPath("/login", "/upgrade")}>{m("public.nav.login")}</Link> : null}<Link className="button button--outline" to="/app/settings#plan-settings">{m("premium.confirmation.plan")}</Link></div></Card>;
+}
+
 export function TrialPage() {
   const { m } = useI18n();
-  return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><ul>{trialCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card></div><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
+  return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><strong className="trial-plan-price">USD 0</strong><ul>{freeCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><strong className="trial-plan-price">{m("premium.monthly.price")} · {m("premium.annual.price")}</strong><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul><Link className="button button--secondary" to="/upgrade">{m("premium.eyebrow")}</Link></Card></div><section className="trial-reward" aria-labelledby="trial-reward-title"><p className="eyebrow">{m("trial.reward.eyebrow")}</p><h2 id="trial-reward-title">{m("trial.reward.title")}</h2><p>{m("trial.reward.description")}</p><ol>{rewardStepKeys.map((key, index) => <li key={key}><span>{index + 1}</span><strong>{m(key)}</strong></li>)}</ol></section><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
 }
 
 export function PrivacyPage() {
@@ -136,10 +215,15 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [message, setMessage] = useState<MessageKey | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
+  const [storedDestination] = useState(readPendingAuthDestination);
+  const hasExplicitDestination = new URLSearchParams(location.search).has("next");
+  const authDestination = hasExplicitDestination
+    ? resolveAuthDestination(location.search)
+    : storedDestination ?? DEFAULT_AUTH_DESTINATION;
   useEffect(() => {
     if (mode === "signup" && publicConfig.productFeatureFlags.referrals) captureReferralAttribution(location.search);
   }, [location.search, mode]);
-  if (account.user && account.access) return <Navigate to="/app/dashboard" replace />;
+  if (account.user && account.access) return <Navigate to={authDestination} replace />;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(null); setMessage(null);
@@ -152,15 +236,17 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     if (mode === "signup" && (!form.acceptedTerms || !form.acceptedData || !form.adult)) { setError("auth.validation.consents"); return; }
     if (!account.configured) { setError("auth.error.configuration"); return; }
     if (mode === "signup") analyticsService.track(CTA.signupForm.event, { source: "email_form", route: "/signup", version: 2 }, "email-form:v2");
+    rememberAuthDestination(authDestination);
     setSaving(true);
     try {
       if (mode === "signup") {
         const now = new Date().toISOString();
         const result = await account.signUp({ name: form.name, email: form.email, password: form.password, legalVersion: LEGAL_VERSION, termsAcceptedAt: now, dataProcessingAcceptedAt: now, adultDeclaredAt: now, marketingConsent: form.marketing, marketingAcceptedAt: form.marketing ? now : null });
         analyticsService.track("signup_completed", { source: "email_form", version: 2 }, "email-signup:v2");
-        if (result.emailVerificationRequired) { navigate("/verify-email", { state: { email: form.email } }); return; }
+        if (result.emailVerificationRequired) { navigate("/verify-email", { state: { email: form.email, destination: authDestination } }); return; }
       } else { await account.signIn({ email: form.email, password: form.password }); analyticsService.track("login_succeeded"); }
-      navigate("/app/dashboard");
+      clearPendingAuthDestination();
+      navigate(authDestination);
     } catch (caught) {
       const text = caught instanceof Error ? caught.message : "";
       setError(text.includes("Invalid login") ? "auth.error.credentials" : "auth.error.access");
@@ -173,6 +259,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     if (!account.configured) { setError("auth.error.configuration"); return; }
     if (mode === "signup") analyticsService.track(CTA.signupForm.event, { source: "google", route: "/signup", version: 2 }, "google:v2");
     rememberAuthAnalyticsIntent(mode, "google");
+    rememberAuthDestination(authDestination);
     setSaving(true);
     try { await account.signInWithGoogle(); }
     catch { clearAuthAnalyticsIntent(); setError("auth.error.google"); setSaving(false); }
@@ -183,6 +270,7 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     const parsed = z.string().trim().email("Escribe un correo válido.").safeParse(form.email);
     if (!parsed.success) { setError("auth.validation.email"); return; }
     if (!account.configured) { setError("auth.error.configuration"); return; }
+    rememberAuthDestination(authDestination);
     setSaving(true);
     try {
       await account.signInWithMagicLink(parsed.data);
@@ -192,10 +280,21 @@ function AuthForm({ mode }: { mode: "login" | "signup" }) {
     finally { setSaving(false); }
   };
 
-  return <PublicFrame><section className="auth-card" data-i18n-explicit="true"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{m(mode === "signup" ? "auth.signup.eyebrow" : "auth.login.eyebrow")}</p><h1>{m(mode === "signup" ? "auth.signup.title" : "auth.login.title")}</h1><p>{m(mode === "signup" ? "auth.signup.description" : "auth.login.description")}</p>{mode === "signup" && <div className="signup-consents" aria-label={m("auth.consent.label")}><label className="legal-consent"><input type="checkbox" checked={form.acceptedTerms} onChange={(event) => setForm({ ...form, acceptedTerms: event.target.checked })} /><span>{m("auth.consent.terms")} <Link to="/terms">{m("public.nav.termsFull")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.acceptedData} onChange={(event) => setForm({ ...form, acceptedData: event.target.checked })} /><span>{m("auth.consent.data")} <Link to="/data-policy">{m("public.nav.dataPolicyTitle")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.adult} onChange={(event) => setForm({ ...form, adult: event.target.checked })} /><span>{m("auth.consent.adult")} <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.marketing} onChange={(event) => setForm({ ...form, marketing: event.target.checked })} /><span>{m("auth.consent.marketing")}</span></label></div>}<div className="auth-options"><Button type="button" variant="outline" disabled={saving} onClick={continueWithGoogle}><span className="google-mark" aria-hidden="true">G</span> {m("auth.google.continue")}</Button>{mode === "login" && <small className="auth-legal-note">{m("auth.google.privacy")} <Link to="/privacy">{m("public.nav.privacyNotice")}</Link>.</small>}</div><div className="auth-divider"><span>{m("auth.email.divider")}</span></div><form onSubmit={submit}>{mode === "signup" && <label><span>{m("auth.field.name")}</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>{m("auth.field.email")}</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>{m("auth.field.password")}</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{m(error)}</p>}{message && <p className="inline-message" role="status">{m(message)}</p>}<Button type="submit" disabled={saving}>{saving ? m("auth.loading") : m(mode === "signup" ? "public.cta.account" : "public.nav.login")}</Button>{mode === "login" && <Button type="button" variant="secondary" disabled={saving} onClick={sendMagicLink}><Mail size={17} aria-hidden="true" /> {m("auth.magicLink.submit")}</Button>}</form>{mode === "login" && <Link to="/forgot-password">{m("auth.forgot")}</Link>}<p>{m(mode === "signup" ? "auth.hasAccount" : "auth.needsAccount")} <Link to={mode === "signup" ? "/login" : "/signup"}>{m(mode === "signup" ? "public.nav.login" : "public.cta.account")}</Link></p></section></PublicFrame>;
+  const alternateAuthPath = buildAuthEntryPath(mode === "signup" ? "/login" : "/signup", authDestination);
+  return <PublicFrame><section className="auth-card" data-i18n-explicit="true"><span className="auth-card__icon">{mode === "signup" ? <Sparkles size={22} /> : <LockKeyhole size={22} />}</span><p className="eyebrow">{m(mode === "signup" ? "auth.signup.eyebrow" : "auth.login.eyebrow")}</p><h1>{m(mode === "signup" ? "auth.signup.title" : "auth.login.title")}</h1><p>{m(mode === "signup" ? "auth.signup.description" : "auth.login.description")}</p>{mode === "signup" && <div className="signup-consents" aria-label={m("auth.consent.label")}><label className="legal-consent"><input type="checkbox" checked={form.acceptedTerms} onChange={(event) => setForm({ ...form, acceptedTerms: event.target.checked })} /><span>{m("auth.consent.terms")} <Link to="/terms">{m("public.nav.termsFull")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.acceptedData} onChange={(event) => setForm({ ...form, acceptedData: event.target.checked })} /><span>{m("auth.consent.data")} <Link to="/data-policy">{m("public.nav.dataPolicyTitle")}</Link>. <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.adult} onChange={(event) => setForm({ ...form, adult: event.target.checked })} /><span>{m("auth.consent.adult")} <strong>{m("auth.consent.required")}</strong></span></label><label className="legal-consent"><input type="checkbox" checked={form.marketing} onChange={(event) => setForm({ ...form, marketing: event.target.checked })} /><span>{m("auth.consent.marketing")}</span></label></div>}<div className="auth-options"><Button type="button" variant="outline" disabled={saving} onClick={continueWithGoogle}><span className="google-mark" aria-hidden="true">G</span> {m("auth.google.continue")}</Button>{mode === "login" && <small className="auth-legal-note">{m("auth.google.privacy")} <Link to="/privacy">{m("public.nav.privacyNotice")}</Link>.</small>}</div><div className="auth-divider"><span>{m("auth.email.divider")}</span></div><form onSubmit={submit}>{mode === "signup" && <label><span>{m("auth.field.name")}</span><input autoComplete="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>}<label><span>{m("auth.field.email")}</span><input type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label><span>{m("auth.field.password")}</span><input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} /></label>{error && <p className="form-error" role="alert">{m(error)}</p>}{message && <p className="inline-message" role="status">{m(message)}</p>}<Button type="submit" disabled={saving}>{saving ? m("auth.loading") : m(mode === "signup" ? "public.cta.account" : "public.nav.login")}</Button>{mode === "login" && <Button type="button" variant="secondary" disabled={saving} onClick={sendMagicLink}><Mail size={17} aria-hidden="true" /> {m("auth.magicLink.submit")}</Button>}</form>{mode === "login" && <Link to="/forgot-password">{m("auth.forgot")}</Link>}<p>{m(mode === "signup" ? "auth.hasAccount" : "auth.needsAccount")} <Link to={alternateAuthPath}>{m(mode === "signup" ? "public.nav.login" : "public.cta.account")}</Link></p></section></PublicFrame>;
 }
 
-export function VerifyEmailPage() { const { m } = useI18n(); return <PublicFrame><section className="auth-card auth-card--message" data-i18n-explicit="true"><span className="auth-card__icon"><Mail size={22} /></span><h1>{m("auth.verify.title")}</h1><p>{m("auth.verify.description")}</p><a className="button button--primary" href="mailto:">{m("public.cta.verify")}</a><Link className="button button--secondary" to="/login">{m("auth.verify.confirmed")}</Link></section></PublicFrame>; }
+export function VerifyEmailPage() {
+  const { m } = useI18n();
+  const location = useLocation();
+  const requestedDestination = (location.state as { destination?: unknown } | null)?.destination;
+  const fallbackDestination = readPendingAuthDestination() ?? DEFAULT_AUTH_DESTINATION;
+  const loginPath = buildAuthEntryPath(
+    "/login",
+    typeof requestedDestination === "string" ? requestedDestination : fallbackDestination,
+  );
+  return <PublicFrame><section className="auth-card auth-card--message" data-i18n-explicit="true"><span className="auth-card__icon"><Mail size={22} /></span><h1>{m("auth.verify.title")}</h1><p>{m("auth.verify.description")}</p><a className="button button--primary" href="mailto:">{m("public.cta.verify")}</a><Link className="button button--secondary" to={loginPath}>{m("auth.verify.confirmed")}</Link></section></PublicFrame>;
+}
 
 export function ForgotPasswordPage() {
   const { m } = useI18n();
@@ -206,7 +305,14 @@ export function ForgotPasswordPage() {
 
 export function UpgradePage() {
   const { m } = useI18n();
-  const checkoutUrl = billingService.getCheckoutUrl();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const query = new URLSearchParams(location.search);
+  const intervalParam = query.get("interval");
+  const selectedInterval = isBillingInterval(intervalParam) ? intervalParam : null;
+  const confirmingPayment = query.get("billing") === "confirming";
+  const [checkoutPeriod, setCheckoutPeriod] = useState<BillingInterval | null>(null);
+  const [checkoutError, setCheckoutError] = useState(false);
   const { preferences: cookiePreferences } = useCookieConsent();
   const trackedOpen = useRef(false);
   useEffect(() => {
@@ -215,11 +321,30 @@ export function UpgradePage() {
     analyticsService.track("upgrade_opened", { source: "upgrade_page", route: "/upgrade", version: 2 }, "page-opened:v2");
     analyticsService.track("paywall_view", { source: "upgrade_page", route: "/upgrade", section: "planes", version: 2 }, "page-opened:v2");
   }, [cookiePreferences?.analytics]);
-  const trackCheckout = () => {
-    analyticsService.track("premium_checkout_click", { source: "upgrade_page", route: "/upgrade", section: "monthly", version: 2 }, "mercado-pago:v2");
-    analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, "mercado-pago:v2");
+  const trackCheckout = (period: BillingInterval) => {
+    analyticsService.track("premium_checkout_click", { source: "upgrade_page", route: "/upgrade", section: period, version: 2 }, `mercado-pago:${period}:v2`);
+    analyticsService.track(CTA.checkout.event, { source: "upgrade_page", route: "/upgrade", version: 2 }, `mercado-pago:${period}:v2`);
   };
-  return <PublicFrame><section className="upgrade-page" data-i18n-explicit="true"><p className="eyebrow">{m("premium.eyebrow")}</p><h1>{m("premium.title")}</h1><p>{m("premium.description")}</p><Card><Sparkles size={28} /><h2>Premium</h2><strong className="upgrade-price">USD 2,99 / mes · USD 30,99 / año</strong><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={17} />{m(key)}</li>)}</ul><a className="button button--primary" href={checkoutUrl} target="_blank" rel="noreferrer" onClick={trackCheckout}>{m("public.cta.checkout")} <ArrowRight size={16} /></a><small>{m("premium.checkout.note")}</small></Card></section></PublicFrame>;
+
+  const startCheckout = async (period: BillingInterval) => {
+    setCheckoutError(false);
+    setCheckoutPeriod(period);
+    trackCheckout(period);
+    try {
+      const checkout = await billingService.startCheckout(period);
+      window.location.assign(checkout.checkoutUrl);
+    } catch (caught) {
+      if (caught instanceof Error && caught.message === "AUTH_REQUIRED") {
+        navigate(buildAuthEntryPath("/login", `/upgrade?interval=${period}`));
+        return;
+      }
+      setCheckoutError(true);
+    } finally {
+      setCheckoutPeriod(null);
+    }
+  };
+
+  return <PublicFrame><section className="upgrade-page" data-i18n-explicit="true"><p className="eyebrow">{m("premium.eyebrow")}</p><h1>{m("premium.title")}</h1><p>{m("premium.description")}</p>{confirmingPayment ? <BillingConfirmationCard /> : null}<Card><Sparkles size={28} /><h2>Premium</h2><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={17} />{m(key)}</li>)}</ul><div className="upgrade-purchase-options" role="group" aria-label={m("premium.purchase.label")}>{(["monthly", "annual"] as const).map((period) => <article key={period} className={selectedInterval === period ? "is-selected" : undefined}><span>{m(period === "monthly" ? "premium.monthly.label" : "premium.annual.label")}</span><strong className="upgrade-price">{m(period === "monthly" ? "premium.monthly.price" : "premium.annual.price")}</strong><Button type="button" variant={period === "monthly" ? "secondary" : "primary"} loading={checkoutPeriod === period} disabled={checkoutPeriod !== null} onClick={() => void startCheckout(period)}>{checkoutPeriod === period ? m("premium.checkout.loading") : m(period === "monthly" ? "premium.monthly.cta" : "premium.annual.cta")} {checkoutPeriod !== period ? <ArrowRight size={16} aria-hidden="true" /> : null}</Button></article>)}</div>{checkoutError ? <p className="form-error" role="alert">{m("premium.checkout.error")}</p> : null}<Link className="upgrade-free-link" to="/trial">{m("public.cta.startTrial")}</Link><small>{m("premium.checkout.note")}</small></Card></section></PublicFrame>;
 }
 
 export function PublicFrame({ children }: { children: React.ReactNode }) { const { m } = useI18n(); return <main className="public-frame"><header data-i18n-explicit="true"><Link to="/" aria-label={m("public.brand.home")}><BrandMark /></Link><nav><LanguageSwitcher compact /><Link to="/trial">{m("public.nav.trialShort")}</Link><Link to="/legal">{m("public.nav.legal")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/login">{m("public.nav.login")}</Link></nav></header>{children}<footer className="public-legal-footer" data-i18n-explicit="true"><span>© 2026 My Best Version</span><Link to="/terms">{m("public.nav.terms")}</Link><Link to="/data-policy">{m("public.nav.dataPolicy")}</Link><Link to="/privacy">{m("public.nav.privacy")}</Link><Link to="/cookies">{m("public.nav.cookies")}</Link><CookiePreferencesButton /><Link to="/pqr">{m("public.nav.pqr")}</Link><a href="https://www.sic.gov.co/" target="_blank" rel="noreferrer">{m("public.nav.industryAuthority")}</a></footer></main>; }

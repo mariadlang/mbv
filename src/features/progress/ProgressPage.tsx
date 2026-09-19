@@ -15,6 +15,9 @@ import type { GoalProgressType } from "@/src/domain/planner";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
+import { canAccessFeature, type UserAccess } from "@/src/domain/access";
+import { buildPremiumProgressAnalysis, buildPremiumRecommendation, type PremiumRecommendationId } from "@/src/domain/premiumInsights";
 
 function ShareCardStudioLoader() {
   const { m } = useI18n();
@@ -49,7 +52,25 @@ const goalSourceMessageKeys: Record<GoalProgressType, NavigationSpaceProgressMes
   manual: "progress.goalSource.manual",
 };
 
-export function ProgressPage({ planner }: { planner: PlannerController }) {
+const recommendationMessageKeys: Record<PremiumRecommendationId, NavigationSpaceProgressMessageKey> = {
+  complete_profile: "progress.premium.recommendation.completeProfile",
+  create_goal: "progress.premium.recommendation.createGoal",
+  connect_next_action: "progress.premium.recommendation.connectAction",
+  build_rhythm: "progress.premium.recommendation.buildRhythm",
+  review_low_area: "progress.premium.recommendation.reviewArea",
+  protect_focus: "progress.premium.recommendation.protectFocus",
+};
+
+const recommendationDestinations: Record<PremiumRecommendationId, { path: string; label: NavigationSpaceProgressMessageKey }> = {
+  complete_profile: { path: "/app/settings", label: "progress.premium.recommendation.profileAction" },
+  create_goal: { path: "/app/goals", label: "progress.premium.recommendation.goalAction" },
+  connect_next_action: { path: "/app/today", label: "progress.premium.recommendation.todayAction" },
+  build_rhythm: { path: "/app/today", label: "progress.premium.recommendation.todayAction" },
+  review_low_area: { path: "/app/today", label: "progress.premium.recommendation.todayAction" },
+  protect_focus: { path: "/app/today", label: "progress.premium.recommendation.todayAction" },
+};
+
+export function ProgressPage({ planner, access }: { planner: PlannerController; access: UserAccess }) {
   const { m, formatDate } = useI18n();
   const [shareStudioOpen, setShareStudioOpen] = useState(false);
   const { snapshot } = planner;
@@ -71,6 +92,14 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
   const hasShareableProgress = evidence.completedTasks > 0 || evidence.completedHabitLogs > 0 || activeGoalProgress > 0;
   const shareCardsEnabled = publicConfig.productFeatureFlags.share_cards;
   const referralsEnabled = publicConfig.productFeatureFlags.referrals;
+  const canUseAdvancedProgress = canAccessFeature(access, "advanced_progress");
+  const canUseRecommendations = canAccessFeature(access, "recommendations");
+  const premiumAnalysis = canUseAdvancedProgress || canUseRecommendations
+    ? buildPremiumProgressAnalysis(snapshot)
+    : null;
+  const premiumRecommendation = canUseRecommendations && premiumAnalysis
+    ? buildPremiumRecommendation(snapshot, premiumAnalysis)
+    : null;
 
   return (
     <div className="page-stack" data-i18n-explicit="true">
@@ -126,6 +155,34 @@ export function ProgressPage({ planner }: { planner: PlannerController }) {
           <p>{m(achievementMessageKeys[evidence.latestAchievement.id].description)}</p>
           <span className="achievement-card__date">{m("progress.achievement.date", { condition: m(achievementMessageKeys[evidence.latestAchievement.id].condition), date: formatDate(evidence.latestAchievement.achievedAt.slice(0, 10), { dateStyle: "medium" }) })}</span>
         </Card> : <Card className="progress-empty-state"><span className="achievement-card__icon"><Sparkles size={25} /></span><p className="eyebrow">{m("progress.empty.eyebrow")}</p><h2>{m("progress.empty.title")}</h2><p>{m("progress.empty.description")}</p><Link className="button button--primary" to="/app/today">{m("progress.empty.action")}</Link></Card>}
+      </div>
+
+      <div className="progress-bottom-grid premium-insights-grid">
+        <PremiumFeatureGate access={access} feature="advanced_progress">
+          <Card className="premium-insight-card">
+            <div className="card-heading"><div><p className="eyebrow"><Sparkles size={14} /> {m("progress.premium.analysis.eyebrow")}</p><h2>{m("progress.premium.analysis.title")}</h2><p>{m("progress.premium.analysis.description")}</p></div></div>
+            {premiumAnalysis?.hasEnoughEvidence ? <>
+              <div className="metric-grid metric-grid--three">
+                <div><small>{m("progress.premium.analysis.activeDays")}</small><strong>{premiumAnalysis.activeDays}</strong><span>{m("progress.premium.analysis.activeDaysNote", { count: premiumAnalysis.windowDays })}</span></div>
+                <div><small>{m("progress.premium.analysis.completionRate")}</small><strong>{premiumAnalysis.taskCompletionRate === null ? "—" : m("progress.premium.analysis.completionRateValue", { value: premiumAnalysis.taskCompletionRate })}</strong><span>{premiumAnalysis.taskCompletionRate === null ? m("progress.premium.analysis.noScheduledTasks") : `${premiumAnalysis.completedTasks}/${premiumAnalysis.scheduledTasks}`}</span></div>
+                <div><small>{m("progress.premium.analysis.habitEntries")}</small><strong>{premiumAnalysis.habitEntries}</strong><span>{m("progress.premium.analysis.activeDaysNote", { count: premiumAnalysis.windowDays })}</span></div>
+              </div>
+              {premiumAnalysis.strongestWeekday !== null ? <p className="chart-summary">{m("progress.premium.analysis.strongestWeekday", { day: formatDate(new Date(2026, 0, 4 + premiumAnalysis.strongestWeekday), { weekday: "long" }) })}</p> : null}
+            </> : <div className="progress-empty-state"><h3>{m("progress.premium.analysis.emptyTitle")}</h3><p>{m("progress.premium.analysis.emptyDescription")}</p></div>}
+          </Card>
+        </PremiumFeatureGate>
+
+        <PremiumFeatureGate access={access} feature="recommendations">
+          <Card className="premium-insight-card premium-recommendation-card">
+            <Sparkles size={24} />
+            <p className="eyebrow">{m("progress.premium.recommendation.eyebrow")}</p>
+            <h2>{m("progress.premium.recommendation.title")}</h2>
+            {premiumRecommendation ? <>
+              <p>{m(recommendationMessageKeys[premiumRecommendation.id], premiumRecommendation.lifeAreaName ? { area: premiumRecommendation.lifeAreaName } : undefined)}</p>
+              <Link className="button button--secondary" to={recommendationDestinations[premiumRecommendation.id].path}>{m(recommendationDestinations[premiumRecommendation.id].label)}</Link>
+            </> : null}
+          </Card>
+        </PremiumFeatureGate>
       </div>
 
       <Card className="goals-closer-card">
