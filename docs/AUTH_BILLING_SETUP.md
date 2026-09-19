@@ -1,6 +1,6 @@
 # Autenticación, acceso comercial y facturación
 
-Estado de esta guía: implementación local en `feat/commercial-access-v2`. La migración nueva no se ha aplicado a ningún entorno remoto y la facturación permanece desactivada mientras falten configuración y validación sandbox.
+Estado de esta guía: núcleo comercial publicado desde `7fba6e9` y migración `202609190001_commercial_access_v2.sql` aplicada en Supabase Production. La facturación y el email real permanecen desactivados mientras falten plan comercial de hosting, credenciales y validación sandbox.
 
 ## Responsabilidades y fuentes de verdad
 
@@ -111,16 +111,17 @@ El outbox registra `generated`, `queued`, `accepted`, `delivered`, `failed` y `s
 
 Este repositorio no tiene todavía un transporte live ni dominio/remitente verificado; mantenimiento responde `EMAIL_TRANSPORT_NOT_CONFIGURED` y no reclama filas. Nunca se presenta `accepted` como `delivered`.
 
-## Gates antes de producción
+## Gates antes de habilitar cobros y correo en producción
 
+- Migrar Vercel desde Hobby a un plan permitido para uso comercial.
 - Decidir y autorizar expresamente la modalidad automática para nuevas compras.
 - Confirmar que la cuenta Mercado Pago admite cobros en USD para Colombia y ambos intervalos.
 - Configurar credenciales y firma sandbox; completar mensual, anual, pendiente, rechazo, cancelación y webhook duplicado/desordenado.
 - Conectar un proveedor transaccional y remitente verificado.
 - Ejecutar una sola compra sandbox y un solo email real a `maria.delosangelesgtg@gmail.com` con el asunto y aviso de prueba acordados.
-- Aplicar la migración primero en prueba y verificar RLS/RPC.
-- Realizar QA autenticado desktop/mobile y revisar logs antes de cualquier publicación.
+- Repetir la migración y los contratos en un proyecto de prueba representativo antes de cualquier cambio comercial posterior.
+- Realizar QA autenticado desktop/mobile y revisar logs antes de activar compras.
 
 Hasta completar esos gates, los tests locales validan contratos y simulaciones, pero no certifican pagos ni entrega real de correo.
 
-Tampoco se ha aplicado esta migración en remoto, ni se ha hecho commit, push o deploy de esta rama. Estas ausencias son bloqueos operativos explícitos, no pasos completados.
+El 2026-09-19 se guardó un respaldo de los campos afectados de los perfiles, se aplicó la migración en Production y se verificaron tablas, RPC, estados y alta Gratis. El commit `7fba6e9` quedó en `origin/main` y Vercel Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` quedó `Ready`. Esto habilita la oferta Gratis y la campaña de constancia; no equivale a certificar ni encender Mercado Pago o entrega de email.

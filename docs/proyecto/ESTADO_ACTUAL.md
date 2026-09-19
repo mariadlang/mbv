@@ -146,7 +146,7 @@ No existe sincronización del contenido del planner entre dispositivos.
 - Eventos propios usan una taxonomía cerrada y excluyen textos de metas, journal, comidas, salud y finanzas.
 - La taxonomía v2 separa eventos aceptados del navegador de `second_session_started`, `activation_completed` y `payment_confirmed`, reservados al servidor.
 - `/platform` exige superadmin y ofrece métricas, usuarios, tickets, FAQ, categorías y parámetros respaldados por Supabase.
-- En la rama local comercial v2, Mercado Pago se integra mediante rutas server-side por intervalo, intents idempotentes, consulta canónica, webhook firmado y cancelación autoservicio reconciliada; volver del checkout no activa Premium y el frontend no modifica el acceso. El enlace externo único descrito en releases anteriores sigue siendo sólo referencia histórica mientras esta rama no se publique.
+- El release comercial v2 integra Mercado Pago mediante rutas server-side por intervalo, intents idempotentes, consulta canónica, webhook firmado y cancelación autoservicio reconciliada; volver del checkout no activa Premium y el frontend no modifica el acceso. La configuración productiva permanece apagada hasta completar plan comercial, credenciales y certificación sandbox; el enlace externo único de releases anteriores es sólo referencia histórica.
 
 ## Mapa de conexiones
 
@@ -320,12 +320,12 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 ## Problemas y limitaciones confirmados
 
 1. El planner no sincroniza entre dispositivos; borrar datos del sitio puede eliminar el contenido local si no existe respaldo.
-2. El release público todavía conserva el flujo histórico de Mercado Pago. La rama local comercial v2 añade checkout server-side mensual/anual, webhook, conciliación, recuperación stale y cancelación autoservicio, pero faltan credenciales sandbox, confirmación USD y una compra/cancelación real autorizada; no está certificada ni desplegada.
-3. La migración analítica v2 y su hotfix forward de ambigüedad PL/pgSQL fueron aplicados; `db lint` quedó sin errores y un dry-run confirmó que la base remota está al día. Los datos legales del responsable y la verificación operativa de las demás integraciones externas continúan pendientes.
+2. El release comercial v2 ya publica checkout server-side mensual/anual, webhook, conciliación, recuperación stale y cancelación autoservicio, pero su configuración de Mercado Pago permanece apagada: faltan credenciales sandbox, confirmación USD y una compra/cancelación real autorizada. La UI ya no enlaza directamente al checkout legacy.
+3. Las migraciones analítica v2, su hotfix y `202609190001_commercial_access_v2.sql` fueron aplicadas; el dry-run remoto quedó al día y los postchecks confirmaron los contratos comerciales. Los datos legales del responsable y la verificación operativa de las integraciones externas continúan pendientes.
 4. La auditoría legal enumera tareas administrativas y revisión jurídica pendientes; el cálculo SQL inicial de días hábiles no integra festivos colombianos.
 5. `AdminPage.tsx` y `MoodPage.tsx` no tienen ruta activa actual; `LifeHubPage.tsx` conserva estado/render legado de Fitness que sus pestañas ya no seleccionan. Es deuda técnica, no autorización para refactorizar.
 6. `public/brand-icon.svg` no es un vector real; falta el archivo vectorial maestro aprobado.
-7. La landing editorial del release previo sigue publicada. En la rama local comercial v2, análisis avanzado determinista y recomendaciones basadas en datos disponibles pasan a Premium; no se presenta IA. Esta descripción local no equivale a publicación ni activación productiva.
+7. La landing comercial v2 está publicada: Gratis permanente, Premium mensual USD 2.99/anual USD 29.99 y recompensa de 30 días tras constancia y activación administrativa. Análisis avanzado y recomendaciones deterministas pasan a Premium; no se presenta IA.
 8. La analítica de adquisición sólo puede enviarse tras consentimiento y autenticación; no mide visitantes anónimos que no convierten.
 9. `mybestversion.life` apunta al deployment Production de Vercel y no está adjunto al Site; la URL de Sites se conserva como runtime alternativo del despliegue anterior.
 10. El bridge i18n conserva 803 entradas legacy; está congelado por auditoría y debe reducirse de forma progresiva sin traducir contenido personal.
@@ -336,11 +336,12 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 15. Referrals no ofrece todavía recompensa, descuento ni días Premium; esas condiciones y cualquier ajuste de política/reconsentimiento necesitan decisión comercial y revisión legal expresa.
 16. Las guías P2 de fotografía, assets, campañas y partnerships no sustituyen producción final, licencias, permisos de imagen, presupuesto ni acuerdos externos.
 17. La atribución referral valida formato opaco y first-touch local, pero aún no registra propiedad server-side del código ni exige en SQL el orden visita → signup dentro de una ventana propia. Mantener el flag apagado y endurecer este contrato antes de incentivos o rollout amplio.
+18. Vercel continúa en Hobby y el transporte de email real no está conectado. Antes de habilitar cobros debe usarse un plan apto para operación comercial, certificar Mercado Pago sandbox y configurar un remitente transaccional verificado.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
 
-La entrega funcional vigente es `7abddae651f34ff4e086a5b6a278c7032c73466d` en `origin/main` y Vercel Production. Conserva `MBV-H-032`/`MBV-H-033` con Calendar externo pausado y P2 detrás de flags apagados, y publica `MBV-H-035` con la landing y acceso Premium alineado. GitHub Actions `35168586376` aprobó lint, tipos, 254 pruebas unitarias y build. Vercel publicó el deployment `5sUK7zBYxYyeQC5sRBkiVsw8R5u4` como `Ready`, `Production` y `Latest`, asociado al SHA exacto y al dominio `mybestversion.life`. El smoke público validó landing desktop/mobile, rutas públicas y checkout; Calendar status conserva `404 {"error":"CALENDAR_DISABLED"}` y mantenimiento `204`.
+La entrega funcional vigente es `7fba6e996217ddb8320bb2853d6caca05757f244` en `origin/main` y Vercel Production. Conserva Calendar externo pausado y P2 detrás de flags apagados, y publica el núcleo comercial v2 con Gratis permanente, campaña de constancia, gates Premium, administración y contratos server-side de billing. GitHub Actions `35460493277` aprobó lint, tipos, 357 pruebas unitarias y build. Vercel publicó `C8BgoZGgmU7K6j7TYztHNN7KcCh8` como `Ready`/`Production` en 54 segundos y lo asoció a `mybestversion.life`.
 
-Siguiente paso operativo del release vigente: mantener los cinco flags apagados y ejecutar un smoke autenticado controlado de `/api/events` y métricas antes de cualquier rollout P2. Para certificar la rama comercial v2 hacen falta, por separado, aplicar la migración primero en prueba, configurar Mercado Pago sandbox/webhook y validar compra/cancelación mensual y anual, conectar un transporte de email verificado y realizar un único envío autorizado. No corresponde hacer commit, push ni deploy hasta cerrar esos gates y obtener aprobación.
+La migración comercial está aplicada y la oferta Gratis es coherente entre UI y base. El smoke público aprobó cinco rutas en 1440×900 y 390×844, sin overflow ni errores, y confirmó que billing/maintenance rechazan accesos anónimos y Calendar continúa pausado. Siguiente paso operativo: conservar compras y correos apagados hasta migrar Vercel a un plan comercial, certificar Mercado Pago sandbox/webhook mensual y anual, conectar un transporte de email verificado y completar un smoke autenticado controlado.

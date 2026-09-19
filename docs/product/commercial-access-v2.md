@@ -3,7 +3,7 @@
 Fecha: 2026-09-19
 Rama de trabajo: `feat/commercial-access-v2`
 Base: `5019a3b`
-Estado: local, sin migración remota, push, cobros, correos reales ni deploy.
+Estado: núcleo comercial publicado en producción; migración remota aplicada. Las compras y el envío real de correos permanecen desactivados hasta completar credenciales y certificación sandbox.
 
 ## Qué cambió
 
@@ -50,13 +50,12 @@ Estado: local, sin migración remota, push, cobros, correos reales ni deploy.
 - No hay credenciales sandbox de Mercado Pago, firma de webhook ni confirmación de soporte USD; no se ejecutó la compra real de prueba autorizada.
 - Por esa misma ausencia de sandbox, la cancelación está cubierta por contratos y simulaciones locales, pero no se ha certificado contra una suscripción real del proveedor.
 - No hay proveedor transaccional/remitente verificado; no se envió el correo real autorizado.
-- La migración no se aplicó fuera del repositorio.
 - La modalidad `subscription_auto` exige opt-in explícito por variable; no se eligió silenciosamente.
 - Planner local-first limita la verificación server-side de que la señal de participación corresponde a contenido real.
 - Un checkout stale se recupera automáticamente sólo cuando Mercado Pago responde y confirma su estado canónico. Si el proveedor no está disponible o el estado continúa abierto/no concluyente, se reutiliza o se bloquea conservadoramente; no se inventa un cierre local.
 - No se han ejecutado cobros sandbox/reales ni una cancelación contra una cuenta real de Mercado Pago.
 - No se ha enviado ningún email transaccional real al destinatario autorizado.
-- No se hicieron commit, push ni deploy de esta rama.
+- Vercel está en plan Hobby. La landing puede permanecer publicada, pero antes de habilitar una operación comercial con cobros debe migrarse el proyecto a un plan apto para uso comercial.
 
 ## Evidencia local de cierre
 
@@ -67,15 +66,26 @@ Estado: local, sin migración remota, push, cobros, correos reales ni deploy.
 - Matriz P2 de reflow: aprobada en 375×812, 390×844, 430×932, 768×1024, 1366×768 y 1440×900, en español/inglés y modos claro/oscuro.
 - Panel comercial móvil: validado a 390×844 sin overflow horizontal y con activación explícita operable.
 - Landing: inspeccionada en navegador a 1440×900 y 390×844, sin errores de página; precios, comparación, FAQ y recorrido de 30 días visibles.
-- La migración compiló y sus carreras/recuperación se comprobaron en PostgreSQL embebido; esto no sustituye aplicarla y validarla en un proyecto Supabase de prueba.
+- La migración compiló y sus carreras/recuperación se comprobaron en PostgreSQL embebido antes de aplicarla en producción.
 - `pnpm build:vinext` queda `BLOCKED` localmente porque no están configuradas `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; no se usaron valores ficticios para presentarlo como validado.
 
-## Secuencia de validación previa a release
+## Evidencia del release de producción
 
-1. Aplicar migración y configurar secrets sólo en sandbox/preview.
-2. Ejecutar mensual y anual, incluidos abandono, doble clic, rechazo, pendiente y cancelación.
+- Antes de migrar se exportaron los campos afectados de los 3 perfiles a `C:\Users\maria\Documents\Codex\2026-09-19-mbv-production-backup\profiles-before-commercial-v2.json`; SHA-256 `0F564B55161469844970A8DB83365D8B7D3F1FE023B7567BC49CC14CD3ACEEFA`.
+- `supabase db push` aplicó únicamente `202609190001_commercial_access_v2.sql`; el dry-run posterior confirmó que la base remota quedó al día.
+- Los postchecks remotos confirmaron 11 tablas comerciales, las RPC de acceso/plan/actividad/mantenimiento y nuevas altas con estado Gratis. Los perfiles existentes quedaron en 1 `active` y 2 `trial_expired`, tal como anticipó el preflight.
+- El commit funcional `7fba6e996217ddb8320bb2853d6caca05757f244` se publicó en `origin/main`.
+- Vercel aprobó el preview `A978GeJXmfLmHCm8GXptxRbo5HDW` y el deployment Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` (`vercel-upload-j6k1myfp2-mariadelosangelesgtg-4145s-projects.vercel.app`) en 54 segundos.
+- GitHub Actions `35460493277` aprobó lint, tipos, 357 pruebas unitarias y build; E2E se omitió por diseño en eventos `push`, después de haber aprobado localmente el recorrido comercial focal 8/8.
+- El smoke público en `mybestversion.life` aprobó `/`, `/trial`, `/upgrade`, `/privacy` y `/login` a 1440×900 y 390×844: HTTP 200, contenido nuevo, precio anual USD 29.99, cero enlaces legacy directos a Mercado Pago, cero overflow y cero errores de consola/página.
+- Los endpoints protegidos respondieron de forma segura sin sesión: billing status/checkout `401`, maintenance `401` y Google Calendar pausado `404 CALENDAR_DISABLED`.
+- Producción no contiene `MERCADO_PAGO_BILLING_MODE`, token, firma de webhook ni transporte de email; por tanto el checkout y el envío real permanecen cerrados de forma intencional.
+
+## Próximos gates para habilitar cobros y correos
+
+1. Migrar Vercel desde Hobby a un plan permitido para uso comercial antes de aceptar pagos.
+2. Configurar secretos sólo en sandbox y ejecutar mensual/anual, incluidos abandono, doble clic, rechazo, pendiente y cancelación.
 3. Confirmar eventos `subscription_preapproval`, `subscription_authorized_payment` y `payment` con firma válida.
 4. Validar que acceso y “Mi plan” cambian únicamente tras reconciliación.
-5. Conectar el proveedor de email y procesar una sola prueba end-to-end al destinatario autorizado.
-6. Ejecutar QA desktop/mobile autenticado, revisar logs y realizar backup.
-7. Obtener aprobación antes de push, migración de producción o despliegue.
+5. Conectar un proveedor de email y procesar una sola prueba end-to-end al destinatario autorizado.
+6. Ejecutar QA autenticado desktop/mobile, revisar logs y obtener aprobación explícita antes de habilitar `subscription_auto` en producción.
