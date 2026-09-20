@@ -3,7 +3,7 @@
 Fecha: 2026-09-19
 Rama de trabajo: `feat/commercial-access-v2`
 Base: `5019a3b`
-Estado: núcleo comercial publicado en producción; migración remota aplicada. Las compras permanecen desactivadas hasta completar credenciales y certificación sandbox. Resend, el transporte live y la única prueba real de correo están validados; queda pendiente publicar el commit final de esta integración.
+Estado: núcleo comercial y transporte Resend publicados en producción; migración remota aplicada. Las compras permanecen desactivadas hasta completar credenciales y certificación sandbox. La única prueba real de correo fue entregada sin cargo.
 
 ## Qué cambió
 
@@ -49,7 +49,7 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 
 - No hay credenciales sandbox de Mercado Pago, firma de webhook ni confirmación de soporte USD; no se ejecutó la compra real de prueba autorizada.
 - Por esa misma ausencia de sandbox, la cancelación está cubierta por contratos y simulaciones locales, pero no se ha certificado contra una suscripción real del proveedor.
-- Resend y el dominio remitente están preparados, el transporte live pasó validación local y el correo real autorizado figura `Delivered`; la publicación final del código regular sigue pendiente en este punto documental.
+- Resend y el dominio remitente están preparados, el transporte live está publicado y el correo real autorizado figura `Delivered`.
 - La modalidad `subscription_auto` exige opt-in explícito por variable; no se eligió silenciosamente.
 - Planner local-first limita la verificación server-side de que la señal de participación corresponde a contenido real.
 - Un checkout stale se recupera automáticamente sólo cuando Mercado Pago responde y confirma su estado canónico. Si el proveedor no está disponible o el estado continúa abierto/no concluyente, se reutiliza o se bloquea conservadoramente; no se inventa un cierre local.
@@ -87,10 +87,10 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 2. Configurar secretos sólo en sandbox y ejecutar mensual/anual, incluidos abandono, doble clic, rechazo, pendiente y cancelación.
 3. Confirmar eventos `subscription_preapproval`, `subscription_authorized_payment` y `payment` con firma válida.
 4. Validar que acceso y “Mi plan” cambian únicamente tras reconciliación.
-5. Publicar el transporte Resend ya validado y verificar el primer ciclo regular del outbox; la prueba aislada end-to-end ya fue entregada al destinatario autorizado.
+5. Observar el primer ciclo regular del outbox; la publicación y la prueba aislada end-to-end ya fueron completadas.
 6. Ejecutar QA autenticado desktop/mobile, revisar logs y obtener aprobación explícita antes de habilitar `subscription_auto` en producción.
 
-## Integración Resend — EN CURSO
+## Integración Resend — COMPLETA
 
 Estado verificable al 2026-09-19:
 
@@ -101,8 +101,8 @@ Estado verificable al 2026-09-19:
 - [x] Backlog del outbox auditado antes de habilitar el switch: `0` filas en estado `generated`, `queued` o `failed`.
 - [x] Transporte live implementado y conectado al outbox sin alterar el acceso comercial ante fallos de correo.
 - [x] Pruebas focales, suite completa, lint, tipos, build y auditorías del repositorio aprobados para el cambio de transporte.
-- [ ] Commit, push y deployment Production identificados y verificados.
+- [x] Commit `7af51a3` enviado a `origin/feat/commercial-access-v2` y `origin/main`; CI `35479356783` aprobado y Vercel Production `dpl_89C9CvoSuB7F7SsKgAoUgvdb6w42` en estado `Ready`.
 - [x] Un único correo de prueba procesado con el renderer y transporte de la aplicación al destinatario autorizado, sin pago ni escritura en Supabase.
 - [x] Resend confirmó `Delivered` para `[PRUEBA] Tu Premium de My Best Version está activo: empieza por aquí`; el cuerpo mostró `USD 0,00` y el aviso de que no hubo cargo real.
 
-Completar este bloque al cerrar el cambio con fecha, SHA, deployment, pruebas ejecutadas y estado real del único envío; no incluir secretos, IDs sensibles ni datos personales.
+La integración queda cerrada sin incluir secretos ni datos personales. El siguiente control operativo es observar el primer ciclo regular del outbox; no requiere repetir el correo de prueba.

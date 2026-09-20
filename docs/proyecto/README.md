@@ -15,12 +15,12 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Última revisión documental: **2026-09-19, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `feat/commercial-access-v2`, basada en el release publicado de `origin/main`.
-- SHA funcional vigente: `7fba6e996217ddb8320bb2853d6caca05757f244`; documentación de ese release consolidada hasta `cd6b6ff59a754da5b3ea61d6c2b07adfa3996037`.
-- Sincronización observada antes de iniciar la integración Resend: `HEAD` y `origin/main` alineados en `cd6b6ff`; CI y Vercel Production del release comercial aprobados.
+- SHA funcional vigente: `7af51a3f8b13eb602b90d74d37c923ecdbcabc0e`.
+- Sincronización observada al publicar Resend: rama de trabajo y `origin/main` alineadas en `7af51a3`; CI y Vercel Production aprobados.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la preparación Resend en curso documentada en `MBV-H-038`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la integración Resend completa documentada en `MBV-H-038`.
 
-P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7fba6e996217ddb8320bb2853d6caca05757f244` conserva la pausa de Calendar y los flags P2 apagados, y publica el acceso comercial v2 descrito en `MBV-H-037`. `MBV-H-038` registra una única integración Resend **EN CURSO**: proveedor, dominio, secretos, transporte y prueba `Delivered` están validados; quedan el commit, push y deployment final.
+P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7af51a3f8b13eb602b90d74d37c923ecdbcabc0e` conserva la pausa de Calendar y los flags P2 apagados, publica el acceso comercial v2 descrito en `MBV-H-037` y completa la integración Resend de `MBV-H-038`: proveedor, dominio, secretos, transporte, CI, deploy y prueba `Delivered` están verificados.
 
 ## Fuentes utilizadas
 

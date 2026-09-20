@@ -1,6 +1,6 @@
 # Autenticación, acceso comercial y facturación
 
-Estado de esta guía: núcleo comercial publicado desde `7fba6e9` y migración `202609190001_commercial_access_v2.sql` aplicada en Supabase Production. La facturación permanece desactivada mientras falten plan comercial de hosting, credenciales y validación sandbox. Resend, el transporte live y su validación local ya están preparados; la cola se auditó vacía y el único correo controlado fue confirmado como `Delivered`. Queda pendiente publicar el commit final que activa el transporte regular.
+Estado de esta guía: núcleo comercial publicado desde `7fba6e9` y migración `202609190001_commercial_access_v2.sql` aplicada en Supabase Production. La facturación permanece desactivada mientras falten plan comercial de hosting, credenciales y validación sandbox. El transporte Resend está publicado desde `7af51a3`, la cola previa se auditó vacía y el único correo controlado fue confirmado como `Delivered`.
 
 ## Responsabilidades y fuentes de verdad
 
@@ -122,11 +122,11 @@ La integración gratuita de Vercel Marketplace aprovisionó el recurso `mbv-tran
 - Decidir y autorizar expresamente la modalidad automática para nuevas compras.
 - Confirmar que la cuenta Mercado Pago admite cobros en USD para Colombia y ambos intervalos.
 - Configurar credenciales y firma sandbox; completar mensual, anual, pendiente, rechazo, cancelación y webhook duplicado/desordenado.
-- Publicar el transporte live de Resend ya validado y comprobar que el cron regular queda fail-closed fuera de Production.
+- Observar el primer ciclo regular del outbox; el transporte live ya está publicado y permanece fail-closed fuera de Production.
 - Ejecutar una sola compra sandbox de Mercado Pago; el único email real autorizado ya fue entregado con asunto y aviso de prueba acordados, sin cargo ni mutación de pago.
 - Repetir la migración y los contratos en un proyecto de prueba representativo antes de cualquier cambio comercial posterior.
 - Realizar QA autenticado desktop/mobile y revisar logs antes de activar compras.
 
 Hasta completar esos gates, los tests locales validan contratos y simulaciones, pero no certifican pagos ni entrega real de correo.
 
-El 2026-09-19 se guardó un respaldo de los campos afectados de los perfiles, se aplicó la migración en Production y se verificaron tablas, RPC, estados y alta Gratis. El commit `7fba6e9` quedó en `origin/main` y Vercel Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` quedó `Ready`. Esto habilita la oferta Gratis y la campaña de constancia. Resend se certificó después mediante una única prueba entregada y sin cobro; Mercado Pago continúa apagado y el transporte regular sólo quedará operativo al publicar el commit final con la kill switch de Production.
+El 2026-09-19 se guardó un respaldo de los campos afectados de los perfiles, se aplicó la migración en Production y se verificaron tablas, RPC, estados y alta Gratis. El commit `7fba6e9` quedó en `origin/main` y Vercel Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` quedó `Ready`. Esto habilita la oferta Gratis y la campaña de constancia. Resend se certificó después mediante una única prueba entregada y sin cobro; el commit `7af51a3` y el deployment `dpl_89C9CvoSuB7F7SsKgAoUgvdb6w42` publican el transporte regular con la kill switch de Production. Mercado Pago continúa apagado.

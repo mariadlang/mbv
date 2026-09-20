@@ -578,10 +578,10 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Límites operativos:** Vercel permanece en Hobby; no están configurados token/modo/firma de Mercado Pago ni transporte/remitente de email. Cobros y correo real quedan apagados hasta migrar a un plan apto para operación comercial, certificar sandbox USD mensual/anual, webhook y cancelación, y conectar un proveedor transaccional verificado. Google Calendar continúa pausado.
 - **Archivos documentales:** `docs/product/commercial-access-v2.md`, `docs/product/trial-premium-matrix.md`, `docs/AUTH_BILLING_SETUP.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
 
-### 2026-09-19 — Integración transaccional Resend en curso
+### 2026-09-19 — Integración transaccional Resend publicada y verificada
 
 - **Identificador estable:** `MBV-H-038`.
-- **Tipo de cambio:** integración de infraestructura y transporte transaccional; publicación final todavía en curso.
+- **Tipo de cambio:** integración de infraestructura, transporte transaccional y publicación productiva.
 - **Avance verificable:** Vercel Marketplace aprovisionó el recurso gratuito `mbv-transactional-email`. Resend muestra `mybestversion.life` con estado **Verified** y listo para enviar correos.
 - **Configuración:** `RESEND_API_KEY` y `RESEND_EMAIL_DOMAIN` existen como secretos limitados únicamente a Production del proyecto Vercel. No se copiaron a Preview o Development y la documentación no registra sus valores, identificadores sensibles ni datos personales.
 - **Decisión fail-closed implementada:** las credenciales por sí solas no drenan el outbox. El transporte exige además `TRANSACTIONAL_EMAIL_ENABLED=1`, valida remitente/dominio/base URL y conserva las filas sin reclamar cuando la configuración es incompleta.
@@ -590,6 +590,7 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Prueba real controlada:** se envió exactamente un correo mediante el mismo renderer/transporte, sin crear pago ni escribir en Supabase. El asunto fue `[PRUEBA] Tu Premium de My Best Version está activo: empieza por aquí`, el importe visible fue `USD 0,00` y el cuerpo indicó que no hubo cargo real. Resend confirmó primero `accepted` y luego `Delivered`. El endpoint y secreto temporales usados para el smoke se retiraron antes del código final.
 - **Seguridad y semántica:** un fallo de entrega no debe revertir acceso o pago. La evidencia futura debe distinguir `accepted` de `delivered` y no puede presentar una aceptación del proveedor como entrega confirmada.
 - **Pruebas ejecutadas:** 31/31 focales de email/comercial, 360/360 unitarias completas, TypeScript, ESLint, build Vercel, auditoría i18n y auditoría de tokens aprobadas; `git diff --check` sin errores (sólo avisos de CRLF del worktree).
-- **Estado de entrega:** transporte y prueba real validados; commit, push y deployment final todavía pendientes en este punto.
-- **Bloque de cierre pendiente:** actualizar esta misma entrada —sin crear otra entrada duplicada— con SHA/commit, push y deployment Production cuando finalice la publicación.
+- **Commit y push:** `7af51a3f8b13eb602b90d74d37c923ecdbcabc0e` se envió a `origin/feat/commercial-access-v2` y `origin/main` por avance directo verificable.
+- **CI y deploy:** GitHub Actions `35479356783` aprobó lint, tipos, 360 pruebas y build. Vercel Production `dpl_89C9CvoSuB7F7SsKgAoUgvdb6w42` quedó `Ready` en 53 segundos y asociado a `mybestversion.life`. El smoke público devolvió HTTP 200 en `/`, HTTP 401 en mantenimiento anónimo y confirmó que la ruta temporal de email ya no existe como API.
+- **Estado de entrega:** integración completa. El siguiente control es observar el primer ciclo regular del outbox; no se debe repetir el correo de prueba.
 - **Archivos documentales:** `docs/AUTH_BILLING_SETUP.md`, `docs/product/commercial-access-v2.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
