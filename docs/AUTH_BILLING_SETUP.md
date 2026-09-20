@@ -1,6 +1,6 @@
 # Autenticación, acceso comercial y facturación
 
-Estado de esta guía: núcleo comercial publicado desde `7fba6e9` y migración `202609190001_commercial_access_v2.sql` aplicada en Supabase Production. La facturación y el email real permanecen desactivados mientras falten plan comercial de hosting, credenciales y validación sandbox.
+Estado de esta guía: núcleo comercial publicado desde `7fba6e9` y migración `202609190001_commercial_access_v2.sql` aplicada en Supabase Production. La facturación permanece desactivada mientras falten plan comercial de hosting, credenciales y validación sandbox. Resend, el transporte live y su validación local ya están preparados; la cola se auditó vacía y el único correo controlado fue confirmado como `Delivered`. Queda pendiente publicar el commit final que activa el transporte regular.
 
 ## Responsabilidades y fuentes de verdad
 
@@ -66,6 +66,11 @@ Servidor:
 - `MERCADO_PAGO_BILLING_MODE`: debe ser exactamente `subscription_auto` para habilitar nuevas compras.
 - `MERCADO_PAGO_ACCESS_TOKEN`: credencial del mismo entorno que los eventos.
 - `MERCADO_PAGO_WEBHOOK_SECRET`: firma Webhook, mínimo 32 caracteres.
+- `RESEND_API_KEY`: credencial server-only creada por la integración de Resend; nunca debe exponerse con prefijo `NEXT_PUBLIC_`.
+- `RESEND_EMAIL_DOMAIN`: dominio verificado que el servidor usa para construir o validar el remitente transaccional.
+- `TRANSACTIONAL_EMAIL_ENABLED`: kill switch server-only; sólo el valor exacto `1` podrá habilitar el drenaje del outbox una vez que el transporte haya sido validado.
+
+En Vercel, `RESEND_API_KEY` y `RESEND_EMAIL_DOMAIN` están registradas como secretos y limitadas a **Production** del proyecto. No deben copiarse a Preview o Development sin una decisión y una necesidad de prueba explícitas.
 
 No existe `NEXT_PUBLIC_MERCADO_PAGO_URL`: el enlace público anterior fue retirado para evitar que dos intervalos compartan una URL sin identidad, importe o conciliación confiables.
 
@@ -109,7 +114,7 @@ Las plantillas HTML responsive y texto plano cubren alerta administrativa de ele
 
 El outbox registra `generated`, `queued`, `accepted`, `delivered`, `failed` y `superseded`, con lease, reintentos y deduplicación. Los avisos `renewal_pending` tienen una espera inicial de 15 minutos; al reclamar una fila se vuelve a comprobar inmediatamente antes del efecto externo si sigue siendo pertinente. Un pago aprobado sustituye las filas pendientes/encoladas/fallidas asociadas y la revalidación marca `superseded` sin invocar el transporte.
 
-Este repositorio no tiene todavía un transporte live ni dominio/remitente verificado; mantenimiento responde `EMAIL_TRANSPORT_NOT_CONFIGURED` y no reclama filas. Nunca se presenta `accepted` como `delivered`.
+La integración gratuita de Vercel Marketplace aprovisionó el recurso `mbv-transactional-email`. Resend muestra `mybestversion.life` como **Verified** y listo para enviar, y Vercel confirma las dos variables server-only en Production. El adaptador live usa la clave de idempotencia del outbox, remitente `hola@mybestversion.life`, respuesta/soporte `soporte@mybestversion.life`, renderer canónico y errores estables sin PII. La configuración es fail-closed: las credenciales por sí solas no drenan el outbox; además requiere `TRANSACTIONAL_EMAIL_ENABLED=1`. Antes de habilitarlo se auditó la cola productiva con resultado `0` pendientes. La prueba aislada usó el mismo renderer y transporte, no creó pagos ni filas de outbox, y Resend confirmó `Delivered` para el asunto acordado con prefijo `[PRUEBA]` y el aviso visible de ausencia de cargo. El acceso temporal de smoke se retiró del entorno y del código final. Nunca se presenta `accepted` como `delivered` sin evidencia del proveedor.
 
 ## Gates antes de habilitar cobros y correo en producción
 
@@ -117,11 +122,11 @@ Este repositorio no tiene todavía un transporte live ni dominio/remitente verif
 - Decidir y autorizar expresamente la modalidad automática para nuevas compras.
 - Confirmar que la cuenta Mercado Pago admite cobros en USD para Colombia y ambos intervalos.
 - Configurar credenciales y firma sandbox; completar mensual, anual, pendiente, rechazo, cancelación y webhook duplicado/desordenado.
-- Conectar un proveedor transaccional y remitente verificado.
-- Ejecutar una sola compra sandbox y un solo email real al destinatario expresamente autorizado, con el asunto y aviso de prueba acordados.
+- Publicar el transporte live de Resend ya validado y comprobar que el cron regular queda fail-closed fuera de Production.
+- Ejecutar una sola compra sandbox de Mercado Pago; el único email real autorizado ya fue entregado con asunto y aviso de prueba acordados, sin cargo ni mutación de pago.
 - Repetir la migración y los contratos en un proyecto de prueba representativo antes de cualquier cambio comercial posterior.
 - Realizar QA autenticado desktop/mobile y revisar logs antes de activar compras.
 
 Hasta completar esos gates, los tests locales validan contratos y simulaciones, pero no certifican pagos ni entrega real de correo.
 
-El 2026-09-19 se guardó un respaldo de los campos afectados de los perfiles, se aplicó la migración en Production y se verificaron tablas, RPC, estados y alta Gratis. El commit `7fba6e9` quedó en `origin/main` y Vercel Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` quedó `Ready`. Esto habilita la oferta Gratis y la campaña de constancia; no equivale a certificar ni encender Mercado Pago o entrega de email.
+El 2026-09-19 se guardó un respaldo de los campos afectados de los perfiles, se aplicó la migración en Production y se verificaron tablas, RPC, estados y alta Gratis. El commit `7fba6e9` quedó en `origin/main` y Vercel Production `C8BgoZGgmU7K6j7TYztHNN7KcCh8` quedó `Ready`. Esto habilita la oferta Gratis y la campaña de constancia. Resend se certificó después mediante una única prueba entregada y sin cobro; Mercado Pago continúa apagado y el transporte regular sólo quedará operativo al publicar el commit final con la kill switch de Production.

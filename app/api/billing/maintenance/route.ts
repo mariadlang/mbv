@@ -8,6 +8,11 @@ import {
 import { billingErrorResponse } from "@/src/server/billing/http";
 import { SupabaseBillingPersistence } from "@/src/server/billing/repository";
 import { processTransactionalEmailBatch } from "@/src/server/email/outbox";
+import { renderEmailOutboxRow } from "@/src/server/email/outboxRenderer";
+import {
+  getResendEmailRuntimeConfig,
+  ResendEmailTransport,
+} from "@/src/server/email/resendTransport";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,12 +51,20 @@ export async function GET(request: NextRequest) {
     }
     await persistence.runCommercialMaintenance(service, new Date().toISOString());
 
-    // There is deliberately no live provider in this repository. This call
-    // proves that maintenance does not claim outbox rows until one is wired
-    // explicitly; generated messages therefore remain retryable and visible.
+    const emailConfig = getResendEmailRuntimeConfig();
     const emailDelivery = await processTransactionalEmailBatch({
       client: service,
-      transport: null,
+      transport: emailConfig ? new ResendEmailTransport(emailConfig) : null,
+      render: emailConfig
+        ? (row) => renderEmailOutboxRow(row, {
+          appUrl: `${emailConfig.appBaseUrl}/app/dashboard`,
+          subscriptionUrl: `${emailConfig.appBaseUrl}/app/settings#plan-settings`,
+          supportEmail: emailConfig.supportEmail,
+          adminRecordUrl: (userId) => (
+            `${emailConfig.appBaseUrl}/platform?view=commercial&user=${encodeURIComponent(userId)}`
+          ),
+        })
+        : undefined,
       maxMessages: 25,
     });
     return NextResponse.json({ ok: true, adminNotificationEmail, emailDelivery }, {

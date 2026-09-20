@@ -577,3 +577,19 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Publicación:** el commit funcional `7fba6e996217ddb8320bb2853d6caca05757f244` se envió a `origin/main`. GitHub Actions `35460493277` aprobó lint, tipos, unit y build. Vercel publicó `C8BgoZGgmU7K6j7TYztHNN7KcCh8` como `Ready`/`Production` y lo asoció a `mybestversion.life`.
 - **Límites operativos:** Vercel permanece en Hobby; no están configurados token/modo/firma de Mercado Pago ni transporte/remitente de email. Cobros y correo real quedan apagados hasta migrar a un plan apto para operación comercial, certificar sandbox USD mensual/anual, webhook y cancelación, y conectar un proveedor transaccional verificado. Google Calendar continúa pausado.
 - **Archivos documentales:** `docs/product/commercial-access-v2.md`, `docs/product/trial-premium-matrix.md`, `docs/AUTH_BILLING_SETUP.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-19 — Integración transaccional Resend en curso
+
+- **Identificador estable:** `MBV-H-038`.
+- **Tipo de cambio:** integración de infraestructura y transporte transaccional; publicación final todavía en curso.
+- **Avance verificable:** Vercel Marketplace aprovisionó el recurso gratuito `mbv-transactional-email`. Resend muestra `mybestversion.life` con estado **Verified** y listo para enviar correos.
+- **Configuración:** `RESEND_API_KEY` y `RESEND_EMAIL_DOMAIN` existen como secretos limitados únicamente a Production del proyecto Vercel. No se copiaron a Preview o Development y la documentación no registra sus valores, identificadores sensibles ni datos personales.
+- **Decisión fail-closed implementada:** las credenciales por sí solas no drenan el outbox. El transporte exige además `TRANSACTIONAL_EMAIL_ENABLED=1`, valida remitente/dominio/base URL y conserva las filas sin reclamar cuando la configuración es incompleta.
+- **Transporte y outbox:** el adaptador Resend usa la clave de deduplicación como idempotency key, tags controlados, `providerMessageId` real y errores estables sin PII. Mantenimiento conecta el renderer canónico y las rutas vigentes de Dashboard, Mi plan y ficha administrativa.
+- **Auditoría previa:** antes de activar la kill switch se consultaron únicamente conteos agregados del outbox productivo; había `0` filas pendientes en `generated`, `queued` o `failed`.
+- **Prueba real controlada:** se envió exactamente un correo mediante el mismo renderer/transporte, sin crear pago ni escribir en Supabase. El asunto fue `[PRUEBA] Tu Premium de My Best Version está activo: empieza por aquí`, el importe visible fue `USD 0,00` y el cuerpo indicó que no hubo cargo real. Resend confirmó primero `accepted` y luego `Delivered`. El endpoint y secreto temporales usados para el smoke se retiraron antes del código final.
+- **Seguridad y semántica:** un fallo de entrega no debe revertir acceso o pago. La evidencia futura debe distinguir `accepted` de `delivered` y no puede presentar una aceptación del proveedor como entrega confirmada.
+- **Pruebas ejecutadas:** 31/31 focales de email/comercial, 360/360 unitarias completas, TypeScript, ESLint, build Vercel, auditoría i18n y auditoría de tokens aprobadas; `git diff --check` sin errores (sólo avisos de CRLF del worktree).
+- **Estado de entrega:** transporte y prueba real validados; commit, push y deployment final todavía pendientes en este punto.
+- **Bloque de cierre pendiente:** actualizar esta misma entrada —sin crear otra entrada duplicada— con SHA/commit, push y deployment Production cuando finalice la publicación.
+- **Archivos documentales:** `docs/AUTH_BILLING_SETUP.md`, `docs/product/commercial-access-v2.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.

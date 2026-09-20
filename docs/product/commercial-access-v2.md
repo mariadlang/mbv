@@ -3,7 +3,7 @@
 Fecha: 2026-09-19
 Rama de trabajo: `feat/commercial-access-v2`
 Base: `5019a3b`
-Estado: núcleo comercial publicado en producción; migración remota aplicada. Las compras y el envío real de correos permanecen desactivados hasta completar credenciales y certificación sandbox.
+Estado: núcleo comercial publicado en producción; migración remota aplicada. Las compras permanecen desactivadas hasta completar credenciales y certificación sandbox. Resend, el transporte live y la única prueba real de correo están validados; queda pendiente publicar el commit final de esta integración.
 
 ## Qué cambió
 
@@ -18,7 +18,7 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 9. El webhook verifica firma, consulta al proveedor y reconcilia estados/períodos sin confiar en la URL de retorno. Las rutas críticas por cuenta comparten un advisory lock transaccional para serializar actividad, activación promocional, checkout, acceso y conciliación.
 10. “Mi plan” permite solicitar la cancelación autoservicio con confirmación explícita. El servidor revalida propiedad y referencia, cancela en Mercado Pago, vuelve a leer el recurso canónico y conserva Premium hasta el fin del período pagado confirmado.
 11. La elegibilidad `conflict_paid_premium` se revalida cuando termina la relación de pago; si no existe suscripción abierta, período pagado, concesión consumida ni acceso legacy, vuelve a `eligible` sin consumir la recompensa.
-12. Se añadieron outbox, plantillas, deduplicación y reintentos de email. `renewal_pending` espera 15 minutos y se revalida inmediatamente antes del envío; un pago aprobado lo marca `superseded`. El transporte live permanece deliberadamente bloqueado hasta configurarlo.
+12. Se añadieron outbox, plantillas, deduplicación y reintentos de email. `renewal_pending` espera 15 minutos y se revalida inmediatamente antes del envío; un pago aprobado lo marca `superseded`. El transporte live de Resend quedó conectado mediante kill switch explícita, dominio verificado e idempotencia del proveedor.
 13. Vercel Cron queda preparado para mantenimiento diario autenticado a las 05:07 UTC, compatible con el plan Hobby actual.
 
 ## Archivos principales
@@ -49,7 +49,7 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 
 - No hay credenciales sandbox de Mercado Pago, firma de webhook ni confirmación de soporte USD; no se ejecutó la compra real de prueba autorizada.
 - Por esa misma ausencia de sandbox, la cancelación está cubierta por contratos y simulaciones locales, pero no se ha certificado contra una suscripción real del proveedor.
-- No hay proveedor transaccional/remitente verificado; no se envió el correo real autorizado.
+- Resend y el dominio remitente están preparados, el transporte live pasó validación local y el correo real autorizado figura `Delivered`; la publicación final del código regular sigue pendiente en este punto documental.
 - La modalidad `subscription_auto` exige opt-in explícito por variable; no se eligió silenciosamente.
 - Planner local-first limita la verificación server-side de que la señal de participación corresponde a contenido real.
 - Un checkout stale se recupera automáticamente sólo cuando Mercado Pago responde y confirma su estado canónico. Si el proveedor no está disponible o el estado continúa abierto/no concluyente, se reutiliza o se bloquea conservadoramente; no se inventa un cierre local.
@@ -87,5 +87,22 @@ Estado: núcleo comercial publicado en producción; migración remota aplicada. 
 2. Configurar secretos sólo en sandbox y ejecutar mensual/anual, incluidos abandono, doble clic, rechazo, pendiente y cancelación.
 3. Confirmar eventos `subscription_preapproval`, `subscription_authorized_payment` y `payment` con firma válida.
 4. Validar que acceso y “Mi plan” cambian únicamente tras reconciliación.
-5. Conectar un proveedor de email y procesar una sola prueba end-to-end al destinatario autorizado.
+5. Publicar el transporte Resend ya validado y verificar el primer ciclo regular del outbox; la prueba aislada end-to-end ya fue entregada al destinatario autorizado.
 6. Ejecutar QA autenticado desktop/mobile, revisar logs y obtener aprobación explícita antes de habilitar `subscription_auto` en producción.
+
+## Integración Resend — EN CURSO
+
+Estado verificable al 2026-09-19:
+
+- [x] Recurso gratuito `mbv-transactional-email` aprovisionado mediante Vercel Marketplace.
+- [x] Dominio `mybestversion.life` verificado en Resend y marcado como listo para enviar.
+- [x] `RESEND_API_KEY` y `RESEND_EMAIL_DOMAIN` almacenadas como secretos sólo en Production del proyecto Vercel.
+- [x] Kill switch `TRANSACTIONAL_EMAIL_ENABLED=1` implementado con comportamiento fail-closed; las credenciales aisladas no drenan el outbox.
+- [x] Backlog del outbox auditado antes de habilitar el switch: `0` filas en estado `generated`, `queued` o `failed`.
+- [x] Transporte live implementado y conectado al outbox sin alterar el acceso comercial ante fallos de correo.
+- [x] Pruebas focales, suite completa, lint, tipos, build y auditorías del repositorio aprobados para el cambio de transporte.
+- [ ] Commit, push y deployment Production identificados y verificados.
+- [x] Un único correo de prueba procesado con el renderer y transporte de la aplicación al destinatario autorizado, sin pago ni escritura en Supabase.
+- [x] Resend confirmó `Delivered` para `[PRUEBA] Tu Premium de My Best Version está activo: empieza por aquí`; el cuerpo mostró `USD 0,00` y el aviso de que no hubo cargo real.
+
+Completar este bloque al cerrar el cambio con fecha, SHA, deployment, pruebas ejecutadas y estado real del único envío; no incluir secretos, IDs sensibles ni datos personales.

@@ -7,6 +7,11 @@ import {
   type EmailOutboxPersistence,
 } from "@/src/server/email/outbox";
 import { renderEmailOutboxRow } from "@/src/server/email/outboxRenderer";
+import {
+  getResendEmailRuntimeConfig,
+  ResendEmailTransport,
+  type ResendEmailClient,
+} from "@/src/server/email/resendTransport";
 import { renderTransactionalEmail } from "@/src/server/email/templates";
 import {
   DisabledEmailTransport,
@@ -72,6 +77,108 @@ describe("transactional email templates", () => {
 });
 
 describe("transactional email delivery", () => {
+  it("enables Resend only with a complete, valid server-side configuration", () => {
+    expect(getResendEmailRuntimeConfig({
+      TRANSACTIONAL_EMAIL_ENABLED: "1",
+      RESEND_API_KEY: "re_test_valid_api_key_123456",
+      RESEND_EMAIL_DOMAIN: "example.com",
+      APP_BASE_URL: "https://example.com/",
+    })).toEqual({
+      apiKey: "re_test_valid_api_key_123456",
+      from: "My Best Version <hola@example.com>",
+      replyTo: "soporte@example.com",
+      appBaseUrl: "https://example.com",
+      supportEmail: "soporte@example.com",
+    });
+    expect(getResendEmailRuntimeConfig({
+      TRANSACTIONAL_EMAIL_ENABLED: "1",
+      RESEND_API_KEY: "re_test_valid_api_key_123456",
+      RESEND_EMAIL_DOMAIN: "not a domain",
+      APP_BASE_URL: "https://example.com",
+    })).toBeNull();
+    expect(getResendEmailRuntimeConfig({
+      TRANSACTIONAL_EMAIL_ENABLED: "1",
+      RESEND_API_KEY: "re_test_valid_api_key_123456",
+      TRANSACTIONAL_EMAIL_FROM: "invalid\r\nBcc: persona@example.com",
+      TRANSACTIONAL_EMAIL_SUPPORT_EMAIL: "soporte@example.com",
+      APP_BASE_URL: "https://example.com",
+    })).toBeNull();
+    expect(getResendEmailRuntimeConfig({
+      TRANSACTIONAL_EMAIL_ENABLED: "0",
+      RESEND_API_KEY: "re_test_valid_api_key_123456",
+      RESEND_EMAIL_DOMAIN: "example.com",
+      APP_BASE_URL: "https://example.com",
+    })).toBeNull();
+  });
+
+  it("sends through Resend with the existing dedupe key as provider idempotency", async () => {
+    const send = vi.fn().mockResolvedValue({
+      data: { id: "resend-message-123" },
+      error: null,
+      headers: null,
+    });
+    const client: ResendEmailClient = { emails: { send } };
+    const transport = new ResendEmailTransport({
+      apiKey: "re_test_valid_api_key_123456",
+      from: "My Best Version <hola@example.com>",
+      replyTo: "soporte@example.com",
+    }, client);
+    const message = {
+      to: "persona@example.com",
+      subject: "Asunto",
+      html: "<p>Hola</p>",
+      text: "Hola",
+      dedupeKey: "premium_welcome:payment-123",
+      tags: { template: "premium_welcome", outbox_id: "7ecf7056-3e0c-4906-af79-d25b33785232" },
+    };
+
+    await expect(transport.send(message)).resolves.toEqual({
+      status: "accepted",
+      providerMessageId: "resend-message-123",
+    });
+    expect(send).toHaveBeenCalledWith({
+      from: "My Best Version <hola@example.com>",
+      to: "persona@example.com",
+      subject: "Asunto",
+      html: "<p>Hola</p>",
+      text: "Hola",
+      replyTo: "soporte@example.com",
+      tags: [
+        { name: "template", value: "premium_welcome" },
+        { name: "outbox_id", value: "7ecf7056-3e0c-4906-af79-d25b33785232" },
+      ],
+    }, { idempotencyKey: message.dedupeKey });
+  });
+
+  it("maps Resend failures to stable non-PII error codes", async () => {
+    const client: ResendEmailClient = {
+      emails: {
+        send: vi.fn().mockResolvedValue({
+          data: null,
+          error: {
+            name: "rate_limit_exceeded",
+            message: "provider detail must not escape",
+            statusCode: 429,
+          },
+          headers: null,
+        }),
+      },
+    };
+    const transport = new ResendEmailTransport({
+      apiKey: "re_test_valid_api_key_123456",
+      from: "My Best Version <hola@example.com>",
+      replyTo: "soporte@example.com",
+    }, client);
+
+    await expect(transport.send({
+      to: "persona@example.com",
+      subject: "Asunto",
+      html: "<p>Hola</p>",
+      text: "Hola",
+      dedupeKey: "subscription_renewed:payment-123",
+    })).rejects.toThrow("EMAIL_PROVIDER_RATE_LIMITED");
+  });
+
   it("renders the canonical SQL outbox payload without client-provided commercial data", () => {
     const row: ClaimedEmailOutboxRow = {
       id: "7ecf7056-3e0c-4906-af79-d25b33785232",

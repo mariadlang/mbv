@@ -12,15 +12,15 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Última revisión documental: **2026-09-16, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-09-19, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
-- Rama examinada: `main`.
-- SHA funcional vigente: `7abddae651f34ff4e086a5b6a278c7032c73466d`.
-- Sincronización observada al publicar: `main` y `origin/main` alineados; CI y Vercel Production aprobados.
+- Rama examinada: `feat/commercial-access-v2`, basada en el release publicado de `origin/main`.
+- SHA funcional vigente: `7fba6e996217ddb8320bb2853d6caca05757f244`; documentación de ese release consolidada hasta `cd6b6ff59a754da5b3ea61d6c2b07adfa3996037`.
+- Sincronización observada antes de iniciar la integración Resend: `HEAD` y `origin/main` alineados en `cd6b6ff`; CI y Vercel Production del release comercial aprobados.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el release de landing documentado en `MBV-H-036`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la preparación Resend en curso documentada en `MBV-H-038`.
 
-P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7abddae651f34ff4e086a5b6a278c7032c73466d` conserva la pausa de Calendar y los flags P2 apagados, y publica la landing editorial y la matriz comercial descritas en `MBV-H-035`. `MBV-H-036` registra migración, commit, push, CI, Vercel Production y smoke público aprobados.
+P0 y P1 permanecen como baseline histórico. El SHA funcional vigente `7fba6e996217ddb8320bb2853d6caca05757f244` conserva la pausa de Calendar y los flags P2 apagados, y publica el acceso comercial v2 descrito en `MBV-H-037`. `MBV-H-038` registra una única integración Resend **EN CURSO**: proveedor, dominio, secretos, transporte y prueba `Delivered` están validados; quedan el commit, push y deployment final.
 
 ## Fuentes utilizadas
 
