@@ -117,6 +117,36 @@ describe("backup validation", () => {
     });
   });
 
+  it("preserves stable monthly-action keys while accepting legacy tasks without one", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.tasks.push(
+      {
+        id: "stable-action",
+        title: "Preparar propuesta",
+        periodPlanId: "month-2026-10",
+        planActionKey: "month-action-1",
+        priority: "medium",
+        status: "inbox",
+        createdAt: "2026-09-01T12:00:00.000Z",
+        updatedAt: "2026-09-01T12:00:00.000Z",
+      },
+      {
+        id: "legacy-action",
+        title: "Acción anterior",
+        periodPlanId: "month-2026-10",
+        priority: "medium",
+        status: "inbox",
+        createdAt: "2026-09-01T12:00:00.000Z",
+        updatedAt: "2026-09-01T12:00:00.000Z",
+      },
+    );
+
+    const parsed = backupEnvelopeSchema.parse({ schemaVersion: 3, exportedAt: "2026-09-24T12:00:00.000Z", data: snapshot });
+    if (parsed.schemaVersion !== 3) throw new Error("Expected a version 3 backup");
+    expect(parsed.data.tasks[0].planActionKey).toBe("month-action-1");
+    expect(parsed.data.tasks[1].planActionKey).toBeUndefined();
+  });
+
   it("preserves Brain Dump organization and conversion traceability", () => {
     const snapshot = createEmptySnapshot();
     snapshot.brainDumpItems.push({

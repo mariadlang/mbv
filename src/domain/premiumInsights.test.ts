@@ -70,7 +70,7 @@ describe("premium recommendations", () => {
     };
     snapshot.goals = [{ id: "goal", title: "Cuidar mi salud", reason: "Bienestar", progressType: "tasks", priority: "high", status: "active", createdAt: timestamp, updatedAt: timestamp }];
     snapshot.tasks = [{ id: "task", title: "Caminar", goalId: "goal", date: "2026-09-19", priority: "medium", status: "planned", createdAt: timestamp, updatedAt: timestamp }];
-    snapshot.lifeAreas = [{ id: "health", name: "Salud", color: "sage", order: 0, active: true, currentScore: 4, createdAt: timestamp, updatedAt: timestamp }];
+    snapshot.lifeAreas = [{ id: "health", name: "Salud", color: "sage", order: 0, active: true, currentScore: 4, desiredScore: 8, scoresConfirmedAt: timestamp, createdAt: timestamp, updatedAt: timestamp }];
     const analysis = { ...buildPremiumProgressAnalysis(snapshot, now), hasEnoughEvidence: true };
 
     expect(buildPremiumRecommendation(snapshot, analysis)).toEqual({ id: "review_low_area", lifeAreaName: "Salud" });

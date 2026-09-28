@@ -68,4 +68,25 @@ describe("progress evidence", () => {
     expect(evidence.latestAchievement?.id).toBe("connected-action");
     expect(evidence.latestAchievement?.achievedAt).toBe("2026-09-10T12:00:00.000Z");
   });
+
+  it("groups a late-night completion by the user's local calendar day", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.tasks = [{
+      id: "night-task",
+      title: "Cerrar el día",
+      priority: "medium",
+      status: "completed",
+      completedAt: "2026-09-18T02:30:00.000Z",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }];
+    snapshot.habitLogs = [
+      { id: "day-one", habitId: "habit", date: "2026-09-15", value: 1, createdAt: timestamp, updatedAt: timestamp },
+      { id: "day-two", habitId: "habit", date: "2026-09-16", value: 1, createdAt: timestamp, updatedAt: timestamp },
+    ];
+
+    const evidence = buildProgressEvidence(snapshot, { timeZone: "America/Bogota" });
+
+    expect(evidence.achievements.find((item) => item.id === "intentional-week")?.achievedAt).toBe("2026-09-17");
+  });
 });

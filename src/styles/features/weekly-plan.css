@@ -111,7 +111,9 @@
 .weekly-habit-row { display: grid; min-width: 0; grid-template-columns: 26px 18px minmax(0, 1fr); align-items: center; gap: 5px; padding: 3px 2px; color: var(--color-text-secondary); font-size: .72rem; }
 .weekly-habit-row > button { display: grid; width: 18px; height: 18px; place-items: center; border: 1.5px solid var(--weekly-lavender); border-radius: 50%; background: var(--color-surface-elevated); color: var(--button-primary-text); cursor: pointer; }
 .weekly-habit-row > button.is-complete { background: var(--weekly-lavender); }
+.weekly-habit-row > button.is-partial { width: auto; min-width: 38px; border-radius: 999px; background: var(--color-brand-soft); color: var(--color-brand-strong); font-size: .58rem; font-weight: 700; }
 .weekly-habit-row > span { overflow-wrap: anywhere; }
+.weekly-habit-row > span small { color: var(--color-text-secondary); font-size: inherit; }
 
 .weekly-inline-composer { display: grid; grid-template-columns: minmax(120px, 1fr) auto 36px; align-items: center; gap: 8px; padding: 3px 0 0 32px; }
 .weekly-inline-composer input { min-width: 0; min-height: 40px; border: 1.5px solid var(--color-brand); border-radius: 8px; background: var(--input-background); padding: 8px 12px; color: var(--color-text-primary); outline: 0; }

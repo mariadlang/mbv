@@ -46,6 +46,7 @@ export interface LifeArea {
   active: boolean;
   currentScore?: number;
   desiredScore?: number;
+  scoresConfirmedAt?: string;
   vision?: string;
   icon?: string;
   reflection?: string;
@@ -66,6 +67,7 @@ export interface Habit {
   type: HabitType;
   scheduledDays: number[];
   oneOffDate?: string;
+  trackingStartDate?: string;
   target: number;
   unit: string;
   lifeAreaId?: string;
@@ -96,6 +98,7 @@ export interface Task {
   milestoneId?: string;
   projectId?: string;
   periodPlanId?: string;
+  planActionKey?: string;
   financialCategoryId?: string;
   date?: string;
   time?: string;

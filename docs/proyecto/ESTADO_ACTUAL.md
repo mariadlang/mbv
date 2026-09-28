@@ -1,6 +1,6 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-19, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-09-28, America/Bogota (UTC-05:00)**.
 
 > **Release comercial v2 vigente:** producción ofrece Gratis permanente, Premium USD 2.99/mes o USD 29.99/año y una recompensa manual de 30 días Premium después de 30 fechas consecutivas. Incluye migración, acceso central, landing, administración, checkout/webhook server-side, cancelación autoservicio con paid-through, recuperación segura de checkout stale, serialización por cuenta, revalidación de conflictos, cola de participación ligada a usuario y outbox con supresión previa al envío. La migración está aplicada y el transporte Resend está publicado en `7af51a3`. Mercado Pago permanece apagado. Resend tiene recurso, dominio verificado y secretos limitados a Production; la única prueba real figura `Delivered`. Consulta [`../product/commercial-access-v2.md`](../product/commercial-access-v2.md), [`../product/trial-premium-matrix.md`](../product/trial-premium-matrix.md) y [`../AUTH_BILLING_SETUP.md`](../AUTH_BILLING_SETUP.md).
 
@@ -16,8 +16,9 @@
 - Integración Google Calendar: `MBV-H-025` a `MBV-H-031` documentan su implementación, hardening y validación histórica. Por decisión expresa del 16 de septiembre, `MBV-H-032` pausa la integración, retira sus superficies activas y programa el cierre del proyecto Google Cloud `mbv-calendar-production`. El calendario local permanece disponible; no se purgaron datos históricos de Supabase ni secretos de Vercel. Consulta [`../integrations/google-calendar.md`](../integrations/google-calendar.md).
 - Release P2/Calendar: `MBV-H-032` y `MBV-H-033` quedaron consolidados en el commit funcional `7628074708e379dd5c79b9b76f3102022e25a5a6`, enviado a `origin/main` y publicado en Vercel Production. P2-A implementa Weekly Recap, regreso amable, tarjetas de progreso, referrals, analítica/lifecycle, aislamiento local por cuenta y copy Premium contextual, con los cinco flags apagados. La validación aprobó lint, TypeScript, 44 archivos/243 pruebas unitarias, builds Next/Vinext, 82 E2E en la suite completa previa, el E2E Premium final desktop/mobile y la matriz visual P2. La migración P2 está aplicada y certificada en Supabase; el smoke público del release aprobó y Calendar externo quedó efectivamente desactivado.
 - Landing y matriz comercial: `MBV-H-035`/`MBV-H-036` conservan el historial de la portada editorial inicial. `MBV-H-037` registra su sustitución por la oferta Gratis/Premium actual, la migración comercial, CI, Vercel Production y smoke público aprobados.
+- Cierre funcional y UX: `MBV-H-040` corrige cuatro fallos de planificación, duplicación, fechas y hábitos, y completa continuidad Meta → Mes, cierre de proyectos, seguimiento amable y valoraciones confirmadas. La evidencia detallada vive en [`../auditorias/2026-09-25-cierre-funcionamiento-ux/`](../auditorias/2026-09-25-cierre-funcionamiento-ux/).
 
-Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-038` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, recomendaciones con IA ni auto-planificación; la IA sólo se comunica como capacidad futura no disponible.
+Este documento describe el estado vigente mediante `MBV-H-020` a `MBV-H-040` en [`HISTORIAL.md`](HISTORIAL.md). Los cambios conservan P0/P1 y no incorporan Outlook, Apple Calendar, recomendaciones con IA ni auto-planificación; la IA sólo se comunica como capacidad futura no disponible.
 
 ## Qué es el producto
 
@@ -78,23 +79,28 @@ No existe sincronización del contenido del planner entre dispositivos.
 ### Planificación, metas, proyectos y tareas
 
 - Visión y áreas de vida conectan con metas.
+- La rueda de vida muestra `Sin evaluar` hasta que la persona confirma puntuaciones. Reflexionar no las confirma y sólo valoraciones confirmadas alimentan radar, promedios e insights; valores legacy ambiguos permanecen pendientes sin reinterpretarse.
 - Las metas soportan progreso manual, numérico, por tareas o hitos ponderados.
 - Planificación dispone de vistas año, mes, semana, día y revisión; siempre muestra los doce meses del año elegido.
 - Los planes incluyen horizontes de cinco años/Premium, tres años, mensual y semanal.
 - Un mes puede conservar intención, prioridades, áreas, acciones, eventos, reflexión y procedencia de una meta.
+- Una fecha importante nueva con título exige un día real. Los registros históricos incompletos permanecen visibles, editables y marcados como `Fecha pendiente`, sin bloquear el mes.
+- Las acciones mensuales usan una clave estable por plan para que un doble envío o reintento sea idempotente sin deduplicar tareas legítimas con el mismo título.
+- `Planificar esta meta` conserva la procedencia y exige una decisión explícita si el mes ya está vinculado; cancelar no modifica el plan y la confirmación refleja el vínculo realmente guardado.
 - Un trial legacy aplica el mismo horizonte local de tres meses a creación, asignación y reprogramación desde mes, semana, día y captura rápida; `usePlanner` vuelve a validar la regla antes de persistir. Las cuentas Gratis nuevas no heredan ese límite temporal.
 - La ruta semanal usa una lista vertical de lunes a domingo con prioridades derivadas de las mismas tareas, creación rápida por día, hábitos recurrentes, edición y cambio de fecha, y un panel de pendientes sin fecha que permite asignar sin duplicar entidades.
 - Brain Dump conserva su conversión idempotente a tarea dentro del panel de pendientes y la revisión semanal se abre en modal sin ocupar espacio permanente.
 - Tareas pueden enlazar meta, proyecto y plan; Top 3 se expresa mediante `focusPriority`.
-- Proyectos aparecen antes de tareas y admiten checklist.
+- Proyectos aparecen antes de tareas y admiten checklist. Completar todas sus tareas produce `Listo para cerrar`: cerrar, añadir otra acción o reabrir siguen siendo decisiones explícitas y reversibles.
 - El flujo Meta → resultado mensual → semana → Mi día → Progreso tiene cobertura E2E.
 
 ### Hábitos, progreso y journal
 
 - Hábitos booleanos, de cantidad o duración; recurrencia diaria, días laborables, personalizada o sólo una fecha.
-- Progreso parcial medible y edición del hábito.
-- Constancia y **Mayor continuidad** cuentan únicamente días programados; “No programado” se representa como estado separado y nunca como 0 %.
+- Progreso parcial medible y edición del hábito. Hábitos, Mi día y Semana muestran la misma cantidad parcial y abren el editor compartido; eliminar un registro es una acción separada y confirmada.
+- Los hábitos nuevos empiezan su seguimiento en la fecha de creación. Constancia y **Mayor continuidad** cuentan únicamente días programados desde ese inicio; “Sin seguimiento” y “No programado” son estados separados y nunca se convierten en 0 %.
 - Progreso reúne evidencia de metas, hitos, tareas y hábitos.
+- Los logros convierten instantes a fecha local antes de presentarlos; una fecha sin hora conserva su día original.
 - Journal admite entrada libre, gratitud y revisiones; el contenido permanece local.
 - La entrada rápida del Journal exige contenido.
 
@@ -242,6 +248,8 @@ pnpm test:e2e
 - Mantener el contenido sensible del planner local hasta una decisión explícita de sincronización.
 - No presentar datos demo como reales; su carga debe ser voluntaria.
 - No penalizar días no programados en la constancia.
+- No inventar una fecha de inicio para hábitos legacy ni reinterpretar puntuaciones históricas ambiguas como valoraciones personales confirmadas.
+- No cerrar un proyecto automáticamente por completar sus tareas ni sobrescribir el vínculo de una meta con un mes sin una decisión explícita.
 - Mantener exactamente cinco destinos principales en desktop/mobile; Bienestar y Finanzas son accesos secundarios visibles de Mi espacio.
 - Mantener Nunito Sans en el tracker. La excepción editorial de la landing usa Playfair Display para titulares/acento e Inter para navegación, cuerpo y controles, siempre acotadas a `.landing-page`.
 - Introducir color, espacio, radio, sombra o control reutilizable mediante tokens y primitives antes de crear una variante aislada.
@@ -314,6 +322,14 @@ Para el release P2 publicado `MBV-H-033`:
 - La matriz visual P2 cubre 375×812, 390×844, 430×932, 768×1024, 1366×768 y 1440×900, en claro/oscuro y ES/EN Beta, con evidencia en `docs/qa/screenshots/`.
 - Lint, tipos, 44 archivos/243 pruebas unitarias, builds Next/Vinext y Playwright (82 aprobadas, 12 saltadas por diseño, 0 fallos en la suite completa previa) quedaron aprobados. Después del cableado Premium, su recorrido dirigido volvió a aprobar 2/2 en desktop/mobile. Esto no implica activación pública.
 - La migración P2 se aplicó y pasó postchecks remotos. El smoke público de producción aprobó; no hubo smoke autenticado de producto ni activación de flags.
+
+Para el cierre funcional y UX `MBV-H-040`:
+
+- ESLint, TypeScript, 68 archivos/399 pruebas unitarias, i18n (1.598 claves estables ES/EN y 803/803 legacy), tokens (298/298), contraste (22/22) y build Next de 21 rutas aprobaron.
+- Playwright cubrió escritorio 1440×900 y móvil 390×844, formularios, persistencia, datos legacy, foco/nombres accesibles, navegación entre módulos, zona `America/Bogota`, ES/EN y las matrices visuales públicas/de producto.
+- Una suspensión de 10,3 horas dejó cinco resultados inconclusos o desactualizados; todos se repitieron después en una sesión continua. La evidencia compuesta final es 96/96 casos ejecutables aprobados y 16 omisiones intencionales.
+- `build:vinext` no pudo evaluarse en el worktree aislado porque faltan sus dos variables públicas de Supabase. No se copiaron secretos; el build Next/Vercel, destino productivo, sí aprobó.
+- El detalle de decisiones y validación está en [`../auditorias/2026-09-25-cierre-funcionamiento-ux/`](../auditorias/2026-09-25-cierre-funcionamiento-ux/).
 
 La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-release-report.md); el informe P0 permanece como referencia histórica.
 

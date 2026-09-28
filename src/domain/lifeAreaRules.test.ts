@@ -9,6 +9,15 @@ describe("mergeDefaultLifeAreas", () => {
     expect(merged.map((area) => area.name)).toEqual(defaultLifeAreaNames);
     expect(repeated).toEqual(merged);
     expect(nextId).toBe(8);
+    expect(merged.every((area) => area.currentScore === undefined && area.desiredScore === undefined)).toBe(true);
+  });
+
+  it("preserves ambiguous legacy scores without marking them as confirmed", () => {
+    const timestamp = "2026-09-01T00:00:00.000Z";
+    const existing = { ...mergeDefaultLifeAreas([], () => "area", timestamp)[0], currentScore: 6, desiredScore: 8 };
+    const merged = mergeDefaultLifeAreas([existing], () => crypto.randomUUID(), timestamp);
+    expect(merged[0]).toMatchObject({ currentScore: 6, desiredScore: 8 });
+    expect(merged[0].scoresConfirmedAt).toBeUndefined();
   });
 
   it("preserves existing areas and adds only missing defaults", () => {

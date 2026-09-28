@@ -1,5 +1,15 @@
 import type { PlannerSnapshot } from "./planner";
 
+export type ProjectExecutionState = "empty" | "pending" | "ready_to_close" | "completed";
+
+export interface ProjectExecutionSummary {
+  state: ProjectExecutionState;
+  progress: number;
+  completed: number;
+  total: number;
+  nextTitle?: string;
+}
+
 export function calculateAccountBalance(snapshot: PlannerSnapshot, accountId: string): number {
   const account = snapshot.financialAccounts.find((item) => item.id === accountId);
   if (!account) return 0;
@@ -18,26 +28,40 @@ export function calculateAccountBalance(snapshot: PlannerSnapshot, accountId: st
     }, account.initialBalance + (account.balanceAdjustment ?? 0));
 }
 
-export function calculateProjectProgress(snapshot: PlannerSnapshot, projectId: string): number {
+export function getProjectExecutionState(snapshot: PlannerSnapshot, projectId: string): ProjectExecutionSummary {
+  const project = snapshot.projects.find((item) => item.id === projectId);
   const checks = snapshot.projectChecklistItems.filter((item) => item.projectId === projectId);
   const tasks = snapshot.tasks.filter((item) => item.projectId === projectId && item.status !== "cancelled");
   const total = checks.length + tasks.length;
-  if (!total) return 0;
   const completed = checks.filter((item) => item.completed).length
     + tasks.filter((item) => item.status === "completed").length;
-  return Math.round((completed / total) * 100);
+  const nextCheck = checks.find((item) => !item.completed);
+  const nextTask = tasks
+    .filter((item) => item.status !== "completed")
+    .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"))[0];
+  const progress = total ? Math.round((completed / total) * 100) : 0;
+
+  if (project?.status === "completed") {
+    return { state: "completed", progress, completed, total };
+  }
+  if (!total) {
+    return { state: "empty", progress, completed, total };
+  }
+  if (completed === total) {
+    return { state: "ready_to_close", progress, completed, total };
+  }
+  return { state: "pending", progress, completed, total, nextTitle: nextCheck?.title ?? nextTask?.title };
+}
+
+export function calculateProjectProgress(snapshot: PlannerSnapshot, projectId: string): number {
+  return getProjectExecutionState(snapshot, projectId).progress;
 }
 
 export function projectNextSuggestion(snapshot: PlannerSnapshot, projectId: string): string {
-  const nextCheck = snapshot.projectChecklistItems.find(
-    (item) => item.projectId === projectId && !item.completed,
-  );
-  const nextTask = snapshot.tasks
-    .filter((item) => item.projectId === projectId && item.status !== "completed" && item.status !== "cancelled")
-    .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"))[0];
-  const next = nextCheck?.title ?? nextTask?.title;
-  return next
-    ? `Tu siguiente paso más pequeño es: ${next}. Reserva un bloque concreto esta semana.`
+  const execution = getProjectExecutionState(snapshot, projectId);
+  if (execution.state === "completed" || execution.state === "ready_to_close") return "";
+  return execution.nextTitle
+    ? `Tu siguiente paso más pequeño es: ${execution.nextTitle}. Reserva un bloque concreto esta semana.`
     : "Define una acción de menos de 30 minutos para volver a poner este proyecto en movimiento.";
 }
 

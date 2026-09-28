@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptySnapshot } from "./planner";
-import { calculateAccountBalance, calculateProjectProgress, habitRecommendation, weeklyPlanningInsight } from "./cascadeRules";
+import { calculateAccountBalance, calculateProjectProgress, getProjectExecutionState, habitRecommendation, projectNextSuggestion, weeklyPlanningInsight } from "./cascadeRules";
 
 describe("cascade planning rules", () => {
   it("calculates bank balances with transfers and spending", () => {
@@ -26,6 +26,57 @@ describe("cascade planning rules", () => {
     ];
     snapshot.tasks = [{ id: "t", title: "Task", projectId: "p", priority: "high", status: "completed", createdAt: "x", updatedAt: "x" }];
     expect(calculateProjectProgress(snapshot, "p")).toBe(67);
+    expect(getProjectExecutionState(snapshot, "p")).toMatchObject({
+      state: "pending",
+      completed: 2,
+      total: 3,
+      progress: 67,
+      nextTitle: "Two",
+    });
+  });
+
+  it("distinguishes an empty project from one that is ready to close", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.projects = [{ id: "p", name: "Proyecto", outcome: "Entregable", status: "active", createdAt: "x", updatedAt: "x" }];
+
+    expect(getProjectExecutionState(snapshot, "p")).toEqual({
+      state: "empty",
+      completed: 0,
+      total: 0,
+      progress: 0,
+    });
+
+    snapshot.tasks = [{ id: "t", title: "Tarea", projectId: "p", priority: "medium", status: "completed", createdAt: "x", updatedAt: "x" }];
+    snapshot.projectChecklistItems = [{ id: "c", projectId: "p", title: "Paso", completed: true, createdAt: "x", updatedAt: "x" }];
+
+    expect(getProjectExecutionState(snapshot, "p")).toEqual({
+      state: "ready_to_close",
+      completed: 2,
+      total: 2,
+      progress: 100,
+    });
+    expect(projectNextSuggestion(snapshot, "p")).toBe("");
+  });
+
+  it("keeps pending checklist work from marking a project ready to close", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.projects = [{ id: "p", name: "Proyecto", outcome: "Entregable", status: "active", createdAt: "x", updatedAt: "x" }];
+    snapshot.tasks = [{ id: "t", title: "Tarea", projectId: "p", priority: "medium", status: "completed", createdAt: "x", updatedAt: "x" }];
+    snapshot.projectChecklistItems = [{ id: "c", projectId: "p", title: "Confirmar entrega", completed: false, createdAt: "x", updatedAt: "x" }];
+
+    expect(getProjectExecutionState(snapshot, "p")).toMatchObject({
+      state: "pending",
+      nextTitle: "Confirmar entrega",
+      progress: 50,
+    });
+  });
+
+  it("reports an explicitly closed project independently from its calculated progress", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.projects = [{ id: "p", name: "Proyecto", outcome: "Entregable", status: "completed", createdAt: "x", updatedAt: "x" }];
+
+    expect(getProjectExecutionState(snapshot, "p")).toMatchObject({ state: "completed", progress: 0 });
+    expect(projectNextSuggestion(snapshot, "p")).toBe("");
   });
 
   it("distinguishes a habit experiment from an established habit", () => {

@@ -2,16 +2,16 @@
 
 /* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { eachDayOfInterval, endOfMonth, endOfWeek, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Circle, Edit3, ListChecks, Lock, Plus, RotateCcw, Save, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Circle, Edit3, ListChecks, Lock, Plus, RotateCcw, Save, Sparkles, Target, Trash2 } from "lucide-react";
 import type { CascadePlan, PlannerSnapshot, Task } from "@/src/domain/planner";
 import { monthlyBrainDumpSummary } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
-import { cascadePlanFormSchema } from "@/src/lib/schemas";
-import { buildYearMonthSlots, collectMonthPlanEntries, monthPeriodKey, parseAreaGoals, serializeAreaGoals } from "@/src/domain/monthPlanning";
+import { cascadePlanFormSchema, monthImportantDateFormSchema } from "@/src/lib/schemas";
+import { buildYearMonthSlots, collectMonthPlanEntries, monthPeriodKey, parseAreaGoals, safeMonthEntryDate, serializeAreaGoals } from "@/src/domain/monthPlanning";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
@@ -25,6 +25,7 @@ import type { PlanningMessageKey } from "@/src/i18n/messages/features/planning";
 
 type PlanningView = "year" | "month" | "week" | "day" | "reset";
 type LongTermMode = "five" | "three";
+type GoalLinkDecision = "pending" | "link" | "keep" | null;
 
 const fiveYearAreas = [
   ["wellbeing", "planning.area.wellbeing"],
@@ -48,16 +49,16 @@ type MonthDraft = {
   status: "draft" | "active" | "closed";
 };
 
-type MonthEntryDraft = { taskId?: string; title: string; date: string };
+type MonthEntryDraft = { entryKey: string; taskId?: string; title: string; date: string };
 
-const emptyEntry = (): MonthEntryDraft => ({ title: "", date: "" });
+const emptyEntry = (): MonthEntryDraft => ({ entryKey: crypto.randomUUID(), title: "", date: "" });
 const emptyMonthDraft = (date = new Date()): MonthDraft => ({ month: String(date.getMonth() + 1), year: String(date.getFullYear()), focus: "", sourceGoalId: "", priorities: ["", "", ""], linkedPriority: "", areaIds: [], areaGoals: {}, actions: [emptyEntry()], importantDates: [emptyEntry()], status: "active" });
 const monthDraftFromPlan = (plan: CascadePlan, snapshot: PlannerSnapshot): MonthDraft => {
-  const linkedTasks = snapshot.tasks.filter((task) => task.periodPlanId === plan.id).map((task) => ({ taskId: task.id, title: task.title, date: task.date ?? "" }));
+  const linkedTasks = snapshot.tasks.filter((task) => task.periodPlanId === plan.id).map((task) => ({ entryKey: task.planActionKey || `task:${task.id}`, taskId: task.id, title: task.title, date: task.date ?? "" }));
   const linkedTitles = new Set(linkedTasks.map((task) => task.title));
-  const legacyActions = plan.activities.filter((activity) => activity.type !== "event" && !linkedTitles.has(activity.title)).map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
+  const legacyActions = plan.activities.filter((activity) => activity.type !== "event" && !linkedTitles.has(activity.title)).map((activity) => ({ entryKey: `activity:${activity.id}`, title: activity.title, date: activity.date ?? "" }));
   const actions = [...linkedTasks, ...legacyActions];
-  const importantDates = plan.activities.filter((activity) => activity.type === "event").map((activity) => ({ title: activity.title, date: activity.date ?? "" }));
+  const importantDates = plan.activities.filter((activity) => activity.type === "event").map((activity) => ({ entryKey: `event:${activity.id}`, title: activity.title, date: activity.date ?? "" }));
   return { month: String(Number(plan.periodKey.slice(5, 7))), year: plan.periodKey.slice(0, 4), focus: plan.intention, sourceGoalId: plan.details?.sourceGoalId ?? "", priorities: [...plan.objectives.slice(0, 3), "", ""].slice(0, 3), linkedPriority: plan.details?.linkedThreeYearPriority ?? "", areaIds: plan.areaIds ?? [], areaGoals: parseAreaGoals(plan.details?.areaGoals), actions: actions.length ? actions : [emptyEntry()], importantDates: importantDates.length ? importantDates : [emptyEntry()], status: plan.status ?? "active" };
 };
 const monthDate = (periodKey: string) => new Date(`${periodKey}-01T12:00:00`);
@@ -114,6 +115,14 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
     return draft;
   });
   const [monthError, setMonthError] = useState<PlanningMessageKey | null>(null);
+  const [invalidImportantDateKeys, setInvalidImportantDateKeys] = useState<string[]>([]);
+  const [monthSaving, setMonthSaving] = useState(false);
+  const monthSaveInFlightRef = useRef(false);
+  const [goalLinkDecision, setGoalLinkDecision] = useState<GoalLinkDecision>(() => requestedGoal
+    ? requestedMonthPlan && requestedMonthPlan.details?.sourceGoalId !== requestedGoal.id ? "pending" : "link"
+    : null);
+  const [goalTargetPeriodKey, setGoalTargetPeriodKey] = useState(todayKey.slice(0, 7));
+  const [monthLinkConfirmation, setMonthLinkConfirmation] = useState<{ goal?: string; month: string; preserved: boolean; unlinked?: boolean } | null>(null);
   const [longTermMode, setLongTermMode] = useState<LongTermMode | null>(null);
   const [longTermSummary, setLongTermSummary] = useState("");
   const [longTermPriorities, setLongTermPriorities] = useState(["", "", ""]);
@@ -143,6 +152,28 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
   const trialDateBounds = getTrialPlanningDateBounds(access);
   const selectedDateReadOnly = !isTrialPlanningDateAllowed(access, selectedDate);
   const monthDraftLabel = capitalize(formatDate(new Date(Number(monthDraft.year), Number(monthDraft.month) - 1, 1), { month: "long" }));
+  const editingMonthPlan = editingMonthId ? monthPlans.find((plan) => plan.id === editingMonthId) : undefined;
+  const existingGoalTitle = editingMonthPlan?.details?.sourceGoalTitle
+    || snapshot.goals.find((goal) => goal.id === editingMonthPlan?.details?.sourceGoalId)?.title;
+  const selectableGoals = snapshot.goals.filter((goal, index, goals) => (
+    goal.status === "active"
+    || goal.id === requestedGoal?.id
+    || goal.id === monthDraft.sourceGoalId
+  ) && goals.findIndex((candidate) => candidate.id === goal.id) === index);
+
+  const clearMonthGoalRequest = () => {
+    const params = new URLSearchParams(location.search);
+    params.delete("create");
+    params.delete("goal");
+    navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : "" }, { replace: true });
+  };
+
+  const closeMonthDialog = () => {
+    if (monthSaveInFlightRef.current) return;
+    setMonthModalOpen(false);
+    setGoalLinkDecision(null);
+    clearMonthGoalRequest();
+  };
 
   const openTaskEditor = (task: Task) => {
     if (task.date && !isTrialPlanningDateAllowed(access, task.date)) return;
@@ -199,10 +230,20 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
   };
 
   const openCreateMonth = (year = selectedYear, monthIndex = new Date().getMonth()) => {
-    if (!isTrialPlanningMonthAllowed(access, monthPeriodKey(year, monthIndex))) return;
+    const periodKey = monthPeriodKey(year, monthIndex);
+    if (!isTrialPlanningMonthAllowed(access, periodKey)) return;
+    const draft = emptyMonthDraft(new Date(year, monthIndex, 1));
+    if (requestedGoal) {
+      draft.focus = requestedGoal.title;
+      draft.sourceGoalId = requestedGoal.id;
+      draft.priorities[0] = requestedGoal.title;
+    }
     setEditingMonthId(null);
-    setMonthDraft(emptyMonthDraft(new Date(year, monthIndex, 1)));
+    setMonthDraft(draft);
+    setGoalTargetPeriodKey(periodKey);
+    setGoalLinkDecision(requestedGoal ? "link" : null);
     setMonthError(null);
+    setInvalidImportantDateKeys([]);
     setMonthModalOpen(true);
   };
 
@@ -210,14 +251,47 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
     if (!isTrialPlanningMonthAllowed(access, plan.periodKey)) return;
     setEditingMonthId(plan.id);
     setMonthDraft(monthDraftFromPlan(plan, snapshot));
+    setGoalTargetPeriodKey(plan.periodKey);
+    setGoalLinkDecision(requestedGoal ? plan.details?.sourceGoalId === requestedGoal.id ? "link" : "pending" : null);
     setMonthError(null);
+    setInvalidImportantDateKeys([]);
     setMonthModalOpen(true);
+  };
+
+  const chooseGoalMonth = (periodKey: string) => {
+    if (!/^\d{4}-\d{2}$/.test(periodKey) || !isTrialPlanningMonthAllowed(access, periodKey)) {
+      setMonthError("planning.error.trialMonthEdit");
+      return;
+    }
+    const plan = monthPlans.find((item) => item.periodKey === periodKey);
+    setSelectedYear(Number(periodKey.slice(0, 4)));
+    if (plan) openEditMonth(plan);
+    else openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1);
+  };
+
+  const applyRequestedGoal = () => {
+    if (!requestedGoal) return;
+    setMonthDraft((current) => ({ ...current, sourceGoalId: requestedGoal.id, focus: current.focus || requestedGoal.title }));
+    setGoalLinkDecision("link");
+    setMonthError(null);
+  };
+
+  const keepExistingGoal = () => {
+    setMonthDraft((current) => ({ ...current, sourceGoalId: editingMonthPlan?.details?.sourceGoalId ?? "" }));
+    setGoalLinkDecision("keep");
+    setMonthError(null);
   };
 
   const saveMonth = async (event: FormEvent) => {
     event.preventDefault();
+    if (monthSaveInFlightRef.current) return;
     setMonthError(null);
+    setInvalidImportantDateKeys([]);
     const periodKey = `${monthDraft.year}-${monthDraft.month.padStart(2, "0")}`;
+    if (requestedGoal && editingMonthId && goalLinkDecision === "pending") {
+      setMonthError("planning.error.goalDecisionRequired");
+      return;
+    }
     if (!isTrialPlanningMonthAllowed(access, periodKey)) {
       setMonthError("planning.error.trialMonthEdit");
       return;
@@ -228,7 +302,16 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
     }
     const priorities = monthDraft.priorities.map((item) => item.trim()).filter(Boolean).slice(0, 3);
     const actionDrafts = monthDraft.actions.filter((item) => item.title.trim());
-    const activities = monthDraft.importantDates.filter((item) => item.title.trim()).map((item) => ({ title: item.title.trim(), date: item.date || undefined, type: "event" as const }));
+    const importantDateDrafts = monthDraft.importantDates.filter((item) => item.title.trim());
+    const invalidImportantDates = importantDateDrafts.filter((item) => !monthImportantDateFormSchema.safeParse(item).success);
+    if (invalidImportantDates.length) {
+      const invalidKeys = invalidImportantDates.map((item) => item.entryKey);
+      setInvalidImportantDateKeys(invalidKeys);
+      setMonthError("planning.error.importantDateRequired");
+      queueMicrotask(() => document.getElementById(`month-important-date-${invalidKeys[0]}`)?.focus());
+      return;
+    }
+    const activities = importantDateDrafts.map((item) => ({ title: item.title.trim(), date: item.date, type: "event" as const }));
     const datedEntries = [...actionDrafts, ...monthDraft.importantDates.filter((item) => item.title.trim())].filter((item) => item.date);
     if (datedEntries.some((item) => !isTrialPlanningDateAllowed(access, item.date))) {
       setMonthError("planning.trial.limit");
@@ -239,21 +322,48 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
       setMonthError("planning.error.monthMinimum");
       return;
     }
-    const details = {
-      ...(monthDraft.linkedPriority ? { linkedThreeYearPriority: monthDraft.linkedPriority } : {}),
-      ...(areaGoals ? { areaGoals } : {}),
-      ...(monthDraft.sourceGoalId ? { sourceGoalId: monthDraft.sourceGoalId, sourceGoalTitle: snapshot.goals.find((goal) => goal.id === monthDraft.sourceGoalId)?.title ?? "" } : {}),
-    };
+    const details = { ...(editingMonthPlan?.details ?? {}) };
+    if (monthDraft.linkedPriority) details.linkedThreeYearPriority = monthDraft.linkedPriority;
+    else delete details.linkedThreeYearPriority;
+    if (areaGoals) details.areaGoals = areaGoals;
+    else delete details.areaGoals;
+    if (monthDraft.sourceGoalId) {
+      details.sourceGoalId = monthDraft.sourceGoalId;
+      details.sourceGoalTitle = snapshot.goals.find((goal) => goal.id === monthDraft.sourceGoalId)?.title ?? details.sourceGoalTitle ?? "";
+    } else {
+      delete details.sourceGoalId;
+      delete details.sourceGoalTitle;
+    }
     const parsed = cascadePlanFormSchema.safeParse({ horizon: "monthly", periodKey, parentPlanId: threeYearPlan?.id, intention: monthDraft.focus, priority: priorities[0] ?? "", objectives: priorities, activities, areaIds: monthDraft.areaIds, details, status: monthDraft.status });
     if (!parsed.success) { setMonthError("planning.error.monthInvalid"); return; }
-    const next = await planner.saveCascadePlan(parsed.data);
-    const savedPlan = next.cascadePlans.find((plan) => plan.horizon === "monthly" && plan.periodKey === periodKey);
-    if (savedPlan && actionDrafts.length) {
-      await planner.upsertPlanActions(savedPlan.id, monthDraft.sourceGoalId || undefined, actionDrafts.map((action) => ({ taskId: action.taskId, title: action.title, date: action.date || undefined })));
+    monthSaveInFlightRef.current = true;
+    setMonthSaving(true);
+    try {
+      const next = await planner.saveCascadePlan(parsed.data);
+      const savedPlan = next.cascadePlans.find((plan) => plan.horizon === "monthly" && plan.periodKey === periodKey);
+      if (savedPlan && actionDrafts.length) {
+        await planner.upsertPlanActions(savedPlan.id, monthDraft.sourceGoalId || undefined, actionDrafts.map((action) => ({ taskId: action.taskId, actionKey: action.entryKey, title: action.title, date: action.date || undefined })));
+      }
+      setSelectedYear(Number(monthDraft.year));
+      if (editingMonthId && selectedMonthId === editingMonthId && savedPlan) setSelectedMonthId(savedPlan.id);
+      if (requestedGoal && savedPlan) {
+        const savedGoalId = savedPlan.details?.sourceGoalId;
+        const previousGoalId = editingMonthPlan?.details?.sourceGoalId;
+        const preserved = savedGoalId === previousGoalId && savedGoalId !== requestedGoal.id;
+        setMonthLinkConfirmation({
+          goal: savedGoalId ? snapshot.goals.find((goal) => goal.id === savedGoalId)?.title ?? savedPlan.details?.sourceGoalTitle : undefined,
+          month: `${monthDraftLabel} ${monthDraft.year}`,
+          preserved,
+          unlinked: !savedGoalId && !preserved,
+        });
+      }
+      setMonthModalOpen(false);
+      setGoalLinkDecision(null);
+      clearMonthGoalRequest();
+    } finally {
+      monthSaveInFlightRef.current = false;
+      setMonthSaving(false);
     }
-    setSelectedYear(Number(monthDraft.year));
-    if (editingMonthId && selectedMonthId === editingMonthId && savedPlan) setSelectedMonthId(savedPlan.id);
-    setMonthModalOpen(false);
   };
 
   const openMonthDetail = (plan: CascadePlan) => { setSelectedMonthId(plan.id); setAnchorDate(monthDate(plan.periodKey)); setView("month"); };
@@ -275,6 +385,11 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
 
   const updateMonthEntry = (group: "actions" | "importantDates", index: number, patch: Partial<MonthEntryDraft>) => {
     setMonthDraft((current) => ({ ...current, [group]: current[group].map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item) }));
+    if (group === "importantDates") {
+      const entryKey = monthDraft.importantDates[index]?.entryKey;
+      if (entryKey) setInvalidImportantDateKeys((current) => current.filter((key) => key !== entryKey));
+    }
+    setMonthError(null);
   };
 
   const addMonthEntry = (group: "actions" | "importantDates") => {
@@ -283,6 +398,7 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
 
   return <div className="page-stack cascade-page planning-v2" data-i18n-explicit="true">
     {view !== "week" && <SectionNavigation section="plan" />}
+    {monthLinkConfirmation && <Card className="planning-link-confirmation" role="status"><Check size={18} /><span>{m(monthLinkConfirmation.preserved ? "planning.monthDialog.existingPreserved" : monthLinkConfirmation.unlinked ? "planning.monthDialog.linkRemoved" : "planning.monthDialog.linkSaved", monthLinkConfirmation.preserved || monthLinkConfirmation.unlinked ? { month: monthLinkConfirmation.month } : { goal: monthLinkConfirmation.goal ?? "", month: monthLinkConfirmation.month })}</span><button type="button" onClick={() => setMonthLinkConfirmation(null)} aria-label={m("modal.close")}>×</button></Card>}
     {view === "year" && <PlanningOverview access={access} snapshot={snapshot} fiveYearPlan={fiveYearPlan} threeYearPlan={threeYearPlan} monthSlots={monthSlots} selectedYear={selectedYear} availableYears={availableYears} todayKey={todayKey} onYearChange={setSelectedYear} onAddPlan={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onEditLongTerm={openLongTerm} onOpenMonth={openMonthDetail} onEditMonth={openEditMonth} onOpenWeek={() => navigate("/app/planning/weekly")} onOpenDay={() => setView("day")} onOpenReset={() => setView("reset")} />}
 
     {view === "month" && selectedMonthPlan && <MonthDetail plan={selectedMonthPlan} snapshot={snapshot} todayKey={todayKey} anchorDate={anchorDate} calendarDates={calendarDates} monthMode={monthMode} reflection={reflection} reflectionSaved={reflectionSaved} readOnly={!isTrialPlanningMonthAllowed(access, selectedMonthPlan.periodKey)} onBack={() => { setView("year"); setSelectedMonthId(null); }} onEdit={() => openEditMonth(selectedMonthPlan)} onDelete={async () => { const month = capitalize(formatDate(monthDate(selectedMonthPlan.periodKey), { month: "long", year: "numeric" })); if (!window.confirm(m("planning.deleteMonth.confirm", { month }))) return; await planner.deleteCascadePlan(selectedMonthPlan.id); setSelectedMonthId(null); setView("year"); }} onMonthMode={setMonthMode} onSelectDay={(key) => { setSelectedDate(key); setView("day"); }} onTogglePriority={(index) => planner.toggleCascadeObjective(selectedMonthPlan.id, index)} onReflectionChange={(next) => { setReflection(next); setReflectionSaved(false); }} onSaveReflection={saveReflection} onPlanWeek={() => navigate("/app/planning/weekly")} />}
@@ -296,20 +412,21 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
 
     <Modal explicitI18n open={Boolean(longTermMode)} title={m(longTermMode === "five" ? "planning.longTerm.fiveTitle" : "planning.longTerm.threeTitle")} description={m(longTermMode === "five" ? "planning.longTerm.fiveDescription" : "planning.longTerm.threeDescription")} onClose={() => setLongTermMode(null)}><form className="form-grid long-term-form" onSubmit={saveLongTerm}><label className="form-field form-field--full"><span>{m(longTermMode === "five" ? "planning.longTerm.fiveQuestion" : "planning.longTerm.threeQuestion")}</span><textarea rows={5} value={longTermSummary} onChange={(event) => setLongTermSummary(event.target.value)} placeholder={m("planning.longTerm.placeholder")} /></label><fieldset className="form-field form-field--full priority-stack"><legend>{m(longTermMode === "five" ? "planning.longTerm.fivePriorities" : "planning.longTerm.threePriorities")}</legend>{longTermPriorities.map((value, index) => <input key={index} value={value} onChange={(event) => setLongTermPriorities((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={m("planning.longTerm.priorityPlaceholder", { number: index + 1 })} />)}</fieldset>{longTermMode === "five" && <fieldset className="form-field form-field--full five-year-areas"><legend>{m("planning.longTerm.areaDetails")}</legend>{fiveYearAreas.map(([key, labelKey]) => <label key={key}><span>{m(labelKey)}</span><textarea rows={2} value={fiveYearDetails[key] ?? ""} onChange={(event) => setFiveYearDetails((current) => ({ ...current, [key]: event.target.value }))} /></label>)}</fieldset>}<div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setLongTermMode(null)}>{m("planning.common.cancel")}</Button><Button type="submit"><Save size={16} /> {m("planning.common.save")}</Button></div></form></Modal>
 
-    <Modal explicitI18n open={monthModalOpen} title={m(editingMonthId ? "planning.monthDialog.editTitle" : "planning.monthDialog.createTitle", { month: monthDraftLabel, year: monthDraft.year })} description={m("planning.monthDialog.description")} onClose={() => setMonthModalOpen(false)}>
+    <Modal explicitI18n open={monthModalOpen} title={m(editingMonthId ? "planning.monthDialog.editTitle" : "planning.monthDialog.createTitle", { month: monthDraftLabel, year: monthDraft.year })} description={m("planning.monthDialog.description")} onClose={closeMonthDialog}>
       <form className="form-grid month-create-form" onSubmit={saveMonth}>
         <div className="month-period-summary form-field--full" aria-label={m("planning.monthDialog.planLabel", { month: monthDraftLabel, year: monthDraft.year })}><CalendarDays size={19} /><strong>{monthDraftLabel} {monthDraft.year}</strong></div>
-        <label className="form-field form-field--full"><span>{m("planning.monthDialog.activeGoal")}</span><select value={monthDraft.sourceGoalId} onChange={(event) => { const sourceGoalId = event.target.value; const goal = snapshot.goals.find((item) => item.id === sourceGoalId); setMonthDraft((current) => ({ ...current, sourceGoalId, focus: current.focus || goal?.title || "" })); }}><option value="">{m("planning.monthDialog.noLinkedGoal")}</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label>
+        {requestedGoal && <Card className="month-goal-origin form-field--full"><Target size={20} aria-hidden="true" /><div><p className="eyebrow">{m("planning.monthDialog.originEyebrow")}</p><strong data-no-translate="true" translate="no">{requestedGoal.title}</strong>{editingMonthPlan && goalLinkDecision === "pending" ? <fieldset><legend>{m("planning.monthDialog.conflictTitle")}</legend><p>{existingGoalTitle ? m("planning.monthDialog.currentGoal", { goal: existingGoalTitle }) : m("planning.monthDialog.currentGoalNone")}</p><div><Button type="button" size="sm" onClick={applyRequestedGoal}>{m("planning.monthDialog.linkRequestedGoal")}</Button><Button type="button" size="sm" variant="secondary" onClick={keepExistingGoal}>{m("planning.monthDialog.keepExisting")}</Button></div></fieldset> : <small>{goalLinkDecision === "link" ? m(editingMonthPlan?.details?.sourceGoalId === requestedGoal.id ? "planning.monthDialog.alreadyLinked" : "planning.monthDialog.goalConnection") : existingGoalTitle ? m("planning.monthDialog.currentGoal", { goal: existingGoalTitle }) : m("planning.monthDialog.currentGoalNone")}</small>}<label><span>{m("planning.monthDialog.chooseAnotherMonth")}</span><input type="month" value={goalTargetPeriodKey} min={trialDateBounds?.min.slice(0, 7)} max={trialDateBounds?.max.slice(0, 7)} onChange={(event) => chooseGoalMonth(event.target.value)} aria-label={m("planning.monthDialog.chooseMonthLabel")} /></label></div></Card>}
+        <label className="form-field form-field--full"><span>{m("planning.monthDialog.activeGoal")}</span><select value={monthDraft.sourceGoalId} disabled={goalLinkDecision === "pending"} onChange={(event) => { const sourceGoalId = event.target.value; const goal = snapshot.goals.find((item) => item.id === sourceGoalId); setMonthDraft((current) => ({ ...current, sourceGoalId, focus: current.focus || goal?.title || "" })); }}><option value="">{m("planning.monthDialog.noLinkedGoal")}</option>{selectableGoals.map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label>
         {monthDraft.sourceGoalId && <Card className="month-goal-context form-field--full"><Check size={17} /><div><p className="eyebrow">{m("planning.monthDialog.goalContext")}</p><strong data-no-translate="true" translate="no">{snapshot.goals.find((goal) => goal.id === monthDraft.sourceGoalId)?.title}</strong><small>{m("planning.monthDialog.goalConnection")}</small></div></Card>}
         <label className="form-field form-field--full"><span>{m("planning.monthDialog.result")}</span><input value={monthDraft.focus} onChange={(event) => setMonthDraft({ ...monthDraft, focus: event.target.value })} placeholder={m("planning.monthDialog.resultPlaceholder")} /></label>
         <fieldset className="form-field form-field--full priority-stack"><legend>{m("planning.monthDialog.priorities")}</legend>{monthDraft.priorities.map((value, index) => <input key={index} value={value} onChange={(event) => setMonthDraft({ ...monthDraft, priorities: monthDraft.priorities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder={m("planning.longTerm.priorityPlaceholder", { number: index + 1 })} />)}</fieldset>
         {threeYearPlan?.objectives.length ? <label className="form-field form-field--full"><span>{m("planning.monthDialog.linkThreeYear")}</span><select value={monthDraft.linkedPriority} onChange={(event) => setMonthDraft({ ...monthDraft, linkedPriority: event.target.value })}><option value="">{m("planning.monthDialog.noConnection")}</option>{threeYearPlan.objectives.map((priority) => <option key={priority} value={priority} data-no-translate="true" translate="no">{priority}</option>)}</select></label> : null}
         <fieldset className="form-field form-field--full month-area-goals"><legend>{m("planning.monthDialog.areaGoals")}</legend>{snapshot.lifeAreas.filter((area) => area.active).map((area) => { const selected = monthDraft.areaIds.includes(area.id); return <div key={area.id}><label><input type="checkbox" checked={selected} onChange={() => setMonthDraft((current) => ({ ...current, areaIds: selected ? current.areaIds.filter((id) => id !== area.id) : [...current.areaIds, area.id] }))} /><span data-no-translate="true" translate="no">{area.name}</span></label>{selected ? <input value={monthDraft.areaGoals[area.id] ?? ""} onChange={(event) => setMonthDraft((current) => ({ ...current, areaGoals: { ...current.areaGoals, [area.id]: event.target.value } }))} placeholder={m("planning.monthDialog.areaGoalPlaceholder", { area: area.name })} aria-label={m("planning.monthDialog.areaGoalLabel", { area: area.name })} /> : null}</div>; })}</fieldset>
-        <fieldset className="form-field form-field--full month-entry-list"><legend>{m("planning.monthDialog.actions")}</legend><small>{m("planning.monthDialog.actionsDescription")}</small>{monthDraft.actions.map((item, index) => <div key={item.taskId ?? `action-${index}`}><input value={item.title} onChange={(event) => updateMonthEntry("actions", index, { title: event.target.value })} placeholder={m("planning.monthDialog.actionPlaceholder")} aria-label={m("planning.monthDialog.actionLabel", { number: index + 1 })} /><input type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={item.date} onChange={(event) => updateMonthEntry("actions", index, { date: event.target.value })} aria-label={m("planning.monthDialog.actionDateLabel", { number: index + 1 })} /></div>)}<Button type="button" variant="ghost" onClick={() => addMonthEntry("actions")}><Plus size={15} /> {m("planning.monthDialog.addAction")}</Button></fieldset>
-        <fieldset className="form-field form-field--full month-entry-list"><legend>{m("planning.monthDialog.importantDates")}</legend>{monthDraft.importantDates.map((item, index) => <div key={`date-${index}`}><input value={item.title} onChange={(event) => updateMonthEntry("importantDates", index, { title: event.target.value })} placeholder={m("planning.monthDialog.importantDatePlaceholder")} aria-label={m("planning.monthDialog.importantDateLabel", { number: index + 1 })} /><input type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={item.date} onChange={(event) => updateMonthEntry("importantDates", index, { date: event.target.value })} aria-label={m("planning.monthDialog.importantDateDayLabel", { number: index + 1 })} /></div>)}<Button type="button" variant="ghost" onClick={() => addMonthEntry("importantDates")}><Plus size={15} /> {m("planning.monthDialog.addDate")}</Button></fieldset>
+        <fieldset className="form-field form-field--full month-entry-list"><legend>{m("planning.monthDialog.actions")}</legend><small>{m("planning.monthDialog.actionsDescription")}</small>{monthDraft.actions.map((item, index) => <div key={item.entryKey}><input value={item.title} onChange={(event) => updateMonthEntry("actions", index, { title: event.target.value })} placeholder={m("planning.monthDialog.actionPlaceholder")} aria-label={m("planning.monthDialog.actionLabel", { number: index + 1 })} /><input type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={item.date} onChange={(event) => updateMonthEntry("actions", index, { date: event.target.value })} aria-label={m("planning.monthDialog.actionDateLabel", { number: index + 1 })} /></div>)}<Button type="button" variant="ghost" onClick={() => addMonthEntry("actions")}><Plus size={15} /> {m("planning.monthDialog.addAction")}</Button></fieldset>
+        <fieldset className="form-field form-field--full month-entry-list"><legend>{m("planning.monthDialog.importantDates")}</legend>{monthDraft.importantDates.map((item, index) => { const invalid = invalidImportantDateKeys.includes(item.entryKey); const errorId = `month-important-date-${item.entryKey}-error`; return <div key={item.entryKey}><input value={item.title} onChange={(event) => updateMonthEntry("importantDates", index, { title: event.target.value })} placeholder={m("planning.monthDialog.importantDatePlaceholder")} aria-label={m("planning.monthDialog.importantDateLabel", { number: index + 1 })} /><span className="month-entry-date-field"><input id={`month-important-date-${item.entryKey}`} type="date" min={trialDateBounds?.min} max={trialDateBounds?.max} value={item.date} onChange={(event) => updateMonthEntry("importantDates", index, { date: event.target.value })} aria-label={m("planning.monthDialog.importantDateDayLabel", { number: index + 1 })} aria-required={Boolean(item.title.trim())} aria-invalid={invalid || undefined} aria-describedby={invalid ? errorId : undefined} />{invalid ? <small id={errorId} className="form-error">{m("planning.error.importantDateRequired")}</small> : null}</span></div>; })}<Button type="button" variant="ghost" onClick={() => addMonthEntry("importantDates")}><Plus size={15} /> {m("planning.monthDialog.addDate")}</Button></fieldset>
         {editingMonthId ? <label className="form-field form-field--full"><span>{m("planning.monthDialog.status")}</span><select value={monthDraft.status} onChange={(event) => setMonthDraft({ ...monthDraft, status: event.target.value as MonthDraft["status"] })}><option value="active">{m("planning.monthDialog.status.active")}</option><option value="draft">{m("planning.monthDialog.status.draft")}</option><option value="closed">{m("planning.monthDialog.status.closed")}</option></select></label> : null}
         {monthError ? <p className="form-error form-field--full" role="alert">{m(monthError)}</p> : null}
-        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setMonthModalOpen(false)}>{m("planning.common.cancel")}</Button><Button type="submit">{m("planning.monthDialog.save")}</Button></div>
+        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" disabled={monthSaving} onClick={closeMonthDialog}>{m("planning.common.cancel")}</Button><Button type="submit" loading={monthSaving}>{m(monthSaving ? "planning.monthDialog.saving" : "planning.monthDialog.save")}</Button></div>
       </form>
     </Modal>
     <Modal explicitI18n open={Boolean(editingTaskId)} title={m("planning.taskDialog.title")} description={m("planning.taskDialog.description")} onClose={() => setEditingTaskId(null)}>
@@ -345,12 +462,12 @@ function PlanningOverview({ access, snapshot, fiveYearPlan, threeYearPlan, month
         const completed = plan.completedObjectiveIndexes?.length ?? 0;
         const areas = snapshot.lifeAreas.filter((area) => plan.areaIds?.includes(area.id));
         const datedEntries = [
-          ...plan.activities.filter((activity) => activity.date),
-          ...snapshot.tasks.filter((task) => task.periodPlanId === plan.id && task.date && task.status !== "cancelled").map((task) => ({ id: task.id, title: task.title, date: task.date, type: "action" as const })),
-          ...snapshot.events.filter((event) => event.startDate.startsWith(slot.periodKey)).map((event) => ({ id: event.id, title: event.title, date: event.startDate, type: "event" as const })),
-        ].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+          ...plan.activities.map((activity) => ({ ...activity, date: safeMonthEntryDate(activity.date) })),
+          ...snapshot.tasks.filter((task) => task.periodPlanId === plan.id && task.status !== "cancelled").map((task) => ({ id: task.id, title: task.title, date: safeMonthEntryDate(task.date), type: "action" as const })),
+          ...snapshot.events.filter((event) => event.startDate.startsWith(slot.periodKey)).map((event) => ({ id: event.id, title: event.title, date: safeMonthEntryDate(event.startDate), type: "event" as const })),
+        ].filter((entry) => entry.date).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
         const nextDate = datedEntries[0];
-        return <Card id={`month-${slot.periodKey}`} className={`created-month-card month-card--planned ${slot.isCurrent ? "is-current" : ""}`} key={slot.periodKey}><button type="button" className="month-card-main" onClick={() => onOpenMonth(plan)} aria-label={m("planning.months.viewPlanLabel", { month: monthLabel, year: selectedYear })}><header><div><span>{monthLabel}</span><strong>{selectedYear}</strong></div>{slot.isCurrent ? <Badge tone="rose">{m("planning.monthState.current")}</Badge> : <Badge tone={monthState(plan, todayKey, m).tone}>{monthState(plan, todayKey, m).label}</Badge>}</header><div className="month-card-summary"><small>{m("planning.months.focus")}</small><h3 data-no-translate="true" translate="no">{plan.intention || plan.priority || m("planning.common.monthlyPlan")}</h3>{plan.objectives.length ? <ol data-no-translate="true" translate="no">{plan.objectives.slice(0, 3).map((priority) => <li key={priority}>{priority}</li>)}</ol> : null}{monthIdeas.length ? <p className="month-brain-link"><Sparkles size={14} /> {m(monthIdeas.length === 1 ? "planning.months.ideaFromInbox" : "planning.months.ideasFromInbox", { count: formatNumber(monthIdeas.length) })}</p> : null}{nextDate?.date ? <p className="month-next-date"><CalendarDays size={14} /> <span>{formatDate(nextDate.date, { day: "numeric", month: "long" })} · <span data-no-translate="true" translate="no">{nextDate.title}</span></span></p> : null}<div className="month-area-badges">{areas.slice(0, 3).map((area) => <Badge key={area.id} tone="warm"><span data-no-translate="true" translate="no">{area.name}</span></Badge>)}</div>{plan.objectives.length ? <><ProgressBar value={progress} label={m("planning.months.priorityProgress")} /><p className="month-progress-copy">{m("planning.months.completedPriorities", { completed: formatNumber(completed), total: formatNumber(plan.objectives.length) })}</p></> : null}</div></button><footer>{monthAllowed ? <Button variant="ghost" onClick={() => onEditMonth(plan)}><Edit3 size={15} /> {m("planning.common.edit")}</Button> : <Badge tone="warm"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</Badge>}<Button onClick={() => onOpenMonth(plan)}>{m("planning.months.viewMonth")} <ChevronRight size={15} /></Button></footer></Card>;
+        return <Card id={`month-${slot.periodKey}`} className={`created-month-card month-card--planned ${slot.isCurrent ? "is-current" : ""}`} key={slot.periodKey}><button type="button" className="month-card-main" onClick={() => onOpenMonth(plan)} aria-label={m("planning.months.viewPlanLabel", { month: monthLabel, year: selectedYear })}><header><div><span>{monthLabel}</span><strong>{selectedYear}</strong></div>{slot.isCurrent ? <Badge tone="rose">{m("planning.monthState.current")}</Badge> : <Badge tone={monthState(plan, todayKey, m).tone}>{monthState(plan, todayKey, m).label}</Badge>}</header><div className="month-card-summary"><small>{m("planning.months.focus")}</small><h3 data-no-translate="true" translate="no">{plan.intention || plan.priority || m("planning.common.monthlyPlan")}</h3>{plan.details?.sourceGoalTitle ? <p className="month-card-goal-link"><Target size={14} /><span data-no-translate="true" translate="no">{plan.details.sourceGoalTitle}</span></p> : null}{plan.objectives.length ? <ol data-no-translate="true" translate="no">{plan.objectives.slice(0, 3).map((priority) => <li key={priority}>{priority}</li>)}</ol> : null}{monthIdeas.length ? <p className="month-brain-link"><Sparkles size={14} /> {m(monthIdeas.length === 1 ? "planning.months.ideaFromInbox" : "planning.months.ideasFromInbox", { count: formatNumber(monthIdeas.length) })}</p> : null}{nextDate?.date ? <p className="month-next-date"><CalendarDays size={14} /> <span>{formatDate(nextDate.date, { day: "numeric", month: "long" })} · <span data-no-translate="true" translate="no">{nextDate.title}</span></span></p> : null}<div className="month-area-badges">{areas.slice(0, 3).map((area) => <Badge key={area.id} tone="warm"><span data-no-translate="true" translate="no">{area.name}</span></Badge>)}</div>{plan.objectives.length ? <><ProgressBar value={progress} label={m("planning.months.priorityProgress")} /><p className="month-progress-copy">{m("planning.months.completedPriorities", { completed: formatNumber(completed), total: formatNumber(plan.objectives.length) })}</p></> : null}</div></button><footer>{monthAllowed ? <Button variant="ghost" onClick={() => onEditMonth(plan)}><Edit3 size={15} /> {m("planning.common.edit")}</Button> : <Badge tone="warm"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</Badge>}<Button onClick={() => onOpenMonth(plan)}>{m("planning.months.viewMonth")} <ChevronRight size={15} /></Button></footer></Card>;
       })}</div>
     </section>
     <section className="short-term-tools" aria-label={m("planning.tools.label")}><Button variant="secondary" onClick={onOpenWeek}>{m("planning.tools.week")}</Button><Button variant="secondary" onClick={onOpenDay}>{m("planning.tools.day")}</Button><Button variant="ghost" onClick={onOpenReset}>{m("planning.tools.reset")}</Button></section>
@@ -363,7 +480,10 @@ function MonthDetail({ plan, snapshot, todayKey, anchorDate, calendarDates, mont
   const areaGoals = parseAreaGoals(plan.details?.areaGoals);
   const entries = collectMonthPlanEntries(plan, snapshot.tasks, snapshot.events);
   const { actions, events } = entries;
-  const { m, formatDate } = useI18n();
+  const { m, formatDate: formatLocalizedDate } = useI18n();
+  const formatDate = (value: Date | string | undefined, options?: Intl.DateTimeFormatOptions) => value
+    ? formatLocalizedDate(value, options)
+    : m("planning.monthDetail.datePending");
   if (readOnly) return <ReadOnlyMonthDetail plan={plan} snapshot={snapshot} entries={entries} todayKey={todayKey} onBack={onBack} onPlanWeek={onPlanWeek} />;
   return <><button type="button" className="back-link" onClick={onBack}><ArrowLeft size={16} /> {m("planning.common.backToMonths")}</button><header className="month-detail-header"><div><p className="eyebrow">{monthState(plan, todayKey, m).label}</p><h1>{capitalize(formatDate(monthDate(plan.periodKey), { month: "long", year: "numeric" }))}</h1><p data-no-translate={plan.intention ? "true" : undefined} translate={plan.intention ? "no" : undefined}>{plan.intention || m("planning.monthDetail.defaultIntention")}</p></div><div><Button variant="secondary" onClick={onEdit}><Edit3 size={16} /> {m("planning.monthDetail.edit")}</Button><Button variant="ghost" onClick={onDelete}><Trash2 size={16} /> {m("planning.common.delete")}</Button></div></header><div className="month-detail-grid"><Card className="month-focus-card"><p className="eyebrow">{m("planning.months.focus")}</p><h2 data-no-translate={plan.intention ? "true" : undefined} translate={plan.intention ? "no" : undefined}>{plan.intention || m("planning.monthDetail.undefined")}</h2>{plan.details?.linkedThreeYearPriority && <p><strong>{m("planning.monthDetail.connectsWith")}</strong> <span data-no-translate="true" translate="no">{plan.details.linkedThreeYearPriority}</span></p>}<div className="month-area-badges">{relatedAreas.map((area) => <Badge key={area.id} tone="warm"><span data-no-translate="true" translate="no">{area.name}</span></Badge>)}</div>{Object.keys(areaGoals).length ? <ul className="month-area-goal-list">{relatedAreas.filter((area) => areaGoals[area.id]).map((area) => <li key={area.id} data-no-translate="true" translate="no"><strong>{area.name}</strong><span>{areaGoals[area.id]}</span></li>)}</ul> : null}{plan.objectives.length ? <ProgressBar value={progress} label={m("planning.monthDetail.progress")} /> : null}</Card><Card className="month-priority-card"><p className="eyebrow">{m("planning.monthDetail.priorities")}</p><h2>{m("planning.monthDetail.prioritiesTitle")}</h2>{plan.objectives.length ? <div>{plan.objectives.map((priority, index) => { const completed = plan.completedObjectiveIndexes?.includes(index); return <button type="button" key={`${priority}-${index}`} className={completed ? "is-complete" : ""} onClick={() => onTogglePriority(index)}>{completed ? <Check size={16} /> : <Circle size={16} />}<span data-no-translate="true" translate="no">{priority}</span></button>; })}</div> : <p>{m("planning.monthDetail.noPriorities")}</p>}</Card></div><div className="month-support-grid"><Card><p className="eyebrow">{m("planning.monthDetail.actions")}</p><h2>{m("planning.monthDetail.actionsTitle")}</h2>{actions.length ? <ul>{actions.map((activity) => <li key={activity.id}><span data-no-translate="true" translate="no">{activity.title}</span>{activity.date && <time>{formatDate(activity.date, { day: "numeric", month: "short" })}</time>}</li>)}</ul> : <p>{m("planning.monthDetail.noActions")}</p>}</Card><Card><p className="eyebrow">{m("planning.monthDetail.events")}</p><h2>{m("planning.monthDetail.eventsTitle")}</h2>{events.length ? <ul>{events.map((event) => <li key={event.id}><CalendarDays size={15} /><span data-no-translate="true" translate="no">{event.title}</span><time>{formatDate(event.date, { day: "numeric", month: "short" })}</time></li>)}</ul> : <p>{m("planning.monthDetail.noEvents")}</p>}<Link className="button button--ghost" to="/app/life-hub?tab=calendar">{m("planning.monthDetail.goToCalendar")}</Link></Card></div><Card className="month-reflection-card"><div><p className="eyebrow">{m("planning.monthDetail.reflection")}</p><h2>{m("planning.monthDetail.reflectionTitle")}</h2></div><form onSubmit={onSaveReflection}>{([['advanced',m('planning.monthDetail.reflectionAdvanced')],['pending',m('planning.monthDetail.reflectionPending')],['next',m('planning.monthDetail.reflectionNext')]] as const).map(([key, label]) => <label key={key}><span>{label}</span><textarea rows={3} value={reflection[key]} onChange={(event) => onReflectionChange({ ...reflection, [key]: event.target.value })} /></label>)}<div><span aria-live="polite">{reflectionSaved ? m("planning.monthDetail.reflectionSaved") : ""}</span><Button type="submit"><Save size={16} /> {m("planning.monthDetail.saveReflection")}</Button></div></form></Card><div className="calendar-toolbar"><h2>{m("planning.monthDetail.calendar")}</h2><div className="calendar-mode-toggle" role="group" aria-label={m("planning.monthDetail.viewLabel")}><button type="button" className={monthMode === "calendar" ? "is-active" : ""} onClick={() => onMonthMode("calendar")}>{m("planning.monthDetail.calendarMode")}</button><button type="button" className={monthMode === "agenda" ? "is-active" : ""} onClick={() => onMonthMode("agenda")}>{m("planning.monthDetail.agendaMode")}</button></div></div>{monthMode === "calendar" && <Card className="month-calendar-card"><div className="calendar-weekdays">{calendarDates.slice(0, 7).map((date) => { const day = formatDate(date, { weekday: "short" }).replace(".", "").toUpperCase(); return <span key={toLocalDateKey(date)}>{day}</span>; })}</div><div className="month-calendar-grid">{calendarDates.map((date) => { const key = toLocalDateKey(date); const dayTasks = snapshot.tasks.filter((task) => task.date === key && task.status !== "cancelled"); const dayEvents = snapshot.events.filter((event) => event.startDate === key); return <button type="button" key={key} className={`${isSameMonth(date, anchorDate) ? "" : "is-outside"} ${key === todayKey ? "is-today" : ""}`} onClick={() => onSelectDay(key)}><span>{date.getDate()}</span>{dayEvents.slice(0, 2).map((event) => <small className="calendar-event" key={event.id} data-no-translate="true" translate="no"><CalendarDays size={12} />{event.title}</small>)}{dayTasks.slice(0, 2).map((task) => <small key={task.id} data-no-translate="true" translate="no"><Circle size={12} />{task.title}</small>)}</button>; })}</div></Card>}{monthMode === "agenda" && <Card className="month-agenda"><p className="eyebrow">{m("planning.monthDetail.agendaEyebrow")}</p><h2>{m("planning.monthDetail.agendaTitle")}</h2>{calendarDates.filter((date) => isSameMonth(date, anchorDate)).map((date) => { const key = toLocalDateKey(date); const agendaEntries = [...snapshot.events.filter((event) => event.startDate === key).map((event) => ({ id: event.id, title: event.title, kind: "event" as const })), ...snapshot.tasks.filter((task) => task.date === key && task.status !== "cancelled").map((task) => ({ id: task.id, title: task.title, kind: "task" as const }))]; if (!agendaEntries.length) return null; return <section key={key}><time>{formatDate(date, { day: "numeric", month: "long" })}</time>{agendaEntries.map((entry) => <div key={`${entry.kind}-${entry.id}`}><Circle size={12} /><span data-no-translate="true" translate="no">{entry.title}</span><small>{m(entry.kind === "event" ? "planning.monthDetail.eventKind" : "planning.monthDetail.taskKind")}</small></div>)}</section>; })}<EmptyStateIfMonthEmpty snapshot={snapshot} monthKey={plan.periodKey} /></Card>}<div className="planning-bridge"><div><p className="eyebrow">{m("planning.monthDetail.nextLevel")}</p><h2>{m("planning.monthDetail.bridgeTitle")}</h2><p>{m("planning.monthDetail.bridgeDescription")}</p></div><Button onClick={onPlanWeek}>{m("planning.monthDetail.planWeek")} <ChevronRight size={16} /></Button></div></>;
 }
@@ -371,7 +491,10 @@ function MonthDetail({ plan, snapshot, todayKey, anchorDate, calendarDates, mont
 function ReadOnlyMonthDetail({ plan, snapshot, entries, todayKey, onBack, onPlanWeek }: { plan: CascadePlan; snapshot: PlannerSnapshot; entries: ReturnType<typeof collectMonthPlanEntries>; todayKey: string; onBack: () => void; onPlanWeek: () => void }) {
   const relatedAreas = snapshot.lifeAreas.filter((area) => plan.areaIds?.includes(area.id));
   const { actions, events } = entries;
-  const { m, formatDate } = useI18n();
+  const { m, formatDate: formatLocalizedDate } = useI18n();
+  const formatDate = (value: Date | string | undefined, options?: Intl.DateTimeFormatOptions) => value
+    ? formatLocalizedDate(value, options)
+    : m("planning.monthDetail.datePending");
   return <>
     <button type="button" className="back-link" onClick={onBack}><ArrowLeft size={16} /> {m("planning.common.backToMonths")}</button>
     <header className="month-detail-header">

@@ -2,7 +2,7 @@ import { createDemoSnapshot } from "@/src/domain/demo";
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type { CalendarEvent } from "@/src/domain/calendar";
-import { habitRecommendation } from "@/src/domain/cascadeRules";
+import { getProjectExecutionState, habitRecommendation } from "@/src/domain/cascadeRules";
 import { applyDailyFocusPriority } from "@/src/domain/guidanceRules";
 import { defaultFinanceCategories, mergeDefaultFinanceCategories } from "@/src/domain/financeRules";
 import { defaultLifeAreaNames, mergeDefaultLifeAreas } from "@/src/domain/lifeAreaRules";
@@ -20,6 +20,7 @@ import type {
   MealFormInput,
   OnboardingInput,
   PendingPurchaseFormInput,
+  PlanActionFormInput,
   ProjectFormInput,
   RecurringItemFormInput,
   RoutineFormInput,
@@ -29,7 +30,7 @@ import type {
   WorkoutFormInput,
   WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
-import { cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
+import { cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, planActionsFormSchema, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository, plannerDatabaseNameForOwner } from "@/src/repositories/local/IndexedDbPlannerRepository";
 import type { PlannerRepository } from "@/src/repositories/interfaces/PlannerRepository";
@@ -149,8 +150,6 @@ export function createPlannerService(repository: PlannerRepository) {
       color: colors[index % colors.length],
       order: index,
       active: true,
-      currentScore: 6,
-      desiredScore: 8,
       vision: "",
       createdAt: now,
       updatedAt: now,
@@ -196,7 +195,7 @@ export function createPlannerService(repository: PlannerRepository) {
       }] : [],
       habits: input.focus === "habit" && input.result ? [{
         id: id(), name: input.result.trim(), type: "boolean", scheduledDays: [new Date().getDay()],
-        target: 1, unit: "vez", origin: "experiment", status: "active", createdAt: now, updatedAt: now,
+        trackingStartDate: today, target: 1, unit: "vez", origin: "experiment", status: "active", createdAt: now, updatedAt: now,
       }] : [],
       cascadePlans: firstWeeklyPlanId ? [{
         id: firstWeeklyPlanId, horizon: "weekly", periodKey: getReviewPeriodKey("weekly", new Date(), input.weekStartsOn),
@@ -239,6 +238,7 @@ export function createPlannerService(repository: PlannerRepository) {
             type: input.type,
             scheduledDays: input.scheduledDays,
             oneOffDate: input.oneOffDate || undefined,
+            trackingStartDate: toLocalDateKey(new Date()),
             target: input.target,
             unit: input.unit,
             lifeAreaId: input.lifeAreaId || undefined,
@@ -255,17 +255,18 @@ export function createPlannerService(repository: PlannerRepository) {
 
   toggleHabit(habitId: string, date: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
+      const habit = snapshot.habits.find((item) => item.id === habitId);
+      if (!habit) return snapshot;
       const existing = snapshot.habitLogs.find(
         (log) => log.habitId === habitId && log.date === date,
       );
       if (existing) {
+        if (habit.type !== "boolean") return snapshot;
         return {
           ...snapshot,
           habitLogs: snapshot.habitLogs.filter((log) => log.id !== existing.id),
         };
       }
-      const habit = snapshot.habits.find((item) => item.id === habitId);
-      if (!habit) return snapshot;
       const now = new Date().toISOString();
       return {
         ...snapshot,
@@ -317,7 +318,9 @@ export function createPlannerService(repository: PlannerRepository) {
       const nextValue = Math.max(0, Math.min(habit.target, value));
       const existing = snapshot.habitLogs.find((log) => log.habitId === habitId && log.date === date);
       if (nextValue === 0) {
-        return existing ? { ...snapshot, habitLogs: snapshot.habitLogs.filter((log) => log.id !== existing.id) } : snapshot;
+        if (!existing) return snapshot;
+        const now = new Date().toISOString();
+        return { ...snapshot, habitLogs: snapshot.habitLogs.map((log) => log.id === existing.id ? { ...log, value: 0, updatedAt: now } : log) };
       }
       const now = new Date().toISOString();
       if (existing) {
@@ -325,6 +328,13 @@ export function createPlannerService(repository: PlannerRepository) {
       }
       return { ...snapshot, habitLogs: [...snapshot.habitLogs, { id: id(), habitId, date, value: nextValue, createdAt: now, updatedAt: now }] };
     });
+  },
+
+  deleteHabitLog(habitId: string, date: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({
+      ...snapshot,
+      habitLogs: snapshot.habitLogs.filter((log) => !(log.habitId === habitId && log.date === date)),
+    }));
   },
 
   resumeExistingSpace(name: string): Promise<PlannerSnapshot> {
@@ -478,6 +488,20 @@ export function createPlannerService(repository: PlannerRepository) {
     });
   },
 
+  updateProjectStatus(projectId: string, status: "active" | "completed"): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => {
+      const project = snapshot.projects.find((item) => item.id === projectId);
+      if (!project || project.status === status) return snapshot;
+      if (status === "completed" && getProjectExecutionState(snapshot, projectId).state !== "ready_to_close") return snapshot;
+      return {
+        ...snapshot,
+        projects: snapshot.projects.map((item) => item.id === projectId
+          ? { ...item, status, updatedAt: nowIso() }
+          : item),
+      };
+    });
+  },
+
   toggleTask(taskId: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = new Date().toISOString();
@@ -621,16 +645,25 @@ export function createPlannerService(repository: PlannerRepository) {
 
   updateLifeArea(
     lifeAreaId: string,
-    input: { currentScore: number; desiredScore: number; vision: string; dream?: string; imageDataUrl?: string; category?: string },
+    input: { currentScore?: number; desiredScore?: number; confirmScores?: boolean; vision: string; dream?: string; imageDataUrl?: string; category?: string },
   ): Promise<PlannerSnapshot> {
-    return updateSnapshot((snapshot) => ({
-      ...snapshot,
-      lifeAreas: snapshot.lifeAreas.map((area) =>
-        area.id === lifeAreaId
-          ? { ...area, ...input, updatedAt: new Date().toISOString() }
-          : area,
-      ),
-    }));
+    return updateSnapshot((snapshot) => {
+      const now = new Date().toISOString();
+      const { currentScore, desiredScore, confirmScores, ...content } = input;
+      return {
+        ...snapshot,
+        lifeAreas: snapshot.lifeAreas.map((area) => area.id === lifeAreaId
+          ? {
+              ...area,
+              ...content,
+              ...(confirmScores && typeof currentScore === "number" && typeof desiredScore === "number"
+                ? { currentScore, desiredScore, scoresConfirmedAt: now }
+                : {}),
+              updatedAt: now,
+            }
+          : area),
+      };
+    });
   },
 
   createLifeArea(input: {
@@ -655,6 +688,7 @@ export function createPlannerService(repository: PlannerRepository) {
           active: true,
           currentScore: input.currentScore,
           desiredScore: input.desiredScore,
+          scoresConfirmedAt: typeof input.currentScore === "number" && typeof input.desiredScore === "number" ? now : undefined,
           vision: input.vision?.trim() || undefined,
           dream: input.dream?.trim() || undefined,
           imageDataUrl: input.imageDataUrl,
@@ -981,33 +1015,51 @@ export function createPlannerService(repository: PlannerRepository) {
   upsertPlanActions(
     planId: string,
     goalId: string | undefined,
-    actions: Array<{ taskId?: string; title: string; date?: string }>,
+    actions: PlanActionFormInput[],
   ): Promise<PlannerSnapshot> {
+    const validActions = planActionsFormSchema.parse(actions.filter((action) => action.title.trim().length >= 2));
     return updateSnapshot((snapshot) => {
       const now = nowIso();
-      const validActions = actions.filter((action) => action.title.trim().length >= 2);
-      const existingIds = new Set(validActions.map((action) => action.taskId).filter(Boolean));
+      const tasksById = new Map(snapshot.tasks.map((task) => [task.id, task]));
+      const tasksByActionKey = new Map(
+        snapshot.tasks
+          .filter((task) => task.periodPlanId === planId && task.planActionKey)
+          .map((task) => [task.planActionKey as string, task]),
+      );
+      const actionByTaskId = new Map<string, (typeof validActions)[number]>();
+      const actionsToCreate: typeof validActions = [];
+
+      validActions.forEach((action) => {
+        const legacyTask = action.taskId ? tasksById.get(action.taskId) : undefined;
+        const existing = tasksByActionKey.get(action.actionKey)
+          ?? (legacyTask?.periodPlanId === planId && !legacyTask.planActionKey ? legacyTask : undefined);
+        if (existing) actionByTaskId.set(existing.id, action);
+        else actionsToCreate.push(action);
+      });
+
       const updatedTasks = snapshot.tasks.map((task) => {
-        const action = validActions.find((item) => item.taskId === task.id);
+        const action = actionByTaskId.get(task.id);
         if (!action) return task;
         const date = action.date || undefined;
         return {
           ...task,
           title: action.title.trim(),
           date,
-          goalId: goalId || undefined,
+          goalId: task.goalId ?? goalId ?? undefined,
           periodPlanId: planId,
+          planActionKey: action.actionKey,
           status: task.status === "completed" ? task.status : date ? "planned" as const : "inbox" as const,
           updatedAt: now,
         };
       });
-      const createdTasks = validActions.filter((action) => !action.taskId || !existingIds.has(action.taskId) || !snapshot.tasks.some((task) => task.id === action.taskId)).map((action) => ({
+      const createdTasks = actionsToCreate.map((action) => ({
         id: id(),
         title: action.title.trim(),
         date: action.date || undefined,
         priority: "medium" as const,
         goalId: goalId || undefined,
         periodPlanId: planId,
+        planActionKey: action.actionKey,
         status: action.date ? "planned" as const : "inbox" as const,
         createdAt: now,
         updatedAt: now,

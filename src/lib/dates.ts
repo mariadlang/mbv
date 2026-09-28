@@ -8,6 +8,33 @@ export function toLocalDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Converts a persisted date or timestamp to the calendar day seen by the user.
+ * Date-only values are already local calendar keys and must never be reparsed as
+ * UTC. Full timestamps are converted with the browser's local timezone unless a
+ * timezone is supplied explicitly (useful for deterministic tests).
+ */
+export function toLocalDateKeyFromValue(value: string | Date, timeZone?: string): string {
+  if (typeof value === "string" && dateKeyPattern.test(value)) {
+    const calendarDate = parseISO(value);
+    return isValid(calendarDate) && format(calendarDate, "yyyy-MM-dd") === value ? value : "";
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (!isValid(date)) return "";
+  if (!timeZone) return toLocalDateKey(date);
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 export function getWeekDates(date: Date, weekStartsOn: 0 | 1 = 1): Date[] {
   const start = startOfWeek(date, { weekStartsOn });
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));

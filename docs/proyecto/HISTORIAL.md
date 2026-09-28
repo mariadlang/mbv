@@ -30,6 +30,7 @@ Reconstrucción realizada el **2026-09-04 (America/Bogota, UTC-05:00)**. El orde
 24. [Google Calendar: implementación y pausa](#2026-09-11--integración-bidireccional-google-calendar)
 25. [P2: retención y crecimiento amable](#2026-09-16--implementación-p2-de-retención-y-crecimiento-amable)
 26. [Publicación controlada de Calendar y P2](#2026-09-16--publicación-controlada-de-la-pausa-calendar-y-p2-detrás-de-flags)
+27. [Cierre funcional y UX](#2026-09-28--cierre-funcional-y-ux-de-planificación-hábitos-proyectos-y-visión)
 
 ## Nota sobre el grafo
 
@@ -594,3 +595,19 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **CI y deploy:** GitHub Actions `35479356783` aprobó lint, tipos, 360 pruebas y build. Vercel Production `dpl_89C9CvoSuB7F7SsKgAoUgvdb6w42` quedó `Ready` en 53 segundos y asociado a `mybestversion.life`. El smoke público devolvió HTTP 200 en `/`, HTTP 401 en mantenimiento anónimo y confirmó que la ruta temporal de email ya no existe como API.
 - **Estado de entrega:** integración completa. El siguiente control es observar el primer ciclo regular del outbox; no se debe repetir el correo de prueba.
 - **Archivos documentales:** `docs/AUTH_BILLING_SETUP.md`, `docs/product/commercial-access-v2.md`, `docs/proyecto/ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-28 — Cierre funcional y UX de planificación, hábitos, proyectos y visión
+
+- **Identificador estable:** `MBV-H-040`.
+- **Tipo de cambio:** corrección funcional, evolución compatible del modelo local, UX no punitiva, regresión automatizada y preparación de release.
+- **Alcance:** cuatro fallos auditados (`F-001` a `F-004`) y cuatro mejoras (`UX-001` a `UX-004`), sin rediseño general, infraestructura nueva ni activación de integraciones externas.
+- **Planificación mensual:** una fecha importante titulada exige un día real con error accesible y foco. Los registros legacy incompletos se muestran como `Fecha pendiente`, no bloquean el detalle y pueden corregirse. Cada acción mensual incorpora una clave estable y el servicio serializa/idempotentiza el guardado por `(planId, actionKey)`; no usa el título como identidad ni elimina duplicados históricos ambiguos.
+- **Fechas de progreso:** las fechas sin hora conservan su día y los timestamps se convierten a fecha local antes de presentarse. La regresión cubre una evidencia creada de noche en `America/Bogota` durante el cambio de año.
+- **Hábitos y constancia:** los hábitos nuevos guardan una fecha de inicio de seguimiento y no penalizan días anteriores. Las fechas legacy ausentes o inválidas se conservan sin inventar un inicio. Ausencia, parcial, completo, no programado y sin seguimiento son estados distintos; los hábitos medibles muestran la cantidad en Hábitos, Mi día y Semana, abren un editor compartido y requieren una acción explícita para borrar.
+- **Continuidad y proyectos:** entrar desde una meta conserva su origen y exige decidir ante un vínculo mensual existente; cancelar no persiste y la confirmación se deriva del plan guardado. Un proyecto al 100 % queda listo para cerrar, pero no se completa automáticamente: permite cerrar, añadir una acción o reabrirlo.
+- **Rueda de vida:** `scoresConfirmedAt` diferencia puntuaciones confirmadas de valores iniciales o legacy ambiguos. Una reflexión no confirma puntuaciones y sólo valores confirmados alimentan radar, promedio e insights; lo demás se muestra como `Sin evaluar` o pendiente de confirmar.
+- **Compatibilidad:** los campos nuevos son opcionales, los respaldos históricos continúan aceptándose y no se reescribieron fechas, puntuaciones ni tareas antiguas. Se mantuvo el flujo feature → `usePlanner` → `plannerService` → repositorio.
+- **Validación local:** lint, TypeScript, 68 archivos/399 pruebas unitarias, 1.598 claves i18n ES/EN, 803/803 entradas legacy, 298/298 coincidencias de tokens, 22/22 contrastes y build Next de 21 rutas aprobaron. Los recorridos dirigidos aprobaron en Chromium a 1440×900 y 390×844, incluidos Meta → Mes → Semana → Mi día → Progreso, `4/10` → recarga → `6/10`, cierre/reapertura y confirmación explícita de la rueda. En la suite E2E global aprobaron 91 casos y hubo 16 omisiones intencionales; cuatro casos fueron interrumpidos por una suspensión de 10,3 horas y uno reveló una expectativa de copy anterior al release comercial. Los cinco se repitieron tras alinear esa expectativa y aprobaron, dejando una cobertura compuesta de **96/96 casos ejecutables aprobados y 16 omisiones intencionales**.
+- **Build alternativo:** `build:vinext` se detuvo porque el worktree aislado no tiene las variables públicas de Supabase. No se copiaron secretos ni se sustituyeron por valores ficticios; Vercel/Next es el destino productivo de esta entrega.
+- **Estado de entrega:** candidato local en `fix/ux-audit-2026-09-24`; commit, push, CI, despliegue y smoke quedan por registrar al concluir el mismo ciclo.
+- **Documentación:** [`../auditorias/2026-09-25-cierre-funcionamiento-ux/README.md`](../auditorias/2026-09-25-cierre-funcionamiento-ux/README.md), su [`validacion.md`](../auditorias/2026-09-25-cierre-funcionamiento-ux/validacion.md), `ESTADO_ACTUAL.md` y este historial.

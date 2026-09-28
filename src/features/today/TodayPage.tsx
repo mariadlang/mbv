@@ -3,9 +3,9 @@
 /* eslint-disable jsx-a11y/no-autofocus -- The inline composer opens after an explicit user action. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarDays, Check, ChevronRight, Circle, Cloud, Dumbbell, GripVertical, Heart, HeartPulse, Lightbulb, Pencil, Plus, Quote, Save, Sparkles, Utensils, X } from "lucide-react";
-import { isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
+import { isHabitLogComplete, isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
 import { getDailyTopThree } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getReviewPeriodKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
@@ -44,6 +44,7 @@ function habitRecurrence(days: number[], oneOffDate?: string): HabitRecurrence {
 
 export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: PlannerController; onQuickCapture: (defaults: QuickCaptureDefaults) => void; onNeedHelp: () => void }) {
   const { m, formatDate, formatNumber, formatPlural } = useI18n();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { snapshot } = planner;
   const calendarIntegration = useCalendarIntegration();
@@ -216,10 +217,15 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
         <header><h2>{m("today.habits.title")}</h2><Link to="/app/habits">{m("today.habits.viewAll")} <ChevronRight size={15} /></Link></header>
         <div className="habit-week-header" aria-hidden="true">{weekDates.map((date) => <span key={toLocalDateKey(date)}>{formatDate(date, { weekday: "narrow" })}</span>)}</div>
         <div>{habits.map((habit) => {
-          const completedDates = new Set(snapshot.habitLogs.filter((log) => log.habitId === habit.id && log.value > 0).map((log) => log.date));
-          const completed = completedDates.has(todayKey);
+          const habitLogs = snapshot.habitLogs.filter((log) => log.habitId === habit.id);
+          const todayLog = habitLogs.find((log) => log.date === todayKey);
+          const completedDates = new Set(habitLogs.filter((log) => isHabitLogComplete(habit, log)).map((log) => log.date));
+          const completed = isHabitLogComplete(habit, todayLog);
+          const measured = habit.type !== "boolean";
+          const partial = measured && Boolean(todayLog && !completed);
+          const progressLabel = m("today.habits.progress", { value: formatNumber(todayLog?.value ?? 0), target: formatNumber(habit.target), unit: habit.unit });
           const defaultUnit = habit.unit === "vez" ? formatPlural(habit.target, { one: m("today.habits.defaultUnitOne"), other: m("today.habits.defaultUnitOther") }) : null;
-          return <div className="today-habit-row" key={habit.id}><button type="button" onClick={() => planner.toggleHabit(habit.id, todayKey)}><span>{completed ? <Check size={16} /> : <Circle size={16} />}</span><span className="habit-today-copy"><strong data-no-translate="true">{habit.name}</strong><small>{completed ? m("today.habits.logged") : <>{formatNumber(habit.target)} <span data-no-translate={defaultUnit ? undefined : "true"}>{defaultUnit ?? habit.unit}</span></>}</small></span><HabitWeekDots dateKeys={weekDateKeys} completedDates={completedDates} todayKey={todayKey} habitName={habit.name} /></button><button type="button" className="today-habit-edit" onClick={() => openDayComposer("habit", habit.id)} aria-label={m("today.timeline.editAria", { title: habit.name })}><Pencil size={14} /></button></div>;
+          return <div className={`today-habit-row ${partial ? "is-partial" : ""}`} key={habit.id}><button type="button" aria-label={measured ? m(todayLog ? "today.habits.editProgressAria" : "today.habits.recordProgressAria", { title: habit.name, progress: progressLabel }) : undefined} onClick={() => measured ? navigate(`/app/habits?habit=${encodeURIComponent(habit.id)}&date=${todayKey}#habit-week`) : planner.toggleHabit(habit.id, todayKey)}><span>{completed ? <Check size={16} /> : <Circle size={16} />}</span><span className="habit-today-copy"><strong data-no-translate="true">{habit.name}</strong><small>{measured ? progressLabel : completed ? m("today.habits.logged") : <>{formatNumber(habit.target)} <span data-no-translate={defaultUnit ? undefined : "true"}>{defaultUnit ?? habit.unit}</span></>}</small></span><HabitWeekDots dateKeys={weekDateKeys} completedDates={completedDates} todayKey={todayKey} habitName={habit.name} /></button><button type="button" className="today-habit-edit" onClick={() => openDayComposer("habit", habit.id)} aria-label={m("today.timeline.editAria", { title: habit.name })}><Pencil size={14} /></button></div>;
         })}{!habits.length && <div className="today-habits-empty"><p>{m("today.habits.empty")}</p><small>{m("today.habits.freeDay")}</small><button type="button" onClick={() => openDayComposer("habit")}><Plus size={15} /> {m("today.habits.create")}</button></div>}</div>
       </Card>
     </section>

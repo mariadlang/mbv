@@ -1,6 +1,6 @@
 import { getDay } from "date-fns";
 import type { Goal, Habit, HabitLog, Milestone, MoodName, Task } from "./planner";
-import { toLocalDateKey } from "../lib/dates";
+import { toLocalDateKey, toLocalDateKeyFromValue } from "../lib/dates";
 
 export function clampProgress(value: number): number {
   return Math.min(100, Math.max(0, Math.round(value)));
@@ -40,8 +40,23 @@ export function calculateGoalProgress(
 
 export function isHabitScheduledOn(habit: Habit, date: Date): boolean {
   if (habit.status !== "active") return false;
+  if (!hasHabitTrackingStarted(habit, date)) return false;
   if (habit.oneOffDate) return habit.oneOffDate === toLocalDateKey(date);
   return habit.scheduledDays.includes(getDay(date));
+}
+
+export function getHabitTrackingStartDateKey(habit: Pick<Habit, "trackingStartDate">): string {
+  return habit.trackingStartDate ? toLocalDateKeyFromValue(habit.trackingStartDate) : "";
+}
+
+export function hasHabitTrackingStarted(habit: Habit, date: Date): boolean {
+  const trackingStartDate = getHabitTrackingStartDateKey(habit);
+  return !trackingStartDate || toLocalDateKey(date) >= trackingStartDate;
+}
+
+export function getHabitDayState(habit: Habit, date: Date): "before_tracking" | "not_scheduled" | "scheduled" {
+  if (!hasHabitTrackingStarted(habit, date)) return "before_tracking";
+  return isHabitScheduledOn(habit, date) ? "scheduled" : "not_scheduled";
 }
 
 export function calculateHabitConsistency(

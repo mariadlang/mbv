@@ -3,10 +3,10 @@
 /* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
 
 import { useMemo, useState, type FormEvent } from "react";
-import { CalendarDays, Check, Circle, Flag, Pencil, Plus, Sparkles } from "lucide-react";
+import { ArchiveRestore, CalendarDays, Check, CheckCircle2, Circle, Flag, Pencil, Plus, Sparkles } from "lucide-react";
 import { isTaskOverdue } from "@/src/domain/rules";
 import { resistanceSuggestion } from "@/src/domain/guidanceRules";
-import { calculateProjectProgress, projectNextSuggestion } from "@/src/domain/cascadeRules";
+import { getProjectExecutionState, projectNextSuggestion } from "@/src/domain/cascadeRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading, Tabs } from "@/src/components/ui/Primitives";
@@ -14,11 +14,13 @@ import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import type { Task } from "@/src/domain/planner";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
 
 export function TasksPage({ planner, access, onQuickCapture }: { planner: PlannerController; access: UserAccess; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
+  const { m } = useI18n();
   const today = toLocalDateKey(new Date());
   const [tab, setTab] = useState<TaskTab>("today");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -30,6 +32,7 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
   const [taskEdit, setTaskEdit] = useState({ title: "", date: "", goalId: "", projectId: "" });
   const [project, setProject] = useState({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
   const [planningError, setPlanningError] = useState("");
+  const [projectStatusMessage, setProjectStatusMessage] = useState("");
   const dateBounds = getTrialPlanningDateBounds(access);
   const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
@@ -39,6 +42,8 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
     return task.date === today && task.status !== "cancelled";
   }), [snapshot.tasks, tab, today]);
   const overdue = snapshot.tasks.filter((task) => isTaskOverdue(task, today));
+  const activeProjects = snapshot.projects.filter((item) => item.status === "active");
+  const closedProjects = snapshot.projects.filter((item) => item.status === "completed");
 
 
   const addDetailed = async (event: FormEvent) => {
@@ -71,6 +76,20 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
     setProject({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
   };
 
+  const closeProject = async (projectId: string, projectName: string) => {
+    const next = await planner.updateProjectStatus(projectId, "completed");
+    if (next.projects.find((item) => item.id === projectId)?.status === "completed") {
+      setProjectStatusMessage(m("tasks.projects.closedAnnouncement", { name: projectName }));
+    }
+  };
+
+  const reopenProject = async (projectId: string, projectName: string) => {
+    const next = await planner.updateProjectStatus(projectId, "active");
+    if (next.projects.find((item) => item.id === projectId)?.status === "active") {
+      setProjectStatusMessage(m("tasks.projects.reopenedAnnouncement", { name: projectName }));
+    }
+  };
+
   const openTaskEdit = (task: Task) => {
     if (task.date && !canPlanDate(task.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     setPlanningError("");
@@ -90,7 +109,59 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
   return <div className="page-stack tasks-page">
     <SectionNavigation section="space" />
     <SectionHeading eyebrow="De la idea a la acción" title="Proyectos y tareas" description="Define primero tus entregables y organiza debajo las acciones que los hacen avanzar." />
-    <section className="projects-section"><header><div><p className="eyebrow">Primero, el resultado</p><h2>Proyectos</h2><span>Cada proyecto reúne varias acciones hacia un entregable concreto.</span></div><Button variant="secondary" onClick={() => setProjectComposerOpen((current) => !current)} aria-expanded={projectComposerOpen}><Plus size={16} /> {projectComposerOpen ? "Cerrar" : "Nuevo proyecto"}</Button></header>{projectComposerOpen && <form className="card project-create" onSubmit={addProject}><label className="form-field"><span>Nombre del proyecto</span><input required value={project.name} onChange={(event) => setProject({ ...project, name: event.target.value })} /></label><label className="form-field"><span>Resultado esperado</span><textarea required rows={3} value={project.outcome} onChange={(event) => setProject({ ...project, outcome: event.target.value })} /></label><label className="form-field"><span>Área</span><select value={project.lifeAreaId} onChange={(event) => setProject({ ...project, lifeAreaId: event.target.value })}><option value="">Sin área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select></label><label className="form-field"><span>Meta</span><select value={project.goalId} onChange={(event) => setProject({ ...project, goalId: event.target.value })}><option value="">Sin meta</option>{snapshot.goals.map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label><label className="form-field"><span>Fecha objetivo</span><input type="date" value={project.targetDate} onChange={(event) => setProject({ ...project, targetDate: event.target.value })} /></label><Button type="submit"><Plus size={16} /> Crear proyecto</Button></form>}<div className="project-card-grid">{snapshot.projects.filter((item) => item.status === "active").map((item) => { const linkedTasks = snapshot.tasks.filter((task) => task.projectId === item.id); const progress = calculateProjectProgress(snapshot, item.id); const nextAction = linkedTasks.find((task) => task.status !== "completed" && task.status !== "cancelled")?.title; return <Card className="project-card" key={item.id}><div className="project-card__top"><Badge tone="warm">En curso</Badge><strong>{progress}%</strong></div><h3 data-no-translate="true" translate="no">{item.name}</h3><p data-no-translate="true" translate="no">{item.outcome}</p><div className="project-card__progress" aria-label="Progreso del proyecto"><span style={{ width: `${progress}%` }} /></div><small>{linkedTasks.length} {linkedTasks.length === 1 ? "tarea" : "tareas"} · {item.targetDate ?? "Sin fecha"}</small><p className="project-card__next"><strong>Próxima acción</strong>{nextAction ? <span data-no-translate="true" translate="no">{nextAction}</span> : "Añade una tarea para hacer visible el siguiente paso."}</p></Card>; })}{!snapshot.projects.some((item) => item.status === "active") && <EmptyState title="Aún no hay proyectos activos" text="Crea un proyecto cuando necesites coordinar varias tareas hacia un mismo resultado." />}</div></section>
+    <section className="projects-section">
+      <header>
+        <div><p className="eyebrow">Primero, el resultado</p><h2>Proyectos</h2><span>Cada proyecto reúne varias acciones hacia un entregable concreto.</span></div>
+        <Button variant="secondary" onClick={() => setProjectComposerOpen((current) => !current)} aria-expanded={projectComposerOpen}><Plus size={16} /> {projectComposerOpen ? "Cerrar" : "Nuevo proyecto"}</Button>
+      </header>
+      {projectStatusMessage && <p className="project-status-message" role="status" aria-live="polite">{projectStatusMessage}</p>}
+      {projectComposerOpen && <form className="card project-create" onSubmit={addProject}>
+        <label className="form-field"><span>Nombre del proyecto</span><input required value={project.name} onChange={(event) => setProject({ ...project, name: event.target.value })} /></label>
+        <label className="form-field"><span>Resultado esperado</span><textarea required rows={3} value={project.outcome} onChange={(event) => setProject({ ...project, outcome: event.target.value })} /></label>
+        <label className="form-field"><span>Área</span><select value={project.lifeAreaId} onChange={(event) => setProject({ ...project, lifeAreaId: event.target.value })}><option value="">Sin área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select></label>
+        <label className="form-field"><span>Meta</span><select value={project.goalId} onChange={(event) => setProject({ ...project, goalId: event.target.value })}><option value="">Sin meta</option>{snapshot.goals.map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label>
+        <label className="form-field"><span>Fecha objetivo</span><input type="date" value={project.targetDate} onChange={(event) => setProject({ ...project, targetDate: event.target.value })} /></label>
+        <Button type="submit"><Plus size={16} /> Crear proyecto</Button>
+      </form>}
+      <div className="project-card-grid">
+        {activeProjects.map((item) => {
+          const execution = getProjectExecutionState(snapshot, item.id);
+          return <Card className={`project-card ${execution.state === "ready_to_close" ? "project-card--ready" : ""}`} key={item.id}>
+            <div className="project-card__top">
+              <Badge tone={execution.state === "ready_to_close" ? "sage" : "warm"}>{m(execution.state === "ready_to_close" ? "tasks.projects.status.ready" : "tasks.projects.status.inProgress")}</Badge>
+              <strong>{execution.progress}%</strong>
+            </div>
+            <h3 data-no-translate="true" translate="no">{item.name}</h3>
+            <p data-no-translate="true" translate="no">{item.outcome}</p>
+            <div className="project-card__progress" role="progressbar" aria-label={m("tasks.projects.progressLabel", { name: item.name })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={execution.progress}><span style={{ width: `${execution.progress}%` }} /></div>
+            <small>{m(execution.total === 1 ? "tasks.projects.actionCount.one" : "tasks.projects.actionCount.many", { count: execution.total })} · {item.targetDate ?? "Sin fecha"}</small>
+            {execution.state === "ready_to_close" ? <div className="project-card__completion" role="status">
+              <strong>{m("tasks.projects.readyTitle")}</strong>
+              <span>{m("tasks.projects.readyDescription")}</span>
+              <div className="project-card__actions">
+                <Button size="sm" onClick={() => void closeProject(item.id, item.name)} aria-label={m("tasks.projects.closeLabel", { name: item.name })}><CheckCircle2 size={15} /> {m("tasks.projects.close")}</Button>
+                <Button size="sm" variant="secondary" onClick={() => onQuickCapture({ source: "empty", projectId: item.id })} aria-label={m("tasks.projects.addAnotherLabel", { name: item.name })}><Plus size={15} /> {m("tasks.projects.addAnother")}</Button>
+              </div>
+            </div> : <p className="project-card__next"><strong>{m("tasks.projects.nextAction")}</strong>{execution.nextTitle ? <span data-no-translate="true" translate="no">{execution.nextTitle}</span> : m("tasks.projects.addFirstAction")}</p>}
+          </Card>;
+        })}
+        {!activeProjects.length && <EmptyState title="Aún no hay proyectos activos" text="Crea un proyecto cuando necesites coordinar varias tareas hacia un mismo resultado." />}
+      </div>
+      {closedProjects.length > 0 && <section className="closed-projects" aria-labelledby="closed-projects-title">
+        <header>
+          <div><h3 id="closed-projects-title">{m("tasks.projects.closedTitle")}</h3><p>{m("tasks.projects.closedDescription")}</p></div>
+          <Badge tone="neutral">{closedProjects.length}</Badge>
+        </header>
+        <div className="closed-project-grid">
+          {closedProjects.map((item) => <article className="closed-project-card" key={item.id}>
+            <Badge tone="sage">{m("tasks.projects.status.closed")}</Badge>
+            <h4 data-no-translate="true" translate="no">{item.name}</h4>
+            <p data-no-translate="true" translate="no">{item.outcome}</p>
+            <Button size="sm" variant="secondary" onClick={() => void reopenProject(item.id, item.name)} aria-label={m("tasks.projects.reopenLabel", { name: item.name })}><ArchiveRestore size={15} /> {m("tasks.projects.reopen")}</Button>
+          </article>)}
+        </div>
+      </section>}
+    </section>
     <ProjectIntelligence planner={planner} />
 
     <section className="tasks-section"><header><div><p className="eyebrow">Después, las acciones</p><h2>Tareas</h2><span>Acciones ejecutables, vinculadas a un proyecto cuando corresponde.</span></div><Button onClick={() => setAdvancedOpen((current) => !current)} aria-expanded={advancedOpen}><Plus size={17} /> {advancedOpen ? "Cerrar" : "Nueva tarea"}</Button></header>
@@ -170,6 +241,9 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
 }
 
 function ProjectIntelligence({ planner }: { planner: PlannerController }) {
+  const { m } = useI18n();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  return <section className="project-database"><header><div><p className="eyebrow">Espacio de proyectos</p><h2>Pasos, avance y siguiente semana</h2></div><Sparkles size={23} /></header><div>{planner.snapshot.projects.map((project) => { const progress = calculateProjectProgress(planner.snapshot, project.id); const checks = planner.snapshot.projectChecklistItems.filter((item) => item.projectId === project.id); return <Card className="project-intelligence-card" key={project.id}><header><div><Badge tone="rose">{progress}%</Badge><h2 data-no-translate="true" translate="no">{project.name}</h2></div><small>{project.targetDate || "Sin fecha objetivo"}</small></header><p data-no-translate="true" translate="no">{project.outcome}</p><div className="project-checklist">{checks.map((item) => <button key={item.id} onClick={() => planner.toggleProjectChecklistItem(item.id)}>{item.completed ? <Check size={15} /> : <Circle size={15} />}<span data-no-translate="true" translate="no">{item.title}</span></button>)}</div><form onSubmit={async (event) => { event.preventDefault(); const title = drafts[project.id]?.trim(); if (!title) return; await planner.addProjectChecklistItem(project.id, title); setDrafts({ ...drafts, [project.id]: "" }); }}><input value={drafts[project.id] ?? ""} onChange={(event) => setDrafts({ ...drafts, [project.id]: event.target.value })} placeholder="Añadir paso a la lista" /><Button type="submit" variant="secondary"><Plus size={14} /> Añadir</Button></form><div className="project-ai-suggestion"><Sparkles size={16} /><div><strong>Sugerencia inteligente local</strong><span data-no-translate="true" translate="no">{projectNextSuggestion(planner.snapshot, project.id)}</span></div></div></Card>; })}</div></section>;
+  const activeProjects = planner.snapshot.projects.filter((project) => project.status === "active");
+  if (!activeProjects.length) return null;
+  return <section className="project-database"><header><div><p className="eyebrow">Espacio de proyectos</p><h2>Pasos, avance y siguiente semana</h2></div><Sparkles size={23} /></header><div>{activeProjects.map((project) => { const execution = getProjectExecutionState(planner.snapshot, project.id); const checks = planner.snapshot.projectChecklistItems.filter((item) => item.projectId === project.id); return <Card className="project-intelligence-card" key={project.id}><header><div><Badge tone="rose">{execution.progress}%</Badge><h2 data-no-translate="true" translate="no">{project.name}</h2></div><small>{project.targetDate || "Sin fecha objetivo"}</small></header><p data-no-translate="true" translate="no">{project.outcome}</p><div className="project-checklist">{checks.map((item) => <button key={item.id} onClick={() => planner.toggleProjectChecklistItem(item.id)}>{item.completed ? <Check size={15} /> : <Circle size={15} />}<span data-no-translate="true" translate="no">{item.title}</span></button>)}</div><form onSubmit={async (event) => { event.preventDefault(); const title = drafts[project.id]?.trim(); if (!title) return; await planner.addProjectChecklistItem(project.id, title); setDrafts({ ...drafts, [project.id]: "" }); }}><input value={drafts[project.id] ?? ""} onChange={(event) => setDrafts({ ...drafts, [project.id]: event.target.value })} placeholder="Añadir paso a la lista" /><Button type="submit" variant="secondary"><Plus size={14} /> Añadir</Button></form><div className="project-ai-suggestion"><Sparkles size={16} /><div><strong>Sugerencia inteligente local</strong><span data-no-translate="true" translate="no">{execution.state === "ready_to_close" ? m("tasks.projects.readySuggestion") : projectNextSuggestion(planner.snapshot, project.id)}</span></div></div></Card>; })}</div></section>;
 }

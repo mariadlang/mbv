@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { BookOpen, CalendarCheck2, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Droplets, Dumbbell, MoreVertical, Pencil, Plus, Sparkles } from "lucide-react";
+import { BookOpen, CalendarCheck2, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardCheck, Droplets, Dumbbell, MoreVertical, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { addMonths, addWeeks, eachDayOfInterval, endOfMonth, startOfMonth } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import type { Habit } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
-import { calculateBestHabitStreak, calculateHabitConsistency, isHabitLogComplete, isHabitScheduledOn } from "@/src/domain/rules";
+import { calculateBestHabitStreak, calculateHabitConsistency, getHabitDayState, getHabitTrackingStartDateKey, isHabitLogComplete, isHabitScheduledOn } from "@/src/domain/rules";
 import { getRecentDates, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { habitFormSchema, type HabitFormInput } from "@/src/lib/schemas";
 import { Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
@@ -64,8 +64,9 @@ function HabitIcon({ habit }: { habit: Habit }) {
 export function HabitsPage({ planner, access }: { planner: PlannerController; access: UserAccess }) {
   const { m, formatDate } = useI18n();
   const { snapshot } = planner;
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const wellbeingRef = useRef<HTMLElement>(null);
+  const handledProgressRequestRef = useRef<string | null>(null);
   const today = new Date();
   const todayKey = toLocalDateKey(today);
   const currentMonthKey = todayKey.slice(0, 7);
@@ -74,10 +75,11 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const [menuHabitId, setMenuHabitId] = useState<string | null>(null);
   const [progressHabitId, setProgressHabitId] = useState<string | null>(null);
+  const [progressDate, setProgressDate] = useState(todayKey);
   const [progressValue, setProgressValue] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const [progressMonth, setProgressMonth] = useState(currentMonthKey);
-  const activeHabits = snapshot.habits.filter((habit) => habit.status === "active");
+  const activeHabits = useMemo(() => snapshot.habits.filter((habit) => habit.status === "active"), [snapshot.habits]);
   const todayHabits = activeHabits.filter((habit) => isHabitScheduledOn(habit, today));
   const weekDates = getWeekDates(addWeeks(today, weekOffset), snapshot.profile?.weekStartsOn ?? 1);
   const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
@@ -89,10 +91,35 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   const selectedMonthDate = new Date(`${progressMonth}-01T12:00:00`);
   const selectedMonthEnd = progressMonth === currentMonthKey ? today : endOfMonth(selectedMonthDate);
   const selectedMonthDates = eachDayOfInterval({ start: startOfMonth(selectedMonthDate), end: selectedMonthEnd });
+  const requestedHabitId = searchParams.get("habit");
+  const requestedHabitDate = searchParams.get("date");
+  const requestedSearch = searchParams.toString();
 
   useEffect(() => {
     if (searchParams.get("checkin") === "1") wellbeingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!requestedHabitId || !requestedHabitDate) {
+      handledProgressRequestRef.current = null;
+      return;
+    }
+    const requestKey = `${requestedHabitId}:${requestedHabitDate}:${requestedSearch}`;
+    if (handledProgressRequestRef.current === requestKey || !/^\d{4}-\d{2}-\d{2}$/.test(requestedHabitDate) || !isTrialPlanningDateAllowed(access, requestedHabitDate)) return;
+    const habit = activeHabits.find((item) => item.id === requestedHabitId);
+    if (!habit || habit.type === "boolean") return;
+    const currentLog = snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === requestedHabitDate);
+    handledProgressRequestRef.current = requestKey;
+    queueMicrotask(() => {
+      setProgressHabitId(habit.id);
+      setProgressDate(requestedHabitDate);
+      setProgressValue(String(currentLog?.value ?? 0));
+      const next = new URLSearchParams(requestedSearch);
+      next.delete("habit");
+      next.delete("date");
+      setSearchParams(next, { replace: true });
+    });
+  }, [access, activeHabits, requestedHabitDate, requestedHabitId, requestedSearch, setSearchParams, snapshot.habitLogs]);
 
   const form = useForm<HabitFormInput>({ resolver: zodResolver(habitFormSchema), defaultValues: defaultHabit });
   const selectedDays = useWatch({ control: form.control, name: "scheduledDays" });
@@ -122,9 +149,10 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
     form.reset(defaultHabit);
   });
 
-  const openProgress = (habit: Habit) => {
-    const currentLog = snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === todayKey);
+  const openProgress = (habit: Habit, date = todayKey) => {
+    const currentLog = snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === date);
     setProgressHabitId(habit.id);
+    setProgressDate(date);
     setProgressValue(String(currentLog?.value ?? 0));
     setMenuHabitId(null);
   };
@@ -132,7 +160,13 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   const saveProgress = async (event: FormEvent) => {
     event.preventDefault();
     if (!progressHabitId) return;
-    await planner.setHabitProgress(progressHabitId, todayKey, Number(progressValue));
+    await planner.setHabitProgress(progressHabitId, progressDate, Number(progressValue));
+    setProgressHabitId(null);
+  };
+
+  const deleteProgress = async () => {
+    if (!progressHabitId || !window.confirm(m("habits.progressModal.deleteConfirm"))) return;
+    await planner.deleteHabitLog(progressHabitId, progressDate);
     setProgressHabitId(null);
   };
 
@@ -150,13 +184,14 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   const weekdayRates = dayOptions.map((day) => {
     const dates = selectedMonthDates.filter((date) => date.getDay() === day);
     const scheduled = dates.reduce((total, date) => total + activeHabits.filter((habit) => isHabitScheduledOn(habit, date)).length, 0);
-    const completed = dates.reduce((total, date) => total + activeHabits.filter((habit) => isHabitLogComplete(habit, snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === toLocalDateKey(date)))).length, 0);
+    const completed = dates.reduce((total, date) => total + activeHabits.filter((habit) => isHabitScheduledOn(habit, date) && isHabitLogComplete(habit, snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === toLocalDateKey(date)))).length, 0);
     return { day, percentage: scheduled ? Math.round((completed / scheduled) * 100) : 0 };
   });
   const bestWeekdayRate = Math.max(...weekdayRates.map((item) => item.percentage));
   const bestWeekdays = weekdayRates.filter((item) => item.percentage === bestWeekdayRate && bestWeekdayRate > 0).map((item) => m(weekdayNameKeys[item.day]));
   const progressInsight = completedInMonth >= 3 && bestWeekdays.length ? m("habits.progress.insight", { days: bestWeekdays.slice(0, 2).join(m("habits.conjunction")) }) : m("habits.progress.insight.pending");
   const progressHabit = activeHabits.find((habit) => habit.id === progressHabitId);
+  const progressLog = progressHabitId ? snapshot.habitLogs.find((log) => log.habitId === progressHabitId && log.date === progressDate) : undefined;
 
   return (
     <div className="page-stack habits-page">
@@ -177,7 +212,7 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
             const completed = isHabitLogComplete(habit, log);
             const isMeasured = habit.type !== "boolean";
             const percentage = Math.min(100, Math.round(((log?.value ?? 0) / habit.target) * 100));
-            return <article className="habit-today-row" key={habit.id}><span className={`habit-today-row__icon habit-today-row__icon--${habit.type}`}><HabitIcon habit={habit} /></span><div className="habit-today-row__copy"><strong>{habit.name}</strong><small>{m("habits.today.target", { target: habit.target, unit: habit.unit })}</small></div><div className="habit-today-row__status">{isMeasured && !completed ? <><strong>{log?.value ?? 0}/{habit.target} {habit.unit}</strong><span><i style={{ width: `${percentage}%` }} /></span></> : <span className={completed ? "habit-status habit-status--complete" : "habit-status"}>{completed ? m("habits.status.completed") : m("habits.status.notRecorded")}</span>}</div>{completed ? <button type="button" className="habit-complete-button" onClick={() => isMeasured ? void planner.setHabitProgress(habit.id, todayKey, 0) : void planner.toggleHabit(habit.id, todayKey)} aria-label={m("habits.today.uncheck", { name: habit.name })}><Check size={18} /></button> : <Button size="sm" variant={isMeasured ? "primary" : "outline"} onClick={() => isMeasured ? openProgress(habit) : void planner.toggleHabit(habit.id, todayKey)}>{isMeasured ? m("habits.today.record") : m("habits.today.mark")}</Button>}<div className="habit-row-menu"><button type="button" aria-label={m("habits.today.moreOptions", { name: habit.name })} aria-expanded={menuHabitId === habit.id} onClick={() => setMenuHabitId(menuHabitId === habit.id ? null : habit.id)}><MoreVertical size={19} /></button>{menuHabitId === habit.id && <div role="menu"><button type="button" role="menuitem" onClick={() => openEdit(habit)}><Pencil size={15} /> {m("habits.today.edit")}</button>{isMeasured && <button type="button" role="menuitem" onClick={() => openProgress(habit)}><ChartNoAxesColumnIncreasing size={15} /> {m("habits.today.recordProgress")}</button>}</div>}</div></article>;
+            return <article className="habit-today-row" key={habit.id}><span className={`habit-today-row__icon habit-today-row__icon--${habit.type}`}><HabitIcon habit={habit} /></span><div className="habit-today-row__copy"><strong>{habit.name}</strong><small>{m("habits.today.target", { target: habit.target, unit: habit.unit })}</small></div><div className="habit-today-row__status">{isMeasured && !completed ? <><strong>{log?.value ?? 0}/{habit.target} {habit.unit}</strong><span><i style={{ width: `${percentage}%` }} /></span></> : <span className={completed ? "habit-status habit-status--complete" : "habit-status"}>{completed ? m("habits.status.completed") : m("habits.status.notRecorded")}</span>}</div>{completed ? <button type="button" className="habit-complete-button" onClick={() => isMeasured ? openProgress(habit) : void planner.toggleHabit(habit.id, todayKey)} aria-label={isMeasured ? m("habits.today.editProgress", { name: habit.name }) : m("habits.today.uncheck", { name: habit.name })}><Check size={18} /></button> : <Button size="sm" variant={isMeasured ? "primary" : "outline"} onClick={() => isMeasured ? openProgress(habit) : void planner.toggleHabit(habit.id, todayKey)}>{isMeasured ? m("habits.today.record") : m("habits.today.mark")}</Button>}<div className="habit-row-menu"><button type="button" aria-label={m("habits.today.moreOptions", { name: habit.name })} aria-expanded={menuHabitId === habit.id} onClick={() => setMenuHabitId(menuHabitId === habit.id ? null : habit.id)}><MoreVertical size={19} /></button>{menuHabitId === habit.id && <div role="menu"><button type="button" role="menuitem" onClick={() => openEdit(habit)}><Pencil size={15} /> {m("habits.today.edit")}</button>{isMeasured && <button type="button" role="menuitem" onClick={() => openProgress(habit)}><ChartNoAxesColumnIncreasing size={15} /> {m("habits.today.recordProgress")}</button>}</div>}</div></article>;
           }) : <div className="habit-today-empty"><Sparkles size={21} /><div><h3>{m("habits.today.empty.title")}</h3><p>{m("habits.today.empty.description")}</p></div></div>}</div>
         </Card>
 
@@ -186,8 +221,8 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
         <Card className="habit-week-card" id="habit-week" data-i18n-explicit="true">
           <header><div><span className="habit-section-icon"><CalendarDays size={20} /></span><div><h2>{m("habits.week.title")}</h2><p>{m("habits.week.description")}</p></div></div><div className="habit-week-navigation"><button type="button" onClick={() => setWeekOffset((value) => value - 1)} aria-label={m("habits.week.previous")}><ChevronLeft size={17} /></button><strong>{weekOffset === 0 ? m("habits.week.current") : m("habits.week.range", { start: weekDates[0].getDate(), end: weekDates[6].getDate(), month: formatDate(weekDates[6], { month: "short" }) })}</strong><button type="button" onClick={() => setWeekOffset((value) => value + 1)} aria-label={m("habits.week.next")}><ChevronRight size={17} /></button></div></header>
           {weekHasReadOnlyDays && <div className="month-readonly-notice weekly-readonly-notice" role="status"><div><strong>{weekReadOnly ? m("habits.week.readOnly") : m("habits.week.partlyReadOnly")}</strong><span>{m("habits.trialPlanningLimit")}</span></div></div>}
-          <div className="habit-week-table-wrap"><table className="habit-week-table"><thead><tr><th scope="col">{m("habits.week.habitColumn")}</th>{weekDates.map((date) => <th scope="col" key={toLocalDateKey(date)} className={toLocalDateKey(date) === todayKey ? "is-today" : ""}><span>{m(weekdayShortKeys[date.getDay()])}</span><strong>{date.getDate()}</strong></th>)}</tr></thead><tbody>{activeHabits.map((habit) => <tr key={habit.id}><th scope="row">{habit.name}</th>{weekDates.map((date) => { const dateKey = toLocalDateKey(date); const scheduled = isHabitScheduledOn(habit, date); const log = snapshot.habitLogs.find((item) => item.habitId === habit.id && item.date === dateKey); const complete = isHabitLogComplete(habit, log); const readOnly = !canPlanDate(dateKey); return <td key={dateKey} className={dateKey === todayKey ? "is-today" : ""}>{scheduled ? <button type="button" className={complete ? "is-complete" : "is-pending"} disabled={readOnly} title={readOnly ? m("habits.readOnly") : undefined} onClick={() => void planner.toggleHabit(habit.id, dateKey)} aria-label={readOnly ? m("habits.readOnly") : m("habits.week.entryLabel", { name: habit.name, date: formatDate(date, { dateStyle: "medium" }), status: complete ? m("habits.status.completed.lower") : m("habits.status.notRecorded.lower") })} aria-pressed={complete}>{complete ? <Check size={15} /> : <span />}</button> : <span className="habit-not-scheduled" aria-label={m("habits.status.notScheduled")}>–</span>}</td>; })}</tr>)}</tbody></table></div>
-          <footer className="habit-week-legend"><span><i className="is-complete"><Check size={12} /></i> {m("habits.status.completed")}</span><span><i className="is-pending" /> {m("habits.status.notRecorded")}</span><span><i className="is-off">–</i> {m("habits.status.notScheduled")}</span></footer>
+          <div className="habit-week-table-wrap"><table className="habit-week-table"><thead><tr><th scope="col">{m("habits.week.habitColumn")}</th>{weekDates.map((date) => <th scope="col" key={toLocalDateKey(date)} className={toLocalDateKey(date) === todayKey ? "is-today" : ""}><span>{m(weekdayShortKeys[date.getDay()])}</span><strong>{date.getDate()}</strong></th>)}</tr></thead><tbody>{activeHabits.map((habit) => <tr key={habit.id}><th scope="row"><strong>{habit.name}</strong><small>{getHabitTrackingStartDateKey(habit) ? m("habits.tracking.since", { date: formatDate(getHabitTrackingStartDateKey(habit), { dateStyle: "medium" }) }) : m("habits.tracking.legacy")}</small></th>{weekDates.map((date) => { const dateKey = toLocalDateKey(date); const dayState = getHabitDayState(habit, date); const log = snapshot.habitLogs.find((item) => item.habitId === habit.id && item.date === dateKey); const complete = isHabitLogComplete(habit, log); const partial = habit.type !== "boolean" && Boolean(log && log.value > 0 && !complete); const readOnly = !canPlanDate(dateKey); if (dayState === "before_tracking") return <td key={dateKey} className={dateKey === todayKey ? "is-today" : ""}><span className="habit-not-tracking" aria-label={m("habits.status.beforeTracking")}>·</span></td>; if (dayState === "not_scheduled") return <td key={dateKey} className={dateKey === todayKey ? "is-today" : ""}><span className="habit-not-scheduled" aria-label={m("habits.status.notScheduled")}>–</span></td>; const status = complete ? m("habits.status.completed.lower") : partial ? m("habits.status.partial", { value: log?.value ?? 0, target: habit.target, unit: habit.unit }) : m("habits.status.notRecorded.lower"); return <td key={dateKey} className={dateKey === todayKey ? "is-today" : ""}><button type="button" className={complete ? "is-complete" : partial ? "is-partial" : "is-pending"} disabled={readOnly} title={readOnly ? m("habits.readOnly") : undefined} onClick={() => habit.type === "boolean" ? void planner.toggleHabit(habit.id, dateKey) : openProgress(habit, dateKey)} aria-label={readOnly ? m("habits.readOnly") : m("habits.week.entryLabel", { name: habit.name, date: formatDate(date, { dateStyle: "medium" }), status })} aria-pressed={habit.type === "boolean" ? complete : undefined}>{complete ? <Check size={15} /> : partial ? <span className="habit-partial-value">{log?.value}/{habit.target}</span> : <span />}</button></td>; })}</tr>)}</tbody></table></div>
+          <footer className="habit-week-legend"><span><i className="is-complete"><Check size={12} /></i> {m("habits.status.completed")}</span><span><i className="is-partial" /> {m("habits.status.partialLegend")}</span><span><i className="is-pending" /> {m("habits.status.notRecorded")}</span><span><i className="is-before">·</i> {m("habits.status.beforeTracking")}</span><span><i className="is-off">–</i> {m("habits.status.notScheduled")}</span></footer>
         </Card>
 
         <Card className="habit-progress-card" data-i18n-explicit="true">
@@ -206,8 +241,8 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
         </form>
       </Modal>
 
-      <Modal open={Boolean(progressHabit)} title={progressHabit ? m("habits.progressModal.titleWithName", { name: progressHabit.name }) : m("habits.progressModal.title")} description={progressHabit ? m("habits.progressModal.description", { target: progressHabit.target, unit: progressHabit.unit }) : undefined} onClose={() => setProgressHabitId(null)} explicitI18n>
-        {progressHabit && <form className="habit-progress-form" onSubmit={saveProgress}><label className="form-field"><span>{m("habits.progressModal.today", { unit: progressHabit.unit })}</span><input type="number" min="0" max={progressHabit.target} step="any" value={progressValue} onChange={(event) => setProgressValue(event.target.value)} /></label><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setProgressHabitId(null)}>{m("habits.form.cancel")}</Button><Button type="submit">{m("habits.progressModal.save")}</Button></div></form>}
+      <Modal open={Boolean(progressHabit)} title={progressHabit ? m("habits.progressModal.titleWithName", { name: progressHabit.name }) : m("habits.progressModal.title")} description={progressHabit ? m("habits.progressModal.selectedDate", { target: progressHabit.target, unit: progressHabit.unit, date: formatDate(progressDate, { dateStyle: "long" }) }) : undefined} onClose={() => setProgressHabitId(null)} explicitI18n>
+        {progressHabit && <form className="habit-progress-form" onSubmit={saveProgress}><label className="form-field"><span>{m("habits.progressModal.today", { unit: progressHabit.unit })}</span><input type="number" min="0" max={progressHabit.target} step="any" value={progressValue} onChange={(event) => setProgressValue(event.target.value)} /></label><div className="modal__actions habit-progress-form__actions">{progressLog && <Button type="button" variant="ghost" onClick={() => void deleteProgress()}><Trash2 size={15} /> {m("habits.progressModal.delete")}</Button>}<span className="habit-progress-form__spacer" /><Button type="button" variant="ghost" onClick={() => setProgressHabitId(null)}>{m("habits.form.cancel")}</Button><Button type="submit">{m("habits.progressModal.save")}</Button></div></form>}
       </Modal>
     </div>
   );

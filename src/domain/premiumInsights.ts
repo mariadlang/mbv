@@ -1,5 +1,6 @@
 import { getRecentDates, toLocalDateKey } from "@/src/lib/dates";
 import type { PlannerSnapshot } from "@/src/domain/planner";
+import { getConfirmedLifeAreaScores } from "@/src/domain/lifeAreaScores";
 
 export type PremiumRecommendationId =
   | "complete_profile"
@@ -95,8 +96,7 @@ export function buildPremiumRecommendation(
 
   if (!analysis.hasEnoughEvidence) return { id: "build_rhythm" };
 
-  const lowestArea = snapshot.lifeAreas
-    .filter((area) => area.active && typeof area.currentScore === "number")
+  const lowestArea = getConfirmedLifeAreaScores(snapshot.lifeAreas)
     .sort((left, right) => (left.currentScore ?? 10) - (right.currentScore ?? 10))[0];
   if (lowestArea && (lowestArea.currentScore ?? 10) <= 5) {
     return { id: "review_low_area", lifeAreaName: lowestArea.name };

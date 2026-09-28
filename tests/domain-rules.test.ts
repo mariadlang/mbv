@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTodayWellbeingSummary, calculateBestHabitStreak, calculateGoalProgress, calculateHabitConsistency, clampProgress, getSafePlanningDates, isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
+import { buildTodayWellbeingSummary, calculateBestHabitStreak, calculateGoalProgress, calculateHabitConsistency, clampProgress, getHabitDayState, getHabitTrackingStartDateKey, getSafePlanningDates, isHabitScheduledOn, isTaskOverdue } from "@/src/domain/rules";
 import type { Goal, Habit, HabitLog, Milestone, Task } from "@/src/domain/planner";
 import { goalFormSchema } from "@/src/lib/schemas";
 import { calculateChallengeProgress, challengeEncouragement } from "@/src/domain/challengeRules";
@@ -80,6 +80,31 @@ describe("habit consistency", () => {
     const dates = [10, 11, 12, 13, 14].map((day) => new Date(`2026-08-${day}T12:00:00`));
     const logs: HabitLog[] = [10, 12, 14].map((day) => ({ id: `log-${day}`, habitId: habit.id, date: `2026-08-${day}`, value: 1, createdAt: now, updatedAt: now }));
     expect(calculateBestHabitStreak([habit], logs, dates)).toBe(3);
+  });
+
+  it("does not penalize dates before a new habit starts tracking", () => {
+    const habit: Habit = {
+      id: "new-reading", name: "Leer", type: "boolean", scheduledDays: [1, 2, 3, 4, 5],
+      trackingStartDate: "2026-08-12", target: 1, unit: "vez", status: "active", createdAt: now, updatedAt: now,
+    };
+    const dates = [10, 11, 12, 13, 14].map((day) => new Date(`2026-08-${day}T12:00:00`));
+
+    expect(calculateHabitConsistency(habit, [], dates)).toEqual({ completed: 0, scheduled: 3, percentage: 0 });
+    expect(getHabitTrackingStartDateKey(habit)).toBe("2026-08-12");
+    expect(getHabitDayState(habit, dates[0])).toBe("before_tracking");
+    expect(getHabitDayState(habit, dates[2])).toBe("scheduled");
+  });
+
+  it("preserves legacy habit history when no tracking date exists", () => {
+    const habit: Habit = { id: "legacy", name: "Caminar", type: "boolean", scheduledDays: [1, 2], target: 1, unit: "vez", status: "active", createdAt: now, updatedAt: now };
+    const dates = [new Date("2026-08-10T12:00:00"), new Date("2026-08-11T12:00:00")];
+    expect(calculateHabitConsistency(habit, [], dates).scheduled).toBe(2);
+  });
+
+  it("treats an invalid legacy tracking date as unknown instead of blocking the habit", () => {
+    const habit: Habit = { id: "legacy-invalid", name: "Caminar", type: "boolean", scheduledDays: [1], trackingStartDate: "legacy-invalid-date", target: 1, unit: "vez", status: "active", createdAt: now, updatedAt: now };
+    expect(getHabitTrackingStartDateKey(habit)).toBe("");
+    expect(isHabitScheduledOn(habit, new Date("2026-08-10T12:00:00"))).toBe(true);
   });
 
   it("resets continuity only when a scheduled occurrence has no complete record", () => {

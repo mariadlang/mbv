@@ -1,5 +1,6 @@
 import type { PlannerSnapshot } from "@/src/domain/planner";
-import { calculateGoalProgress } from "@/src/domain/rules";
+import { calculateGoalProgress, isHabitScheduledOn } from "@/src/domain/rules";
+import { toLocalDateKeyFromValue } from "@/src/lib/dates";
 
 export const SHARE_CARD_FORMATS = {
   story: { width: 1080, height: 1920 },
@@ -90,7 +91,7 @@ function progressValues(evidence: ShareCardEvidence, dateKeys?: readonly string[
   const includedDates = safeDateKeys?.length ? new Set(safeDateKeys) : null;
   const completedTasks = evidence.tasks.filter((task) => {
     if (task.status !== "completed") return false;
-    const date = task.completedAt?.slice(0, 10) || task.date;
+    const date = task.completedAt ? toLocalDateKeyFromValue(task.completedAt) : task.date;
     return !includedDates || Boolean(date && includedDates.has(date));
   });
   const completedHabitLogs = evidence.habitLogs.filter((log) => (
@@ -101,7 +102,7 @@ function progressValues(evidence: ShareCardEvidence, dateKeys?: readonly string[
   const intentionalDates = new Set<string>();
 
   for (const task of completedTasks) {
-    const date = task.completedAt?.slice(0, 10) || task.date;
+    const date = task.completedAt ? toLocalDateKeyFromValue(task.completedAt) : task.date;
     if (date && DATE_KEY_PATTERN.test(date)) intentionalDates.add(date);
   }
   for (const log of completedHabitLogs) {
@@ -117,9 +118,7 @@ function progressValues(evidence: ShareCardEvidence, dateKeys?: readonly string[
   if (includedDates) {
     for (const habit of evidence.habits.filter((item) => item.status === "active")) {
       for (const date of includedDates) {
-        const scheduled = habit.oneOffDate
-          ? habit.oneOffDate === date
-          : habit.scheduledDays.includes(new Date(`${date}T12:00:00`).getDay());
+        const scheduled = isHabitScheduledOn(habit, new Date(`${date}T12:00:00`));
         if (scheduled) scheduledHabitKeys.add(`${habit.id}:${date}`);
       }
     }

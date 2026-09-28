@@ -46,6 +46,7 @@ export function createDemoSnapshot(options: DemoOptions): PlannerSnapshot {
     active: selected.has(name),
     currentScore: [7, 6, 5, 8, 7, 7, 6, 8][order] ?? 6,
     desiredScore: [9, 8, 8, 9, 8, 9, 8, 9][order] ?? 8,
+    scoresConfirmedAt: timestamp,
     vision: [
       "Me muevo a diario, como con calma y cuido mi energía.",
       "Creo proyectos con propósito y trabajo con enfoque.",

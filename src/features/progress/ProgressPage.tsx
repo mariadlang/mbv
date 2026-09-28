@@ -18,6 +18,7 @@ import { publicConfig } from "@/src/lib/publicConfig";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
 import { canAccessFeature, type UserAccess } from "@/src/domain/access";
 import { buildPremiumProgressAnalysis, buildPremiumRecommendation, type PremiumRecommendationId } from "@/src/domain/premiumInsights";
+import { getLifeAreaScoreState } from "@/src/domain/lifeAreaScores";
 
 function ShareCardStudioLoader() {
   const { m } = useI18n();
@@ -153,7 +154,7 @@ export function ProgressPage({ planner, access }: { planner: PlannerController; 
           <p className="eyebrow">{m("progress.achievement.recent")}</p>
           <h2>{m(achievementMessageKeys[evidence.latestAchievement.id].title)}</h2>
           <p>{m(achievementMessageKeys[evidence.latestAchievement.id].description)}</p>
-          <span className="achievement-card__date">{m("progress.achievement.date", { condition: m(achievementMessageKeys[evidence.latestAchievement.id].condition), date: formatDate(evidence.latestAchievement.achievedAt.slice(0, 10), { dateStyle: "medium" }) })}</span>
+          <span className="achievement-card__date">{m("progress.achievement.date", { condition: m(achievementMessageKeys[evidence.latestAchievement.id].condition), date: formatDate(evidence.latestAchievement.achievedAt, { dateStyle: "medium" }) })}</span>
         </Card> : <Card className="progress-empty-state"><span className="achievement-card__icon"><Sparkles size={25} /></span><p className="eyebrow">{m("progress.empty.eyebrow")}</p><h2>{m("progress.empty.title")}</h2><p>{m("progress.empty.description")}</p><Link className="button button--primary" to="/app/today">{m("progress.empty.action")}</Link></Card>}
       </div>
 
@@ -201,7 +202,7 @@ export function ProgressPage({ planner, access }: { planner: PlannerController; 
       </Card>
 
       <div className="progress-bottom-grid">
-        <Card><div className="card-heading"><div><p className="eyebrow">{m("progress.lifeAreas.eyebrow")}</p><h2>{m("progress.lifeAreas.title")}</h2><p>{m("progress.lifeAreas.description")}</p></div></div><div className="life-area-score-list">{snapshot.lifeAreas.filter((area) => area.active).map((area) => <div key={area.id}><span>{area.name}</span><strong>{area.currentScore ?? "—"}/10</strong></div>)}</div></Card>
+        <Card><div className="card-heading"><div><p className="eyebrow">{m("progress.lifeAreas.eyebrow")}</p><h2>{m("progress.lifeAreas.title")}</h2><p>{m("progress.lifeAreas.description")}</p></div></div><div className="life-area-score-list">{snapshot.lifeAreas.filter((area) => area.active).map((area) => { const state = getLifeAreaScoreState(area); return <div key={area.id}><span>{area.name}</span><strong>{state === "confirmed" ? `${area.currentScore}/10` : state === "pending_confirmation" ? m("progress.lifeAreas.pending") : m("progress.lifeAreas.unrated")}</strong></div>; })}</div></Card>
         <Card className="weekly-review-cta"><Sparkles size={24} /><p className="eyebrow">{m("progress.review.eyebrow")}</p><h2>{evidence.completedTasks ? m("progress.review.withEvidence.title") : m("progress.review.empty.title")}</h2><p>{evidence.completedTasks ? m(evidence.completedTasks === 1 ? "progress.review.withEvidence.one" : "progress.review.withEvidence.many", { count: evidence.completedTasks }) : m("progress.review.empty.description")}</p><Link className="button button--secondary" to="/app/planning/weekly?reset=1">{m("progress.review.action")}</Link></Card>
       </div>
       {shareCardsEnabled && shareStudioOpen ? <ShareCardStudio open evidence={snapshot} dateKeys={dateKeys} onClose={() => setShareStudioOpen(false)} /> : null}

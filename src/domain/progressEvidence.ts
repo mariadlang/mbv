@@ -1,4 +1,5 @@
 import type { GoalProgressType, PlannerSnapshot } from "./planner";
+import { toLocalDateKeyFromValue } from "../lib/dates";
 
 export const goalProgressSource: Record<GoalProgressType, string> = {
   milestones: "Hitos completados",
@@ -19,16 +20,16 @@ function earliest(values: string[]): string {
   return [...values].sort((left, right) => left.localeCompare(right))[0] ?? "";
 }
 
-function latestDateKey(values: string[]): string {
-  return values.filter(Boolean).map((value) => value.slice(0, 10)).sort((left, right) => left.localeCompare(right)).at(-1) ?? "";
+function latestDateKey(values: string[], timeZone?: string): string {
+  return values.filter(Boolean).map((value) => toLocalDateKeyFromValue(value, timeZone)).filter(Boolean).sort((left, right) => left.localeCompare(right)).at(-1) ?? "";
 }
 
-export function buildProgressEvidence(snapshot: PlannerSnapshot) {
+export function buildProgressEvidence(snapshot: PlannerSnapshot, options?: { timeZone?: string }) {
   const completedTasks = snapshot.tasks.filter((task) => task.status === "completed");
   const completedHabitLogs = snapshot.habitLogs.filter((log) => log.value > 0);
   const connectedTasks = completedTasks.filter((task) => task.goalId && (task.periodPlanId || task.projectId));
   const activeDates = new Set<string>([
-    ...completedTasks.map((task) => task.completedAt?.slice(0, 10) || task.date).filter(Boolean),
+    ...completedTasks.map((task) => task.completedAt ? toLocalDateKeyFromValue(task.completedAt, options?.timeZone) : task.date).filter(Boolean),
     ...completedHabitLogs.map((log) => log.date),
   ].filter((date): date is string => Boolean(date)));
   const achievements: ProgressAchievement[] = [];
@@ -36,7 +37,7 @@ export function buildProgressEvidence(snapshot: PlannerSnapshot) {
   const firstHabitAt = earliest(completedHabitLogs.map((log) => log.date || log.updatedAt || log.createdAt));
   const connectedActionAt = earliest(connectedTasks.map((task) => task.completedAt || task.date || task.updatedAt || task.createdAt));
   const thirdActiveDate = [...activeDates].sort((left, right) => left.localeCompare(right))[2] ?? "";
-  const intentionalDaysAt = latestDateKey([thirdActiveDate, firstTaskAt, firstHabitAt]);
+  const intentionalDaysAt = latestDateKey([thirdActiveDate, firstTaskAt, firstHabitAt], options?.timeZone);
 
   if (completedTasks.length > 0) achievements.push({
     id: "first-task",
@@ -68,7 +69,9 @@ export function buildProgressEvidence(snapshot: PlannerSnapshot) {
   });
 
   const latestAchievement = achievements.reduce<ProgressAchievement | undefined>((latest, achievement) => {
-    if (!latest || achievement.achievedAt.localeCompare(latest.achievedAt) >= 0) return achievement;
+    const achievementDate = toLocalDateKeyFromValue(achievement.achievedAt, options?.timeZone);
+    const latestDate = latest ? toLocalDateKeyFromValue(latest.achievedAt, options?.timeZone) : "";
+    if (!latest || achievementDate.localeCompare(latestDate) >= 0) return achievement;
     return latest;
   }, undefined);
 

@@ -1,3 +1,4 @@
+import { isValidCalendarDateKey } from "@/src/domain/calendar";
 import type { CascadePlan, PlannerEvent, Task } from "@/src/domain/planner";
 
 export interface YearMonthSlot {
@@ -9,7 +10,11 @@ export interface YearMonthSlot {
 
 export interface MonthPlanEntries {
   actions: Array<{ id: string; title: string; date?: string }>;
-  events: Array<{ id: string; title: string; date: string }>;
+  events: Array<{ id: string; title: string; date?: string }>;
+}
+
+export function safeMonthEntryDate(value?: string): string | undefined {
+  return value && isValidCalendarDateKey(value) ? value : undefined;
 }
 
 export function monthPeriodKey(year: number, monthIndex: number) {
@@ -37,11 +42,11 @@ export function buildYearMonthSlots(year: number, plans: CascadePlan[], today = 
 export function collectMonthPlanEntries(plan: CascadePlan, tasks: Task[], events: PlannerEvent[]): MonthPlanEntries {
   const linkedActions = tasks
     .filter((task) => task.periodPlanId === plan.id && task.status !== "cancelled")
-    .map((task) => ({ id: task.id, title: task.title, date: task.date }));
+    .map((task) => ({ id: task.id, title: task.title, date: safeMonthEntryDate(task.date) }));
   const linkedActionTitles = new Set(linkedActions.map((action) => action.title.trim().toLocaleLowerCase()));
   const calendarEvents = events
     .filter((event) => event.startDate.startsWith(plan.periodKey))
-    .map((event) => ({ id: event.id, title: event.title, date: event.startDate }));
+    .map((event) => ({ id: event.id, title: event.title, date: safeMonthEntryDate(event.startDate) }));
   const calendarEventKeys = new Set(calendarEvents.map((event) => `${event.title.trim().toLocaleLowerCase()}::${event.date}`));
 
   return {
@@ -49,13 +54,13 @@ export function collectMonthPlanEntries(plan: CascadePlan, tasks: Task[], events
       ...linkedActions,
       ...plan.activities
         .filter((activity) => activity.type !== "event" && !linkedActionTitles.has(activity.title.trim().toLocaleLowerCase()))
-        .map((activity) => ({ id: activity.id, title: activity.title, date: activity.date })),
+        .map((activity) => ({ id: activity.id, title: activity.title, date: safeMonthEntryDate(activity.date) })),
     ],
     events: [
       ...calendarEvents,
       ...plan.activities
         .filter((activity) => activity.type === "event" && !calendarEventKeys.has(`${activity.title.trim().toLocaleLowerCase()}::${activity.date ?? ""}`))
-        .map((activity) => ({ id: activity.id, title: activity.title, date: activity.date ?? "" })),
+        .map((activity) => ({ id: activity.id, title: activity.title, date: safeMonthEntryDate(activity.date) })),
     ],
   };
 }

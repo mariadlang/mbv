@@ -121,6 +121,30 @@ export const recurringItemFormSchema = z.object({
   debtId: optionalId,
 });
 
+const planDateSchema = z.string().refine(isValidCalendarDateKey, "INVALID_PLAN_DATE");
+
+export const monthImportantDateFormSchema = z.object({
+  title: z.string().trim().min(1),
+  date: planDateSchema,
+});
+
+export const planActionFormSchema = z.object({
+  taskId: optionalId,
+  actionKey: z.string().trim().min(1),
+  title: z.string().trim().min(2),
+  date: planDateSchema.optional(),
+});
+
+export const planActionsFormSchema = z.array(planActionFormSchema).superRefine((actions, context) => {
+  const seen = new Set<string>();
+  actions.forEach((action, index) => {
+    if (seen.has(action.actionKey)) {
+      context.addIssue({ code: "custom", path: [index, "actionKey"], message: "DUPLICATE_PLAN_ACTION_KEY" });
+    }
+    seen.add(action.actionKey);
+  });
+});
+
 export const cascadePlanFormSchema = z.object({
   horizon: z.enum(["pathways", "three_years", "annual", "six_months", "quarterly", "monthly", "weekly", "daily"]),
   periodKey: z.string().min(1),
@@ -230,7 +254,7 @@ const profileSchema = z.object({
 const lifeAreaSchema = z.object({
   id: z.string(), name: z.string(), color: z.enum(["rose", "sage", "taupe", "charcoal", "blush"]),
   order: z.number(), active: z.boolean(), currentScore: z.number().min(0).max(10).optional(),
-  desiredScore: z.number().min(0).max(10).optional(), vision: z.string().optional(),
+  desiredScore: z.number().min(0).max(10).optional(), scoresConfirmedAt: timestampSchema.optional(), vision: z.string().optional(),
   icon: z.string().optional(), reflection: z.string().optional(), dream: z.string().optional(), imageDataUrl: imageDataUrlSchema.optional(),
   category: z.string().optional(), custom: z.boolean().optional(),
   createdAt: timestampSchema, updatedAt: timestampSchema,
@@ -239,7 +263,7 @@ const lifeAreaSchema = z.object({
 const habitSchema = z.object({
   id: z.string(), name: z.string(), description: z.string().optional(),
   type: z.enum(["boolean", "quantity", "duration"]),
-  scheduledDays: z.array(z.number().int().min(0).max(6)), oneOffDate: z.string().optional(), target: z.number().positive(), unit: z.string(),
+  scheduledDays: z.array(z.number().int().min(0).max(6)), oneOffDate: z.string().optional(), trackingStartDate: z.string().optional(), target: z.number().positive(), unit: z.string(),
   lifeAreaId: optionalId, goalId: optionalId, origin: z.enum(["established", "experiment"]).optional(),
   recommendation: z.string().optional(), status: z.enum(["active", "paused", "archived"]),
   createdAt: timestampSchema, updatedAt: timestampSchema,
@@ -252,7 +276,7 @@ const habitLogSchema = z.object({
 
 const taskSchema = z.object({
   id: z.string(), title: z.string(), description: z.string().optional(), lifeAreaId: optionalId,
-  goalId: optionalId, milestoneId: optionalId, projectId: optionalId, periodPlanId: optionalId,
+  goalId: optionalId, milestoneId: optionalId, projectId: optionalId, periodPlanId: optionalId, planActionKey: z.string().optional(),
   financialCategoryId: optionalId, date: z.string().optional(), time: z.string().optional(),
   estimatedMinutes: z.number().optional(), recurrence: z.enum(["daily", "weekly", "monthly"]).optional(),
   priority: z.enum(["low", "medium", "high"]),
@@ -530,6 +554,7 @@ export type SavingsFundFormInput = z.input<typeof savingsFundFormSchema>;
 export type DebtFormInput = z.infer<typeof debtFormSchema>;
 export type RecurringItemFormInput = z.infer<typeof recurringItemFormSchema>;
 export type CascadePlanFormInput = z.input<typeof cascadePlanFormSchema>;
+export type PlanActionFormInput = z.input<typeof planActionFormSchema>;
 export type BrainDumpFormInput = z.input<typeof brainDumpFormSchema>;
 export type RoutineFormInput = z.infer<typeof routineFormSchema>;
 export type EventFormInput = z.infer<typeof eventFormSchema>;

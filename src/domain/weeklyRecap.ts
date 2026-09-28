@@ -1,6 +1,6 @@
 import type { PlannerSnapshot } from "./planner";
 import { isHabitLogComplete, isHabitScheduledOn } from "./rules";
-import { toLocalDateKey } from "../lib/dates";
+import { toLocalDateKey, toLocalDateKeyFromValue } from "../lib/dates";
 
 export interface WeeklyRecapSummary {
   reviewable: boolean;
@@ -60,7 +60,7 @@ export function buildWeeklyRecap(
   const completedPriorities = priorities.filter((task) => task.status === "completed").length;
   const connectedGoalIds = new Set(tasks.flatMap((task) => task.goalId ? [task.goalId] : []));
   const advancedGoalIds = new Set(tasks.flatMap((task) => task.status === "completed" && task.goalId ? [task.goalId] : []));
-  const completedMilestones = snapshot.milestones.filter((milestone) => milestone.status === "completed" && weekKeys.has(milestone.updatedAt.slice(0, 10)));
+  const completedMilestones = snapshot.milestones.filter((milestone) => milestone.status === "completed" && weekKeys.has(toLocalDateKeyFromValue(milestone.updatedAt)));
   completedMilestones.forEach((milestone) => {
     connectedGoalIds.add(milestone.goalId);
     advancedGoalIds.add(milestone.goalId);

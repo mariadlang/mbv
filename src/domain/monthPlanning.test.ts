@@ -77,4 +77,19 @@ describe("annual month planning", () => {
       ],
     });
   });
+
+  it("keeps legacy important-date titles readable when their day is missing or invalid", () => {
+    const monthlyPlan = {
+      ...plan("2026-10"),
+      activities: [
+        { id: "missing-day", title: "Conversación importante", type: "event" as const },
+        { id: "invalid-day", title: "Fecha importada", date: "not-a-date", type: "event" as const },
+      ],
+    };
+
+    expect(collectMonthPlanEntries(monthlyPlan, [], []).events).toEqual([
+      { id: "missing-day", title: "Conversación importante", date: undefined },
+      { id: "invalid-day", title: "Fecha importada", date: undefined },
+    ]);
+  });
 });

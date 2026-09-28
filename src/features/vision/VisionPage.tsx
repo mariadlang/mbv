@@ -10,11 +10,14 @@ import { Badge, Button, Card, SectionHeading, SegmentedControl } from "@/src/com
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { Modal } from "@/src/components/ui/Modal";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
+import { averageConfirmedScore, getConfirmedLifeAreaScores, getLifeAreaScoreState } from "@/src/domain/lifeAreaScores";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 const areaIcons = [Heart, BriefcaseBusiness, Coins, Heart, Home, Leaf, Palette, Plane];
 
 export function VisionPage({ planner }: { planner: PlannerController }) {
   const { snapshot } = planner;
+  const { m } = useI18n();
   const [searchParams] = useSearchParams();
   const guided = searchParams.get("guided") === "1";
   const [view, setView] = useState<"dream" | "wheel">("dream");
@@ -32,12 +35,16 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
   const [customImage, setCustomImage] = useState<string>();
   const [imageError, setImageError] = useState("");
 
-  const lifeAreaOptions = snapshot.lifeAreas.filter((area) => area.active && !area.custom);
-  const radarData = useMemo(() => snapshot.lifeAreas.filter((area) => area.active && !area.custom).map((area) => ({
+  const lifeAreaOptions = useMemo(() => snapshot.lifeAreas.filter((area) => area.active && !area.custom), [snapshot.lifeAreas]);
+  const confirmedAreas = useMemo(() => getConfirmedLifeAreaScores(lifeAreaOptions), [lifeAreaOptions]);
+  const radarData = useMemo(() => confirmedAreas.map((area) => ({
     area: area.name.split(" ")[0],
-    actual: area.currentScore ?? 6,
-    deseada: area.desiredScore ?? 8,
-  })), [snapshot.lifeAreas]);
+    actual: area.currentScore,
+    deseada: area.desiredScore,
+  })), [confirmedAreas]);
+  const currentAverage = averageConfirmedScore(lifeAreaOptions, "currentScore");
+  const desiredAverage = averageConfirmedScore(lifeAreaOptions, "desiredScore");
+  const selectedScoreState = selected ? getLifeAreaScoreState(selected) : "unrated";
 
   const chooseArea = (id: string) => {
     const area = snapshot.lifeAreas.find((item) => item.id === id);
@@ -103,11 +110,12 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
               <label className="button button--secondary">Elegir imagen<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => readImage(event.target.files?.[0], setImageDataUrl)} /></label>
               {imageDataUrl && <figure className="vision-upload-preview"><img src={imageDataUrl} alt="Vista previa del área elegida" /><figcaption>Esta imagen aparecerá en tu tarjeta de Vida soñada.</figcaption></figure>}
               {imageError && <p className="form-error" role="alert">{imageError}</p>}
+              <p className={`vision-score-state vision-score-state--${selectedScoreState}`} role="status">{m(selectedScoreState === "confirmed" ? "vision.scores.confirmed" : selectedScoreState === "pending_confirmation" ? "vision.scores.pending" : "vision.scores.unrated")}</p>
               <div className="score-pair">
                 <label><span>Ahora · {currentScore}/10</span><input type="range" min="1" max="10" value={currentScore} onChange={(event) => setCurrentScore(Number(event.target.value))} /></label>
                 <label><span>Deseada · {desiredScore}/10</span><input type="range" min="1" max="10" value={desiredScore} onChange={(event) => setDesiredScore(Number(event.target.value))} /></label>
               </div>
-              <div className="vision-editor-actions"><Button onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, vision, dream, imageDataUrl, ...(selected.custom ? { category: selectedCategory || selected.category } : {}) })}><Save size={16} /> Guardar mi visión</Button>{(vision.trim() || dream.trim()) && <Link className="button button--secondary" to="/app/goals" state={{ openGoal: true, areaId: selected.id, title: dream || vision.split(".")[0], reason: vision || dream }}>Convertir esto en una meta <ArrowRight size={16} /></Link>}</div>
+              <div className="vision-editor-actions"><Button onClick={() => planner.updateLifeArea(selected.id, { vision, dream, imageDataUrl, ...(selected.custom ? { category: selectedCategory || selected.category } : {}) })}><Save size={16} /> {m("vision.scores.saveReflection")}</Button><Button variant="secondary" onClick={() => planner.updateLifeArea(selected.id, { currentScore, desiredScore, confirmScores: true, vision, dream, imageDataUrl, ...(selected.custom ? { category: selectedCategory || selected.category } : {}) })}><CheckCircle2 size={16} /> {m("vision.scores.confirm")}</Button>{(vision.trim() || dream.trim()) && <Link className="button button--secondary" to="/app/goals" state={{ openGoal: true, areaId: selected.id, title: dream || vision.split(".")[0], reason: vision || dream }}>Convertir esto en una meta <ArrowRight size={16} /></Link>}</div>
             </Card>
           )}
         </div>
@@ -115,7 +123,7 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
         <div className="wheel-layout">
           <Card className="wheel-chart-card">
             <div className="wheel-legend"><span><i className="legend-dot legend-dot--taupe" /> Actual</span><span><i className="legend-dot legend-dot--rose" /> Deseada</span></div>
-            <div className="wheel-chart" role="img" aria-label="Rueda de vida: comparación entre la valoración actual y la deseada por área" data-no-translate="true" translate="no">
+            {radarData.length ? <div className="wheel-chart" role="img" aria-label={m("vision.scores.chartAria", { count: radarData.length })}>
               <ResponsiveContainer width="100%" height={460}>
                 <RadarChart data={radarData} outerRadius="72%">
                   <PolarGrid stroke="var(--color-border)" />
@@ -125,11 +133,13 @@ export function VisionPage({ planner }: { planner: PlannerController }) {
                   <Radar name="Deseada" dataKey="deseada" stroke="var(--color-brand-strong)" fill="var(--color-brand)" fillOpacity={0.24} />
                 </RadarChart>
               </ResponsiveContainer>
-            </div>
+            </div> : <div className="wheel-empty"><Sparkles size={28} /><h2>{m("vision.scores.emptyTitle")}</h2><p>{m("vision.scores.emptyDescription")}</p><Button variant="secondary" onClick={() => setView("dream")}>{m("vision.scores.emptyAction")}</Button></div>}
+            <p className="wheel-rated-count">{m("vision.scores.count", { count: confirmedAreas.length, total: lifeAreaOptions.length })}</p>
+            <ul className="wheel-score-status-list">{lifeAreaOptions.map((area) => { const state = getLifeAreaScoreState(area); return <li key={area.id}><span data-no-translate="true">{area.name}</span><strong>{state === "confirmed" ? `${area.currentScore}/10` : m(state === "pending_confirmation" ? "vision.scores.pending" : "vision.scores.unrated")}</strong></li>; })}</ul>
           </Card>
           <div className="wheel-side page-stack">
             <Card className="reflection-panel"><Sparkles size={24} /><p className="eyebrow">Reflexión</p><h2>¿Qué área deseas fortalecer?</h2>{selected?.vision ? <p data-no-translate="true" translate="no">{selected.vision}</p> : <p>Elige un área y escribe una visión que te dé dirección, no presión.</p>}<Button variant="secondary" onClick={() => setView("dream")}>Editar mi visión</Button></Card>
-            <Card className="wheel-summary"><p className="eyebrow">Resumen</p><strong>{(radarData.reduce((sum, item) => sum + item.actual, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio actual</span><strong>{(radarData.reduce((sum, item) => sum + item.deseada, 0) / Math.max(radarData.length, 1)).toFixed(1)}/10</strong><span>Promedio deseado</span></Card>
+            <Card className="wheel-summary"><p className="eyebrow">Resumen</p><strong>{currentAverage === null ? "—" : `${currentAverage.toFixed(1)}/10`}</strong><span>{currentAverage === null ? m("vision.scores.unrated") : m("vision.scores.averageCurrent")}</span><strong>{desiredAverage === null ? "—" : `${desiredAverage.toFixed(1)}/10`}</strong><span>{desiredAverage === null ? m("vision.scores.unrated") : m("vision.scores.averageDesired")}</span></Card>
           </div>
         </div>
       )}

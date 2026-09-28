@@ -33,7 +33,7 @@ export function mergeDefaultLifeAreas(current: LifeArea[], createId: () => strin
     const defaultIndex = defaultLifeAreaNames.indexOf(name);
     return {
       id: createId(), name, color: colors[defaultIndex], order: canonical.length + defaultIndex,
-      active: true, currentScore: 6, desiredScore: 8, vision: "", custom: false,
+      active: true, vision: "", custom: false,
       createdAt: timestamp, updatedAt: timestamp,
     } satisfies LifeArea;
   })];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { addWeeks, isSameMonth, isSameYear } from "date-fns";
 import {
   ArrowLeft,
@@ -100,6 +101,7 @@ function closeClosestDetails(target: EventTarget | null) {
 
 export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewInitiallyOpen = false, onAnchorDateChange, onBack, onEditTask }: WeeklyPlanViewProps) {
   const { snapshot } = planner;
+  const navigate = useNavigate();
   const calendarIntegration = useCalendarIntegration();
   const { m, formatDate, formatNumber } = useI18n();
   const weekDates = useMemo(() => getWeekDates(anchorDate, 1), [anchorDate]);
@@ -338,10 +340,13 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
                   {dayHabits.map((habit) => {
                     const log = snapshot.habitLogs.find((item) => item.habitId === habit.id && item.date === key);
                     const complete = isHabitLogComplete(habit, log);
+                    const measured = habit.type !== "boolean";
+                    const partial = measured && Boolean(log && !complete);
+                    const measuredStatus = m("planning.week.habitProgressLabel", { value: formatNumber(log?.value ?? 0), target: formatNumber(habit.target), unit: habit.unit });
                     return <div className="weekly-habit-row" key={habit.id}>
-                      <button type="button" className={complete ? "is-complete" : ""} aria-pressed={complete} aria-label={m(complete ? "planning.week.habitUnmarkLabel" : "planning.week.habitRegisterLabel", { habit: habit.name, date: formatDate(date, { day: "numeric", month: "long" }), readOnly: dayReadOnly ? m("planning.day.readOnlySuffix") : "" })} disabled={Boolean(savingKey) || dayReadOnly} onClick={() => void runOperation(`habit-${habit.id}-${key}`, () => planner.toggleHabit(habit.id, key), { key: complete ? "planning.week.habitRemoved" : "planning.week.habitRegistered" })}>{complete ? <Check size={13} /> : <Circle size={13} />}</button>
+                      <button type="button" className={complete ? "is-complete" : partial ? "is-partial" : ""} aria-pressed={measured ? undefined : complete} aria-label={measured ? m("planning.week.habitEditProgressLabel", { habit: habit.name, date: formatDate(date, { day: "numeric", month: "long" }), progress: measuredStatus, readOnly: dayReadOnly ? m("planning.day.readOnlySuffix") : "" }) : m(complete ? "planning.week.habitUnmarkLabel" : "planning.week.habitRegisterLabel", { habit: habit.name, date: formatDate(date, { day: "numeric", month: "long" }), readOnly: dayReadOnly ? m("planning.day.readOnlySuffix") : "" })} disabled={Boolean(savingKey) || dayReadOnly} onClick={() => measured ? navigate(`/app/habits?habit=${encodeURIComponent(habit.id)}&date=${key}#habit-week`) : void runOperation(`habit-${habit.id}-${key}`, () => planner.toggleHabit(habit.id, key), { key: complete ? "planning.week.habitRemoved" : "planning.week.habitRegistered" })}>{complete ? <Check size={13} /> : partial ? <span>{formatNumber(log?.value ?? 0)}/{formatNumber(habit.target)}</span> : <Circle size={13} />}</button>
                       <Repeat2 size={15} aria-hidden="true" />
-                      <span>{m("planning.week.habitPrefix")} <span data-no-translate="true" translate="no">{habit.name}</span></span>
+                      <span>{m("planning.week.habitPrefix")} <span data-no-translate="true" translate="no">{habit.name}</span>{measured && log ? <small> · {measuredStatus}</small> : null}</span>
                     </div>;
                   })}
                   {!dayTasks.length && !dayHabits.length && !localEvents.length && !externalEvents.length && openComposerDate !== key && openEventComposerDate !== key && <p className="weekly-day-empty">{m("planning.week.dayEmpty")}</p>}
