@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, Check, LockKeyhole, Mail, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Crown, Heart, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { BrandMark } from "@/src/components/ui/BrandMark";
@@ -62,7 +62,11 @@ function clearPendingAuthDestination() {
 
 const freeCapabilityKeys = ["free.capability.vision", "free.capability.goals", "free.capability.habits", "free.capability.today", "free.capability.dashboard"] satisfies MessageKey[];
 const premiumCapabilityKeys = ["premium.capability.included", "premium.capability.fitness", "premium.capability.finances", "premium.capability.analysis", "premium.capability.recommendations"] satisfies MessageKey[];
-const rewardStepKeys = ["trial.reward.free", "trial.reward.streak", "trial.reward.alert", "trial.reward.activation"] satisfies MessageKey[];
+const rewardFacts = [
+  { key: "trial.reward.streak", Icon: CalendarDays },
+  { key: "trial.reward.premium", Icon: Crown },
+  { key: "trial.reward.noCost", Icon: Heart },
+] satisfies Array<{ key: MessageKey; Icon: typeof CalendarDays }>;
 type BillingConfirmationState = "checking" | "pending" | "confirmed" | "auth" | "error";
 
 async function readBillingConfirmationState(): Promise<BillingConfirmationState> {
@@ -108,7 +112,7 @@ function BillingConfirmationCard() {
 
 export function TrialPage() {
   const { m } = useI18n();
-  return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><strong className="trial-plan-price">USD 0</strong><ul>{freeCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><strong className="trial-plan-price">{m("premium.monthly.price")} · {m("premium.annual.price")}</strong><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul><Link className="button button--secondary" to="/upgrade">{m("premium.eyebrow")}</Link></Card></div><section className="trial-reward" aria-labelledby="trial-reward-title"><p className="eyebrow">{m("trial.reward.eyebrow")}</p><h2 id="trial-reward-title">{m("trial.reward.title")}</h2><p>{m("trial.reward.description")}</p><ol>{rewardStepKeys.map((key, index) => <li key={key}><span>{index + 1}</span><strong>{m(key)}</strong></li>)}</ol></section><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
+  return <PublicFrame><section className="trial-page" data-i18n-explicit="true"><p className="eyebrow">{m("trial.eyebrow")}</p><h1>{m("trial.title")}</h1><p className="lead">{m("trial.note")}</p><div className="trial-comparison"><Card><span>{m("trial.included.label")}</span><h2>{m("trial.included.title")}</h2><strong className="trial-plan-price">USD 0</strong><ul>{freeCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul></Card><Card className="trial-premium"><Sparkles size={22} /><span>{m("trial.premium.label")}</span><h2>{m("trial.premium.title")}</h2><strong className="trial-plan-price">{m("premium.monthly.price")} · {m("premium.annual.price")}</strong><ul>{premiumCapabilityKeys.map((key) => <li key={key}><Check size={16} />{m(key)}</li>)}</ul><Link className="button button--secondary" to="/upgrade">{m("premium.eyebrow")}</Link></Card></div><section className="trial-reward" aria-labelledby="trial-reward-title"><p className="eyebrow">{m("trial.reward.eyebrow")}</p><h2 id="trial-reward-title">{m("trial.reward.title")}</h2><p>{m("trial.reward.description")}</p><ul>{rewardFacts.map(({ key, Icon }) => <li key={key}><Icon aria-hidden="true" size={20} /><strong>{m(key)}</strong></li>)}</ul></section><Link className="button button--primary" to="/signup" onClick={() => analyticsService.track(CTA.acquisition.event, { source: "trial", route: "/signup", version: 2 })}>{m("public.cta.startTrial")}</Link></section></PublicFrame>;
 }
 
 export function PrivacyPage() {

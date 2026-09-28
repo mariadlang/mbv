@@ -10,7 +10,7 @@ import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { COOKIE_POLICY_VERSION } from "@/src/lib/legalConfig";
 import { analyticsService, setAnalyticsConsent } from "@/src/services/analyticsService";
 import { landingContent } from "@/src/features/landing/landingContent";
-import { LandingPricing } from "@/src/features/landing/LandingConversionSections";
+import { LandingAfterTrial, LandingPricing } from "@/src/features/landing/LandingConversionSections";
 
 vi.mock("@/src/hooks/useAccount", () => ({
   useAccount: () => ({ user: null }),
@@ -118,15 +118,54 @@ describe("oferta comercial de la landing", () => {
       "Análisis avanzado del progreso",
       "Recomendaciones para ti",
     ]);
-    expect(es.reward.steps.map(({ title }) => title)).toEqual([
-      "Empieza en Gratis",
-      "Completa 30 días consecutivos",
-      "El equipo recibe una alerta",
-      "Recibe 30 días Premium",
+    expect(es.reward).toMatchObject({
+      titleLines: ["Tu constancia", "tiene recompensa"],
+      descriptionLines: ["Usa My Best Version durante 30 días consecutivos", "y recibe 30 días Premium gratis."],
+      cta: "Empezar gratis",
+      note: "Para sumar un día, guarda al menos una acción en Visión, Metas, Hábitos o Mi día.",
+    });
+    expect(es.reward.facts.map(({ lines }) => lines)).toEqual([
+      ["30 días", "consecutivos"],
+      ["30 días", "Premium"],
+      ["Sin costo"],
     ]);
+    expect(JSON.stringify({ promo: es.promo, reward: es.reward, faq: es.faq })).not.toMatch(/equipo|alerta|activaci[oó]n/i);
     expect(JSON.stringify(es)).not.toMatch(/15 días|30,99|con IA|planificación de (?:1|3|5) (?:año|años|meses)/i);
     expect(en.pricing.annualPrice).toBe("USD 29.99 / year");
+    expect(JSON.stringify({ promo: en.promo, reward: en.reward, faq: en.faq })).not.toMatch(/team|alert|activation/i);
     expect(JSON.stringify(en)).not.toMatch(/15-day trial|30\.99|AI recommendations|(?:one|three|five)-(?:month|year) planning/i);
+  });
+
+  it("renderiza una sola recompensa accesible y conserva el CTA anónimo", () => {
+    const onTrialAction = vi.fn();
+    const view = render(
+      <MemoryRouter>
+        <LandingAfterTrial content={landingContent.es} authenticated={false} onTrialAction={onTrialAction} />
+      </MemoryRouter>,
+    );
+
+    const reward = within(view.getByRole("region", { name: "Tu constancia tiene recompensa" }));
+    expect(reward.getByText("Usa My Best Version durante 30 días consecutivos")).toBeTruthy();
+    expect(reward.getByText("y recibe 30 días Premium gratis.")).toBeTruthy();
+    expect(reward.getByText("Para sumar un día, guarda al menos una acción en Visión, Metas, Hábitos o Mi día.")).toBeTruthy();
+    expect(reward.queryByRole("listitem", { name: /equipo|alerta|activación/i })).toBeNull();
+    expect(reward.getAllByRole("listitem")).toHaveLength(3);
+
+    const cta = reward.getByRole("link", { name: "Empezar gratis" });
+    expect(cta.getAttribute("href")).toBe("/signup");
+    cta.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(cta);
+    expect(onTrialAction).toHaveBeenCalledWith("landing_after_trial");
+  });
+
+  it("lleva la recompensa al espacio existente cuando hay una sesión", () => {
+    const view = render(
+      <MemoryRouter>
+        <LandingAfterTrial content={landingContent.es} authenticated onTrialAction={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(view.getByRole("link", { name: "Ir a mi espacio" }).getAttribute("href")).toBe("/app/dashboard");
   });
 
   it("conserva el periodo al dirigir compras anónimas hacia el registro", () => {

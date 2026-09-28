@@ -76,10 +76,10 @@ export interface LandingContent {
   };
   comparison: { eyebrow: string; title: string; description: string; featureLabel: string; freeLabel: string; premiumLabel: string; rows: ComparisonRow[] };
   reward: {
-    eyebrow: string;
-    title: string;
-    description: string;
-    steps: Array<{ title: string; description: string }>;
+    titleLines: [string, string];
+    descriptionLines: [string, string];
+    cta: string;
+    facts: Array<{ icon: "calendar" | "crown" | "heart"; lines: [string, string?] }>;
     note: string;
   };
   finalCta: { eyebrow: string; title: string; description: string };
@@ -89,7 +89,7 @@ export interface LandingContent {
 }
 
 const es: LandingContent = {
-  promo: "Usa Gratis 30 días consecutivos y recibe 30 días Premium tras la activación del equipo",
+  promo: "Usa My Best Version durante 30 días consecutivos y recibe 30 días Premium gratis",
   navigation: [
     { id: "como-funciona", label: "Cómo funciona" },
     { id: "que-incluye", label: "Qué incluye" },
@@ -241,16 +241,18 @@ const es: LandingContent = {
     ],
   },
   reward: {
-    eyebrow: "30 DÍAS PREMIUM POR TU CONSTANCIA",
-    title: "Tu recorrido de Gratis a Premium",
-    description: "La recompensa no se activa al registrarte. Primero completas 30 días consecutivos de uso y el equipo revisa la alerta.",
-    steps: [
-      { title: "Empieza en Gratis", description: "Crea tu cuenta por USD 0 y usa las funciones incluidas." },
-      { title: "Completa 30 días consecutivos", description: "Guarda cada día al menos una acción real en Visión, Metas, Hábitos o Mi día." },
-      { title: "El equipo recibe una alerta", description: "El hito se envía a revisión; no se activa Premium de forma automática." },
-      { title: "Recibe 30 días Premium", description: "Después de la activación del equipo, disfrutas 30 días Premium sin costo." },
+    titleLines: ["Tu constancia", "tiene recompensa"],
+    descriptionLines: [
+      "Usa My Best Version durante 30 días consecutivos",
+      "y recibe 30 días Premium gratis.",
     ],
-    note: "Gratis → 30 días consecutivos → alerta al equipo → activación → 30 días Premium",
+    cta: "Empezar gratis",
+    facts: [
+      { icon: "calendar", lines: ["30 días", "consecutivos"] },
+      { icon: "crown", lines: ["30 días", "Premium"] },
+      { icon: "heart", lines: ["Sin costo"] },
+    ],
+    note: "Para sumar un día, guarda al menos una acción en Visión, Metas, Hábitos o Mi día.",
   },
   finalCta: {
     eyebrow: "TU PROCESO PUEDE EMPEZAR HOY",
@@ -260,16 +262,15 @@ const es: LandingContent = {
   faq: {
     eyebrow: "PREGUNTAS FRECUENTES",
     title: "Todo claro antes de empezar",
-    description: "Precios, funciones y activación explicados sin letra pequeña.",
+    description: "Precios, funciones y recompensa explicados sin letra pequeña.",
     items: [
       { question: "¿Gratis tiene límite de tiempo?", answer: "No. El plan Gratis cuesta USD 0 y no vence. Incluye Visión, Metas, Hábitos y registro, Mi día y Dashboard." },
       { question: "¿Necesito tarjeta para empezar?", answer: "No. Puedes crear tu cuenta Gratis sin registrar una tarjeta ni un método de pago." },
       { question: "¿Qué incluye Premium?", answer: "Premium incluye todo lo de Gratis y añade Fitness y alimentación, Finanzas, Análisis avanzado del progreso y Recomendaciones para ti." },
       { question: "¿Cuánto cuesta Premium?", answer: "Premium cuesta USD 2,99 al mes o USD 29,99 al año. Tú eliges la modalidad antes de salir al checkout." },
-      { question: "¿Cómo funciona la recompensa de 30 días?", answer: "Empiezas en Gratis. Cuando completas 30 días consecutivos de uso, el equipo recibe una alerta, revisa el hito y puede activar 30 días Premium sin costo. No se activa al registrarte ni de forma automática." },
+      { question: "¿Cómo funciona la recompensa de 30 días?", answer: "Usa My Best Version durante 30 días consecutivos y recibe 30 días Premium gratis. Para sumar un día, guarda al menos una acción en Visión, Metas, Hábitos o Mi día." },
       { question: "¿Qué cuenta como un día de uso?", answer: "Cuenta una fecha en la que, con tu sesión iniciada, guardas una acción real: crear o actualizar tu Visión o una Meta, registrar un Hábito, o crear, actualizar o completar una acción con fecha en Mi día. Abrir la app o visitar la landing no cuenta." },
       { question: "¿Qué pasa si interrumpo la continuidad?", answer: "Tus datos y avances permanecen. La secuencia actual vuelve a empezar con tu siguiente día válido; varios registros el mismo día siguen contando como una sola fecha." },
-      { question: "¿Cuándo empiezan mis 30 días Premium?", answer: "Empiezan cuando el equipo revisa la alerta y activa el beneficio, no cuando completas el requisito. Desde esa activación recibes 30 días completos y el beneficio se concede una sola vez para esta campaña." },
       { question: "¿Los 30 días Premium se renuevan automáticamente?", answer: "No. La recompensa no registra un cobro automático. Al terminar, puedes seguir con Gratis o comprar Premium mensual o anual." },
       { question: "¿Cómo compro Premium?", answer: "Elige Comprar mensual o Comprar anual. El pago ocurre en Mercado Pago y el acceso se actualiza sólo después de que su estado queda confirmado.", checkout: true },
       { question: "¿Cómo funcionan la renovación y la cancelación?", answer: "Cuando la contratación está habilitada, Mercado Pago crea una suscripción automática con el intervalo que elegiste. Cada nuevo período requiere un pago confirmado. Puedes consultar fechas y estado en Mi plan y solicitar la cancelación desde la sección de Suscripciones y pagos; una cancelación programada conserva el acceso hasta el final del período ya pagado." },
@@ -299,7 +300,7 @@ const es: LandingContent = {
 
 const en: LandingContent = {
   ...es,
-  promo: "Use Free for 30 consecutive days and receive 30 Premium days after team activation",
+  promo: "Use My Best Version for 30 consecutive days and receive 30 Premium days free",
   navigation: [
     { id: "como-funciona", label: "How it works" },
     { id: "que-incluye", label: "What's included" },
@@ -438,16 +439,18 @@ const en: LandingContent = {
     ],
   },
   reward: {
-    eyebrow: "30 PREMIUM DAYS FOR YOUR CONSISTENCY",
-    title: "Your journey from Free to Premium",
-    description: "The reward does not activate when you sign up. First complete 30 consecutive days of use, then the team reviews the alert.",
-    steps: [
-      { title: "Start on Free", description: "Create your USD 0 account and use the included features." },
-      { title: "Complete 30 consecutive days", description: "Each day, save at least one real action in Vision, Goals, Habits or My Day." },
-      { title: "The team receives an alert", description: "The milestone goes to review; Premium is not activated automatically." },
-      { title: "Receive 30 Premium days", description: "After team activation, enjoy 30 Premium days at no cost." },
+    titleLines: ["Your consistency", "has a reward"],
+    descriptionLines: [
+      "Use My Best Version for 30 consecutive days",
+      "and receive 30 Premium days free.",
     ],
-    note: "Free → 30 consecutive days → team alert → activation → 30 Premium days",
+    cta: "Start for free",
+    facts: [
+      { icon: "calendar", lines: ["30 consecutive", "days"] },
+      { icon: "crown", lines: ["30 Premium", "days"] },
+      { icon: "heart", lines: ["At no cost"] },
+    ],
+    note: "To add a day, save at least one action in Vision, Goals, Habits or My Day.",
   },
   finalCta: {
     eyebrow: "YOUR PROCESS CAN START TODAY",
@@ -457,16 +460,15 @@ const en: LandingContent = {
   faq: {
     eyebrow: "FREQUENTLY ASKED QUESTIONS",
     title: "Everything clear before you start",
-    description: "Prices, features and activation explained without fine print.",
+    description: "Prices, features and the reward explained without fine print.",
     items: [
       { question: "Does Free have a time limit?", answer: "No. Free costs USD 0 and does not expire. It includes Vision, Goals, Habits and logs, My Day and Dashboard." },
       { question: "Do I need a card to start?", answer: "No. You can create a Free account without registering a card or payment method." },
       { question: "What does Premium include?", answer: "Premium includes everything in Free, plus Fitness and nutrition, Finances, Advanced progress analysis and Recommendations for you." },
       { question: "How much does Premium cost?", answer: "Premium costs USD 2.99 per month or USD 29.99 per year. You choose the billing option before leaving for checkout." },
-      { question: "How does the 30-day reward work?", answer: "You start on Free. After 30 consecutive days of use, the team receives an alert, reviews the milestone and may activate 30 Premium days at no cost. It does not activate at registration or automatically." },
+      { question: "How does the 30-day reward work?", answer: "Use My Best Version for 30 consecutive days and receive 30 Premium days free. To add a day, save at least one action in Vision, Goals, Habits or My Day." },
       { question: "What counts as a day of use?", answer: "A date counts when, while signed in, you save a real action: create or update your Vision or a Goal, log a Habit, or create, update or complete a dated My Day action. Opening the app or visiting the landing page does not count." },
       { question: "What happens if I break the streak?", answer: "Your data and progress remain. The current sequence starts again on your next valid day; multiple records on the same day still count as one date." },
-      { question: "When do my 30 Premium days begin?", answer: "They begin when the team reviews the alert and activates the benefit, not when you complete the requirement. You then receive 30 full days, once for this campaign." },
       { question: "Do the 30 Premium days renew automatically?", answer: "No. The reward does not create an automatic charge. When it ends, you can stay on Free or buy monthly or annual Premium." },
       { question: "How do I buy Premium?", answer: "Choose Buy monthly or Buy annual. Payment takes place in Mercado Pago and access updates only after its status is confirmed.", checkout: true },
       { question: "How do renewal and cancellation work?", answer: "When purchasing is enabled, Mercado Pago creates an automatic subscription for the interval you chose. Every new period requires a confirmed payment. You can review dates and status in My plan and request cancellation from Subscriptions and payments; a scheduled cancellation keeps access through the paid period." },

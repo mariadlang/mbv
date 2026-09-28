@@ -613,3 +613,14 @@ El repositorio no es superficial. El punto base de P1, `8e6ede1`, alcanza 65 com
 - **Despliegue y smoke:** Vercel registró el deployment Production de GitHub `6717547820` como `success` para el mismo SHA. `mybestversion.life` aprobó landing, privacidad, Trial y las ocho superficies afectadas en 1440×900 y 390×844, sin errores de consola, carga atascada ni overflow horizontal. No se accionaron controles que escriben en el planner; la mera navegación autenticada puede registrar actividad de retorno o telemetría consentida.
 - **Estado de entrega:** release funcional publicado y verificado. Calendar externo y los flags P2 permanecen apagados; no se ejecutaron pagos, correos, OAuth ni cambios de infraestructura.
 - **Documentación:** [`../auditorias/2026-09-25-cierre-funcionamiento-ux/README.md`](../auditorias/2026-09-25-cierre-funcionamiento-ux/README.md), su [`validacion.md`](../auditorias/2026-09-25-cierre-funcionamiento-ux/validacion.md), `ESTADO_ACTUAL.md` y este historial.
+
+### 2026-09-28 — Rediseño público de la recompensa por constancia
+
+- **Identificador estable:** `MBV-H-041`.
+- **Tipo de cambio:** implementación visual aprobada, limpieza de copy público y regresión accesible/responsive; sin cambio de backend, elegibilidad ni concesión de Premium.
+- **Landing:** el recorrido de cuatro tarjetas se sustituyó por una sola tarjeta editorial con regalo, título, descripción, CTA, tres datos y nota de actividad. El CTA conserva `/signup` para visitantes, `/app/dashboard` para cuentas autenticadas y la fuente analítica `landing_after_trial`.
+- **Copy público relacionado:** la franja, las preguntas frecuentes y `/trial` dejaron de explicar alertas, revisiones o activación por parte del equipo. ES/EN mantienen paridad. No se añadieron promesas de concesión automática, inmediata o al instante.
+- **Contrato preservado:** continúan intactos el conteo de fechas, criterios de actividad válida, elegibilidad, `pending_activation`, controles superadmin, protecciones de pago, outbox y correos internos. La comunicación pública simplificada no cambia que la concesión real continúa siendo manual.
+- **Responsive y accesibilidad:** la tarjeta usa HTML/CSS real, iconos Lucide decorativos, encabezado accesible, foco existente, tokens de marca y decoraciones CSS sin interacción. Se comprobó en 1448×1086, 768×1024, 390×844 y 320×844; no hubo overflow horizontal y los tres datos se apilan cuando ya no caben con claridad.
+- **Validación local:** lint, TypeScript, 68 archivos/401 pruebas unitarias, 1.597 claves i18n ES/EN, 803/803 entradas legacy, 298/298 coincidencias de tokens, 22/22 contrastes y build Next de 21 rutas aprobaron. Dos E2E dirigidos comprobaron contrato comercial/CTA y ausencia de overflow en nueve tamaños. Se generaron capturas aisladas de la tarjeta para los cuatro tamaños requeridos.
+- **Estado de entrega:** cambio local validado. No se creó commit, no se hizo push y no se desplegó.

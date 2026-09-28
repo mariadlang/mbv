@@ -109,7 +109,7 @@ export function LandingPage() {
         <LandingPremium content={content} />
         <LandingPricing content={content} authenticated={authenticated} getPurchaseDestination={getPurchaseDestination} onTrialAction={trackTrialAction} onCheckout={trackCheckout} onPricingChange={trackPricingChange} />
         <LandingComparison content={content} />
-        <LandingAfterTrial content={content} />
+        <LandingAfterTrial content={content} authenticated={authenticated} onTrialAction={trackTrialAction} />
         <LandingFinalCta content={content} authenticated={authenticated} onTrialAction={trackTrialAction} onLogin={trackLogin} />
         <LandingFaq content={content} getPurchaseDestination={getPurchaseDestination} onCheckout={trackCheckout} onFaqOpen={trackFaqOpen} />
       </main>

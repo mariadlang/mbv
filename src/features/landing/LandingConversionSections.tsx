@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, ChevronDown, Minus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronDown, Crown, Gift, Heart, Minus, ShieldCheck, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { CookiePreferencesButton } from "@/src/features/legal/CookieConsent";
@@ -92,9 +92,40 @@ export function LandingComparison({ content }: { content: LandingContent }) {
   );
 }
 
-export function LandingAfterTrial({ content }: { content: LandingContent }) {
+const rewardIcons = { calendar: CalendarDays, crown: Crown, heart: Heart } as const;
+
+export function LandingAfterTrial({ content, authenticated, onTrialAction }: Pick<ConversionProps, "content" | "authenticated" | "onTrialAction">) {
+  const destination = authenticated ? "/app/dashboard" : "/signup";
   return (
-    <section className="landing-section landing-section--after-trial" aria-labelledby="landing-reward-title"><div className="landing-shell landing-reward"><div className="landing-reward__intro"><span className="landing-icon"><ShieldCheck aria-hidden="true" /></span><div><p className="landing-eyebrow">{content.reward.eyebrow}</p><h2 id="landing-reward-title">{content.reward.title}</h2><p>{content.reward.description}</p></div></div><ol className="landing-reward__steps">{content.reward.steps.map((step, index) => <li key={step.title}><span>{index + 1}</span><div><h3>{step.title}</h3><p>{step.description}</p></div></li>)}</ol><p className="landing-reward__summary">{content.reward.note}</p></div></section>
+    <section className="landing-section landing-section--after-trial" aria-labelledby="landing-reward-title">
+      <div className="landing-shell landing-reward">
+        <span className="landing-reward__gift" aria-hidden="true"><Gift /></span>
+        <div className="landing-reward__intro">
+          <h2 id="landing-reward-title" className="landing-reward__title" aria-label={content.reward.titleLines.join(" ")}>
+            {content.reward.titleLines.map((line) => <span key={line}>{line}</span>)}
+          </h2>
+          <p className="landing-reward__description">
+            {content.reward.descriptionLines.map((line) => <span key={line}>{line}</span>)}
+          </p>
+        </div>
+        <Link className="landing-button landing-reward__cta" to={destination} onClick={() => onTrialAction("landing_after_trial")}>
+          {authenticated ? content.actions.openSpace : content.reward.cta}
+          <ArrowRight aria-hidden="true" size={24} />
+        </Link>
+        <ul className="landing-reward__facts">
+          {content.reward.facts.map((fact) => {
+            const Icon = rewardIcons[fact.icon];
+            return (
+              <li key={fact.icon} className="landing-reward__fact">
+                <span className="landing-reward__fact-icon" aria-hidden="true"><Icon /></span>
+                <span>{fact.lines.map((line) => <span key={line}>{line}</span>)}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="landing-reward__note">{content.reward.note}</p>
+      </div>
+    </section>
   );
 }
 

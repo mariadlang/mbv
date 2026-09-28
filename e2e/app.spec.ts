@@ -13,6 +13,7 @@ const p1Viewports = [
 ] as const;
 
 const landingViewports = [
+  { width: 320, height: 844 },
   { width: 375, height: 812 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
@@ -20,6 +21,7 @@ const landingViewports = [
   { width: 1024, height: 768 },
   { width: 1280, height: 800 },
   { width: 1440, height: 900 },
+  { width: 1448, height: 1086 },
 ] as const;
 
 function signedOutPath(path: string) {
@@ -1662,6 +1664,23 @@ test("landing exposes its exact anchors and truthful Free and Premium terms", as
   ));
   expect(accessStorageAfter).toEqual(accessStorageBefore);
   await expect(page).toHaveURL(landingUrlBeforeCheckout);
+
+  const reward = page.getByRole("region", { name: "Tu constancia tiene recompensa" });
+  await expect(reward).toContainText("Usa My Best Version durante 30 días consecutivos");
+  await expect(reward).toContainText("y recibe 30 días Premium gratis.");
+  await expect(reward).toContainText("30 días consecutivos");
+  await expect(reward).toContainText("30 días Premium");
+  await expect(reward).toContainText("Sin costo");
+  await expect(reward).toContainText("Para sumar un día, guarda al menos una acción en Visión, Metas, Hábitos o Mi día.");
+  await expect(reward).not.toContainText(/equipo|alerta|activación/i);
+  await expect(reward.getByRole("link", { name: "Empezar gratis", exact: true })).toHaveAttribute("href", "/signup");
+
+  await page.goto(signedOutPath("/trial"));
+  await dismissCookieBanner(page);
+  const trialReward = page.getByRole("region", { name: "30 días consecutivos, 30 días Premium" });
+  await expect(trialReward).toContainText("Usa My Best Version durante 30 días consecutivos y recibe 30 días Premium gratis.");
+  await expect(trialReward).toContainText("Sin costo");
+  await expect(trialReward).not.toContainText(/equipo|alerta|activación/i);
 });
 
 test("landing mobile menu is keyboard accessible and closes after navigation", async ({ page }) => {
@@ -1736,6 +1755,9 @@ test("landing has no horizontal overflow at every required width", async ({ page
     await expectNoHorizontalOverflow(page, `landing at ${viewport.width}x${viewport.height}`);
     await page.locator("section#planes").scrollIntoViewIfNeeded();
     await expectNoHorizontalOverflow(page, `landing pricing at ${viewport.width}x${viewport.height}`);
+    await page.locator(".landing-section--after-trial").scrollIntoViewIfNeeded();
+    await expect(page.getByRole("heading", { name: "Tu constancia tiene recompensa", exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page, `landing reward at ${viewport.width}x${viewport.height}`);
   }
 
   expect(runtimeErrors).toEqual([]);
