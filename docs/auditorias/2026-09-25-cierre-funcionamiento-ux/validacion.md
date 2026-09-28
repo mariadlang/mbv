@@ -13,7 +13,7 @@ Fecha de ejecución: **2026-09-24 a 2026-09-28**, America/Bogota.
 - `pnpm build`: aprobado con Next.js 16.2.6 y 21 rutas.
 - `git diff --check`: sin errores; sólo advertencias CRLF del worktree de Windows.
 
-`pnpm build:vinext` se ejecutó y se detuvo de forma segura porque el entorno local aislado no contiene `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. No se copiaron secretos desde otro worktree ni se inventaron valores. El destino productivo de esta entrega es Vercel/Next; su build local y el build de CI aprobaron.
+`pnpm build:vinext` se reejecutó con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` obtenidas del bundle público ya desplegado e inyectadas únicamente al proceso. Las cinco fases y las 21 rutas terminaron con código `0`. No se creó un archivo `.env`, las variables no permanecieron en el entorno y el working tree siguió limpio. Los avisos de tiempos de plugins y clasificación estática de Vinext fueron informativos, no fallos.
 
 ## Navegador real
 

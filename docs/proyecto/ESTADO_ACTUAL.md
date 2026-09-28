@@ -328,7 +328,7 @@ Para el cierre funcional y UX `MBV-H-040`:
 - ESLint, TypeScript, 68 archivos/399 pruebas unitarias, i18n (1.598 claves estables ES/EN y 803/803 legacy), tokens (298/298), contraste (22/22) y build Next de 21 rutas aprobaron.
 - Playwright cubrió escritorio 1440×900 y móvil 390×844, formularios, persistencia, datos legacy, foco/nombres accesibles, navegación entre módulos, zona `America/Bogota`, ES/EN y las matrices visuales públicas/de producto.
 - Una suspensión de 10,3 horas dejó cinco resultados inconclusos o desactualizados; todos se repitieron después en una sesión continua. La evidencia compuesta final es 96/96 casos ejecutables aprobados y 16 omisiones intencionales.
-- `build:vinext` no pudo evaluarse en el worktree aislado porque faltan sus dos variables públicas de Supabase. No se copiaron secretos; el build Next/Vercel, destino productivo, sí aprobó.
+- `build:vinext` aprobó sus cinco fases y las 21 rutas después de inyectar sólo durante el proceso las dos variables `NEXT_PUBLIC_*` ya expuestas por el bundle productivo. No se creó `.env`, no se conservaron valores en el entorno y el working tree permaneció limpio.
 - El smoke de `mybestversion.life` aprobó landing, privacidad y Trial, además de Planificación, Semana, Hábitos, Metas, Proyectos, Visión, Progreso y Mi día en 1440×900 y 390×844. No se observaron errores de consola, estados de carga atascados ni desbordamiento horizontal. No se ejecutaron controles que escriben en el planner; cargar rutas autenticadas puede registrar actividad de retorno o telemetría consentida.
 - El detalle de decisiones y validación está en [`../auditorias/2026-09-25-cierre-funcionamiento-ux/`](../auditorias/2026-09-25-cierre-funcionamiento-ux/).
 
