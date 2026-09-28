@@ -2,6 +2,8 @@
 
 Esta entrega cierra los ocho hallazgos priorizados de la auditoría funcional y UX sin rediseñar el producto ni modificar integraciones externas. El contenido del planner continúa local-first y todos los cambios de persistencia son compatibles y no destructivos.
 
+Estado de publicación: el commit funcional `ad0fa5d08c959f883dafd6d56123ee96920f5bf6` está en `origin/main`; CI, Vercel Production y el smoke final en escritorio/móvil aprobaron. Los identificadores y resultados completos están en [`validacion.md`](validacion.md).
+
 ## Estado de los hallazgos
 
 | ID | Estado | Resultado |

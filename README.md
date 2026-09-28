@@ -102,7 +102,7 @@ Consulta `.env.example`. Las variables públicas cubren Supabase y, opcionalment
 
 ## Deployment
 
-Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. El último release funcional comprobado en `mybestversion.life` es `7abddae651f34ff4e086a5b6a278c7032c73466d`. Vinext/Cloudflare Sites permanece como destino explícito adicional del release anterior y no se actualizó en esta publicación.
+Vercel es el runtime principal configurado desde GitHub y ejecuta `pnpm install --frozen-lockfile` seguido de `pnpm run build:vercel`. El último release funcional comprobado en `mybestversion.life` es `ad0fa5d08c959f883dafd6d56123ee96920f5bf6`, documentado como `MBV-H-040`. Vinext/Cloudflare Sites permanece como destino explícito adicional de un release anterior y no se actualizó en esta publicación.
 
 ## CI
 

@@ -13,7 +13,7 @@ Fecha de ejecución: **2026-09-24 a 2026-09-28**, America/Bogota.
 - `pnpm build`: aprobado con Next.js 16.2.6 y 21 rutas.
 - `git diff --check`: sin errores; sólo advertencias CRLF del worktree de Windows.
 
-`pnpm build:vinext` se ejecutó y se detuvo de forma segura porque el entorno local aislado no contiene `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. No se copiaron secretos desde otro worktree ni se inventaron valores. El destino productivo de esta entrega es Vercel/Next; el resultado de CI y de su build productivo se añadirá al cierre del release.
+`pnpm build:vinext` se ejecutó y se detuvo de forma segura porque el entorno local aislado no contiene `NEXT_PUBLIC_SUPABASE_URL` ni `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. No se copiaron secretos desde otro worktree ni se inventaron valores. El destino productivo de esta entrega es Vercel/Next; su build local y el build de CI aprobaron.
 
 ## Navegador real
 
@@ -38,4 +38,14 @@ La suite E2E completa y la matriz visual existente también se ejecutaron. El pr
 - Los respaldos legacy con fechas importantes incompletas y las nuevas claves opcionales se validaron.
 - No se reescribieron timestamps ni datos históricos.
 - No se ejecutaron pagos, correos, OAuth ni comunicaciones externas.
-- La verificación autenticada de producción requiere una cuenta de prueba expresamente autorizada. Si no existe, el smoke productivo se limita a superficies públicas y al comportamiento de acceso anónimo.
+- El smoke autenticado de producción se ejecutó con la sesión disponible sin accionar controles que escriben en el planner ni inspeccionar contenido personal detallado. La carga de rutas puede registrar actividad de retorno o telemetría consentida.
+
+## Publicación y smoke de producción
+
+- Commit funcional: `ad0fa5d08c959f883dafd6d56123ee96920f5bf6` (`fix: close planning habits and project UX gaps`).
+- Push: `origin/fix/ux-audit-2026-09-24` y avance directo sin force push de `origin/main` al mismo SHA.
+- GitHub Actions: ejecución [`36465516462`](https://github.com/mariadlang/mbv/actions/runs/36465516462), `success`; lint, typecheck, unit-tests y build aprobaron. E2E se omitió por diseño en push y queda cubierto por la matriz local descrita arriba.
+- Vercel: deployment Production de GitHub `6717547820`, `success`, asociado al mismo SHA; URL única `https://vercel-upload-r4u74ncaz-mariadelosangelesgtg-4145s-projects.vercel.app` y alias público `https://mybestversion.life`.
+- Superficies públicas comprobadas: landing, Política de Privacidad y Trial.
+- Superficies autenticadas comprobadas: Planificación, Plan semanal, Hábitos, Metas, Proyectos y tareas, Visión, Progreso y Mi día.
+- Matriz del smoke: **1440×900** y **390×844**; títulos/rutas correctos, contenido principal presente, sin carga atascada, sin overflow horizontal y sin errores de consola.

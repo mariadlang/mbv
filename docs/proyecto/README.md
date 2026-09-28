@@ -15,12 +15,12 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Última revisión documental: **2026-09-28, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.
-- SHA funcional vigente: `7af51a3f8b13eb602b90d74d37c923ecdbcabc0e`.
-- Sincronización observada al publicar Resend: rama de trabajo y `origin/main` alineadas en `7af51a3`; CI y Vercel Production aprobados.
+- SHA funcional vigente: `ad0fa5d08c959f883dafd6d56123ee96920f5bf6`.
+- Sincronización observada al publicar `MBV-H-040`: rama de trabajo y `origin/main` alineadas en `ad0fa5d`; GitHub Actions `36465516462` y Vercel Production aprobaron el mismo SHA.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
 - Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el cierre funcional y UX documentado en `MBV-H-040`.
 
-P0 y P1 permanecen como baseline histórico. El SHA productivo anterior `7af51a3f8b13eb602b90d74d37c923ecdbcabc0e` conserva la pausa de Calendar y los flags P2 apagados, publica el acceso comercial v2 descrito en `MBV-H-037` y completa la integración Resend de `MBV-H-038`. El candidato `MBV-H-040` corrige planificación, fechas, hábitos y cierre de proyectos, y diferencia valoraciones confirmadas; su SHA productivo, CI y despliegue se registran al cerrar la publicación.
+P0 y P1 permanecen como baseline histórico. El release `ad0fa5d08c959f883dafd6d56123ee96920f5bf6` conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend publicados en los hitos anteriores, y completa `MBV-H-040`: planificación, fechas, hábitos, cierre de proyectos y valoraciones confirmadas. Su CI, despliegue y smoke productivo están registrados en la auditoría del cierre.
 
 ## Fuentes utilizadas
 
