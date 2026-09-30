@@ -17,11 +17,11 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.
 - SHA funcional: `c24bb9fc06423b292eeb3399a7b31b4d327bc5c1`; fix de cierre publicado: `370a8a81579e570c5b64023ca2c92e2c16aa3cde`.
 - Sincronización observada al publicar `MBV-H-042`/`MBV-H-043`: rama de trabajo y `origin/main` alineadas en `370a8a8`; GitHub Actions `36772651377` y Vercel Production `6769422318` aprobaron el mismo SHA.
-- Base Git observada al iniciar `MBV-H-044`: `8b8350607482cfa5f7a907dd3ca39f556e5045ec` en la rama de trabajo y `origin/main`. El rediseño funcional de waitlist está únicamente en el working tree: no tiene commit, push, migración remota ni deploy.
+- Base Git observada al iniciar `MBV-H-044`: `8b8350607482cfa5f7a907dd3ca39f556e5045ec` en la rama de trabajo y `origin/main`. El rediseño funcional de waitlist quedó en `0fa8578c9e14404dab6f6353b7a09c7cf9062d75`, enviado a la rama de trabajo y `origin/main` y publicado en Vercel Production. La migración remota y los flags no se activaron.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
 - Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la invitación aislada `MBV-H-042` y la presentación pública `MBV-H-043`.
 
-P0 y P1 permanecen como baseline histórico. El release publicado conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend de otros flujos, y contiene `MBV-H-042`/`MBV-H-043`. Sobre esa base, `MBV-H-044` rediseña localmente la invitación como waitlist de 20 solicitudes con consentimiento independiente para novedades, capacidad server-side y tres estados de interfaz. La campaña continúa fail-closed: la migración no está aplicada, los flags siguen apagados y el alta nueva no envía correo, no crea cuenta, no inicia prueba, no activa Premium ni asigna un cupo.
+P0 y P1 permanecen como baseline histórico. El release publicado conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend de otros flujos, y contiene `MBV-H-042`/`MBV-H-043`. Sobre esa base, `MBV-H-044` publica el código de la invitación como waitlist de 20 solicitudes con consentimiento independiente para novedades, capacidad server-side y tres estados de interfaz. La campaña continúa fail-closed: la migración no está aplicada, los flags siguen apagados, el endpoint público responde `unavailable` y el alta nueva no envía correo, no crea cuenta, no inicia prueba, no activa Premium ni asigna un cupo.
 
 ## Fuentes utilizadas
 
