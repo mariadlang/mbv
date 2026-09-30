@@ -13,6 +13,7 @@ export function Modal({
   children,
   explicitI18n = false,
   eyebrow,
+  leadingVisual,
   className = "",
   layerClassName = "",
   initialFocusRef,
@@ -25,6 +26,7 @@ export function Modal({
   children: ReactNode;
   explicitI18n?: boolean;
   eyebrow?: string;
+  leadingVisual?: ReactNode;
   className?: string;
   layerClassName?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
@@ -113,6 +115,7 @@ export function Modal({
       >
         <header className="modal__header">
           <div>
+            {leadingVisual}
             <p className="eyebrow">{eyebrow ?? m("modal.brand")}</p>
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}

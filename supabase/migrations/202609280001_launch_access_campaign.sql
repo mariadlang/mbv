@@ -10,27 +10,26 @@ create table public.launch_access_campaigns (
   campaign_key text primary key check (campaign_key ~ '^[a-z0-9][a-z0-9_-]{2,63}$'),
   state text not null default 'draft' check (state in ('draft','collecting','closed')),
   registration_enabled boolean not null default false,
+  newsletter_registration_enabled boolean not null default false,
   email_delivery_enabled boolean not null default false,
-  allocation_enabled boolean not null default false,
-  activation_enabled boolean not null default false,
   total_slots integer not null default 20 check (total_slots between 1 and 1000),
-  allocated_slots integer not null default 0 check (allocated_slots >= 0),
+  accepted_requests integer not null default 0 check (accepted_requests >= 0),
   trial_days integer not null default 30 check (trial_days between 1 and 365),
   confirmation_ttl_minutes integer not null default 1440 check (confirmation_ttl_minutes between 15 and 10080),
   email_requests_per_hour integer not null default 3 check (email_requests_per_hour between 1 and 20),
-  client_requests_per_hour integer not null default 25 check (client_requests_per_hour between 1 and 500),
+  client_requests_per_hour integer not null default 10 check (client_requests_per_hour between 1 and 500),
   starts_at timestamptz,
   ends_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (allocated_slots <= total_slots),
+  check (accepted_requests <= total_slots),
   check (ends_at is null or starts_at is null or ends_at > starts_at)
 );
 
 insert into public.launch_access_campaigns(
-  campaign_key,state,registration_enabled,email_delivery_enabled,
-  allocation_enabled,activation_enabled,total_slots,trial_days
-) values ('launch-20-v1','draft',false,false,false,false,20,30)
+  campaign_key,state,registration_enabled,newsletter_registration_enabled,
+  email_delivery_enabled,total_slots,trial_days
+) values ('launch-20-v1','draft',false,false,false,20,30)
 on conflict(campaign_key) do nothing;
 
 create table public.launch_access_registrations (
@@ -41,50 +40,39 @@ create table public.launch_access_registrations (
     and email_normalized = lower(trim(email_normalized))
     and email_normalized ~* '^[^@[:space:]]+@[^@[:space:]]+$'
   ),
-  status text not null default 'pending_confirmation' check (status in (
-    'pending_confirmation','email_confirmed','reserved','invited','linked',
-    'active','expired','closed'
+  registration_type text not null check (registration_type in ('waitlist','newsletter_only')),
+  newsletter_preference boolean not null default false,
+  newsletter_consent_at timestamptz,
+  waitlist_requested_at timestamptz,
+  newsletter_subscribed_at timestamptz,
+  origin text not null check (origin in ('landing_launch')),
+  status text not null default 'received' check (status in (
+    'received','subscribed','pending_confirmation','email_confirmed','closed'
   )),
-  token_hash bytea not null,
-  token_version integer not null default 1 check (token_version > 0),
-  token_expires_at timestamptz not null,
+  token_hash bytea,
+  token_version integer check (token_version is null or token_version > 0),
+  token_expires_at timestamptz,
   requested_at timestamptz not null default now(),
-  last_confirmation_requested_at timestamptz not null default now(),
+  last_confirmation_requested_at timestamptz,
   confirmation_sent_at timestamptz,
   confirmed_at timestamptz,
-  invited_at timestamptz,
-  linked_user_id uuid references auth.users(id) on delete set null,
   last_confirmation_outbox_id uuid references public.email_outbox(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(campaign_key,email_normalized),
+  check (registration_type<>'waitlist' or waitlist_requested_at is not null),
+  check (registration_type<>'newsletter_only' or waitlist_requested_at is null),
+  check (registration_type<>'newsletter_only' or newsletter_preference),
+  check (
+    (newsletter_preference and newsletter_consent_at is not null and newsletter_subscribed_at is not null)
+    or (not newsletter_preference and newsletter_consent_at is null and newsletter_subscribed_at is null)
+  ),
   check (confirmed_at is null or confirmation_sent_at is not null),
-  check (token_expires_at > requested_at)
-);
-
-create unique index launch_access_registration_user_uidx
-  on public.launch_access_registrations(campaign_key,linked_user_id)
-  where linked_user_id is not null;
-
-create table public.launch_access_grants (
-  id uuid primary key default gen_random_uuid(),
-  campaign_key text not null references public.launch_access_campaigns(campaign_key),
-  registration_id uuid not null unique references public.launch_access_registrations(id) on delete cascade,
-  slot_number integer not null check (slot_number between 1 and 20),
-  linked_user_id uuid references auth.users(id) on delete set null,
-  status text not null default 'reserved' check (status in (
-    'reserved','invited','active','expired','released'
-  )),
-  reserved_at timestamptz not null default now(),
-  invited_at timestamptz,
-  benefit_started_at timestamptz,
-  benefit_ends_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(campaign_key,slot_number),
-  unique(campaign_key,linked_user_id),
-  check (benefit_ends_at is null or benefit_started_at is not null),
-  check (benefit_ends_at is null or benefit_ends_at > benefit_started_at)
+  check (token_expires_at is null or token_expires_at > requested_at),
+  check (
+    registration_type<>'newsletter_only'
+    or (status='subscribed' and token_hash is null and token_version is null and token_expires_at is null)
+  )
 );
 
 create table public.launch_access_rate_limits (
@@ -102,11 +90,10 @@ create index launch_access_registrations_status_idx
 
 alter table public.launch_access_campaigns enable row level security;
 alter table public.launch_access_registrations enable row level security;
-alter table public.launch_access_grants enable row level security;
 alter table public.launch_access_rate_limits enable row level security;
 
 revoke all on table public.launch_access_campaigns,
-  public.launch_access_registrations,public.launch_access_grants,
+  public.launch_access_registrations,
   public.launch_access_rate_limits from public,anon,authenticated,service_role;
 -- El backend sólo necesita leer el estado público de campaña de forma directa.
 -- Registros, límites y grants quedan accesibles únicamente mediante las RPC
@@ -130,6 +117,9 @@ create or replace function public.request_launch_access(
   p_email text,
   p_email_fingerprint text,
   p_client_fingerprint text,
+  p_request_type text,
+  p_newsletter_opt_in boolean,
+  p_origin text,
   p_now timestamptz default now()
 )
 returns table(
@@ -148,11 +138,6 @@ declare
   normalized_email text := lower(trim(coalesce(p_email,'')));
   campaign_row public.launch_access_campaigns%rowtype;
   registration_row public.launch_access_registrations%rowtype;
-  next_token_nonce text;
-  next_token_hash bytea;
-  next_token_version integer;
-  next_expires_at timestamptz;
-  next_outbox_id uuid;
   email_attempts integer;
   client_attempts integer;
 begin
@@ -164,9 +149,21 @@ begin
     or normalized_email !~* '^[^@[:space:]]+@[^@[:space:]]+$' then
     raise exception 'INVALID_LAUNCH_EMAIL';
   end if;
-  if p_email_fingerprint !~ '^[a-f0-9]{64}$'
+  if p_email_fingerprint is null
+    or p_email_fingerprint !~ '^[a-f0-9]{64}$'
+    or p_client_fingerprint is null
     or p_client_fingerprint !~ '^[a-f0-9]{64}$' then
     raise exception 'INVALID_LAUNCH_FINGERPRINT';
+  end if;
+  if p_request_type is null
+    or p_request_type not in ('waitlist','newsletter_only')
+    or p_origin is null
+    or p_origin<>'landing_launch' then
+    raise exception 'INVALID_LAUNCH_REQUEST';
+  end if;
+  if p_newsletter_opt_in is null
+    or (p_request_type='newsletter_only' and not p_newsletter_opt_in) then
+    raise exception 'NEWSLETTER_CONSENT_REQUIRED';
   end if;
 
   select c.* into campaign_row
@@ -176,17 +173,29 @@ begin
 
   if not found
     or campaign_row.state='draft'
-    or not campaign_row.registration_enabled
-    or not campaign_row.email_delivery_enabled
-    or (campaign_row.starts_at is not null and checked_at<campaign_row.starts_at) then
+    or (campaign_row.starts_at is not null and checked_at<campaign_row.starts_at)
+    or (campaign_row.ends_at is not null and checked_at>=campaign_row.ends_at) then
     return query select 'campaign_unavailable'::text,null::uuid,null::uuid,
       null::text,null::text,null::integer,null::timestamptz;
     return;
   end if;
-  if campaign_row.state='closed'
-    or campaign_row.allocated_slots>=campaign_row.total_slots
-    or (campaign_row.ends_at is not null and checked_at>=campaign_row.ends_at) then
-    return query select 'campaign_closed'::text,null::uuid,null::uuid,
+  if p_request_type='waitlist' then
+    if campaign_row.state='closed'
+      or campaign_row.accepted_requests>=campaign_row.total_slots then
+      return query select case
+          when campaign_row.newsletter_registration_enabled then 'campaign_closed'::text
+          else 'campaign_unavailable'::text
+        end,null::uuid,null::uuid,
+        null::text,null::text,null::integer,null::timestamptz;
+      return;
+    end if;
+    if campaign_row.state<>'collecting' or not campaign_row.registration_enabled then
+      return query select 'campaign_unavailable'::text,null::uuid,null::uuid,
+        null::text,null::text,null::integer,null::timestamptz;
+      return;
+    end if;
+  elsif not campaign_row.newsletter_registration_enabled then
+    return query select 'campaign_unavailable'::text,null::uuid,null::uuid,
       null::text,null::text,null::integer,null::timestamptz;
     return;
   end if;
@@ -234,60 +243,81 @@ begin
   where r.campaign_key=p_campaign_key and r.email_normalized=normalized_email
   for update;
 
-  next_token_nonce := replace(replace(
-    rtrim(encode(gen_random_bytes(32),'base64'),'='),'+','-'
-  ),'/','_');
-  next_token_hash := digest(convert_to(next_token_nonce,'UTF8'),'sha256');
-  next_expires_at := checked_at + make_interval(mins => campaign_row.confirmation_ttl_minutes);
+  if found then
+    if p_request_type='waitlist' and registration_row.registration_type='newsletter_only' then
+      update public.launch_access_registrations r set
+        registration_type='waitlist',
+        status='received',
+        waitlist_requested_at=coalesce(r.waitlist_requested_at,checked_at),
+        newsletter_preference=r.newsletter_preference or p_newsletter_opt_in,
+        newsletter_consent_at=case
+          when r.newsletter_preference then r.newsletter_consent_at
+          when p_newsletter_opt_in then checked_at
+          else null
+        end,
+        newsletter_subscribed_at=case
+          when r.newsletter_preference then r.newsletter_subscribed_at
+          when p_newsletter_opt_in then checked_at
+          else null
+        end,
+        updated_at=checked_at
+      where r.id=registration_row.id;
+      update public.launch_access_campaigns c set
+        accepted_requests=c.accepted_requests+1,
+        updated_at=checked_at
+      where c.campaign_key=p_campaign_key;
+      return query select 'request_received'::text,null::uuid,null::uuid,
+        null::text,null::text,null::integer,null::timestamptz;
+      return;
+    elsif p_newsletter_opt_in and not registration_row.newsletter_preference then
+      update public.launch_access_registrations r set
+        newsletter_preference=true,
+        newsletter_consent_at=checked_at,
+        newsletter_subscribed_at=checked_at,
+        updated_at=checked_at
+      where r.id=registration_row.id;
+    end if;
 
-  if not found then
-    insert into public.launch_access_registrations(
-      campaign_key,email_normalized,status,token_hash,token_version,token_expires_at,
-      requested_at,last_confirmation_requested_at,created_at,updated_at
-    ) values (
-      p_campaign_key,normalized_email,'pending_confirmation',next_token_hash,1,next_expires_at,
-      checked_at,checked_at,checked_at,checked_at
-    ) returning * into registration_row;
-    next_token_version := 1;
-  else
-    next_token_version := registration_row.token_version+1;
-    update public.launch_access_registrations r set
-      token_hash=next_token_hash,
-      token_version=next_token_version,
-      token_expires_at=next_expires_at,
-      last_confirmation_requested_at=checked_at,
-      updated_at=checked_at
-    where r.id=registration_row.id
-    returning * into registration_row;
+    -- Respuesta idéntica para correos ya registrados, sin crear otra fila,
+    -- consumir capacidad ni revelar el estado previo de la dirección.
+    return query select case when p_request_type='newsletter_only'
+      then 'newsletter_subscribed' else 'already_requested' end::text,null::uuid,null::uuid,
+      null::text,null::text,null::integer,null::timestamptz;
+    return;
   end if;
 
-  insert into public.email_outbox(
-    user_id,recipient_kind,recipient_email,template_key,dedupe_key,template_data,status,
-    created_at,updated_at
+  insert into public.launch_access_registrations(
+    campaign_key,email_normalized,registration_type,newsletter_preference,
+    newsletter_consent_at,waitlist_requested_at,newsletter_subscribed_at,
+    origin,status,requested_at,created_at,updated_at
   ) values (
-    null,'user',normalized_email,'launch_confirmation',
-    'launch_confirmation:'||registration_row.id::text||':'||next_token_version::text,
-    jsonb_build_object(
-      'registration_id',registration_row.id,
-      'campaign_key',p_campaign_key,
-      'token_version',next_token_version,
-      'confirmation_expires_at',next_expires_at
-    ),
-    'generated',checked_at,checked_at
-  ) returning id into next_outbox_id;
+    p_campaign_key,normalized_email,
+    case when p_request_type='newsletter_only' then 'newsletter_only' else 'waitlist' end,
+    p_newsletter_opt_in,
+    case when p_newsletter_opt_in then checked_at else null end,
+    case when p_request_type='waitlist' then checked_at else null end,
+    case when p_newsletter_opt_in then checked_at else null end,
+    p_origin,case when p_request_type='newsletter_only' then 'subscribed' else 'received' end,
+    checked_at,checked_at,checked_at
+  ) returning * into registration_row;
 
-  update public.launch_access_registrations r set
-    last_confirmation_outbox_id=next_outbox_id,
-    updated_at=checked_at
-  where r.id=registration_row.id;
+  if p_request_type='waitlist' then
+    update public.launch_access_campaigns c set
+      accepted_requests=c.accepted_requests+1,
+      updated_at=checked_at
+    where c.campaign_key=p_campaign_key;
+  end if;
 
-  return query select 'prepared'::text,registration_row.id,next_outbox_id,
-    normalized_email,next_token_nonce,next_token_version,next_expires_at;
+  -- El formulario sólo confirma después del commit. No genera token, outbox ni
+  -- correo inmediato; los avisos futuros operan como un proceso separado.
+  return query select case when p_request_type='newsletter_only'
+    then 'newsletter_subscribed' else 'request_received' end::text,
+    null::uuid,null::uuid,null::text,null::text,null::integer,null::timestamptz;
 end;
 $$;
-revoke all on function public.request_launch_access(text,text,text,text,timestamptz)
+revoke all on function public.request_launch_access(text,text,text,text,text,boolean,text,timestamptz)
   from public,anon,authenticated;
-grant execute on function public.request_launch_access(text,text,text,text,timestamptz)
+grant execute on function public.request_launch_access(text,text,text,text,text,boolean,text,timestamptz)
   to service_role;
 
 -- Reclama exactamente el mensaje generado por la solicitud actual. Esto evita
@@ -370,9 +400,15 @@ begin
       and r.token_version=(outbox_row.template_data->>'token_version')::integer
       and r.token_expires_at>checked_at
       and r.status in ('pending_confirmation','email_confirmed')
-      and c.state='collecting'
-      and c.registration_enabled
       and c.email_delivery_enabled
+      and (
+        ((outbox_row.template_data->>'request_type')='waitlist'
+          and r.registration_type='waitlist'
+          and c.state in ('collecting','closed'))
+        or ((outbox_row.template_data->>'request_type')='newsletter_only'
+          and r.newsletter_preference
+          and c.newsletter_registration_enabled)
+      )
   ) then
     update public.email_outbox e set
       status='superseded',claim_token=null,claim_expires_at=null,

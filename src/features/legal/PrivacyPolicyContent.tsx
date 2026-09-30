@@ -9,7 +9,7 @@ export function PrivacyPolicyContent() {
   return <article className="legal-page" translate="no" data-no-translate="true">
     <p className="eyebrow">PRIVACIDAD Y CONTROL</p>
     <h1>Política de Privacidad de My Best Version</h1>
-    <p className="legal-page__updated">Última actualización: 28 de septiembre de 2026</p>
+    <p className="legal-page__updated">Última actualización: 30 de septiembre de 2026</p>
     <p className="lead">Esta política explica cómo My Best Version, disponible en <a href={legalConfig.officialDomain}>{legalConfig.officialDomain}</a>, recopila, usa, almacena, protege, comparte y elimina la información necesaria para prestar la aplicación.</p>
 
     <section>
@@ -21,7 +21,7 @@ export function PrivacyPolicyContent() {
       <h2>2. Información que utilizamos</h2>
       <p>Para crear y proteger una cuenta usamos los datos de identidad que proporcionas o autorizas, como nombre, correo, identificador de cuenta, foto de perfil, idioma, sesión y preferencias. Los datos técnicos estrictamente necesarios pueden incluir dirección IP, navegador y registros de seguridad.</p>
       <p>El contenido detallado del planner —metas, tareas, hábitos, journal, bienestar, fitness, alimentación y finanzas— se guarda principalmente en IndexedDB, dentro del navegador y dispositivo de la persona.</p>
-      <p>Un formulario de campaña sólo procesa información cuando esa campaña está expresamente habilitada y configurada. Si envías voluntariamente tu correo en ese contexto, podemos guardar el correo normalizado, el identificador y estado de la campaña y las marcas de tiempo técnicas necesarias para gestionar la solicitud. Esto no crea una cuenta, no te suscribe a comunicaciones comerciales ni garantiza un cupo o beneficio cuyas reglas todavía no hayan sido aprobadas y comunicadas.</p>
+      <p>Un formulario de campaña sólo procesa información cuando esa campaña está expresamente habilitada y configurada. Si envías voluntariamente tu correo en ese contexto, podemos guardar el correo normalizado, el tipo de registro —solicitud de waitlist o suscripción exclusiva a novedades—, la preferencia de novedades, las fechas separadas de solicitud de waitlist, suscripción y consentimiento cuando correspondan, el origen <code>landing_launch</code> y las marcas de tiempo necesarias para gestionar el registro. La solicitud de waitlist no crea una cuenta, no inicia una prueba, no activa Premium ni confirma la asignación de un cupo. La suscripción a novedades sólo se guarda cuando marcas de forma separada la casilla opcional.</p>
       <p>Si llegas mediante una invitación, el navegador puede conservar temporalmente un código aleatorio opaco y la fecha de llegada. El código no contiene nombre, correo, identificador de cuenta, progreso ni información de quien compartió el enlace.</p>
     </section>
 
@@ -37,7 +37,7 @@ export function PrivacyPolicyContent() {
     <section>
       <h2>4. Cómo usamos la información</h2>
       <p>Usamos los datos para autenticar y proteger la cuenta, operar el planner, conservar preferencias, prestar soporte y cumplir solicitudes legales. Mientras la integración estuvo activa, los datos de Calendar se usaron exclusivamente para identificar la cuenta conectada, permitir elegir calendarios, importar y sincronizar eventos, y crear, actualizar o eliminar un evento cuando la persona ejecutaba esa acción desde My Best Version. Durante la pausa no se consulta ni se modifica Google Calendar.</p>
-      <p>Cuando una campaña está habilitada, usamos el correo enviado en su formulario únicamente para registrar la solicitud, prevenir duplicados y entregar las confirmaciones o invitaciones transaccionales que correspondan a las reglas publicadas de esa campaña. No lo usamos para boletines o marketing sin un consentimiento separado.</p>
+      <p>Cuando una campaña está habilitada, usamos el correo enviado para registrar la solicitud, prevenir duplicados y administrar la disponibilidad. El guardado actual no envía una confirmación ni un anuncio de lanzamiento. Cualquier aviso futuro será un proceso separado y sólo usaremos el correo para novedades o marketing cuando exista un consentimiento específico registrado.</p>
       <p>La analítica de producto permanece desactivada hasta que la autorices. Con ese consentimiento podemos enviar eventos técnicos con propiedades cerradas para medir activación, retorno, revisión semanal, exportación de tarjetas y atribución agregada de invitaciones. No enviamos el titular de una tarjeta, textos del planner, emociones, salud, finanzas, montos, nombres ni correos.</p>
       <p>No solicitamos acceso a Gmail, Drive ni Contactos y no usamos la información de Google para publicidad, elaboración de perfiles comerciales, venta de datos, evaluación crediticia ni finalidades ajenas a la integración.</p>
     </section>
@@ -46,20 +46,20 @@ export function PrivacyPolicyContent() {
       <h2>5. Almacenamiento y seguridad</h2>
       <p>La comunicación con la aplicación y con Google se protege mediante HTTPS. Los tokens OAuth se cifran en el servidor con AES-GCM. Las credenciales, calendarios seleccionados y la copia operativa de los eventos se conservan en tablas de Supabase accesibles únicamente por procesos autenticados del servidor; no se exponen directamente al navegador ni se incluyen en los respaldos locales del planner.</p>
       <p>Aplicamos minimización, control de acceso, separación entre datos locales y datos de sincronización, políticas de acceso a nivel de base de datos y registros técnicos para detectar fallos. Ningún sistema puede garantizar seguridad absoluta, pero revisamos y limitamos cada acceso según la función necesaria.</p>
-      <p>Las solicitudes de una campaña activa se conservan en almacenamiento server-side. Resend sólo recibe el correo destinatario y la metadata transaccional mínima cuando la campaña y el transporte de correo están habilitados; una campaña apagada no autoriza capturas ni envíos reales.</p>
+      <p>Las solicitudes y consentimientos de una campaña activa se conservan en tablas server-side de Supabase. Resend no interviene en el alta actual; sólo recibiría el correo destinatario y la metadata transaccional mínima si un flujo futuro de avisos y su transporte fueran habilitados expresamente. Una campaña apagada no autoriza capturas ni envíos reales.</p>
       <p>La atribución de una invitación se guarda en el navegador por un máximo de 29 días. Sólo se encola para la cuenta autenticada cuando Analítica está autorizada; después se elimina la copia temporal. Retirar Analítica elimina la cola local y detiene nuevos envíos.</p>
     </section>
 
     <section>
       <h2>6. Proveedores y divulgación</h2>
-      <p>Compartimos información sólo con proveedores necesarios para operar el servicio: Google para identidad y Calendar, Supabase para autenticación y almacenamiento server-side, Vercel para alojar la aplicación, Mercado Pago cuando se inicia un checkout y Resend para correo transaccional. En una campaña, Resend sólo interviene cuando la campaña y el envío están habilitados. Estos proveedores procesan la información conforme a sus funciones y condiciones aplicables.</p>
+      <p>Compartimos información sólo con proveedores necesarios para operar el servicio: Google para identidad y Calendar, Supabase para autenticación y almacenamiento server-side, Vercel para alojar la aplicación, Mercado Pago cuando se inicia un checkout y Resend para correo transaccional. La captura actual de waitlist o novedades se almacena en Supabase y no se entrega a Resend durante el alta; este proveedor sólo intervendría en un aviso futuro expresamente habilitado. Estos proveedores procesan la información conforme a sus funciones y condiciones aplicables.</p>
       <p>No vendemos, alquilamos ni compartimos datos con anunciantes o corredores de datos. Tampoco usamos ni transferimos información obtenida de Google para entrenar modelos generales o no personalizados de inteligencia artificial o aprendizaje automático. El acceso humano se limita a soporte solicitado expresamente, investigación de seguridad o cumplimiento legal cuando sea necesario.</p>
     </section>
 
     <section>
       <h2>7. Conservación, desconexión y eliminación</h2>
       <p>Durante la pausa, las credenciales históricas cifradas y la copia operativa existente permanecen aisladas en tablas server-only, pero la aplicación no las usa para conectarse o sincronizar. Puedes revocar el permiso desde tu Cuenta de Google y solicitar la supresión de la copia histórica mediante el canal PQR o el Centro de Privacidad. La supresión de la cuenta incluye las credenciales y la copia asociadas cuando proceda.</p>
-      <p>Antes de activar una campaña se deben aprobar y comunicar sus reglas y el plazo de conservación aplicable. Mientras permanezca apagada, su interfaz no debe capturar correos ni iniciar envíos reales.</p>
+      <p>Antes de activar una campaña se deben aprobar y comunicar sus reglas y el plazo de conservación aplicable. Antes de enviar novedades a registros anónimos también debe existir un mecanismo público de retiro del consentimiento y una fuente de verdad operativa para las bajas. Mientras esos elementos o la campaña permanezcan apagados, su interfaz no debe capturar correos ni iniciar envíos reales.</p>
       <p>Los eventos locales creados en el planner no se borran al pausar Calendar, revocar el permiso o solicitar la eliminación de la copia de sincronización. Permanecen hasta que los elimines desde Ajustes, borres el almacenamiento del navegador o elimines el dispositivo.</p>
       <p>Consulta las instrucciones completas para <Link href="/data-deletion">exportar, desconectar o eliminar tus datos</Link>.</p>
     </section>

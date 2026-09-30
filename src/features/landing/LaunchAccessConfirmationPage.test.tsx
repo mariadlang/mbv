@@ -53,20 +53,26 @@ describe("confirmación del acceso de lanzamiento", () => {
   it("permite solicitar otro enlace vencido sin afirmar que el acceso está reservado", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(410, { status: "expired" }))
-      .mockResolvedValueOnce(jsonResponse(202, { status: "confirmation_pending" }));
+      .mockResolvedValueOnce(jsonResponse(202, { status: "request_received" }));
     const view = renderConfirmation(fetchMock);
 
     expect(await view.findByRole("heading", { name: "Este enlace ha vencido." })).toBeTruthy();
     fireEvent.change(view.getByRole("textbox", { name: /Correo electrónico/ }), {
       target: { value: "maria@example.com" },
     });
-    fireEvent.click(view.getByRole("button", { name: "Solicitar un enlace nuevo" }));
+    fireEvent.click(view.getByRole("button", { name: "Volver a registrar mi solicitud" }));
 
-    await waitFor(() => expect(view.getByRole("heading", { name: "Revisa tu correo." })).toBeTruthy());
+    await waitFor(() => expect(view.getByRole("heading", { name: "¡Recibimos tu solicitud!" })).toBeTruthy());
     expect(view.queryByText("Tu acceso de lanzamiento está reservado.", { exact: true })).toBeNull();
     expect(fetchMock).toHaveBeenLastCalledWith("/api/launch-access/request", expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ email: "maria@example.com", locale: "es" }),
+      body: JSON.stringify({
+        email: "maria@example.com",
+        locale: "es",
+        requestType: "waitlist",
+        newsletterOptIn: false,
+        origin: "landing_launch",
+      }),
     }));
   });
 });

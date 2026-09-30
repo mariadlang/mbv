@@ -8,16 +8,13 @@ import {
   launchJson,
   readLaunchJsonBody,
 } from "@/src/server/launch/http";
+import { SupabaseLaunchAccessRepository } from "@/src/server/launch/repository";
 import {
-  LaunchConfirmationEmailPersistence,
-  SupabaseLaunchAccessRepository,
-} from "@/src/server/launch/repository";
-import { LaunchAccessError, launchAccessRequestSchema } from "@/src/server/launch/schema";
+  LaunchAccessError,
+  launchAccessEmailSchema,
+  launchAccessRequestSchema,
+} from "@/src/server/launch/schema";
 import { requestLaunchAccess } from "@/src/server/launch/service";
-import {
-  getResendEmailRuntimeConfig,
-  ResendEmailTransport,
-} from "@/src/server/email/resendTransport";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,24 +30,28 @@ export async function POST(request: NextRequest) {
   try {
     const config = getLaunchAccessRuntimeConfig();
     if (!config) throw new LaunchAccessError("NOT_CONFIGURED");
-    const parsed = launchAccessRequestSchema.safeParse(await readLaunchJsonBody(request, config.appBaseUrl));
-    if (!parsed.success) throw new LaunchAccessError("INVALID_EMAIL");
-    const emailConfig = getResendEmailRuntimeConfig();
-    if (!emailConfig || emailConfig.appBaseUrl !== config.appBaseUrl) {
-      throw new LaunchAccessError("NOT_CONFIGURED");
+    const body = await readLaunchJsonBody(request, config.appBaseUrl);
+    const parsed = launchAccessRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      const candidateEmail = body && typeof body === "object" && "email" in body
+        ? body.email
+        : undefined;
+      if (!launchAccessEmailSchema.safeParse(candidateEmail).success) {
+        throw new LaunchAccessError("INVALID_EMAIL");
+      }
+      throw new LaunchAccessError("INVALID_REQUEST");
     }
     const client = createLaunchAccessServiceClient(config);
     const result = await requestLaunchAccess({
       email: parsed.data.email,
       clientIdentity: clientIdentity(request),
       locale: parsed.data.locale,
+      newsletterOptIn: parsed.data.newsletterOptIn,
+      origin: parsed.data.origin,
+      requestType: parsed.data.requestType,
     }, {
-      client,
       config,
-      createEmailPersistence: (outboxId) => new LaunchConfirmationEmailPersistence(outboxId),
       repository: new SupabaseLaunchAccessRepository(client),
-      supportEmail: emailConfig.supportEmail,
-      transport: new ResendEmailTransport(emailConfig),
     });
     return launchJson(result, 202);
   } catch (error) {

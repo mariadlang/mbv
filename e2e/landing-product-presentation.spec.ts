@@ -7,10 +7,12 @@ const viewports = [
 ] as const;
 
 async function dismissLandingOverlays(page: Page) {
-  const launchDialog = page.getByRole("dialog", { name: "Sé parte del lanzamiento." });
-  if (await launchDialog.waitFor({ state: "visible", timeout: 4_000 }).then(() => true).catch(() => false)) {
-    await launchDialog.getByRole("button", { name: "Cerrar" }).click();
+  const launchLayer = page.locator(".landing-launch-layer");
+  const launchDialog = launchLayer.getByRole("dialog");
+  if (await launchDialog.waitFor({ state: "visible", timeout: 6_000 }).then(() => true).catch(() => false)) {
+    await launchDialog.getByRole("button", { name: /Cerrar|Close/ }).click();
     await expect(launchDialog).toBeHidden();
+    await expect(launchLayer).toHaveCount(0);
   }
 
   const cookieButton = page.getByRole("button", { name: "Solo necesarias" });

@@ -1,6 +1,8 @@
 export type LaunchAccessRequestResult =
-  | { status: "confirmation_pending" }
+  | { status: "request_received" }
+  | { status: "newsletter_subscribed" }
   | { status: "closed" }
+  | { status: "unavailable" }
   | { status: "error" };
 
 export type LaunchAccessConfirmationResult =
@@ -10,6 +12,13 @@ export type LaunchAccessConfirmationResult =
 
 export type LaunchAccessPublicState = "open" | "closed" | "unavailable";
 export type LaunchAccessLocale = "es" | "en";
+export type LaunchAccessRequestType = "waitlist" | "newsletter_only";
+
+export interface LaunchAccessRequestOptions {
+  newsletterOptIn?: boolean;
+  origin?: "landing_launch";
+  requestType?: LaunchAccessRequestType;
+}
 
 async function readJson(response: Response): Promise<Record<string, unknown>> {
   try {
@@ -22,7 +31,9 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
 export async function requestLaunchAccess(
   email: string,
   locale: LaunchAccessLocale,
+  options: LaunchAccessRequestOptions = {},
 ): Promise<LaunchAccessRequestResult> {
+  const requestType = options.requestType ?? "waitlist";
   try {
     const response = await fetch("/api/launch-access/request", {
       method: "POST",
@@ -30,15 +41,30 @@ export async function requestLaunchAccess(
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, locale }),
+      body: JSON.stringify({
+        email,
+        locale,
+        requestType,
+        newsletterOptIn: options.newsletterOptIn ?? false,
+        origin: options.origin ?? "landing_launch",
+      }),
     });
     const payload = await readJson(response);
 
-    if (response.status === 202 && payload.status === "confirmation_pending") {
-      return { status: "confirmation_pending" };
+    if (response.status === 202 && payload.status === "request_received") {
+      return { status: "request_received" };
+    }
+    if (response.status === 202 && payload.status === "newsletter_subscribed") {
+      return { status: "newsletter_subscribed" };
     }
     if (response.status === 409 && payload.error === "CAMPAIGN_CLOSED") {
       return { status: "closed" };
+    }
+    if (
+      response.status === 503
+      && (payload.error === "REQUEST_UNAVAILABLE" || payload.error === "NOT_CONFIGURED")
+    ) {
+      return { status: "unavailable" };
     }
     return { status: "error" };
   } catch {

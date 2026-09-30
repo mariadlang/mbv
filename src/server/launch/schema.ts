@@ -9,10 +9,24 @@ export const launchAccessEmailSchema = z.string()
 export const launchAccessLocaleSchema = z.enum(["es", "en"]);
 export type LaunchAccessLocale = z.infer<typeof launchAccessLocaleSchema>;
 
+export const launchAccessRequestTypeSchema = z.enum(["waitlist", "newsletter_only"]);
+export type LaunchAccessRequestType = z.infer<typeof launchAccessRequestTypeSchema>;
+
 export const launchAccessRequestSchema = z.object({
   email: launchAccessEmailSchema,
   locale: launchAccessLocaleSchema,
-}).strict();
+  requestType: launchAccessRequestTypeSchema,
+  newsletterOptIn: z.boolean(),
+  origin: z.literal("landing_launch"),
+}).strict().superRefine((value, context) => {
+  if (value.requestType === "newsletter_only" && !value.newsletterOptIn) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "NEWSLETTER_CONSENT_REQUIRED",
+      path: ["newsletterOptIn"],
+    });
+  }
+});
 
 export const launchAccessConfirmSchema = z.object({
   token: z.string().min(80).max(2_048),

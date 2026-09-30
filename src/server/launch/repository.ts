@@ -5,7 +5,10 @@ import type {
   CompleteEmailDeliveryInput,
   EmailOutboxPersistence,
 } from "@/src/server/email/outbox";
-import type { LaunchAccessPublicStatus } from "@/src/server/launch/schema";
+import type {
+  LaunchAccessPublicStatus,
+  LaunchAccessRequestType,
+} from "@/src/server/launch/schema";
 
 const preparedRequestSchema = z.object({
   outcome: z.literal("prepared"),
@@ -19,6 +22,9 @@ const preparedRequestSchema = z.object({
 
 const requestOutcomeSchema = z.discriminatedUnion("outcome", [
   preparedRequestSchema,
+  z.object({ outcome: z.literal("already_requested") }),
+  z.object({ outcome: z.literal("request_received") }),
+  z.object({ outcome: z.literal("newsletter_subscribed") }),
   z.object({ outcome: z.literal("campaign_closed") }),
   z.object({ outcome: z.literal("campaign_unavailable") }),
   z.object({ outcome: z.literal("rate_limited") }),
@@ -43,9 +49,10 @@ const claimedRowSchema = z.object({
 const campaignStateSchema = z.object({
   state: z.enum(["draft", "collecting", "closed"]),
   registration_enabled: z.boolean(),
+  newsletter_registration_enabled: z.boolean(),
   email_delivery_enabled: z.boolean(),
   total_slots: z.number().int().positive(),
-  allocated_slots: z.number().int().nonnegative(),
+  accepted_requests: z.number().int().nonnegative(),
   starts_at: z.string().datetime({ offset: true }).nullable(),
   ends_at: z.string().datetime({ offset: true }).nullable(),
 });
@@ -64,6 +71,9 @@ export type PrepareLaunchAccessResult =
     tokenVersion: number;
     confirmationExpiresAt: string;
   }
+  | { outcome: "already_requested" }
+  | { outcome: "request_received" }
+  | { outcome: "newsletter_subscribed" }
   | { outcome: "campaign_closed" }
   | { outcome: "campaign_unavailable" }
   | { outcome: "rate_limited" };
@@ -73,7 +83,10 @@ export interface PrepareLaunchAccessInput {
   email: string;
   emailFingerprint: string;
   clientFingerprint: string;
+  newsletterOptIn: boolean;
   now: string;
+  origin: "landing_launch";
+  requestType: LaunchAccessRequestType;
 }
 
 export interface ConfirmLaunchAccessInput {
@@ -99,6 +112,9 @@ export class SupabaseLaunchAccessRepository implements LaunchAccessRepository {
       p_email: input.email,
       p_email_fingerprint: input.emailFingerprint,
       p_client_fingerprint: input.clientFingerprint,
+      p_request_type: input.requestType,
+      p_newsletter_opt_in: input.newsletterOptIn,
+      p_origin: input.origin,
       p_now: input.now,
     });
     if (error) throw new Error("LAUNCH_REQUEST_PERSISTENCE_FAILED");
@@ -130,7 +146,7 @@ export class SupabaseLaunchAccessRepository implements LaunchAccessRepository {
   async publicState(campaignKey: string, now: Date): Promise<LaunchAccessPublicStatus> {
     const { data, error } = await this.client
       .from("launch_access_campaigns")
-      .select("state,registration_enabled,email_delivery_enabled,total_slots,allocated_slots,starts_at,ends_at")
+      .select("state,registration_enabled,newsletter_registration_enabled,email_delivery_enabled,total_slots,accepted_requests,starts_at,ends_at")
       .eq("campaign_key", campaignKey)
       .maybeSingle();
     if (error) throw new Error("LAUNCH_STATE_UNAVAILABLE");
@@ -138,17 +154,17 @@ export class SupabaseLaunchAccessRepository implements LaunchAccessRepository {
     const campaign = campaignStateSchema.parse(data);
     const timestamp = now.getTime();
     const ended = campaign.ends_at !== null && new Date(campaign.ends_at).getTime() <= timestamp;
-    if (
-      campaign.state === "closed"
-      || campaign.allocated_slots >= campaign.total_slots
-      || ended
-    ) return "closed";
+    if (ended) return "unavailable";
     const notStarted = campaign.starts_at !== null && new Date(campaign.starts_at).getTime() > timestamp;
+    if (campaign.state === "draft" || notStarted) return "unavailable";
+    if (campaign.state === "closed" || campaign.accepted_requests >= campaign.total_slots) {
+      return campaign.newsletter_registration_enabled
+        ? "closed"
+        : "unavailable";
+    }
     if (
       campaign.state !== "collecting"
       || !campaign.registration_enabled
-      || !campaign.email_delivery_enabled
-      || notStarted
     ) return "unavailable";
     return "open";
   }

@@ -1,57 +1,52 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  processNextTransactionalEmail,
-  type EmailOutboxPersistence,
-} from "@/src/server/email/outbox";
-import { renderTransactionalEmail } from "@/src/server/email/templates";
-import type { TransactionalEmailTransport } from "@/src/server/email/transport";
 import type { LaunchAccessRuntimeConfig } from "@/src/server/launch/config";
 import {
   LaunchAccessError,
   launchAccessEmailSchema,
+  launchAccessRequestSchema,
   type LaunchAccessLocale,
   type LaunchAccessPublicStatus,
+  type LaunchAccessRequestType,
 } from "@/src/server/launch/schema";
 import type { LaunchAccessRepository } from "@/src/server/launch/repository";
-import {
-  launchFingerprint,
-  signLaunchConfirmationToken,
-  verifyLaunchConfirmationToken,
-} from "@/src/server/launch/token";
+import { launchFingerprint, verifyLaunchConfirmationToken } from "@/src/server/launch/token";
 
 export interface LaunchAccessServiceDependencies {
-  client: SupabaseClient;
   config: LaunchAccessRuntimeConfig;
-  createEmailPersistence: (outboxId: string) => EmailOutboxPersistence;
   repository: LaunchAccessRepository;
-  supportEmail: string;
-  transport: TransactionalEmailTransport;
-  /** Unit tests may explicitly opt into the fake transport. */
-  allowTestTransport?: boolean;
 }
 
 export interface RequestLaunchAccessInput {
   email: string;
   clientIdentity: string;
   locale: LaunchAccessLocale;
+  newsletterOptIn: boolean;
+  origin: "landing_launch";
+  requestType: LaunchAccessRequestType;
 }
 
-function confirmationUrl(baseUrl: string, token: string): string {
-  const url = new URL("/launch-access/confirm", baseUrl);
-  // The bearer stays in the fragment so it is not sent in HTTP requests,
-  // access logs or referrer headers. A confirmation UI can read it and POST it.
-  url.hash = new URLSearchParams({ token }).toString();
-  return url.toString();
-}
+export type RequestLaunchAccessResult =
+  | { status: "request_received" }
+  | { status: "newsletter_subscribed" };
 
 export async function requestLaunchAccess(
   input: RequestLaunchAccessInput,
   dependencies: LaunchAccessServiceDependencies,
   now: Date = new Date(),
-): Promise<{ status: "confirmation_pending" }> {
-  const parsedEmail = launchAccessEmailSchema.safeParse(input.email);
-  if (!parsedEmail.success) throw new LaunchAccessError("INVALID_EMAIL");
-  const email = parsedEmail.data;
+): Promise<RequestLaunchAccessResult> {
+  const parsed = launchAccessRequestSchema.safeParse({
+    email: input.email,
+    locale: input.locale,
+    newsletterOptIn: input.newsletterOptIn,
+    origin: input.origin,
+    requestType: input.requestType,
+  });
+  if (!parsed.success) {
+    if (!launchAccessEmailSchema.safeParse(input.email).success) {
+      throw new LaunchAccessError("INVALID_EMAIL");
+    }
+    throw new LaunchAccessError("INVALID_REQUEST");
+  }
+  const { email, newsletterOptIn, origin, requestType } = parsed.data;
   const prepared = await dependencies.repository.prepare({
     campaignKey: dependencies.config.campaignKey,
     email,
@@ -61,45 +56,25 @@ export async function requestLaunchAccess(
       "client",
       input.clientIdentity || "unknown",
     ),
+    newsletterOptIn,
     now: now.toISOString(),
+    origin,
+    requestType,
   });
   if (prepared.outcome === "campaign_closed") throw new LaunchAccessError("CAMPAIGN_CLOSED");
   if (prepared.outcome === "campaign_unavailable") throw new LaunchAccessError("REQUEST_UNAVAILABLE");
   if (prepared.outcome === "rate_limited") throw new LaunchAccessError("RATE_LIMITED");
-
-  const expiresAt = new Date(prepared.confirmationExpiresAt).getTime();
-  if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
-    throw new LaunchAccessError("REQUEST_UNAVAILABLE");
+  if (prepared.outcome === "newsletter_subscribed") return { status: "newsletter_subscribed" };
+  if (prepared.outcome === "request_received") return { status: "request_received" };
+  if (prepared.outcome === "already_requested") {
+    return requestType === "newsletter_only"
+      ? { status: "newsletter_subscribed" }
+      : { status: "request_received" };
   }
-  const token = signLaunchConfirmationToken({
-    v: 1,
-    campaignKey: dependencies.config.campaignKey,
-    registrationId: prepared.registrationId,
-    tokenVersion: prepared.tokenVersion,
-    nonce: prepared.tokenNonce,
-    expiresAt,
-  }, dependencies.config.tokenSecret);
-  const url = confirmationUrl(dependencies.config.appBaseUrl, token);
-  const result = await processNextTransactionalEmail({
-    client: dependencies.client,
-    transport: dependencies.transport,
-    persistence: dependencies.createEmailPersistence(prepared.outboxId),
-    allowTestTransport: dependencies.allowTestTransport,
-    now,
-    render: (row) => {
-      if (row.id !== prepared.outboxId || row.templateKey !== "launch_confirmation") {
-        throw new Error("LAUNCH_EMAIL_OUTBOX_MISMATCH");
-      }
-      return renderTransactionalEmail({
-        kind: "launch_confirmation",
-        confirmationUrl: url,
-        locale: input.locale,
-        supportEmail: dependencies.supportEmail,
-      });
-    },
-  });
-  if (result.status !== "accepted") throw new LaunchAccessError("REQUEST_UNAVAILABLE");
-  return { status: "confirmation_pending" };
+  // Compatibility with an earlier prepared/outbox contract: a committed
+  // registration is acknowledged, but this request never drains the outbox or
+  // sends mail. Future notifications are a separate, explicitly operated flow.
+  return { status: "request_received" };
 }
 
 export async function confirmLaunchAccess(

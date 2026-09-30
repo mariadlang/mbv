@@ -56,5 +56,5 @@ export function launchErrorResponse(error: unknown): NextResponse {
         return launchJson({ error: error.code }, 503);
     }
   }
-  return launchJson({ error: "REQUEST_UNAVAILABLE" }, 503);
+  return launchJson({ error: "REQUEST_FAILED" }, 500);
 }

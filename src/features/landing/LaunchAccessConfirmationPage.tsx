@@ -61,7 +61,7 @@ export function LaunchAccessConfirmationPage() {
     setResendError(false);
     setState("resending");
     const result = await requestLaunchAccess(parsed.data, language);
-    if (result.status === "confirmation_pending") setState("resent");
+    if (result.status === "request_received") setState("resent");
     else if (result.status === "closed") setState("closed");
     else {
       setResendError(true);
