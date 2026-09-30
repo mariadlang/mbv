@@ -4,7 +4,7 @@ Esta carpeta es la puerta de entrada oficial para comprender cómo evolucionó e
 
 ## Qué consultar
 
-- [`HISTORIAL.md`](HISTORIAL.md): evolución cronológica verificable, desde el primer registro Git accesible hasta los cambios locales actuales.
+- [`HISTORIAL.md`](HISTORIAL.md): evolución cronológica verificable, desde el primer registro Git accesible hasta el release productivo vigente.
 - [`ESTADO_ACTUAL.md`](ESTADO_ACTUAL.md): memoria breve del producto, arquitectura, módulos, conexiones, pruebas, riesgos y siguiente paso.
 - [`../../AGENTS.md`](../../AGENTS.md): reglas obligatorias de producto, arquitectura, calidad y actualización documental.
 
@@ -12,15 +12,15 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Última revisión documental: **2026-09-28, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-09-30, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.
-- SHA funcional vigente: `ad0fa5d08c959f883dafd6d56123ee96920f5bf6`.
-- Sincronización observada al publicar `MBV-H-040`: rama de trabajo y `origin/main` alineadas en `ad0fa5d`; GitHub Actions `36465516462` y Vercel Production aprobaron el mismo SHA.
+- SHA funcional vigente: `370a8a81579e570c5b64023ca2c92e2c16aa3cde`.
+- Sincronización observada al publicar `MBV-H-042`/`MBV-H-043`: rama de trabajo y `origin/main` alineadas en `370a8a8`; GitHub Actions `36772651377` y Vercel Production `6769422318` aprobaron el mismo SHA.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta el cierre funcional y UX documentado en `MBV-H-040`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la presentación pública y la invitación aislada documentadas en `MBV-H-043`.
 
-P0 y P1 permanecen como baseline histórico. El release `ad0fa5d08c959f883dafd6d56123ee96920f5bf6` conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend publicados en los hitos anteriores, y completa `MBV-H-040`: planificación, fechas, hábitos, cierre de proyectos y valoraciones confirmadas. Su CI, despliegue y smoke productivo están registrados en la auditoría del cierre.
+P0 y P1 permanecen como baseline histórico. El release funcional `370a8a81579e570c5b64023ca2c92e2c16aa3cde` conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend publicados en los hitos anteriores, y añade `MBV-H-042`/`MBV-H-043`: invitación de lanzamiento fail-closed y presentación del producto con capturas auténticas. El código de campaña está desplegado, pero sus flags permanecen apagados; no se aplicó su migración, no se configuraron secretos nuevos y no se capturan correos ni se envían mensajes reales.
 
 ## Fuentes utilizadas
 
@@ -28,7 +28,7 @@ P0 y P1 permanecen como baseline histórico. El release `ad0fa5d08c959f883dafd6d
 - Estado preparado, no preparado y archivos nuevos del working tree.
 - Código actual de `app/`, `src/`, `tests/`, `e2e/`, `supabase/` y configuración del proyecto.
 - README, documentos de arquitectura, ADR, notas de producto, documentos legales, soporte y autenticación existentes.
-- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-16.
+- Pruebas ejecutadas y evidencia reunida durante las sesiones del 2026-09-04 al 2026-09-30.
 
 No se encontraron `AGENTS.override.md`, pull requests, issues ni etiquetas disponibles localmente. No se consultaron archivos `.env`, credenciales, tokens ni datos personales. Los documentos fuente externos mencionados por `docs/product/source-notes.md` no están versionados y, por tanto, no se revisaron directamente.
 
