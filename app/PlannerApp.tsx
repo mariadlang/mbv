@@ -26,6 +26,7 @@ import { publicConfig } from "@/src/lib/publicConfig";
 import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
 import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
+import { LaunchAccessConfirmationPage } from "@/src/features/landing/LaunchAccessConfirmationPage";
 
 const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
@@ -342,6 +343,7 @@ function RootRoutes() {
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />
+    <Route path="/launch-access/confirm" element={<LaunchAccessConfirmationPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/upgrade" element={<UpgradePage />} />
     <Route path="/platform" element={<PlatformPage />} />

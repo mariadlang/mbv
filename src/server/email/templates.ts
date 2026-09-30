@@ -1,6 +1,8 @@
 import { minorUnitsToDecimal, type BillingInterval } from "@/src/domain/commercialOffer";
+import type { LaunchAccessLocale } from "@/src/server/launch/schema";
 
 export const TRANSACTIONAL_EMAIL_KINDS = [
+  "launch_confirmation",
   "premium_welcome",
   "commercial_eligibility_admin",
   "commercial_trial_activated",
@@ -23,6 +25,12 @@ interface CommonUserEmailInput {
 }
 
 export type TransactionalEmailInput =
+  | {
+    kind: "launch_confirmation";
+    confirmationUrl: string;
+    locale: LaunchAccessLocale;
+    supportEmail: string;
+  }
   | ({
     kind: "premium_welcome";
     interval: BillingInterval;
@@ -73,6 +81,7 @@ export interface RenderedTransactionalEmail {
 }
 
 interface EmailContent {
+  locale?: LaunchAccessLocale;
   subject: string;
   preview: string;
   heading: string;
@@ -142,6 +151,11 @@ function formatAmount(amountMinor: number, currency: "USD"): string {
 }
 
 function renderHtml(content: EmailContent, supportEmail: string): string {
+  const locale = content.locale ?? "es";
+  const tagline = locale === "en"
+    ? "A life that feels more like yours, step by step."
+    : "Una vida más tuya, paso a paso.";
+  const supportPrompt = locale === "en" ? "Need help? Email us at" : "¿Necesitas ayuda? Escríbenos a";
   const details = content.details?.length
     ? `<table role="presentation" class="details" width="100%" cellspacing="0" cellpadding="0">${content.details.map(([label, value]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`).join("")}</table>`
     : "";
@@ -152,24 +166,55 @@ function renderHtml(content: EmailContent, supportEmail: string): string {
     ? `<p class="cta"><a href="${escapeHtml(safeWebUrl(content.cta.url))}" target="_blank">${escapeHtml(content.cta.label)}</a></p>`
     : "";
   return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(content.subject)}</title><style>
 body{margin:0;background:linen;color:darkslategray;font-family:Arial,sans-serif}.preview{display:none;max-height:0;overflow:hidden;opacity:0}.wrap{padding:28px 12px}.card{max-width:620px;margin:0 auto;background:white;border:1px solid gainsboro;border-radius:20px;overflow:hidden}.brand{padding:22px 28px;background:sienna;color:white;font-size:18px;font-weight:700}.content{padding:32px 28px}h1{font-size:27px;line-height:1.25;margin:0 0 20px}p,li,td{font-size:16px;line-height:1.6}ul{padding-left:22px}.details{margin:22px 0;border-collapse:collapse}.details td{padding:9px 0;border-bottom:1px solid linen}.details td:first-child{font-weight:700;padding-right:16px}.details td:last-child{text-align:right}.cta{margin:28px 0}.cta a{display:inline-block;background:sienna;color:white!important;text-decoration:none;padding:13px 20px;border-radius:999px;font-weight:700}.footer{padding:20px 28px;background:seashell;color:dimgray;font-size:13px;line-height:1.5}.footer a{color:sienna}
 @media(max-width:520px){.wrap{padding:0}.card{border:0;border-radius:0}.brand,.content,.footer{padding-left:20px;padding-right:20px}h1{font-size:23px}.details td{display:block;text-align:left!important}.details td:first-child{border-bottom:0;padding-bottom:0}.details td:last-child{padding-top:2px}}
-</style></head><body><span class="preview">${escapeHtml(content.preview)}</span><div class="wrap"><div class="card"><div class="brand">My Best Version</div><main class="content"><h1>${escapeHtml(content.heading)}</h1>${content.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${details}${bullets}${cta}${content.footer ? `<p>${escapeHtml(content.footer)}</p>` : ""}</main><footer class="footer">Una vida más tuya, paso a paso.<br>¿Necesitas ayuda? Escríbenos a <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>.</footer></div></div></body></html>`;
+</style></head><body><span class="preview">${escapeHtml(content.preview)}</span><div class="wrap"><div class="card"><div class="brand">My Best Version</div><main class="content"><h1>${escapeHtml(content.heading)}</h1>${content.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${details}${bullets}${cta}${content.footer ? `<p>${escapeHtml(content.footer)}</p>` : ""}</main><footer class="footer">${escapeHtml(tagline)}<br>${escapeHtml(supportPrompt)} <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>.</footer></div></div></body></html>`;
 }
 
 function renderText(content: EmailContent, supportEmail: string): string {
+  const locale = content.locale ?? "es";
   const parts = [content.heading, "", ...content.paragraphs];
   if (content.details?.length) parts.push("", ...content.details.map(([label, value]) => `${label}: ${value}`));
   if (content.bullets?.length) parts.push("", ...content.bullets.map((item) => `- ${item}`));
   if (content.cta) parts.push("", `${content.cta.label}: ${safeWebUrl(content.cta.url)}`);
   if (content.footer) parts.push("", content.footer);
-  parts.push("", "Una vida más tuya, paso a paso.", `Soporte: ${supportEmail}`);
+  parts.push(
+    "",
+    locale === "en" ? "A life that feels more like yours, step by step." : "Una vida más tuya, paso a paso.",
+    `${locale === "en" ? "Support" : "Soporte"}: ${supportEmail}`,
+  );
   return parts.join("\n");
 }
 
 function contentFor(input: TransactionalEmailInput): EmailContent {
+  if (input.kind === "launch_confirmation") {
+    if (input.locale === "en") return {
+      locale: "en",
+      subject: "Confirm your email for launch access",
+      preview: "Confirm your address to continue with your request.",
+      heading: "Confirm your email",
+      paragraphs: [
+        "We received your request to take part in the My Best Version launch.",
+        "Confirming your address does not assign a spot or activate Premium yet. We will email you if your access is reserved.",
+      ],
+      cta: { label: "Confirm my email", url: input.confirmationUrl },
+      footer: "If you did not make this request, you can ignore this message.",
+    };
+    return {
+      locale: "es",
+      subject: "Confirma tu correo para el acceso de lanzamiento",
+      preview: "Confirma tu dirección para continuar con tu solicitud.",
+      heading: "Confirma tu correo",
+      paragraphs: [
+        "Recibimos tu solicitud para participar en el lanzamiento de My Best Version.",
+        "Confirmar tu dirección no asigna todavía un cupo ni activa Premium. Te avisaremos por correo si tu acceso queda reservado.",
+      ],
+      cta: { label: "Confirmar mi correo", url: input.confirmationUrl },
+      footer: "Si no hiciste esta solicitud, puedes ignorar este mensaje.",
+    };
+  }
   const timeZone = input.timeZone ?? "America/Bogota";
   if (input.kind === "premium_welcome") return {
     subject: "Tu Premium de My Best Version está activo: empieza por aquí",

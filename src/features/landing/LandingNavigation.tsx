@@ -41,8 +41,8 @@ export function LandingNavigation({ content, authenticated, onNavigation, onPrim
     <>
       <div className="landing-promo" role="note"><span aria-hidden="true">✦</span>{content.promo}<span aria-hidden="true">✦</span></div>
       <header className="landing-header">
-        <a className="landing-brand-link" href="#inicio" aria-label="My Best Version — inicio"><BrandMark /></a>
-        <nav className="landing-nav landing-nav--desktop" aria-label="Navegación principal">
+        <a className="landing-brand-link" href="#inicio" aria-label={content.accessibility.brandHome}><BrandMark /></a>
+        <nav className="landing-nav landing-nav--desktop" aria-label={content.accessibility.primaryNavigation}>
           {content.navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => onNavigation(item.id)}>{item.label}</a>)}
         </nav>
         <div className="landing-header__actions">
@@ -60,7 +60,7 @@ export function LandingNavigation({ content, authenticated, onNavigation, onPrim
           >{open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
         </div>
         <div ref={panelRef} id="landing-mobile-menu" className={`landing-mobile-menu ${open ? "is-open" : ""}`} hidden={!open}>
-          <nav aria-label="Navegación móvil">
+          <nav aria-label={content.accessibility.mobileNavigation}>
             {content.navigation.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => { onNavigation(item.id); close(); }}>{item.label}</a>)}
             {!authenticated && <Link to="/login" onClick={() => { onLogin(); close(); }}>{content.actions.login}</Link>}
             <Link className="landing-button landing-button--primary" to={destination} onClick={() => { onPrimaryAction(); close(); }}>{primaryLabel}</Link>

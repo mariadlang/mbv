@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useI18n } from "@/src/i18n/I18nProvider";
@@ -12,6 +12,11 @@ export function Modal({
   onClose,
   children,
   explicitI18n = false,
+  eyebrow,
+  className = "",
+  layerClassName = "",
+  initialFocusRef,
+  inertBackground = false,
 }: {
   open: boolean;
   title: string;
@@ -19,6 +24,11 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
   explicitI18n?: boolean;
+  eyebrow?: string;
+  className?: string;
+  layerClassName?: string;
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  inertBackground?: boolean;
 }) {
   const { m } = useI18n();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -35,8 +45,27 @@ export function Modal({
     if (!open) return;
     const previousActiveElement = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const viewportWidth = document.documentElement.clientWidth;
+    const scrollbarWidth = viewportWidth > 0 ? window.innerWidth - viewportWidth : 0;
+    const backgroundElements = inertBackground
+      ? Array.from(document.body.children).filter((element): element is HTMLElement => (
+          element instanceof HTMLElement && !element.contains(dialogRef.current)
+        ))
+      : [];
+    const previousInert = backgroundElements.map((element) => ({ element, inert: element.inert }));
+
+    if (scrollbarWidth > 0) {
+      const currentPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
+      document.body.style.paddingRight = `${currentPadding + scrollbarWidth}px`;
+    }
     document.body.style.overflow = "hidden";
-    closeButtonRef.current?.focus();
+    backgroundElements.forEach((element) => { element.inert = true; });
+    const preferredFocus = initialFocusRef?.current;
+    const initialFocus = preferredFocus && !preferredFocus.matches(":disabled, [inert], [aria-hidden='true']")
+      ? preferredFocus
+      : closeButtonRef.current;
+    initialFocus?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseRef.current();
       if (event.key !== "Tab" || !dialogRef.current) return;
@@ -58,14 +87,16 @@ export function Modal({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+      previousInert.forEach(({ element, inert }) => { element.inert = inert; });
       previousActiveElement?.focus();
     };
-  }, [open]);
+  }, [inertBackground, initialFocusRef, open]);
 
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="modal-layer" data-i18n-explicit={explicitI18n ? "true" : undefined}>
+    <div className={`modal-layer ${layerClassName}`.trim()} data-i18n-explicit={explicitI18n ? "true" : undefined}>
       <button
         type="button"
         className="modal-backdrop"
@@ -74,7 +105,7 @@ export function Modal({
       />
       <section
         ref={dialogRef}
-        className="modal"
+        className={`modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -82,7 +113,7 @@ export function Modal({
       >
         <header className="modal__header">
           <div>
-            <p className="eyebrow">{m("modal.brand")}</p>
+            <p className="eyebrow">{eyebrow ?? m("modal.brand")}</p>
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}
           </div>

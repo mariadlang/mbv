@@ -39,6 +39,14 @@ async function dismissCookieBanner(page: Page) {
   }
 }
 
+async function dismissLandingEntryPrompts(page: Page) {
+  const dialog = page.locator(".landing-launch-modal");
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  await dialog.locator(".modal__header .icon-button").click();
+  await expect(dialog).toBeHidden();
+  await dismissCookieBanner(page);
+}
+
 function collectRuntimeErrors(page: Page) {
   const errors: string[] = [];
   page.on("console", (message) => {
@@ -1605,7 +1613,7 @@ test("landing exposes its exact anchors and truthful Free and Premium terms", as
   test.skip(test.info().project.name !== "desktop", "The public commercial contract is viewport-independent.");
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(signedOutPath("/"));
-  await dismissCookieBanner(page);
+  await dismissLandingEntryPrompts(page);
 
   await expect(page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i })).toBeVisible();
 
@@ -1687,7 +1695,7 @@ test("landing mobile menu is keyboard accessible and closes after navigation", a
   test.skip(test.info().project.name !== "desktop", "The test controls its own mobile viewport.");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(signedOutPath("/"));
-  await dismissCookieBanner(page);
+  await dismissLandingEntryPrompts(page);
 
   const header = page.getByRole("banner");
   const trigger = header.locator('button[aria-controls="landing-mobile-menu"]');
@@ -1725,7 +1733,7 @@ test("landing FAQ exposes its answer and state to keyboard users", async ({ page
   test.skip(test.info().project.name !== "desktop", "The FAQ semantics are viewport-independent.");
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto(`${signedOutPath("/")}#faq`);
-  await dismissCookieBanner(page);
+  await dismissLandingEntryPrompts(page);
 
   const faq = page.locator("section#faq");
   const question = faq.getByRole("button", { name: "¿Gratis tiene límite de tiempo?", exact: true });
@@ -1750,7 +1758,7 @@ test("landing has no horizontal overflow at every required width", async ({ page
   for (const viewport of landingViewports) {
     await page.setViewportSize(viewport);
     await page.goto(signedOutPath("/"));
-    await dismissCookieBanner(page);
+    await dismissLandingEntryPrompts(page);
     await expect(page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i })).toBeVisible();
     await expectNoHorizontalOverflow(page, `landing at ${viewport.width}x${viewport.height}`);
     await page.locator("section#planes").scrollIntoViewIfNeeded();
@@ -1784,7 +1792,8 @@ test("P1 public routes remain clear across the required visual matrix", async ({
     await page.setViewportSize(viewport);
     for (const screen of screens) {
       await page.goto(signedOutPath(screen.path));
-      await dismissCookieBanner(page);
+      if (screen.path === "/") await dismissLandingEntryPrompts(page);
+      else await dismissCookieBanner(page);
       await expect(screen.ready()).toBeVisible();
       await expectNoHorizontalOverflow(page, `${screen.path} at ${viewport.width}x${viewport.height}`);
 
@@ -1953,7 +1962,7 @@ test("P0 mobile drawer traps focus and critical touch targets are at least 44px"
   await page.goto("/app/habits");
   await expectMinimumTouchTarget(page.getByRole("button", { name: "Crear hábito", exact: true }), "Crear hábito");
   await page.goto(signedOutPath("/"));
-  await dismissCookieBanner(page);
+  await dismissLandingEntryPrompts(page);
   const landingHeader = page.getByRole("banner");
   const landingMenu = landingHeader.locator('button[aria-controls="landing-mobile-menu"]');
   await expect(landingMenu).toHaveAccessibleName("Abrir menú");
@@ -2124,6 +2133,7 @@ test("captures the eight P0 visual references", async ({ page }) => {
   await captureP0Reference(page, "habits", page.getByRole("heading", { name: "Hábitos", exact: true }));
 
   await page.goto(signedOutPath("/"));
+  await dismissLandingEntryPrompts(page);
   await captureP0Reference(page, "landing", page.getByRole("heading", { level: 1, name: /Tu mejor versión\s+empieza aquí/i }));
   await page.goto(signedOutPath("/trial"));
   await captureP0Reference(page, "trial", page.getByRole("heading", { name: "Empieza gratis y construye constancia a tu ritmo.", exact: true }));
@@ -2284,8 +2294,10 @@ test("English mode covers the updated product flows", async ({ page }) => {
     ["/upgrade", "Choose your Premium access."],
   ] as const) {
     await page.goto(signedOutPath(path));
+    if (path === "/") await dismissLandingEntryPrompts(page);
     await expect(page.getByRole("heading", { name: heading, exact: true }).first()).toBeVisible();
   }
   await page.goto(signedOutPath("/"));
+  await dismissLandingEntryPrompts(page);
   await expect(page.getByRole("link", { name: "Start for free", exact: true }).first()).toBeVisible();
 });

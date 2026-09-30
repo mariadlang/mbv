@@ -10,6 +10,9 @@ export const publicConfig = {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
     "",
   googleCalendarEnabled: process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_ENABLED === "1",
+  launchInvitationEnabled:
+    process.env.NODE_ENV !== "production"
+    || process.env.NEXT_PUBLIC_FEATURE_LAUNCH_INVITATION === "1",
   productFeatureFlags: resolveProductFeatureFlags({
     weekly_recap: process.env.NEXT_PUBLIC_FEATURE_WEEKLY_RECAP,
     return_experience: process.env.NEXT_PUBLIC_FEATURE_RETURN_EXPERIENCE,

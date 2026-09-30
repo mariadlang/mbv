@@ -28,7 +28,7 @@ export function LandingHero({ content, authenticated, onTrialAction, onLogin }: 
         </div>
         {!authenticated && <p className="landing-trust"><Check aria-hidden="true" size={16} />{content.hero.trust}</p>}
       </div>
-      <LandingHeroVisual alt={content.hero.visualAlt} />
+      <LandingHeroVisual language={content.language} alt={content.hero.visualAlt} exampleLabel={content.showcase.exampleLabel} />
     </section>
   );
 }
@@ -41,7 +41,7 @@ export function LandingBenefits({ content }: { content: LandingContent }) {
         <h2 id="landing-benefits-title">{content.benefits.title}</h2>
         <p>{content.benefits.description}</p>
       </div>
-      <div className="landing-shell landing-feature-grid landing-feature-grid--four">
+      <div className="landing-shell landing-feature-grid landing-feature-grid--benefits">
         {content.benefits.items.map((item) => <article key={item.title} className="landing-feature-card"><span className="landing-icon"><LandingIcon name={item.icon} /></span><h3>{item.title}</h3><p>{item.description}</p></article>)}
       </div>
     </section>
@@ -84,6 +84,7 @@ export function LandingHowItWorks({ content }: { content: LandingContent }) {
       <ol className="landing-shell landing-flow">
         {content.how.steps.map((step, index) => <li key={step.title}><span className="landing-flow__number">{String(index + 1).padStart(2, "0")}</span><span className="landing-icon"><LandingIcon name={step.icon} /></span><h3>{step.title}</h3><p>{step.description}</p></li>)}
       </ol>
+      <p className="landing-shell landing-flow-example">{content.how.example}</p>
     </section>
   );
 }
@@ -99,6 +100,15 @@ export function LandingIncluded({ content }: { content: LandingContent }) {
       <div className="landing-shell landing-feature-grid landing-feature-grid--included">
         {content.included.items.map((item) => <article key={item.title} className="landing-included-card"><span className="landing-icon"><LandingIcon name={item.icon} /></span><div><h3>{item.title}</h3><p>{item.description}</p></div></article>)}
       </div>
+      <div className="landing-shell landing-included-secondary" aria-labelledby="landing-included-premium-title">
+        <header>
+          <h3 id="landing-included-premium-title" className="landing-eyebrow">{content.included.secondaryLabel}</h3>
+          <p>{content.included.secondaryDescription}</p>
+        </header>
+        <div className="landing-feature-grid landing-feature-grid--secondary">
+          {content.included.secondaryItems.map((item) => <article key={item.title} className="landing-included-card landing-included-card--secondary"><span className="landing-icon"><LandingIcon name={item.icon} /></span><div><h4>{item.title}</h4><p>{item.description}</p></div></article>)}
+        </div>
+      </div>
     </section>
   );
 }
@@ -111,7 +121,7 @@ export function LandingShowcase({ content }: { content: LandingContent }) {
         <h2 id="landing-showcase-title">{content.showcase.title}</h2>
         <p>{content.showcase.description}</p>
       </div>
-      <div className="landing-shell"><LandingProductShowcase content={content.showcase} /></div>
+      <div className="landing-shell"><LandingProductShowcase language={content.language} content={content.showcase} /></div>
     </section>
   );
 }

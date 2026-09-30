@@ -7,6 +7,7 @@ import { useCookieConsent } from "@/src/features/legal/CookieConsent";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { landingContent } from "@/src/features/landing/landingContent";
 import { LandingNavigation } from "@/src/features/landing/LandingNavigation";
+import { LandingLaunchInvitation } from "@/src/features/landing/LandingLaunchInvitation";
 import {
   LandingBenefits,
   LandingHero,
@@ -97,9 +98,10 @@ export function LandingPage() {
 
   return (
     <div className="landing-page" data-i18n-explicit="true">
-      <a className="landing-skip-link" href="#landing-main">Saltar al contenido</a>
+      <a className="landing-skip-link" href="#landing-main">{content.accessibility.skipLink}</a>
       <LandingNavigation content={content} authenticated={authenticated} onNavigation={trackNavigation} onPrimaryAction={() => trackTrialAction("landing_header")} onLogin={() => trackLogin("landing_header")} />
       <main id="landing-main">
+        <LandingLaunchInvitation />
         <LandingHero content={content} authenticated={authenticated} onTrialAction={trackTrialAction} onLogin={trackLogin} />
         <LandingBenefits content={content} />
         <LandingProblemSolution content={content} />

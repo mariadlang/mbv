@@ -112,6 +112,7 @@ export function Tabs<T extends string>({
   value,
   onChange,
   panelId,
+  orientation = "horizontal",
   className = "",
 }: {
   id?: string;
@@ -120,6 +121,7 @@ export function Tabs<T extends string>({
   value: T;
   onChange: (value: T) => void;
   panelId?: string;
+  orientation?: "horizontal" | "vertical";
   className?: string;
 }) {
   const generatedId = useId();
@@ -129,8 +131,8 @@ export function Tabs<T extends string>({
     const currentIndex = enabledItems.findIndex((item) => item.id === itemId);
     if (currentIndex < 0) return;
     let nextIndex = currentIndex;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") nextIndex = (currentIndex + 1) % enabledItems.length;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = (currentIndex - 1 + enabledItems.length) % enabledItems.length;
+    if ((orientation === "horizontal" && event.key === "ArrowRight") || (orientation === "vertical" && event.key === "ArrowDown")) nextIndex = (currentIndex + 1) % enabledItems.length;
+    else if ((orientation === "horizontal" && event.key === "ArrowLeft") || (orientation === "vertical" && event.key === "ArrowUp")) nextIndex = (currentIndex - 1 + enabledItems.length) % enabledItems.length;
     else if (event.key === "Home") nextIndex = 0;
     else if (event.key === "End") nextIndex = enabledItems.length - 1;
     else return;
@@ -140,7 +142,7 @@ export function Tabs<T extends string>({
     document.getElementById(`${tabsId}-${next.id}-tab`)?.focus();
   };
 
-  return <div className={`tabs ${className}`.trim()} role="tablist" aria-label={ariaLabel}>{items.map((item) => (
+  return <div className={`tabs ${className}`.trim()} role="tablist" aria-label={ariaLabel} aria-orientation={orientation}>{items.map((item) => (
     <button
       type="button"
       role="tab"

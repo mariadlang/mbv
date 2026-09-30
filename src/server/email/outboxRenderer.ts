@@ -51,6 +51,11 @@ function inputFromOutbox(
 ): TransactionalEmailInput {
   const common = userCommon(context);
   switch (row.templateKey) {
+    case "launch_confirmation":
+      // Launch confirmations contain an ephemeral bearer token assembled only
+      // by the isolated launch service. The global outbox renderer must never
+      // attempt to deliver this template.
+      throw new Error("LAUNCH_EMAIL_REQUIRES_ISOLATED_RENDERER");
     case "premium_welcome": {
       const data = paidPeriod.parse(row.templateData);
       return {

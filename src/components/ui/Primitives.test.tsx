@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createElement, useState } from "react";
+import { createElement, useRef, useState } from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button, Chip, FormField, IconButton, InlineMessage, SegmentedControl, Tabs } from "@/src/components/ui/Primitives";
@@ -16,6 +16,28 @@ function ModalHarness() {
       <button type="button" onClick={() => setOpen(true)}>Abrir</button>
       <Modal open={open} title="Confirmar cambio" description="Revisa la información" onClose={() => setOpen(false)}>
         <button type="button">Guardar</button>
+      </Modal>
+    </I18nProvider>
+  );
+}
+
+function EnhancedModalHarness() {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <I18nProvider>
+      <button type="button" onClick={() => setOpen(true)}>Abrir invitación</button>
+      <Modal
+        open={open}
+        title="Sé parte del lanzamiento"
+        eyebrow="ACCESO DE LANZAMIENTO"
+        onClose={() => setOpen(false)}
+        className="campaign-modal"
+        layerClassName="campaign-layer"
+        initialFocusRef={inputRef}
+        inertBackground
+      >
+        <input ref={inputRef} aria-label="Correo electrónico" />
       </Modal>
     </I18nProvider>
   );
@@ -124,6 +146,25 @@ describe("design-system primitives", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(view.queryByRole("dialog")).toBeNull();
     expect(document.body.style.overflow).toBe("");
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("supports campaign styling, custom eyebrow, initial focus, and an inert background", () => {
+    const view = render(<EnhancedModalHarness />);
+    const trigger = view.getByRole("button", { name: "Abrir invitación" });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    const dialog = view.getByRole("dialog", { name: "Sé parte del lanzamiento" });
+    expect(dialog.classList.contains("campaign-modal")).toBe(true);
+    expect(dialog.closest(".modal-layer")?.classList.contains("campaign-layer")).toBe(true);
+    expect(view.getByText("ACCESO DE LANZAMIENTO")).toBeTruthy();
+    expect(document.activeElement).toBe(view.getByRole("textbox", { name: "Correo electrónico" }));
+    expect(view.container.inert).toBe(true);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(view.queryByRole("dialog")).toBeNull();
+    expect(view.container.inert).not.toBe(true);
     expect(document.activeElement).toBe(trigger);
   });
 });

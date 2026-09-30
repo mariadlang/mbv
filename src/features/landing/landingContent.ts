@@ -24,7 +24,19 @@ export interface ComparisonRow {
   premium: boolean;
 }
 
+export type LandingShowcaseMomentId = "today" | "planning" | "wellbeing" | "progress";
+
+export interface LandingShowcaseMoment {
+  id: LandingShowcaseMomentId;
+  marker: string;
+  label: string;
+  title: string;
+  description: string;
+  alt: string;
+}
+
 export interface LandingContent {
+  language: Language;
   promo: string;
   navigation: Array<{ id: "como-funciona" | "que-incluye" | "beneficios" | "planes" | "faq"; label: string }>;
   actions: {
@@ -49,9 +61,24 @@ export interface LandingContent {
     solutionTitle: string;
     solutionItems: string[];
   };
-  how: { eyebrow: string; title: string; description: string; steps: LandingFeature[] };
-  included: { eyebrow: string; title: string; description: string; items: LandingFeature[] };
-  showcase: { eyebrow: string; title: string; description: string; dashboardAlt: string; todayAlt: string; habitsAlt: string; labels: string[] };
+  how: { eyebrow: string; title: string; description: string; example: string; steps: LandingFeature[] };
+  included: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    items: LandingFeature[];
+    secondaryLabel: string;
+    secondaryDescription: string;
+    secondaryItems: LandingFeature[];
+  };
+  showcase: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    selectorLabel: string;
+    exampleLabel: string;
+    moments: LandingShowcaseMoment[];
+  };
   premium: { eyebrow: string; title: string; description: string; availableLabel: string; items: PremiumLandingFeature[] };
   pricing: {
     eyebrow: string;
@@ -85,10 +112,11 @@ export interface LandingContent {
   finalCta: { eyebrow: string; title: string; description: string };
   faq: { eyebrow: string; title: string; description: string; items: Array<{ question: string; answer: string; checkout?: boolean }> };
   footer: { tagline: string; product: string; account: string; legal: string; privacy: string; terms: string; cookies: string; pqr: string; copyright: string };
-  accessibility: { menuOpen: string; menuClose: string; purchaseOptions: string; comparisonAvailable: string; comparisonUnavailable: string; screenshotGroup: string };
+  accessibility: { skipLink: string; brandHome: string; primaryNavigation: string; mobileNavigation: string; menuOpen: string; menuClose: string; purchaseOptions: string; comparisonAvailable: string; comparisonUnavailable: string; screenshotGroup: string };
 }
 
 const es: LandingContent = {
+  language: "es",
   promo: "Usa My Best Version durante 30 días consecutivos y recibe 30 días Premium gratis",
   navigation: [
     { id: "como-funciona", label: "Cómo funciona" },
@@ -111,21 +139,22 @@ const es: LandingContent = {
     title: "Tu mejor versión",
     accent: "empieza aquí",
     paragraphs: [
-      "Reúne tu visión, tus metas y tus hábitos para elegir con claridad qué merece tu atención hoy.",
+      "Ordena tus planes, elige lo importante y encuentra tu siguiente paso para hoy. Un espacio para dar forma a tus metas, organizar tus tareas y reconocer tus avances a tu ritmo.",
       "Empieza con Gratis y construye una práctica personal que puedas sostener a tu ritmo.",
     ],
     trust: "Gratis · USD 0 · Sin tarjeta",
-    visualAlt: "Vistas reales de Dashboard, Mi día y Hábitos en My Best Version",
+    visualAlt: "Vista de ejemplo de Mi día con tres prioridades y tareas organizadas",
   },
   benefits: {
     eyebrow: "CLARIDAD PARA TU VIDA REAL",
-    title: "Lo importante, visible y conectado",
-    description: "Un espacio sereno para convertir intención en pequeños avances que sí puedes reconocer.",
+    title: "Más claridad para organizarte a tu manera",
+    description: "Beneficios concretos para volver a lo que importa sin añadir más ruido.",
     items: [
-      { title: "Empieza sin costo", description: "Crea tu cuenta Gratis por USD 0, sin tarjeta ni vencimiento del acceso Gratis.", icon: "leaf" },
-      { title: "Vuelve a tu dirección", description: "Mantén tu visión y tus metas cerca cuando necesites decidir qué hacer hoy.", icon: "eye" },
-      { title: "Registra sin culpa", description: "Lleva tus hábitos y reconoce la constancia sin castigar las pausas.", icon: "repeat" },
-      { title: "Mira lo que avanza", description: "Tu Dashboard reúne señales claras para que puedas continuar con perspectiva.", icon: "chart" },
+      { title: "Menos pendientes dando vueltas", description: "Reúne lo que quieres hacer en un lugar al que puedas volver.", icon: "check" },
+      { title: "Un punto de partida para hoy", description: "Elige tus prioridades sin tener que resolver toda tu semana de una vez.", icon: "target" },
+      { title: "Planes que no se quedan olvidados", description: "Vuelve a tus metas y decide qué acción concreta quieres darles hoy.", icon: "calendar" },
+      { title: "Avances que puedes reconocer", description: "Consulta lo que completaste y los hábitos que registraste, no solo lo que falta.", icon: "chart" },
+      { title: "Espacio para cómo te sientes", description: "Incluye tu ánimo y tu reflexión en la forma de organizar tu día.", icon: "journal" },
     ],
   },
   problemSolution: {
@@ -151,36 +180,48 @@ const es: LandingContent = {
   },
   how: {
     eyebrow: "UN RECORRIDO SIMPLE",
-    title: "De lo que quieres a lo que haces hoy",
-    description: "Gratis reúne las piezas esenciales para que tu dirección no se pierda en el día a día.",
+    title: "De lo que quieres para tu vida a lo que puedes hacer hoy",
+    description: "No necesitas tenerlo todo resuelto para empezar. Puedes comenzar con una meta, una prioridad o una acción pequeña.",
+    example: "Por ejemplo, tú puedes pasar de “Quiero retomar la lectura” a una acción concreta: “Leer 20 minutos hoy”.",
     steps: [
-      { title: "Visión", description: "Expresa la vida que quieres construir.", icon: "eye" },
-      { title: "Metas", description: "Convierte esa dirección en resultados claros.", icon: "target" },
-      { title: "Hábitos", description: "Registra acciones repetibles a tu propio ritmo.", icon: "repeat" },
-      { title: "Mi día", description: "Elige qué merece tu atención hoy.", icon: "check" },
-      { title: "Dashboard", description: "Mira el conjunto y reconoce tu avance.", icon: "chart" },
+      { title: "Dale una dirección", description: "Pon en palabras lo que quieres para ti y define las metas que te gustaría trabajar.", icon: "eye" },
+      { title: "Hazle espacio en tus planes", description: "Organiza tus metas y acciones en tu planificación para decidir en qué quieres enfocarte y cuándo.", icon: "calendar" },
+      { title: "Elige lo importante de hoy", description: "Selecciona tus prioridades, consulta tus tareas y registra lo que vas completando.", icon: "check" },
+      { title: "Revisa y ajusta a tu ritmo", description: "Observa tus avances, tus hábitos y cómo te has sentido para decidir qué mantener y qué cambiar.", icon: "chart" },
     ],
   },
   included: {
-    eyebrow: "INCLUIDO EN GRATIS",
-    title: "Empieza con lo esencial por USD 0",
-    description: "Tu acceso Gratis reúne cinco espacios para orientar, actuar y registrar tu proceso.",
+    eyebrow: "HERRAMIENTAS DEL PRODUCTO",
+    title: "Un espacio para tus planes y tu día a día",
+    description: "Reúne espacios para orientar tus planes, actuar y revisar tu recorrido.",
     items: [
-      { title: "Visión", description: "Conserva una dirección personal que dé contexto a tus decisiones.", icon: "eye" },
-      { title: "Metas", description: "Define objetivos y resultados que tengan sentido para ti.", icon: "target" },
-      { title: "Hábitos y registro", description: "Crea hábitos y registra lo que realizaste sin juicios ni castigos.", icon: "repeat" },
-      { title: "Mi día", description: "Encuentra una vista clara para volver a lo importante cada día.", icon: "check" },
-      { title: "Dashboard", description: "Observa en un mismo lugar el estado general de tu proceso.", icon: "home" },
+      { title: "Visión y metas", description: "Define qué quieres construir y mantén presente lo que es importante para ti.", icon: "target" },
+      { title: "Planificación", description: "Da un lugar a tus objetivos y acciones en los espacios de planificación de la app.", icon: "calendar" },
+      { title: "Prioridades y tareas", description: "Decide qué merece tu atención hoy y reúne lo que necesitas hacer.", icon: "check" },
+      { title: "Hábitos", description: "Registra las pequeñas acciones que quieres mantener y consulta su seguimiento.", icon: "repeat" },
+      { title: "Bienestar y reflexión", description: "Anota cómo te sientes y guarda lo que quieres recordar de tu día.", icon: "journal" },
+      { title: "Progreso", description: "Consulta tus registros y reconoce lo que has ido completando.", icon: "chart" },
+    ],
+    secondaryLabel: "TAMBIÉN EN PREMIUM",
+    secondaryDescription: "Herramientas complementarias para registrar otras áreas, sin cambiar el foco principal de tu día.",
+    secondaryItems: [
+      { title: "Alimentación", description: "Registra y consulta tus comidas por día.", icon: "leaf" },
+      { title: "Entrenamiento", description: "Registra sesiones de fuerza, cardio o deporte por fecha.", icon: "fitness" },
+      { title: "Finanzas", description: "Reúne cuentas, movimientos y presupuestos para revisar tus finanzas personales.", icon: "wallet" },
     ],
   },
   showcase: {
     eyebrow: "PRODUCTO REAL",
-    title: "Conoce la experiencia de My Best Version",
-    description: "Una interfaz serena para ver tu dirección, elegir lo importante y registrar lo que sí hiciste.",
-    dashboardAlt: "Dashboard real de My Best Version en escritorio",
-    todayAlt: "Vista real de Mi día en móvil",
-    habitsAlt: "Vista real de Hábitos en escritorio",
-    labels: ["Dashboard", "Mi día", "Hábitos"],
+    title: "Así se organiza un día más tuyo",
+    description: "De lo que quieres hacer a lo que haces hoy. Mira cómo puedes elegir tus prioridades, organizar tus acciones y reconocer lo que vas construyendo.",
+    selectorLabel: "Momentos de uso de My Best Version",
+    exampleLabel: "Vista de ejemplo",
+    moments: [
+      { id: "today", marker: "A", label: "Elige qué hacer hoy", title: "Elige qué hacer hoy", description: "Pon delante lo que merece tu atención. Elige hasta tres prioridades, consulta tus tareas y marca lo que ya hiciste.", alt: "Vista de ejemplo de Mi día con tres prioridades y tareas organizadas" },
+      { id: "planning", marker: "B", label: "Dale un lugar a tus planes", title: "Dale un lugar a tus planes", description: "Convierte tus intenciones en planes concretos y distribuye tus acciones para que no se queden solo en una idea.", alt: "Vista de ejemplo de la planificación semanal con prioridades, tareas y hábitos distribuidos por día" },
+      { id: "wellbeing", marker: "C", label: "Organízate teniendo en cuenta cómo estás", title: "Organízate teniendo en cuenta cómo estás", description: "Registra tus hábitos y haz una pausa para observar tu ánimo y tu energía. Tu organización también puede tener en cuenta cómo estás hoy.", alt: "Vista de ejemplo del registro de ánimo y energía del día" },
+      { id: "progress", marker: "D", label: "Reconoce lo que avanzaste", title: "Reconoce lo que avanzaste", description: "Vuelve a lo que sí hiciste. Consulta tus acciones y registros para reconocer tus avances y decidir qué mantener o ajustar.", alt: "Vista de ejemplo de Progreso con tareas completadas y registros de hábitos calculados por la aplicación" },
+    ],
   },
   premium: {
     eyebrow: "MÁS HERRAMIENTAS, CUANDO LAS QUIERAS",
@@ -289,6 +330,10 @@ const es: LandingContent = {
     copyright: "© 2026 My Best Version. Todos los derechos reservados.",
   },
   accessibility: {
+    skipLink: "Saltar al contenido",
+    brandHome: "My Best Version — inicio",
+    primaryNavigation: "Navegación principal",
+    mobileNavigation: "Navegación móvil",
     menuOpen: "Abrir menú",
     menuClose: "Cerrar menú",
     purchaseOptions: "Opciones de compra Premium",
@@ -300,6 +345,7 @@ const es: LandingContent = {
 
 const en: LandingContent = {
   ...es,
+  language: "en",
   promo: "Use My Best Version for 30 consecutive days and receive 30 Premium days free",
   navigation: [
     { id: "como-funciona", label: "How it works" },
@@ -321,19 +367,20 @@ const en: LandingContent = {
     eyebrow: "VISION · GOALS · HABITS · YOUR DAY",
     title: "Your best version",
     accent: "starts here",
-    paragraphs: ["Bring your vision, goals and habits together so you can clearly choose what deserves your attention today.", "Start with Free and build a personal practice you can sustain at your own pace."],
+    paragraphs: ["Organize your plans, choose what matters and find your next step for today. A space to shape your goals, organize your tasks and recognize your progress at your own pace.", "Start with Free and build a personal practice you can sustain at your own pace."],
     trust: "Free · USD 0 · No card",
-    visualAlt: "Real My Best Version Dashboard, My Day and Habits views",
+    visualAlt: "Example My Day view with three priorities and organized tasks",
   },
   benefits: {
     eyebrow: "CLARITY FOR REAL LIFE",
-    title: "Keep what matters visible and connected",
-    description: "A calm space for turning intention into small steps you can recognize.",
+    title: "More clarity to organize life your way",
+    description: "Practical benefits that help you return to what matters without adding more noise.",
     items: [
-      { title: "Start at no cost", description: "Create a Free USD 0 account with no card and no expiration for Free access.", icon: "leaf" },
-      { title: "Return to your direction", description: "Keep your vision and goals close when you need to decide what to do today.", icon: "eye" },
-      { title: "Log without guilt", description: "Track habits and recognize consistency without punishing pauses.", icon: "repeat" },
-      { title: "See what is moving", description: "Your Dashboard brings together clear signals so you can continue with perspective.", icon: "chart" },
+      { title: "Fewer loose ends on your mind", description: "Bring together what you want to do in one place you can return to.", icon: "check" },
+      { title: "A starting point for today", description: "Choose your priorities without having to solve the whole week at once.", icon: "target" },
+      { title: "Plans that are not forgotten", description: "Return to your goals and decide what concrete action you want to give them today.", icon: "calendar" },
+      { title: "Progress you can recognize", description: "See what you completed and the habits you logged, not only what remains.", icon: "chart" },
+      { title: "Room for how you feel", description: "Include your mood and reflection in the way you organize your day.", icon: "journal" },
     ],
   },
   problemSolution: {
@@ -349,36 +396,48 @@ const en: LandingContent = {
   },
   how: {
     eyebrow: "A SIMPLE JOURNEY",
-    title: "From what you want to what you do today",
-    description: "Free brings together the essentials so your direction does not get lost in daily life.",
+    title: "From what you want for your life to what you can do today",
+    description: "You do not need to have everything figured out to begin. Start with a goal, a priority or one small action.",
+    example: "For example, you can move from “I want to get back to reading” to one concrete action: “Read for 20 minutes today.”",
     steps: [
-      { title: "Vision", description: "Express the life you want to build.", icon: "eye" },
-      { title: "Goals", description: "Turn that direction into clear outcomes.", icon: "target" },
-      { title: "Habits", description: "Log repeatable actions at your own pace.", icon: "repeat" },
-      { title: "My Day", description: "Choose what deserves your attention today.", icon: "check" },
-      { title: "Dashboard", description: "See the whole and recognize your progress.", icon: "chart" },
+      { title: "Give it direction", description: "Put into words what you want for yourself and define the goals you would like to work on.", icon: "eye" },
+      { title: "Make room in your plans", description: "Organize your goals and actions in planning so you can decide what to focus on and when.", icon: "calendar" },
+      { title: "Choose what matters today", description: "Select your priorities, review your tasks and log what you complete.", icon: "check" },
+      { title: "Review and adjust at your pace", description: "Look at your progress, habits and how you have felt to decide what to keep and what to change.", icon: "chart" },
     ],
   },
   included: {
-    eyebrow: "INCLUDED IN FREE",
-    title: "Start with the essentials for USD 0",
-    description: "Free access brings together five spaces for direction, action and reflection.",
+    eyebrow: "PRODUCT TOOLS",
+    title: "A space for your plans and everyday life",
+    description: "Bring together spaces for guiding your plans, taking action and reviewing your journey.",
     items: [
-      { title: "Vision", description: "Keep a personal direction that gives context to your decisions.", icon: "eye" },
-      { title: "Goals", description: "Define goals and outcomes that matter to you.", icon: "target" },
-      { title: "Habits and logs", description: "Create habits and log what you did without judgment or punishment.", icon: "repeat" },
-      { title: "My Day", description: "Return to a clear view of what matters each day.", icon: "check" },
-      { title: "Dashboard", description: "See the overall state of your process in one place.", icon: "home" },
+      { title: "Vision and goals", description: "Define what you want to build and keep what matters to you in view.", icon: "target" },
+      { title: "Planning", description: "Give your goals and actions a place in the app's planning spaces.", icon: "calendar" },
+      { title: "Priorities and tasks", description: "Decide what deserves your attention today and bring together what you need to do.", icon: "check" },
+      { title: "Habits", description: "Log the small actions you want to maintain and review their history.", icon: "repeat" },
+      { title: "Wellbeing and reflection", description: "Note how you feel and save what you want to remember from your day.", icon: "journal" },
+      { title: "Progress", description: "Review your records and recognize what you have completed.", icon: "chart" },
+    ],
+    secondaryLabel: "ALSO IN PREMIUM",
+    secondaryDescription: "Complementary tools for logging other areas without changing the main focus of your day.",
+    secondaryItems: [
+      { title: "Nutrition", description: "Log and review your meals by day.", icon: "leaf" },
+      { title: "Training", description: "Log strength, cardio or sports sessions by date.", icon: "fitness" },
+      { title: "Finances", description: "Bring together accounts, transactions and budgets to review your personal finances.", icon: "wallet" },
     ],
   },
   showcase: {
     eyebrow: "REAL PRODUCT",
-    title: "Discover the My Best Version experience",
-    description: "A calm interface to see your direction, choose what matters and log what you did.",
-    dashboardAlt: "Real My Best Version dashboard on desktop",
-    todayAlt: "Real My Day view on mobile",
-    habitsAlt: "Real Habits view on desktop",
-    labels: ["Dashboard", "My Day", "Habits"],
+    title: "How a more personal day comes together",
+    description: "From what you want to do to what you do today. See how you can choose your priorities, organize your actions and recognize what you are building.",
+    selectorLabel: "Ways to use My Best Version",
+    exampleLabel: "Example view",
+    moments: [
+      { id: "today", marker: "A", label: "Choose what to do today", title: "Choose what to do today", description: "Put what deserves your attention first. Choose up to three priorities, review your tasks and mark what you completed.", alt: "Example My Day view with three priorities and organized tasks" },
+      { id: "planning", marker: "B", label: "Give your plans a place", title: "Give your plans a place", description: "Turn your intentions into concrete plans and distribute your actions so they do not remain only an idea.", alt: "Example weekly planning view with priorities, tasks and habits distributed by day" },
+      { id: "wellbeing", marker: "C", label: "Organize with how you feel in mind", title: "Organize with how you feel in mind", description: "Log your habits and pause to notice your mood and energy. Your organization can also take into account how you feel today.", alt: "Example view of the daily mood and energy check-in" },
+      { id: "progress", marker: "D", label: "Recognize what moved forward", title: "Recognize what moved forward", description: "Return to what you did. Review your actions and records to recognize your progress and decide what to keep or adjust.", alt: "Example Progress view with completed tasks and habit records calculated by the app" },
+    ],
   },
   premium: {
     eyebrow: "MORE TOOLS, WHEN YOU WANT THEM",
@@ -476,7 +535,7 @@ const en: LandingContent = {
     ],
   },
   footer: { tagline: "A LIFE THAT FEELS MORE YOURS", product: "Product", account: "Account", legal: "Legal", privacy: "Privacy", terms: "Terms", cookies: "Cookies", pqr: "Support", copyright: "© 2026 My Best Version. All rights reserved." },
-  accessibility: { menuOpen: "Open menu", menuClose: "Close menu", purchaseOptions: "Premium purchase options", comparisonAvailable: "Included", comparisonUnavailable: "Not included", screenshotGroup: "Real product screenshots" },
+  accessibility: { skipLink: "Skip to content", brandHome: "My Best Version — home", primaryNavigation: "Primary navigation", mobileNavigation: "Mobile navigation", menuOpen: "Open menu", menuClose: "Close menu", purchaseOptions: "Premium purchase options", comparisonAvailable: "Included", comparisonUnavailable: "Not included", screenshotGroup: "Real product screenshots" },
 };
 
 export const landingContent = { es, en } satisfies Record<Language, LandingContent>;
