@@ -107,7 +107,7 @@ describe("invitación de lanzamiento de la landing", () => {
   });
 
   it("no ofrece un formulario cuando el estado público no está disponible", async () => {
-    const fetchMock = vi.fn(async () => (
+    const fetchMock = vi.fn<typeof fetch>(async () => (
       jsonResponse(200, { status: "unavailable" })
     ));
     const view = renderInvitation(fetchMock);
