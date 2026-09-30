@@ -15,12 +15,12 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 - Última revisión documental: **2026-09-30, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.
-- SHA funcional vigente: `370a8a81579e570c5b64023ca2c92e2c16aa3cde`.
+- SHA funcional: `c24bb9fc06423b292eeb3399a7b31b4d327bc5c1`; fix de cierre publicado: `370a8a81579e570c5b64023ca2c92e2c16aa3cde`.
 - Sincronización observada al publicar `MBV-H-042`/`MBV-H-043`: rama de trabajo y `origin/main` alineadas en `370a8a8`; GitHub Actions `36772651377` y Vercel Production `6769422318` aprobaron el mismo SHA.
 - Historial: repositorio completo/no superficial, con dos raíces históricas y sin etiquetas Git.
-- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la presentación pública y la invitación aislada documentadas en `MBV-H-043`.
+- Alcance temporal accesible: desde `18fe17fdff9c39336bb54b0b716509f6ce568ded` del 2026-08-10 hasta la invitación aislada `MBV-H-042` y la presentación pública `MBV-H-043`.
 
-P0 y P1 permanecen como baseline histórico. El release funcional `370a8a81579e570c5b64023ca2c92e2c16aa3cde` conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend publicados en los hitos anteriores, y añade `MBV-H-042`/`MBV-H-043`: invitación de lanzamiento fail-closed y presentación del producto con capturas auténticas. El código de campaña está desplegado, pero sus flags permanecen apagados; no se aplicó su migración, no se configuraron secretos nuevos y no se capturan correos ni se envían mensajes reales.
+P0 y P1 permanecen como baseline histórico. El cambio funcional `c24bb9fc06423b292eeb3399a7b31b4d327bc5c1`, cerrado por el fix `370a8a81579e570c5b64023ca2c92e2c16aa3cde`, conserva la pausa de Calendar y los flags P2 apagados, mantiene el acceso comercial v2 y Resend publicados en los hitos anteriores, y añade `MBV-H-042`/`MBV-H-043`: invitación de lanzamiento fail-closed y presentación del producto con capturas auténticas. El código de campaña está desplegado, pero sus flags permanecen apagados; no se aplicó su migración, no se configuraron secretos nuevos y no se capturan correos ni se envían mensajes reales.
 
 ## Fuentes utilizadas
 
