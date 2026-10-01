@@ -11,18 +11,11 @@ import {
   type LaunchAccessRepository,
   type PrepareLaunchAccessResult,
 } from "@/src/server/launch/repository";
-import {
-  confirmLaunchAccess,
-  requestLaunchAccess,
-} from "@/src/server/launch/service";
+import { requestLaunchAccess } from "@/src/server/launch/service";
 import { launchAccessRequestSchema } from "@/src/server/launch/schema";
-import {
-  signLaunchConfirmationToken,
-  verifyLaunchConfirmationToken,
-} from "@/src/server/launch/token";
 
 const now = new Date("2026-09-28T15:00:00.000Z");
-const registrationId = "194929c3-56ce-48cf-bdda-8c2dcfb3e5a4";
+const requestId = "28c29aaf-ec02-46e8-aa92-a5430d6e318c";
 
 const config: LaunchAccessRuntimeConfig = {
   appBaseUrl: "https://example.com",
@@ -30,7 +23,6 @@ const config: LaunchAccessRuntimeConfig = {
   rateLimitSecret: "rate-limit-secret-that-is-at-least-32-bytes",
   supabaseServiceRoleKey: "service-role-key-that-is-long-enough",
   supabaseUrl: "https://project.supabase.co",
-  tokenSecret: "confirmation-secret-that-is-at-least-32-bytes",
 };
 
 const prepared: PrepareLaunchAccessResult = {
@@ -42,23 +34,21 @@ function repositoryWith(
 ): LaunchAccessRepository {
   return {
     prepare: vi.fn().mockResolvedValue(outcome),
-    confirm: vi.fn().mockResolvedValue("email_confirmed"),
     publicState: vi.fn().mockResolvedValue("open"),
   };
 }
 
-describe("launch access configuration and tokens", () => {
-  it("fails closed until the server flag and every secret are valid", () => {
+describe("launch access configuration", () => {
+  it("fails closed until the server flag and server secret are valid", () => {
     const complete = {
       LAUNCH_ACCESS_ENABLED: "1",
       APP_BASE_URL: "https://example.com",
       NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
       SUPABASE_SERVICE_ROLE_KEY: "service-role-key-that-is-long-enough",
-      LAUNCH_ACCESS_TOKEN_SECRET: "confirmation-secret-that-is-at-least-32-bytes",
       LAUNCH_ACCESS_RATE_LIMIT_SECRET: "rate-limit-secret-that-is-at-least-32-bytes",
     };
     expect(getLaunchAccessRuntimeConfig({ ...complete, LAUNCH_ACCESS_ENABLED: "0" })).toBeNull();
-    expect(getLaunchAccessRuntimeConfig({ ...complete, LAUNCH_ACCESS_TOKEN_SECRET: "short" })).toBeNull();
+    expect(getLaunchAccessRuntimeConfig({ ...complete, LAUNCH_ACCESS_RATE_LIMIT_SECRET: "short" })).toBeNull();
     expect(getLaunchAccessRuntimeConfig(complete)).toMatchObject({
       campaignKey: "launch-20-v1",
       appBaseUrl: "https://example.com",
@@ -76,6 +66,7 @@ describe("launch access configuration and tokens", () => {
     });
     const baseRequest = {
       email: "persona@example.com",
+      requestId,
       locale: "en",
       newsletterOptIn: false,
       origin: "landing_launch",
@@ -116,19 +107,6 @@ describe("launch access configuration and tokens", () => {
     });
   });
 
-  it("rejects a modified or expired signed confirmation token", () => {
-    const token = signLaunchConfirmationToken({
-      v: 1,
-      campaignKey: config.campaignKey,
-      registrationId,
-      tokenVersion: 3,
-      nonce: "n".repeat(43),
-      expiresAt: now.getTime() + 60_000,
-    }, config.tokenSecret);
-    expect(verifyLaunchConfirmationToken(token, config.tokenSecret, now).status).toBe("valid");
-    expect(verifyLaunchConfirmationToken(`${token.slice(0, -1)}x`, config.tokenSecret, now).status).toBe("invalid");
-    expect(verifyLaunchConfirmationToken(token, config.tokenSecret, new Date(now.getTime() + 60_001)).status).toBe("expired");
-  });
 });
 
 describe("launch access request service", () => {
@@ -136,6 +114,7 @@ describe("launch access request service", () => {
     const repository = repositoryWith();
     await expect(requestLaunchAccess({
       email: " Persona@Example.com ",
+      requestId,
       clientIdentity: "203.0.113.1|test",
       locale: "es",
       newsletterOptIn: false,
@@ -159,6 +138,7 @@ describe("launch access request service", () => {
     const repository = repositoryWith({ outcome: "newsletter_subscribed" });
     await expect(requestLaunchAccess({
       email: "persona@example.com",
+      requestId,
       clientIdentity: "203.0.113.1|test",
       locale: "es",
       newsletterOptIn: true,
@@ -175,12 +155,13 @@ describe("launch access request service", () => {
   });
 
   it.each([
-    ["waitlist", false, "request_received"],
-    ["newsletter_only", true, "newsletter_subscribed"],
-  ] as const)("maps a duplicate %s registration idempotently", async (requestType, newsletterOptIn, status) => {
-    const repository = repositoryWith({ outcome: "already_requested" });
+    ["waitlist", false, "request_received", "request_received"],
+    ["newsletter_only", true, "newsletter_subscribed", "newsletter_subscribed"],
+  ] as const)("maps a duplicate %s registration idempotently", async (requestType, newsletterOptIn, outcome, status) => {
+    const repository = repositoryWith({ outcome });
     await expect(requestLaunchAccess({
       email: "persona@example.com",
+      requestId,
       clientIdentity: "203.0.113.1|test",
       locale: "es",
       newsletterOptIn,
@@ -196,6 +177,7 @@ describe("launch access request service", () => {
   it("rejects newsletter-only when optional marketing consent is not explicit", async () => {
     await expect(requestLaunchAccess({
       email: "persona@example.com",
+      requestId,
       clientIdentity: "203.0.113.1|test",
       locale: "es",
       newsletterOptIn: false,
@@ -211,9 +193,11 @@ describe("launch access request service", () => {
     ["campaign_closed", "CAMPAIGN_CLOSED"],
     ["campaign_unavailable", "REQUEST_UNAVAILABLE"],
     ["rate_limited", "RATE_LIMITED"],
+    ["request_mismatch", "INVALID_REQUEST"],
   ] as const)("maps %s without claiming or sending an email", async (outcome, code) => {
     await expect(requestLaunchAccess({
       email: "persona@example.com",
+      requestId,
       clientIdentity: "203.0.113.1|test",
       locale: "es",
       newsletterOptIn: false,
@@ -249,6 +233,7 @@ describe("launch access public state", () => {
       accepted_requests: 20,
       starts_at: null,
       ends_at: null,
+      updated_at: "2026-09-30T15:00:00.000Z",
     });
     await expect(repository.publicState(config.campaignKey, now)).resolves.toBe("closed");
   });
@@ -263,6 +248,7 @@ describe("launch access public state", () => {
       accepted_requests: 19,
       starts_at: null,
       ends_at: null,
+      updated_at: "2026-09-30T15:00:00.000Z",
     });
     await expect(repository.publicState(config.campaignKey, now)).resolves.toBe("open");
   });
@@ -281,6 +267,7 @@ describe("launch access public state", () => {
       accepted_requests: 20,
       starts_at: null,
       ends_at: null,
+      updated_at: "2026-09-30T15:00:00.000Z",
     };
     const repository = repositoryForCampaign({
       ...fullCampaign,
@@ -288,28 +275,37 @@ describe("launch access public state", () => {
     });
     await expect(repository.publicState(config.campaignKey, now)).resolves.toBe("unavailable");
   });
-});
 
-describe("launch email confirmation", () => {
-  it("confirms the email through the repository without allocating a grant", async () => {
-    const repository = repositoryWith();
-    const token = signLaunchConfirmationToken({
-      v: 1,
-      campaignKey: config.campaignKey,
-      registrationId,
-      tokenVersion: 3,
-      nonce: "n".repeat(43),
-      expiresAt: now.getTime() + 60_000,
-    }, config.tokenSecret);
-    await expect(confirmLaunchAccess(token, { config, repository }, now)).resolves.toEqual({
-      status: "email_confirmed",
+  it("stops offering newsletter when the shared retention window has ended", async () => {
+    const repository = repositoryForCampaign({
+      state: "closed",
+      registration_enabled: false,
+      newsletter_registration_enabled: true,
+      email_delivery_enabled: false,
+      total_slots: 20,
+      accepted_requests: 20,
+      starts_at: null,
+      ends_at: null,
+      updated_at: "2025-09-28T14:59:59.000Z",
     });
-    expect(repository.confirm).toHaveBeenCalledWith({
-      campaignKey: config.campaignKey,
-      registrationId,
-      tokenVersion: 3,
-      tokenNonce: "n".repeat(43),
-      now: now.toISOString(),
+    await expect(repository.publicState(config.campaignKey, now)).resolves.toBe("unavailable");
+  });
+
+  it("matches PostgreSQL month clamping for a campaign closed on leap day", async () => {
+    const repository = repositoryForCampaign({
+      state: "closed",
+      registration_enabled: false,
+      newsletter_registration_enabled: true,
+      email_delivery_enabled: false,
+      total_slots: 20,
+      accepted_requests: 20,
+      starts_at: null,
+      ends_at: null,
+      updated_at: "2024-02-29T15:00:00.000Z",
     });
+    await expect(repository.publicState(
+      config.campaignKey,
+      new Date("2025-02-28T15:00:00.000Z"),
+    )).resolves.toBe("unavailable");
   });
 });

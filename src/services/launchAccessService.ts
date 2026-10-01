@@ -5,16 +5,12 @@ export type LaunchAccessRequestResult =
   | { status: "unavailable" }
   | { status: "error" };
 
-export type LaunchAccessConfirmationResult =
-  | { status: "email_confirmed" }
-  | { status: "expired" }
-  | { status: "error" };
-
 export type LaunchAccessPublicState = "open" | "closed" | "unavailable";
 export type LaunchAccessLocale = "es" | "en";
 export type LaunchAccessRequestType = "waitlist" | "newsletter_only";
 
 export interface LaunchAccessRequestOptions {
+  requestId?: string;
   newsletterOptIn?: boolean;
   origin?: "landing_launch";
   requestType?: LaunchAccessRequestType;
@@ -43,6 +39,7 @@ export async function requestLaunchAccess(
       },
       body: JSON.stringify({
         email,
+        requestId: options.requestId ?? crypto.randomUUID(),
         locale,
         requestType,
         newsletterOptIn: options.newsletterOptIn ?? false,
@@ -86,29 +83,5 @@ export async function getLaunchAccessPublicState(): Promise<LaunchAccessPublicSt
       : null;
   } catch {
     return null;
-  }
-}
-
-export async function confirmLaunchAccess(token: string): Promise<LaunchAccessConfirmationResult> {
-  try {
-    const response = await fetch("/api/launch-access/confirm", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token }),
-    });
-    const payload = await readJson(response);
-
-    if (response.status === 200 && payload.status === "email_confirmed") {
-      return { status: "email_confirmed" };
-    }
-    if (response.status === 410 && payload.status === "expired") {
-      return { status: "expired" };
-    }
-    return { status: "error" };
-  } catch {
-    return { status: "error" };
   }
 }

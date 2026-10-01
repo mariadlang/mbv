@@ -74,6 +74,8 @@ function renderPlanning(planner: PlannerController, path = "/app/planning", curr
 
 describe("monthly planning safeguards", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-24T12:00:00.000Z"));
     useUiStore.setState({ language: "es" });
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
@@ -83,6 +85,7 @@ describe("monthly planning safeguards", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 

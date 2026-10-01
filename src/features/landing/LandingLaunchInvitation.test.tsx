@@ -129,8 +129,9 @@ describe("waitlist de lanzamiento de la landing", () => {
     expect(view.queryByRole("textbox")).toBeNull();
     const request = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
-    expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
       email: "MARIA@example.com",
+      requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
       locale: "es",
       requestType: "waitlist",
       newsletterOptIn: false,
@@ -151,6 +152,40 @@ describe("waitlist de lanzamiento de la landing", () => {
     expect(input.value).toBe("maria@example.com");
     expect(document.activeElement).toBe(input);
     expect(view.queryByText("¡Recibimos tu solicitud!")).toBeNull();
+  });
+
+  it("reutiliza la misma clave idempotente después de recargar y aunque se cierre el último cupo", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const firstFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== "POST") return jsonResponse(200, { status: "open" });
+      bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      return jsonResponse(500, { error: "REQUEST_FAILED" });
+    });
+    const firstView = renderInvitation(firstFetch);
+    await openManually(firstView);
+    fireEvent.change(firstView.getByRole("textbox", { name: /Tu correo electrónico/ }), {
+      target: { value: "maria@example.com" },
+    });
+
+    fireEvent.click(firstView.getByRole("button", { name: "Quiero unirme a la waitlist" }));
+    expect(await firstView.findByRole("alert")).toBeTruthy();
+    firstView.unmount();
+
+    const secondFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== "POST") return jsonResponse(200, { status: "closed" });
+      bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      return jsonResponse(202, { status: "request_received" });
+    });
+    const secondView = renderInvitation(secondFetch);
+    fireEvent.click(await secondView.findByRole("button", { name: "Recibir novedades" }));
+    const restoredEmail = secondView.getByRole("textbox", { name: /Tu correo electrónico/ }) as HTMLInputElement;
+    expect(restoredEmail.value).toBe("maria@example.com");
+    fireEvent.click(secondView.getByRole("button", { name: "Quiero unirme a la waitlist" }));
+
+    expect(await secondView.findByRole("heading", { name: "¡Recibimos tu solicitud!" })).toBeTruthy();
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.requestId).toBe(bodies[1]?.requestId);
+    expect(window.sessionStorage.getItem("mbv:launch-waitlist:v1:pending")).toBeNull();
   });
 
   it("retira el formulario si el servidor confirma que la campaña no está disponible", async () => {
@@ -243,8 +278,9 @@ describe("waitlist de lanzamiento de la landing", () => {
     expect(await view.findByRole("heading", { name: "We received your request!" })).toBeTruthy();
 
     const request = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
-    expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
       email: "maria@example.com",
+      requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
       locale: "en",
       requestType: "waitlist",
       newsletterOptIn: true,

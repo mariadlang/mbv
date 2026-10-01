@@ -1,8 +1,6 @@
 import { minorUnitsToDecimal, type BillingInterval } from "@/src/domain/commercialOffer";
-import type { LaunchAccessLocale } from "@/src/server/launch/schema";
 
 export const TRANSACTIONAL_EMAIL_KINDS = [
-  "launch_confirmation",
   "premium_welcome",
   "commercial_eligibility_admin",
   "commercial_trial_activated",
@@ -25,12 +23,6 @@ interface CommonUserEmailInput {
 }
 
 export type TransactionalEmailInput =
-  | {
-    kind: "launch_confirmation";
-    confirmationUrl: string;
-    locale: LaunchAccessLocale;
-    supportEmail: string;
-  }
   | ({
     kind: "premium_welcome";
     interval: BillingInterval;
@@ -81,7 +73,7 @@ export interface RenderedTransactionalEmail {
 }
 
 interface EmailContent {
-  locale?: LaunchAccessLocale;
+  locale?: "es" | "en";
   subject: string;
   preview: string;
   heading: string;
@@ -189,32 +181,6 @@ function renderText(content: EmailContent, supportEmail: string): string {
 }
 
 function contentFor(input: TransactionalEmailInput): EmailContent {
-  if (input.kind === "launch_confirmation") {
-    if (input.locale === "en") return {
-      locale: "en",
-      subject: "Confirm your email for launch access",
-      preview: "Confirm your address to continue with your request.",
-      heading: "Confirm your email",
-      paragraphs: [
-        "We received your request to take part in the My Best Version launch.",
-        "Confirming your address does not assign a spot or activate Premium yet. We will email you if your access is reserved.",
-      ],
-      cta: { label: "Confirm my email", url: input.confirmationUrl },
-      footer: "If you did not make this request, you can ignore this message.",
-    };
-    return {
-      locale: "es",
-      subject: "Confirma tu correo para el acceso de lanzamiento",
-      preview: "Confirma tu dirección para continuar con tu solicitud.",
-      heading: "Confirma tu correo",
-      paragraphs: [
-        "Recibimos tu solicitud para participar en el lanzamiento de My Best Version.",
-        "Confirmar tu dirección no asigna todavía un cupo ni activa Premium. Te avisaremos por correo si tu acceso queda reservado.",
-      ],
-      cta: { label: "Confirmar mi correo", url: input.confirmationUrl },
-      footer: "Si no hiciste esta solicitud, puedes ignorar este mensaje.",
-    };
-  }
   const timeZone = input.timeZone ?? "America/Bogota";
   if (input.kind === "premium_welcome") return {
     subject: "Tu Premium de My Best Version está activo: empieza por aquí",

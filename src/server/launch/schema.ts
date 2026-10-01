@@ -14,6 +14,7 @@ export type LaunchAccessRequestType = z.infer<typeof launchAccessRequestTypeSche
 
 export const launchAccessRequestSchema = z.object({
   email: launchAccessEmailSchema,
+  requestId: z.string().uuid(),
   locale: launchAccessLocaleSchema,
   requestType: launchAccessRequestTypeSchema,
   newsletterOptIn: z.boolean(),
@@ -28,10 +29,6 @@ export const launchAccessRequestSchema = z.object({
   }
 });
 
-export const launchAccessConfirmSchema = z.object({
-  token: z.string().min(80).max(2_048),
-}).strict();
-
 export type LaunchAccessPublicStatus = "open" | "closed" | "unavailable";
 
 export class LaunchAccessError extends Error {
@@ -40,7 +37,6 @@ export class LaunchAccessError extends Error {
       | "CAMPAIGN_CLOSED"
       | "INVALID_EMAIL"
       | "INVALID_REQUEST"
-      | "INVALID_TOKEN"
       | "NOT_CONFIGURED"
       | "RATE_LIMITED"
       | "REQUEST_FORBIDDEN"

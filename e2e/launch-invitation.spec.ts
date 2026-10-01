@@ -237,8 +237,9 @@ test("full capacity offers only an explicit newsletter registration", async ({ p
   await dialog.getByRole("button", { name: "Quiero recibir novedades" }).click();
   await expect(page.getByRole("dialog", { name: "¡Gracias por suscribirte!" })).toBeVisible();
   await captureEvidence(page, testInfo, "newsletter-confirmation");
-  expect(requestBody).toEqual({
+  expect(requestBody).toMatchObject({
     email: "maria@example.com",
+    requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
     locale: "es",
     requestType: "newsletter_only",
     newsletterOptIn: true,

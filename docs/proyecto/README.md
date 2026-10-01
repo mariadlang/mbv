@@ -12,6 +12,8 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
+- Continuación 2026-10-01 de `MBV-H-044`: migraciones de waitlist aplicadas y comprobadas, configuración Production preparada, publicación final en curso. Consultar la continuación de la misma entrada del historial; no repetir migraciones ni regenerar secretos.
+
 - Última revisión documental: **2026-09-30, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.

@@ -6,7 +6,6 @@ export interface LaunchAccessRuntimeConfig {
   rateLimitSecret: string;
   supabaseServiceRoleKey: string;
   supabaseUrl: string;
-  tokenSecret: string;
 }
 
 type LaunchEnvironment = Readonly<Record<string, string | undefined>>;
@@ -55,16 +54,13 @@ export function getLaunchAccessRuntimeConfig(
   const appBaseUrl = normalizedBaseUrl(clean(environment.APP_BASE_URL));
   const supabaseUrl = normalizedSupabaseUrl(clean(environment.NEXT_PUBLIC_SUPABASE_URL));
   const supabaseServiceRoleKey = clean(environment.SUPABASE_SERVICE_ROLE_KEY);
-  const tokenSecret = clean(environment.LAUNCH_ACCESS_TOKEN_SECRET);
   const rateLimitSecret = clean(environment.LAUNCH_ACCESS_RATE_LIMIT_SECRET);
   const campaignKey = clean(environment.LAUNCH_ACCESS_CAMPAIGN_KEY) || "launch-20-v1";
   if (
     !appBaseUrl
     || !supabaseUrl
     || supabaseServiceRoleKey.length < 20
-    || !strongSecret(tokenSecret)
     || !strongSecret(rateLimitSecret)
-    || tokenSecret === rateLimitSecret
     || !/^[a-z0-9][a-z0-9_-]{2,63}$/.test(campaignKey)
   ) return null;
   return {
@@ -73,7 +69,6 @@ export function getLaunchAccessRuntimeConfig(
     rateLimitSecret,
     supabaseServiceRoleKey,
     supabaseUrl,
-    tokenSecret,
   };
 }
 

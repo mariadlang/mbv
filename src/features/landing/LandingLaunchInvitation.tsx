@@ -15,10 +15,29 @@ const AUTO_OPEN_DELAY_MS = 4_000;
 const SEEN_STORAGE_KEY = "mbv:launch-waitlist:v1:seen";
 const SESSION_STORAGE_KEY = "mbv:launch-waitlist:v1:shown-this-visit";
 const SUBMITTED_STORAGE_KEY = "mbv:launch-waitlist:v1:submitted";
+const PENDING_STORAGE_KEY = "mbv:launch-waitlist:v1:pending";
+const PENDING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 
 type CampaignState = "loading" | "open" | "closed" | "unavailable";
 type ViewState = "waitlist" | "waitlist_confirmation" | "newsletter" | "newsletter_confirmation" | "unavailable";
 type SubmissionState = "idle" | "submitting" | "error";
+type PendingRequest = {
+  requestId: string;
+  email: string;
+  locale: "es" | "en";
+  requestType: "waitlist" | "newsletter_only";
+  newsletterOptIn: boolean;
+  createdAt: number;
+};
+
+const pendingRequestSchema = z.object({
+  requestId: z.string().uuid(),
+  email: emailSchema,
+  locale: z.enum(["es", "en"]),
+  requestType: z.enum(["waitlist", "newsletter_only"]),
+  newsletterOptIn: z.boolean(),
+  createdAt: z.number().int().nonnegative(),
+});
 
 function readStoredSubmission(): "waitlist" | "newsletter" | null {
   try {
@@ -59,20 +78,66 @@ function markSubmitted(kind: "waitlist" | "newsletter") {
   }
 }
 
+function clearPendingRequest() {
+  try {
+    window.sessionStorage.removeItem(PENDING_STORAGE_KEY);
+  } catch {
+    // Idempotency persistence is best-effort when storage is unavailable.
+  }
+}
+
+function readPendingRequest(): PendingRequest | null {
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = pendingRequestSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success || Date.now() - parsed.data.createdAt > PENDING_MAX_AGE_MS) {
+      clearPendingRequest();
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    clearPendingRequest();
+    return null;
+  }
+}
+
+function storePendingRequest(request: PendingRequest) {
+  try {
+    window.sessionStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(request));
+  } catch {
+    // The in-memory request ID still protects ordinary retries in this visit.
+  }
+}
+
+function pendingMatches(
+  pending: PendingRequest,
+  payload: Pick<PendingRequest, "email" | "locale" | "requestType" | "newsletterOptIn">,
+) {
+  return pending.email === payload.email
+    && pending.locale === payload.locale
+    && pending.requestType === payload.requestType
+    && pending.newsletterOptIn === payload.newsletterOptIn;
+}
+
 export function LandingLaunchInvitation() {
   const { language, m } = useI18n();
   const [open, setOpen] = useState(false);
   const [campaignState, setCampaignState] = useState<CampaignState>("loading");
   const [viewState, setViewState] = useState<ViewState>("waitlist");
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
-  const [email, setEmail] = useState("");
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [initialPending] = useState<PendingRequest | null>(() => (
+    typeof window === "undefined" ? null : readPendingRequest()
+  ));
+  const [email, setEmail] = useState(initialPending?.email ?? "");
+  const [newsletterOptIn, setNewsletterOptIn] = useState(initialPending?.newsletterOptIn ?? false);
   const [validationError, setValidationError] = useState("");
   const [consentError, setConsentError] = useState("");
   const emailInputRef = useRef<HTMLInputElement>(null);
   const newsletterCheckboxRef = useRef<HTMLInputElement>(null);
   const resultActionRef = useRef<HTMLButtonElement>(null);
   const submitInFlightRef = useRef(false);
+  const requestIdRef = useRef(initialPending?.requestId ?? "");
   const shownThisVisitRef = useRef(false);
 
   const submitted = viewState === "waitlist_confirmation" || viewState === "newsletter_confirmation";
@@ -82,6 +147,7 @@ export function LandingLaunchInvitation() {
 
   useEffect(() => {
     if (!publicConfig.launchInvitationEnabled) return;
+    const pendingRequest = initialPending;
     let active = true;
     let stateReady = false;
     let delayElapsed = false;
@@ -94,8 +160,8 @@ export function LandingLaunchInvitation() {
         || !delayElapsed
         || nextCampaignState === "unavailable"
         || shownThisVisitRef.current
-        || storageHas(SESSION_STORAGE_KEY, "session")
-        || storageHas(SEEN_STORAGE_KEY, "local")
+        || (!pendingRequest && storageHas(SESSION_STORAGE_KEY, "session"))
+        || (!pendingRequest && storageHas(SEEN_STORAGE_KEY, "local"))
         || readStoredSubmission()
       ) return;
       shownThisVisitRef.current = true;
@@ -115,6 +181,8 @@ export function LandingLaunchInvitation() {
       setCampaignState(nextCampaignState);
 
       if (storedSubmission === "waitlist") setViewState("waitlist_confirmation");
+      else if (pendingRequest?.requestType === "waitlist") setViewState("waitlist");
+      else if (pendingRequest?.requestType === "newsletter_only" && nextCampaignState === "closed") setViewState("newsletter");
       else if (nextCampaignState === "closed" && storedSubmission === "newsletter") setViewState("newsletter_confirmation");
       else if (nextCampaignState === "closed") setViewState("newsletter");
       else if (nextCampaignState === "unavailable") setViewState("unavailable");
@@ -127,7 +195,7 @@ export function LandingLaunchInvitation() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [initialPending]);
 
   useEffect(() => {
     if (!open) return;
@@ -139,7 +207,15 @@ export function LandingLaunchInvitation() {
 
   const openInvitation = () => {
     const storedSubmission = readStoredSubmission();
+    const pendingRequest = readPendingRequest();
+    if (pendingRequest) {
+      requestIdRef.current = pendingRequest.requestId;
+      setEmail(pendingRequest.email);
+      setNewsletterOptIn(pendingRequest.newsletterOptIn);
+    }
     if (storedSubmission === "waitlist") setViewState("waitlist_confirmation");
+    else if (pendingRequest?.requestType === "waitlist") setViewState("waitlist");
+    else if (pendingRequest?.requestType === "newsletter_only" && campaignState === "closed") setViewState("newsletter");
     else if (campaignState === "closed" && storedSubmission === "newsletter") setViewState("newsletter_confirmation");
     else if (campaignState === "closed") setViewState("newsletter");
     else if (campaignState === "unavailable") setViewState("unavailable");
@@ -183,14 +259,34 @@ export function LandingLaunchInvitation() {
     submitInFlightRef.current = true;
     setSubmissionState("submitting");
     const requestType = newsletterView ? "newsletter_only" : "waitlist";
-    const result = await requestLaunchAccess(parsed.data, language, {
+    const payload = {
+      email: parsed.data,
+      locale: language,
       requestType,
       newsletterOptIn: newsletterView ? true : newsletterOptIn,
+    } as const;
+    const storedPending = readPendingRequest();
+    requestIdRef.current = storedPending && pendingMatches(storedPending, payload)
+      ? storedPending.requestId
+      : crypto.randomUUID();
+    storePendingRequest({
+      ...payload,
+      requestId: requestIdRef.current,
+      createdAt: storedPending && storedPending.requestId === requestIdRef.current
+        ? storedPending.createdAt
+        : Date.now(),
+    });
+    const result = await requestLaunchAccess(parsed.data, payload.locale, {
+      requestId: requestIdRef.current,
+      requestType,
+      newsletterOptIn: payload.newsletterOptIn,
       origin: "landing_launch",
     });
     submitInFlightRef.current = false;
 
     if (result.status === "closed") {
+      requestIdRef.current = "";
+      clearPendingRequest();
       setCampaignState("closed");
       setNewsletterOptIn(false);
       setViewState("newsletter");
@@ -198,18 +294,24 @@ export function LandingLaunchInvitation() {
       return;
     }
     if (result.status === "unavailable") {
+      requestIdRef.current = "";
+      clearPendingRequest();
       setCampaignState("unavailable");
       setViewState("unavailable");
       setSubmissionState("idle");
       return;
     }
     if (result.status === "request_received") {
+      requestIdRef.current = "";
+      clearPendingRequest();
       markSubmitted("waitlist");
       setViewState("waitlist_confirmation");
       setSubmissionState("idle");
       return;
     }
     if (result.status === "newsletter_subscribed") {
+      requestIdRef.current = "";
+      clearPendingRequest();
       markSubmitted("newsletter");
       setViewState("newsletter_confirmation");
       setSubmissionState("idle");
@@ -329,6 +431,8 @@ export function LandingLaunchInvitation() {
                 placeholder={m("launch.modal.emailPlaceholder")}
                 onChange={(event) => {
                   setEmail(event.target.value);
+                  requestIdRef.current = "";
+                  clearPendingRequest();
                   if (validationError) setValidationError("");
                   if (submissionState === "error") setSubmissionState("idle");
                 }}
@@ -345,6 +449,8 @@ export function LandingLaunchInvitation() {
                 aria-describedby={consentError ? "launch-newsletter-consent-error" : undefined}
                 onChange={(event) => {
                   setNewsletterOptIn(event.target.checked);
+                  requestIdRef.current = "";
+                  clearPendingRequest();
                   if (consentError) setConsentError("");
                 }}
               />

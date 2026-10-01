@@ -8,7 +8,7 @@ import {
   type LaunchAccessRequestType,
 } from "@/src/server/launch/schema";
 import type { LaunchAccessRepository } from "@/src/server/launch/repository";
-import { launchFingerprint, verifyLaunchConfirmationToken } from "@/src/server/launch/token";
+import { launchFingerprint } from "@/src/server/launch/token";
 
 export interface LaunchAccessServiceDependencies {
   config: LaunchAccessRuntimeConfig;
@@ -17,6 +17,7 @@ export interface LaunchAccessServiceDependencies {
 
 export interface RequestLaunchAccessInput {
   email: string;
+  requestId: string;
   clientIdentity: string;
   locale: LaunchAccessLocale;
   newsletterOptIn: boolean;
@@ -35,6 +36,7 @@ export async function requestLaunchAccess(
 ): Promise<RequestLaunchAccessResult> {
   const parsed = launchAccessRequestSchema.safeParse({
     email: input.email,
+    requestId: input.requestId,
     locale: input.locale,
     newsletterOptIn: input.newsletterOptIn,
     origin: input.origin,
@@ -46,15 +48,24 @@ export async function requestLaunchAccess(
     }
     throw new LaunchAccessError("INVALID_REQUEST");
   }
-  const { email, newsletterOptIn, origin, requestType } = parsed.data;
+  const { email, locale, newsletterOptIn, origin, requestId, requestType } = parsed.data;
   const prepared = await dependencies.repository.prepare({
     campaignKey: dependencies.config.campaignKey,
     email,
-    emailFingerprint: launchFingerprint(dependencies.config.rateLimitSecret, "email", email),
     clientFingerprint: launchFingerprint(
       dependencies.config.rateLimitSecret,
       "client",
       input.clientIdentity || "unknown",
+    ),
+    requestFingerprint: launchFingerprint(
+      dependencies.config.rateLimitSecret,
+      "request",
+      requestId,
+    ),
+    payloadFingerprint: launchFingerprint(
+      dependencies.config.rateLimitSecret,
+      "payload",
+      JSON.stringify([email, locale, requestType, newsletterOptIn, origin]),
     ),
     newsletterOptIn,
     now: now.toISOString(),
@@ -64,40 +75,10 @@ export async function requestLaunchAccess(
   if (prepared.outcome === "campaign_closed") throw new LaunchAccessError("CAMPAIGN_CLOSED");
   if (prepared.outcome === "campaign_unavailable") throw new LaunchAccessError("REQUEST_UNAVAILABLE");
   if (prepared.outcome === "rate_limited") throw new LaunchAccessError("RATE_LIMITED");
+  if (prepared.outcome === "request_mismatch") throw new LaunchAccessError("INVALID_REQUEST");
   if (prepared.outcome === "newsletter_subscribed") return { status: "newsletter_subscribed" };
   if (prepared.outcome === "request_received") return { status: "request_received" };
-  if (prepared.outcome === "already_requested") {
-    return requestType === "newsletter_only"
-      ? { status: "newsletter_subscribed" }
-      : { status: "request_received" };
-  }
-  // Compatibility with an earlier prepared/outbox contract: a committed
-  // registration is acknowledged, but this request never drains the outbox or
-  // sends mail. Future notifications are a separate, explicitly operated flow.
-  return { status: "request_received" };
-}
-
-export async function confirmLaunchAccess(
-  token: string,
-  dependencies: Pick<LaunchAccessServiceDependencies, "config" | "repository">,
-  now: Date = new Date(),
-): Promise<{ status: "email_confirmed" | "expired" }> {
-  const verification = verifyLaunchConfirmationToken(token, dependencies.config.tokenSecret, now);
-  if (verification.status === "expired") return { status: "expired" };
-  if (
-    verification.status !== "valid"
-    || verification.payload.campaignKey !== dependencies.config.campaignKey
-  ) throw new LaunchAccessError("INVALID_TOKEN");
-  const result = await dependencies.repository.confirm({
-    campaignKey: verification.payload.campaignKey,
-    registrationId: verification.payload.registrationId,
-    tokenVersion: verification.payload.tokenVersion,
-    tokenNonce: verification.payload.nonce,
-    now: now.toISOString(),
-  });
-  if (result === "expired") return { status: "expired" };
-  if (result !== "email_confirmed") throw new LaunchAccessError("INVALID_TOKEN");
-  return { status: "email_confirmed" };
+  throw new LaunchAccessError("REQUEST_UNAVAILABLE");
 }
 
 export async function getPublicLaunchAccessState(

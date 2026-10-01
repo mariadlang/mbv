@@ -95,10 +95,6 @@ html:has(.landing-page) { scroll-behavior: smooth; }
 .landing-launch-state__action { width: 100%; min-height: 48px; border-radius: 999px; }
 .landing-launch-state .landing-launch-form__privacy { width: 100%; }
 .landing-launch-state--unavailable { gap: 12px; }
-.launch-confirmation-page { width: min(540px, calc(100% - 32px)); }
-.launch-confirmation-page form { width: 100%; }
-.launch-confirmation-page form .inline-message { text-align: left; }
-.launch-confirmation-page > .button { margin-top: 18px; text-decoration: none; }
 .landing-button { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 9px; border: 1px solid transparent; border-radius: 999px; padding: 11px 20px; font: inherit; font-size: .88rem; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none; cursor: pointer; transition: translate var(--transition-fast), box-shadow var(--transition-base), background var(--transition-base); }
 .landing-button:hover { translate: 0 -2px; }
 .landing-button--primary { border-color: var(--landing-rose-deep); background: var(--landing-rose-deep); box-shadow: 0 10px 26px color-mix(in srgb, var(--landing-rose-deep) 24%, transparent); color: var(--landing-surface); }

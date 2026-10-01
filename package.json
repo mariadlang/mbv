@@ -25,6 +25,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
     "@supabase/supabase-js": "^2.112.3",
+    "botid": "1.5.11",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.4",
     "lucide-react": "^1.31.0",

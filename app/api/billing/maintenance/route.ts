@@ -13,6 +13,7 @@ import {
   getResendEmailRuntimeConfig,
   ResendEmailTransport,
 } from "@/src/server/email/resendTransport";
+import { SupabaseLaunchAccessRepository } from "@/src/server/launch/repository";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest) {
       await persistence.setAdminNotificationEmail(service, "");
       adminNotificationEmail = "cleared";
     }
-    await persistence.runCommercialMaintenance(service, new Date().toISOString());
-
+    const maintenanceNow = new Date().toISOString();
+    await persistence.runCommercialMaintenance(service, maintenanceNow);
     const emailConfig = getResendEmailRuntimeConfig();
     const emailDelivery = await processTransactionalEmailBatch({
       client: service,
@@ -67,7 +68,10 @@ export async function GET(request: NextRequest) {
         : undefined,
       maxMessages: 25,
     });
-    return NextResponse.json({ ok: true, adminNotificationEmail, emailDelivery }, {
+    // Se ejecuta después del outbox: una falla de retención queda visible al
+    // cron con error, pero nunca impide procesar los correos comerciales.
+    await new SupabaseLaunchAccessRepository(service).purgeExpired(maintenanceNow);
+    return NextResponse.json({ ok: true, adminNotificationEmail, emailDelivery, launchRetention: "purged" }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

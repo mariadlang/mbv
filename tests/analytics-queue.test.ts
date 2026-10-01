@@ -120,6 +120,8 @@ describe("cola de analítica con consentimiento", () => {
   });
 
   it("permite conservar el timestamp autoritativo del hito", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-02T12:00:00.000Z"));
     setAnalyticsConsent(true);
     analyticsService.track("trial_started", { source: "verified_access" }, "started:v2", "2026-09-01T12:00:00.000Z");
     expect(readQueuedProductEvents()[0].occurredAt).toBe("2026-09-01T12:00:00.000Z");

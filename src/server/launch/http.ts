@@ -41,7 +41,6 @@ export function launchErrorResponse(error: unknown): NextResponse {
     switch (error.code) {
       case "INVALID_EMAIL":
       case "INVALID_REQUEST":
-      case "INVALID_TOKEN":
         return launchJson({ error: error.code }, 400);
       case "CAMPAIGN_CLOSED":
         return launchJson({ error: error.code }, 409);

@@ -6,6 +6,8 @@
 
 ## Punto de continuidad
 
+- **Cierre en curso — 2026-10-01:** las migraciones de waitlist `202609280001` y `202609300001` están aplicadas. Supabase confirma `collecting`, 0/20 solicitudes, 3 solicitudes/IP/hora y correo desactivado. El smoke SQL real con rollback aprobó idempotencia/capacidad/baja y la lectura anónima está bloqueada. Se configuraron los cuatro valores de campaña en Vercel Production; el nuevo código con BotID, recibos, retención y bajas está validándose para publicación. Las notas históricas de campaña sin migración más abajo corresponden al release anterior.
+
 - Repositorio remoto: `mariadlang/mbv`; la entrega productiva se promueve desde un worktree verificado y `origin/main` es la referencia publicada.
 - Rama de producción: `main`.
 - Base de la entrega P1: `8e6ede1995cef4656ef8b23cac3f04a98d4ebdf2` (`docs: record P0 production release`).
@@ -363,11 +365,11 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 16. Las guías P2 de fotografía, assets, campañas y partnerships no sustituyen producción final, licencias, permisos de imagen, presupuesto ni acuerdos externos.
 17. La atribución referral valida formato opaco y first-touch local, pero aún no registra propiedad server-side del código ni exige en SQL el orden visita → signup dentro de una ventana propia. Mantener el flag apagado y endurecer este contrato antes de incentivos o rollout amplio.
 18. Vercel continúa en Hobby. El recurso gratuito de Resend y el dominio `mybestversion.life` están verificados, con secretos limitados a Production. El transporte live quedó publicado de forma fail-closed, el backlog se auditó vacío y la prueba controlada fue entregada. Antes de habilitar cobros debe usarse un plan apto para operación comercial y certificar Mercado Pago sandbox.
-19. El código fail-closed de la waitlist `MBV-H-044` está publicado, pero su migración no se ha ejecutado contra PostgreSQL real. La revisión estática cubre bloqueo, capacidad, dedupe y nulos, pero el rollout exige staging, aplicación y postcheck controlados antes de activar los flags.
-20. El consentimiento anónimo de novedades se almacena en `launch_access_registrations`, separado de `marketing_preferences`. No debe enviarse newsletter hasta aprobar conservación, fuente de verdad para bajas y un mecanismo público de retiro del consentimiento.
-21. La campaña sigue apagada también por control de abuso: el límite inicial se redujo a 10 solicitudes por cliente/hora, por debajo de los 20 cupos, pero la huella IP+agente sigue siendo evadible y no demuestra propiedad del correo. Antes de activar públicamente hay que aprobar una defensa anti-bot/WAF, probarla sin perjudicar redes compartidas y mantener capacidad/deduplicación como segunda barrera.
-22. Un reintento posterior a una respuesta perdida del último registro puede recibir `campaign_closed` porque la RPC comprueba capacidad antes de devolver el duplicado. Esto evita enumerar correos y no consume dos cupos, pero requiere decidir una clave de idempotencia no reveladora antes del rollout si se quiere recuperar la confirmación exacta tras ese borde.
-23. El límite por huella de email puede variar la llegada del `429` entre direcciones con actividad distinta. Antes de activarlo públicamente debe revisarse ese canal lateral junto con la política anti-abuso; los flags deben permanecer apagados hasta cerrar esa revisión.
+19. Las dos migraciones de waitlist están aplicadas y su smoke PostgreSQL transaccional aprobó con rollback. No se certificó carga concurrente multiconexión ni staging independiente.
+20. El consentimiento de novedades se almacena en `launch_access_registrations`, separado de `marketing_preferences`, con versión, fecha y baja server-side. No se envían newsletters: antes de una futura campaña de correo se requiere verificar propiedad del correo y conectar un mecanismo público de baja. La captación actual no acredita propiedad ni reserva acceso.
+21. El endpoint usa BotID y un límite HMAC por IP de 3 solicitudes/hora; redes compartidas pueden alcanzar ese límite. La capacidad se serializa y los correos se deduplican en PostgreSQL. Ninguna defensa elimina todo abuso distribuido.
+22. Los recibos HMAC permiten repetir el mismo intento incluso después del cierre del último cupo; expiran a los siete días. La sesión conserva únicamente el intento técnico pendiente, nunca la capacidad ni la confirmación como fuente de verdad.
+23. Se retiró la cuota por email. La retención de registros es de doce meses desde el cierre; mantenimiento purga después de procesar los flujos comerciales existentes.
 
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 

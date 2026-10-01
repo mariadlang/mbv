@@ -12,7 +12,7 @@ if (missing.length) {
 }
 
 const result = spawnSync(process.execPath, ["./node_modules/vinext/dist/cli.js", "build"], {
-  env: process.env,
+  env: { ...process.env, MBV_VINEXT_BUILD: "1" },
   stdio: "inherit",
 });
 
