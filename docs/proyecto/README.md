@@ -12,9 +12,9 @@ Para una nueva tarea se debe leer primero `AGENTS.md`, este archivo y `ESTADO_AC
 
 ## Punto de referencia de esta revisión
 
-- Continuación 2026-10-01 de `MBV-H-044`: migraciones de waitlist aplicadas y comprobadas, configuración Production preparada, publicación final en curso. Consultar la continuación de la misma entrada del historial; no repetir migraciones ni regenerar secretos.
+- Cierre 2026-10-01 de `MBV-H-044`: waitlist activa en producción, commit funcional `613df97`, CI `36912308358` aprobado y deployment `dpl_DfXu2d4Aua5BJB8MdQ78P6yLKTHB` Ready. Guardado real 202 confirmado y dato de prueba retirado; 20 cupos disponibles. Consultar el estado vigente y la continuación de la misma entrada del historial; no repetir migraciones ni regenerar secretos. Las referencias del 30 de septiembre debajo son antecedentes del rollout, no configuración actual.
 
-- Última revisión documental: **2026-09-30, America/Bogota (UTC-05:00)**.
+- Última revisión documental: **2026-10-01, America/Bogota (UTC-05:00)**.
 - Repositorio: `mariadlang/mbv`.
 - Rama examinada: `fix/ux-audit-2026-09-24`, basada en el release publicado de `origin/main`.
 - SHA funcional: `c24bb9fc06423b292eeb3399a7b31b4d327bc5c1`; fix de cierre publicado: `370a8a81579e570c5b64023ca2c92e2c16aa3cde`.

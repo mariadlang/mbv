@@ -1,12 +1,12 @@
 # Estado actual de My Best Version
 
-Última revisión: **2026-09-30, America/Bogota (UTC-05:00)**.
+Última revisión: **2026-10-01, America/Bogota (UTC-05:00)**.
 
 > **Release comercial v2 vigente:** producción ofrece Gratis permanente, Premium USD 2.99/mes o USD 29.99/año y una recompensa manual de 30 días Premium después de 30 fechas consecutivas. Incluye migración, acceso central, landing, administración, checkout/webhook server-side, cancelación autoservicio con paid-through, recuperación segura de checkout stale, serialización por cuenta, revalidación de conflictos, cola de participación ligada a usuario y outbox con supresión previa al envío. La migración está aplicada y el transporte Resend está publicado en `7af51a3`. Mercado Pago permanece apagado. Resend tiene recurso, dominio verificado y secretos limitados a Production; la única prueba real figura `Delivered`. Consulta [`../product/commercial-access-v2.md`](../product/commercial-access-v2.md), [`../product/trial-premium-matrix.md`](../product/trial-premium-matrix.md) y [`../AUTH_BILLING_SETUP.md`](../AUTH_BILLING_SETUP.md).
 
 ## Punto de continuidad
 
-- **Cierre en curso — 2026-10-01:** las migraciones de waitlist `202609280001` y `202609300001` están aplicadas. Supabase confirma `collecting`, 0/20 solicitudes, 3 solicitudes/IP/hora y correo desactivado. El smoke SQL real con rollback aprobó idempotencia/capacidad/baja y la lectura anónima está bloqueada. Se configuraron los cuatro valores de campaña en Vercel Production; el nuevo código con BotID, recibos, retención y bajas está validándose para publicación. Las notas históricas de campaña sin migración más abajo corresponden al release anterior.
+- **Cierre publicado — 2026-10-01:** `613df97` enviado a `origin/main` y rama de trabajo. Vercel `dpl_DfXu2d4Aua5BJB8MdQ78P6yLKTHB` quedó Ready y asignado a `https://mybestversion.life/`; CI `36912308358` aprobó. Las migraciones `202609280001` y `202609300001` están aplicadas y los flags Production activos. GET público devuelve `open`; envío desde navegador habitual devolvió 202 y mostró confirmación. BotID bloqueó el navegador automatizado con 403. El único registro sintético fue retirado y el contador volvió a 0/20, sin tocar registros reales. Confirmación móvil 390×844 y 360×640 sin overflow; formulario desktop 1440×900 inspeccionado. No se envió correo ni se creó cuenta, acceso o trial.
 
 - Repositorio remoto: `mariadlang/mbv`; la entrega productiva se promueve desde un worktree verificado y `origin/main` es la referencia publicada.
 - Rama de producción: `main`.
@@ -374,6 +374,8 @@ La evidencia final de P1 se mantiene en [`../qa/p1-release-report.md`](../qa/p1-
 No quedó un defecto funcional bloqueante reproducible dentro de los flujos auditados localmente.
 
 ## Entrega vigente y siguiente paso
+
+**Vigente desde 2026-10-01:** waitlist activa y verificada en `613df97`, con 444 pruebas, lint, compilación y CI aprobados. La captación de solicitudes queda terminada. Los párrafos que siguen son antecedentes del rollout fail-closed del 30 de septiembre, no bloqueos vigentes. Los envíos futuros de lanzamiento/newsletter, la asignación de acceso y la operación de pagos no forman parte de esta captación y siguen separados.
 
 La entrega publicada vigente consolida el cambio funcional `c24bb9fc06423b292eeb3399a7b31b4d327bc5c1` y su fix de cierre `370a8a81579e570c5b64023ca2c92e2c16aa3cde`; al verificar el release, `origin/main` y Vercel Production apuntaban al segundo SHA. Conserva Calendar externo pausado y P2 detrás de flags apagados, mantiene el núcleo comercial v2 y Resend fail-closed, conserva `MBV-H-040`/`MBV-H-041` y publica `MBV-H-042`/`MBV-H-043`. GitHub Actions `36772651377` aprobó lint, tipos, 430 pruebas unitarias y build; los E2E dirigidos del popup, la landing y la matriz responsive aprobaron localmente. Vercel Production `6769422318` completó el fix y el alias `mybestversion.life` superó el smoke público de sólo lectura en desktop/mobile, sin overflow ni errores de consola.
 
