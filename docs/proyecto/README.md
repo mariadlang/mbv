@@ -2,7 +2,7 @@
 
 Esta carpeta es la puerta de entrada oficial para comprender cómo evolucionó el proyecto y retomar el trabajo sin reconstruir el contexto desde cero.
 
-Hito actual: **MBV-H-048, Inicio «dónde estoy»**. Implementación y comprobación normal local disponibles en3102; regresión completa/publicación autorizada en curso. Consultar la sección superior de ESTADO_ACTUAL y la única entrada H048 para resultados definitivos, commit y deploy. No confundir las capturas con fixtures E2E de3100 con acceso normal.
+Hito actual: **MBV-H-048, Inicio «dónde estoy», publicado y verificado** en [mybestversion.life/app/dashboard](https://mybestversion.life/app/dashboard). Commit funcional `cadaa27`, corrección exclusiva de prueba `7ac40bb`, CI38977381503 SUCCESS y Vercel READY. Cierre posterior sólo documental.592 unitarias, E2E consolidado151 aprobados/25 omisiones preexistentes/0 fallos pendientes tras corregir once expectativas antiguas;11 comprobaciones normales locales. Consulta ESTADO_ACTUAL y la única entrada H048 para intentos, evidencia y límites (logs runtime403). Normal local3102; fixtures E2E3100 separados. Los hitos siguientes son antecedentes.
 
 ## Qué consultar
 
