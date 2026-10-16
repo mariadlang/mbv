@@ -43,7 +43,8 @@ describe("monthly priority editor", () => {
     expect(view.getByText("5 de octubre de 2026")).toBeTruthy();
     expect(view.getByRole("dialog").querySelector('time[datetime="2026-10-05T20:00"]')?.textContent).toBeTruthy();
     expect(view.getByRole("link", { name: "Ver mi semana" }).getAttribute("href")).toBe("/app/planning/weekly?date=2026-10-05");
-    expect(document.activeElement).toBe(view.getByRole("heading", { name: "Tu paso está guardado" }));
+    // The receipt renders before its focus effect flushes under concurrent CI load.
+    await waitFor(() => expect(document.activeElement).toBe(view.getByRole("heading", { name: "Tu paso está guardado" })));
     const readiness = weekPreparation(view.read(), "2026-10-05");
     expect(readiness.ready).toBe(0);
     expect(readiness.rows.find((row) => row.id === "priorities")?.state).toBe("progress");
