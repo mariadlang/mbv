@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
+import type { MonthlyPriorityStepInput } from "@/src/domain/monthlyPrioritySteps";
+import type { PreparationPatch } from "@/src/domain/weekPreparation";
+import type { HealthPreparationInput, HealthScope } from "@/src/domain/healthPreparation";
 import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type { CalendarEvent } from "@/src/domain/calendar";
 import type {
@@ -305,7 +308,7 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       if (input.date) recordParticipation("daily_action_created");
       return next;
     },
-    updateTask: async (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>) => {
+    updateTask: async (taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description" | "time" | "estimatedMinutes">>) => {
       assertTaskWritable(taskId, input.date);
       const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
       const next = await commit((service) => service.updateTask(taskId, input));
@@ -330,6 +333,7 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
     toggleTask: async (taskId: string) => { assertTaskWritable(taskId); const next = await commit((service) => service.toggleTask(taskId)); const completedTask = next.tasks.find((task) => task.id === taskId); if (completedTask?.status === "completed") { analyticsService.track("task_completed", { source: "task_toggle" }); analyticsService.track("first_action_completed", { source: "task_toggle", version: 2 }, "completed:v2"); if (completedTask.date) recordParticipation("daily_action_completed"); } return next; },
     deleteTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.deleteTask(taskId)); },
     cancelTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.cancelTask(taskId)); },
+    restoreTask: (taskId: string) => { assertTaskWritable(taskId); return commit((service) => service.restoreTask(taskId)); },
     rescheduleTask: async (taskId: string, date: string) => {
       assertTaskWritable(taskId, date);
       const previousDate = snapshot.tasks.find((task) => task.id === taskId)?.date;
@@ -383,6 +387,21 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       commit((service) => service.createRecurringItem(input)),
     saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
+    saveHealthPreparation: (input: HealthPreparationInput) => {
+      assertPlanningDateAllowed(input.date);
+      return commit((service) => service.saveHealthPreparation(input));
+    },
+    saveMonthlyPriorityStep: (input: MonthlyPriorityStepInput) => {
+      if (input.planId) assertPlanWritable(input.planId);
+      assertPlanningDateAllowed(input.date);
+      if (input.taskId) assertPlanningDateAllowed(snapshot.tasks.find((task) => task.id === input.taskId)?.date);
+      return commit((service) => service.saveMonthlyPriorityStep(input));
+    },
+    saveWeekPreparation: (input: PreparationPatch) => {
+      assertPlanningDateAllowed(input.week);
+      return commit((service) => service.saveWeekPreparation(input));
+    },
+    savePreparationPreferences: (items: { id: string; label?: string }[]) => commit((service) => service.savePreparationPreferences(items)),
     saveCascadePlan: (input: CascadePlanFormInput) => {
       if (access && input.horizon === "monthly" && !isTrialPlanningMonthAllowed(access, input.periodKey)) throw new Error(TRIAL_PLANNING_LIMIT_MESSAGE);
       if (input.horizon === "monthly" || input.horizon === "weekly") input.activities?.forEach((activity) => assertPlanningDateAllowed(activity.date));
@@ -427,11 +446,11 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       commit((service) => service.createVisionBoardItem(input)),
     toggleVisionReminder: (itemId: string) => commit((service) => service.toggleVisionReminder(itemId)),
     saveWorkout: (input: WorkoutFormInput) => commit((service) => service.saveWorkout(input)),
-    saveWorkoutPlan: (input: WorkoutPlanFormInput) => commit((service) => service.saveWorkoutPlan(input)),
+    saveWorkoutPlan: (input: WorkoutPlanFormInput, scope?: HealthScope) => commit((service) => service.saveWorkoutPlan(input, scope)),
     deleteWorkoutPlan: (date: string) => commit((service) => service.deleteWorkoutPlan(date)),
     completeWorkout: (date: string) => commitTracked("workout_completed", (service) => service.completeWorkout(date)),
     duplicateWorkout: (sourceDate: string, targetDate: string) => commit((service) => service.duplicateWorkout(sourceDate, targetDate)),
-    saveMeal: (input: MealFormInput) => commitTracked("meal_logged", (service) => service.saveMeal(input)),
+    saveMeal: (input: MealFormInput, scope?: HealthScope) => commitTracked("meal_logged", (service) => service.saveMeal(input, scope)),
     deleteMeal: (date: string, mealId: string) => commit((service) => service.deleteMeal(date, mealId)),
     copyMeals: (sourceDate: string, targetDate: string) => commit((service) => service.copyMeals(sourceDate, targetDate)),
     saveBodyCheckIn: (input: BodyCheckInFormInput) => commit((service) => service.saveBodyCheckIn(input)),

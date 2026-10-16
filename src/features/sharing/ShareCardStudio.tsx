@@ -72,7 +72,6 @@ interface CanvasPalette {
   taupe: string;
 }
 
-const FONT_FAMILY = '"Nunito Sans", "Segoe UI", Arial, sans-serif';
 
 function getCanvasPalette(): CanvasPalette {
   const styles = getComputedStyle(document.documentElement);
@@ -129,6 +128,7 @@ function wrappedLines(context: CanvasRenderingContext2D, text: string, maxWidth:
 }
 
 function drawShareCard(canvas: HTMLCanvasElement, model: ShareCardModel, copy: CanvasCopy, brandIcon: HTMLImageElement | null) {
+  const FONT_FAMILY = getComputedStyle(document.body).fontFamily;
   canvas.width = model.width;
   canvas.height = model.height;
   const context = canvas.getContext("2d");

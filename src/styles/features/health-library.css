@@ -1,0 +1,21 @@
+.health-library-records { display: grid; gap: var(--space-4); grid-template-columns: repeat(2, minmax(0, 1fr)); margin-block: var(--space-4); }
+/* Keep the action accessible alongside long headings at narrow widths. */
+@media (max-width: 480px) {
+  .fitness-page__header { grid-template-columns: minmax(0, 1fr); }
+  .fitness-page__header > .button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .fitness-page__header > div { min-width: 0; }
+  .fitness-page__header h1 { overflow-wrap: anywhere; }
+}
+.health-library-record { min-width: 0; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-elevated); }
+.health-library-record time { color: var(--color-text-secondary); font-size: var(--text-xs); }
+.health-library-record h3 { overflow-wrap: anywhere; margin-block: var(--space-2); }
+.health-library-record > div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.health-library-incomplete { color: var(--color-text-secondary); font-size: var(--text-sm); }
+.health-library-detail { margin-block: var(--space-4); overflow-wrap: anywhere; }
+.health-library-detail dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.health-library-detail dl > div { padding: var(--space-3); background: var(--color-surface-muted); border-radius: var(--radius-md); }
+.health-library-detail dd { margin: 0; font-weight: 700; }
+.health-library-detail p { white-space: pre-wrap; }
+.health-library-detail section { border-top: 1px solid var(--color-border); margin-block: var(--space-3); padding-block: var(--space-3); }
+.health-library-template { padding: var(--space-3); margin-block: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+@media (max-width: 600px) { .health-library-records { grid-template-columns: minmax(0, 1fr); } .health-library-record > div > button { width: 100%; } }

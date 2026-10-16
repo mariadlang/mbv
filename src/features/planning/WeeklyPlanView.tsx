@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { addWeeks, isSameMonth, isSameYear } from "date-fns";
 import {
   ArrowLeft,
@@ -13,12 +13,14 @@ import {
   ChevronRight,
   Circle,
   ClipboardCheck,
+  Dumbbell,
   Inbox,
   Lock,
   MoreHorizontal,
   Plus,
   Repeat2,
   Star,
+  Utensils,
   X,
 } from "lucide-react";
 import type { BrainDumpItem, Task } from "@/src/domain/planner";
@@ -37,6 +39,11 @@ import { CalendarEventSyncFeedback } from "@/src/features/calendar/CalendarEvent
 import { publicConfig } from "@/src/lib/publicConfig";
 import { buildWeeklyRecap, type WeeklyRecapSummary } from "@/src/domain/weeklyRecap";
 import { analyticsService } from "@/src/services/analyticsService";
+import { MonthlyPrioritySteps } from "@/src/features/preparation/MonthlyPrioritySteps";
+import { MonthlyContext } from "@/src/features/preparation/PreparationShared";
+import { weekPreparation } from "@/src/domain/weekPreparation";
+import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
+import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 
 type WeeklyPlanViewProps = {
   planner: PlannerController;
@@ -47,6 +54,7 @@ type WeeklyPlanViewProps = {
   onAnchorDateChange: (date: Date) => void;
   onBack: () => void;
   onEditTask: (task: Task) => void;
+  onQuickCapture: (defaults: QuickCaptureDefaults) => void;
 };
 
 type TaskUpdatePatch = Omit<Parameters<PlannerController["updateTask"]>[1], "title">;
@@ -104,6 +112,7 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
   const navigate = useNavigate();
   const calendarIntegration = useCalendarIntegration();
   const { m, formatDate, formatNumber } = useI18n();
+  const draftNavigation = useDraftNavigation();
   const weekDates = useMemo(() => getWeekDates(anchorDate, 1), [anchorDate]);
   const weekKeys = useMemo(() => new Set(weekDates.map(toLocalDateKey)), [weekDates]);
   const weekTasks = snapshot.tasks.filter((task) => task.date && weekKeys.has(task.date) && task.status !== "cancelled");
@@ -134,7 +143,9 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
   const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
   const visibleWeekReadOnly = weekDates.every((date) => !canPlanDate(toLocalDateKey(date)));
   const visibleWeekHasReadOnlyDays = weekDates.some((date) => !canPlanDate(toLocalDateKey(date)));
-  const reviewReferenceDateAllowed = recap.reviewable && canPlanDate(toLocalDateKey(weekDates[0]));
+  // Any permitted day identifies the same ISO week, including a trial's partial first week.
+  const reviewReferenceDate = weekDates.find((date) => canPlanDate(toLocalDateKey(date)));
+  const reviewReferenceDateAllowed = recap.reviewable && Boolean(reviewReferenceDate);
 
   const [openComposerDate, setOpenComposerDate] = useState<string | null>(null);
   const [openEventComposerDate, setOpenEventComposerDate] = useState<string | null>(null);
@@ -146,6 +157,7 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
   const [operationError, setOperationError] = useState<FeedbackMessage | null>(null);
   const [notice, setNotice] = useState<FeedbackMessage | null>(null);
   const [reviewOpen, setReviewOpen] = useState(reviewInitiallyOpen && recap.reviewable);
+  const [monthlyStepsOpen, setMonthlyStepsOpen] = useState(false);
   const [reviewDraft, setReviewDraft] = useState<ReviewDraft>(() => savedReview ? reviewFromResponses(savedReview.responses) : emptyReview());
   const composerRef = useRef<HTMLInputElement>(null);
   const savingKeyRef = useRef<string | null>(null);
@@ -184,17 +196,29 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
     }
   };
 
-  const createTask = async (date?: string) => {
-    if (date && !canPlanDate(date)) { setOperationError({ key: "planning.trial.limit" }); return; }
+  const createTask = async (date?: string): Promise<boolean> => {
+    if (date && !canPlanDate(date)) { setOperationError({ key: "planning.trial.limit" }); return false; }
     const key = date ?? "pending";
     const title = (date ? drafts[date] ?? "" : pendingDraft).trim();
-    if (!title || savingKeyRef.current) return;
+    if (!title || savingKeyRef.current) return false;
     const saved = await runOperation(`create-${key}`, () => planner.createTask(title, date), { key: date ? "planning.week.taskAdded" : "planning.week.pendingSaved" });
-    if (!saved) return;
+    if (!saved) return false;
     if (date) setDrafts((current) => ({ ...current, [date]: "" }));
     else setPendingDraft("");
     requestAnimationFrame(() => composerRef.current?.focus());
+    return true;
   };
+
+  const taskDraftGuard = useUnsavedDraft({
+    dirty: Boolean(pendingDraft.trim() || Object.values(drafts).some((value) => value.trim())),
+    saving: Boolean(savingKey?.startsWith("create-")),
+    onSave: async () => {
+      for (const [date, title] of Object.entries(drafts)) if (title.trim() && !await createTask(date)) return false;
+      if (pendingDraft.trim() && !await createTask()) return false;
+      taskDraftGuard.markSaved(); return true;
+    },
+    onDiscard: () => { setDrafts({}); setPendingDraft(""); setOpenComposerDate(null); },
+  });
 
   const updateTask = async (task: Task, patch: TaskUpdatePatch, message: FeedbackMessage) =>
     (!task.date || canPlanDate(task.date)) && (!patch.date || canPlanDate(patch.date))
@@ -221,18 +245,18 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
 
   const scrollToTask = (taskId: string) => {
     const target = document.getElementById(`weekly-task-${taskId}`);
+    const tools = target?.closest("details");
+    if (tools) tools.open = true;
     target?.scrollIntoView({ behavior: "smooth", block: "center" });
     target?.focus({ preventScroll: true });
   };
 
   const navigateWeek = (amount: number) => {
-    setOpenComposerDate(null);
-    onAnchorDateChange(addWeeks(anchorDate, amount));
+    draftNavigation.request(() => { setOpenComposerDate(null); onAnchorDateChange(addWeeks(anchorDate, amount)); });
   };
 
   const returnToCurrentWeek = () => {
-    setOpenComposerDate(null);
-    onAnchorDateChange(new Date());
+    draftNavigation.request(() => { setOpenComposerDate(null); onAnchorDateChange(new Date()); });
   };
 
   const openReview = () => {
@@ -241,11 +265,10 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
     setReviewOpen(true);
   };
 
-  const saveReview = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!recap.reviewable) { setOperationError({ key: "planning.week.reviewFutureError" }); return; }
-    if (!reviewReferenceDateAllowed) { setOperationError({ key: "planning.trial.limit" }); return; }
-    const prepareNextWeek = ((event.nativeEvent as SubmitEvent).submitter as HTMLElement | null)?.dataset.reviewNext === "true";
+  const saveReviewDraft = async (prepareNextWeek = false): Promise<boolean> => {
+    if (!recap.reviewable) { setOperationError({ key: "planning.week.reviewFutureError" }); return false; }
+    if (!reviewReferenceDateAllowed) { setOperationError({ key: "planning.trial.limit" }); return false; }
+    if (!reviewDraft.celebrate.trim()) return false;
     const responses = {
       celebrate: reviewDraft.celebrate,
       observe: recapEnabled ? recapObservation : insightSummary,
@@ -257,21 +280,28 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
       priority3: reviewDraft.priorities[2],
     };
     const decisions = [reviewDraft.keep, reviewDraft.adjust, reviewDraft.release, ...reviewDraft.priorities];
-    const saved = await runOperation("weekly-review", () => planner.saveStructuredReview("weekly", responses, decisions, weekDates[0]), { key: "planning.week.reviewSaved" });
+    const saved = await runOperation("weekly-review", () => planner.saveStructuredReview("weekly", responses, decisions, reviewReferenceDate), { key: "planning.week.reviewSaved" });
     if (saved) {
+      reviewGuard.markSaved();
       if (recapEnabled) analyticsService.track("weekly_recap_completed", { source: "weekly_review", surface: "weekly_plan", period: reviewPeriodKey, result: prepareNextWeek ? "saved_and_prepare" : "saved", version: 2 }, `completed:${reviewPeriodKey}:v2`);
       setReviewOpen(false);
       if (prepareNextWeek) navigateWeek(1);
     }
+    return saved;
   };
+  const reviewGuard = useUnsavedDraft({ dirty: reviewOpen && JSON.stringify(reviewDraft) !== JSON.stringify(reviewFromResponses(savedReview?.responses)), saving: savingKey === "weekly-review", onSave: () => saveReviewDraft(), onDiscard: () => { setReviewDraft(reviewFromResponses(savedReview?.responses)); setReviewOpen(false); } });
+  const saveReview = async (event: FormEvent) => { event.preventDefault(); await saveReviewDraft(((event.nativeEvent as SubmitEvent).submitter as HTMLElement | null)?.dataset.reviewNext === "true"); };
+  const weekStart = toLocalDateKey(weekDates[0]);
+  const monthlyContext = weekPreparation(snapshot, weekStart);
+  const visibleAgendaDate = toLocalDateKey(anchorDate);
 
-  return <section className="weekly-plan-page" aria-labelledby="weekly-plan-title" data-i18n-explicit="true">
-    <button type="button" className="weekly-back-link" onClick={onBack}><ArrowLeft size={17} aria-hidden="true" /> {m("planning.week.back")}</button>
+  return <section className="weekly-plan-page weekly-editorial" aria-labelledby="weekly-plan-title" data-i18n-explicit="true">
+    <button type="button" className="weekly-back-link" onClick={() => draftNavigation.request(onBack)}><ArrowLeft size={17} aria-hidden="true" /> {m("planning.week.back")}</button>
 
     <header className="weekly-plan-header">
       <div className="weekly-plan-heading">
-        <h1 id="weekly-plan-title">{m("planning.week.title")}</h1>
-        <p>{m("planning.week.description")}</p>
+        <h1 id="weekly-plan-title">{m("monthlySteps.weekTitle")}</h1>
+        <p>{m("monthlySteps.weekHelp")}</p>
       </div>
       <div className="weekly-header-actions">
         <Button type="button" variant="outline" onClick={openReview} disabled={!reviewReferenceDateAllowed} title={!recap.reviewable ? m("planning.week.reviewFutureTitle") : !reviewReferenceDateAllowed ? m("planning.week.reviewReadOnlyTitle") : undefined}><ClipboardCheck size={17} aria-hidden="true" /> {m("planning.week.review")}</Button>
@@ -286,12 +316,13 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
 
     {visibleWeekHasReadOnlyDays && <div className="month-readonly-notice weekly-readonly-notice" role="status"><Lock size={18} aria-hidden="true" /><div><strong>{m(visibleWeekReadOnly ? "planning.week.readOnly" : "planning.week.someReadOnly")}</strong><span>{m("planning.trial.limit")}</span></div></div>}
 
-    <section className="weekly-priority-strip" aria-labelledby="weekly-priorities-title">
+    <section id="weekly-priorities" className="weekly-priority-strip" aria-labelledby="weekly-priorities-title">
       <div><Star size={17} aria-hidden="true" /><strong id="weekly-priorities-title">{m("planning.week.priorities")}</strong></div>
       <div className="weekly-priority-chips">
         {priorityTasks.map((task) => <button type="button" key={task.id} onClick={() => scrollToTask(task.id)}><Star size={14} aria-hidden="true" /> <span data-no-translate="true" translate="no">{task.title}</span></button>)}
         {!priorityTasks.length && <span>{m("planning.week.noPriorities")}</span>}
       </div>
+      <button type="button" className="prep-secondary" onClick={() => setMonthlyStepsOpen(true)}>{m("monthlySteps.open")}</button>
     </section>
 
     <div className="weekly-feedback" aria-live="polite">
@@ -299,7 +330,8 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
       {operationError && <p className="weekly-error" role="alert">{m(operationError.key, operationError.params)}</p>}
     </div>
 
-    <div className="weekly-plan-layout">
+    <div className="weekly-editorial-overview"><div className="weekly-editorial-agenda">
+      <nav className="prep-day-switch" aria-label={m("preparation.agendaView")}><Link to={`/app/planning?view=day&date=${visibleAgendaDate}`}>{m("preparation.dayTab")}</Link><span aria-current="page">{m("preparation.weekTab")}</span></nav>
       <section className="weekly-days-panel" aria-labelledby="weekly-days-title">
         <header className="weekly-days-panel__header">
           <h2 id="weekly-days-title">{m("planning.week.daysTitle")}</h2>
@@ -316,20 +348,23 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
             const key = toLocalDateKey(date);
             const isToday = key === todayKey;
             const dayReadOnly = !canPlanDate(key);
-            const dayTasks = weekTasks.filter((task) => task.date === key);
+            const dayTasks = weekTasks.filter((task) => task.date === key).sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
             const dayPriorityTasks = dayTasks.filter((task) => task.priority === "high" || Boolean(task.focusPriority));
             const dayRegularTasks = dayTasks.filter((task) => !dayPriorityTasks.includes(task));
             const dayHabits = snapshot.habits.filter((habit) => isHabitScheduledOn(habit, date));
             const localEvents = snapshot.events.filter((event) => event.status !== "cancelled" && event.startDate <= key && (event.endDate ?? event.startDate) >= key);
             const externalEvents = calendarIntegration.events.filter((event) => calendarEventOccursOnDate(event, key) && (!event.localEventId || !localEvents.some((local) => local.id === event.localEventId)));
+            const meals = snapshot.nutritionLogs.find((log) => log.date === key)?.meals ?? [];
+            const workout = snapshot.workoutLogs.find((log) => log.date === key);
             return <section id={`weekly-day-${key}`} className={`weekly-day-group ${isToday ? "is-today" : ""} ${dayReadOnly ? "is-readonly" : ""}`} key={key} aria-labelledby={`weekly-day-title-${key}`}>
               <header className="weekly-day-label">
                 <span id={`weekly-day-title-${key}`}>{capitalize(formatDate(date, { weekday: "long" }))}</span>
                 <strong>{formatNumber(date.getDate())} <small>{formatDate(date, { month: "short" })}</small></strong>
                 {isToday && <em>{m("planning.common.today")}</em>}
+                <Link className="weekly-open-day" to={`/app/planning?view=day&date=${key}`}>{m("planning.week.openDay")} <ArrowRight size={12} aria-hidden="true" /></Link>
               </header>
               <div className="weekly-day-content">
-                <div className="weekly-day-toolbar">{dayReadOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</span> : <div className="weekly-add-control"><button type="button" aria-expanded={openAddMenuDate === key} onClick={() => setOpenAddMenuDate((current) => current === key ? null : key)}><Plus size={16} aria-hidden="true" /> {m("today.timeline.add")}</button>{openAddMenuDate === key && <div className="weekly-add-menu" role="group" aria-label={m("calendar.week.addQuestion")}><button type="button" onClick={() => { setOpenComposerDate(key); setOpenEventComposerDate(null); setOpenAddMenuDate(null); }}><Check size={15} aria-hidden="true" /> {m("calendar.week.addTask")}</button><button type="button" onClick={() => { setOpenEventComposerDate(key); setOpenComposerDate(null); setOpenAddMenuDate(null); }}><CalendarDays size={15} aria-hidden="true" /> {m("calendar.week.addEvent")}</button></div>}</div>}</div>
+                <div className="weekly-day-toolbar">{dayReadOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</span> : <div className="weekly-add-control"><button type="button" aria-expanded={openAddMenuDate === key} onClick={() => setOpenAddMenuDate((current) => current === key ? null : key)}><Plus size={16} aria-hidden="true" /> {m("today.timeline.add")}</button>{openAddMenuDate === key && <div className="weekly-add-menu" role="group" aria-label={m("calendar.week.addQuestion")}><button type="button" onClick={() => draftNavigation.request(() => { setOpenComposerDate(key); setOpenEventComposerDate(null); setOpenAddMenuDate(null); })}><Check size={15} aria-hidden="true" /> {m("calendar.week.addTask")}</button><button type="button" onClick={() => draftNavigation.request(() => { setOpenEventComposerDate(key); setOpenComposerDate(null); setOpenAddMenuDate(null); })}><CalendarDays size={15} aria-hidden="true" /> {m("calendar.week.addEvent")}</button></div>}</div>}</div>
                 <div className="weekly-day-items">
                   {(localEvents.length > 0 || externalEvents.length > 0) && <section className="weekly-item-group"><h3>{m("calendar.week.events")}</h3><div className="weekly-event-list">
                     {localEvents.map((event) => <article key={`local-${event.id}`}><CalendarDays size={15} aria-hidden="true" /><div><strong data-no-translate="true" translate="no">{event.title}</strong><small>{calendarEventTimeLabel({ allDay: event.allDay ?? !(event.startTime ?? event.time), startTime: event.startTime ?? event.time, endTime: event.endTime }, m("calendar.event.allDay"))}{publicConfig.googleCalendarEnabled && event.calendarProvider === "google" ? ` · ${event.calendarName ?? m("calendar.origin.google")}` : ""}</small></div><CalendarEventSyncFeedback event={event} /></article>)}
@@ -349,12 +384,13 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
                       <span>{m("planning.week.habitPrefix")} <span data-no-translate="true" translate="no">{habit.name}</span>{measured && log ? <small> · {measuredStatus}</small> : null}</span>
                     </div>;
                   })}
-                  {!dayTasks.length && !dayHabits.length && !localEvents.length && !externalEvents.length && openComposerDate !== key && openEventComposerDate !== key && <p className="weekly-day-empty">{m("planning.week.dayEmpty")}</p>}
+                  {(workout || meals.length > 0) && <div className="prep-day-health">{workout && <Link to={`/app/health?section=training&date=${key}`}><Dumbbell size={16} aria-hidden="true" /><span data-no-translate="true">{workout.name || workout.goal || m("today.timeline.workoutFallback")}</span><ChevronRight size={14} aria-hidden="true" /></Link>}{meals.map((meal) => <Link key={meal.id} to={`/app/health?section=nutrition&date=${key}`}><Utensils size={16} aria-hidden="true" /><span data-no-translate="true">{meal.name}</span>{meal.completed ? <Check size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}</Link>)}</div>}
+                  {!dayTasks.length && !dayHabits.length && !localEvents.length && !externalEvents.length && !workout && !meals.length && openComposerDate !== key && openEventComposerDate !== key && <p className="weekly-day-empty">{m("planning.week.dayEmpty")}</p>}
                 </div>
                 {!dayReadOnly && openComposerDate === key && <form className="weekly-inline-composer" onSubmit={(event) => { event.preventDefault(); void createTask(key); }}>
                   <input ref={composerRef} value={drafts[key] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [key]: event.target.value }))} placeholder={m("planning.week.taskPlaceholder")} aria-label={m("planning.week.taskLabel", { date: formatDate(date, { weekday: "long", day: "numeric", month: "long" }) })} />
                   <Button type="submit" size="sm" loading={savingKey === `create-${key}`} disabled={!drafts[key]?.trim()}>{m("planning.common.save")}</Button>
-                  <button type="button" className="weekly-composer-cancel" onClick={() => setOpenComposerDate(null)} aria-label={m("planning.week.cancelNewTask")}><X size={18} /></button>
+                  <button type="button" className="weekly-composer-cancel" onClick={() => taskDraftGuard.request(() => setOpenComposerDate(null))} aria-label={m("planning.week.cancelNewTask")}><X size={18} /></button>
                 </form>}
                 {!dayReadOnly && openEventComposerDate === key && <WeeklyEventComposer date={key} dateBounds={dateBounds} canPlanDate={canPlanDate} onClose={() => setOpenEventComposerDate(null)} />}
               </div>
@@ -362,7 +398,7 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
           })}
         </div>
       </section>
-
+      </div><aside className="weekly-editorial-context"><MonthlyContext snapshot={snapshot} month={monthlyContext.month} compact /><button type="button" className="prep-primary" onClick={() => setMonthlyStepsOpen(true)}>{m("monthlySteps.open")} <ArrowRight size={17} /></button><Link className="prep-secondary" to={`/app/guide?week=${weekStart}`}>{m("preparation.backGuide")}</Link>
       <aside className={`weekly-pending-panel ${pendingOpen ? "is-open" : ""}`} aria-labelledby="weekly-pending-title">
         <header>
           <div><Inbox size={20} aria-hidden="true" /><h2 id="weekly-pending-title">{m("planning.week.pendingTitle")}</h2></div>
@@ -381,9 +417,11 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
           </div>
         </div>
       </aside>
-    </div>
+    </aside></div>
 
-    <Modal explicitI18n open={reviewOpen} title={m("planning.week.review")} description={m("planning.week.reviewDescription", { range: formatWeekRange(weekDates, formatDate, formatNumber) })} onClose={() => setReviewOpen(false)}>
+    <MonthlyPrioritySteps planner={planner} week={weekStart} open={monthlyStepsOpen} onClose={() => setMonthlyStepsOpen(false)} />
+
+    <Modal explicitI18n open={reviewOpen} title={m("planning.week.review")} description={m("planning.week.reviewDescription", { range: formatWeekRange(weekDates, formatDate, formatNumber) })} onClose={() => reviewGuard.request(() => setReviewOpen(false))}>
       <form className="weekly-review-dialog" onSubmit={saveReview}>
         {recapEnabled && <WeeklyRecapEvidence recap={recap} m={m} formatNumber={formatNumber} />}
         <label><span>{m("planning.week.reviewAdvanced")}</span><textarea required rows={3} value={reviewDraft.celebrate} onChange={(event) => setReviewDraft({ ...reviewDraft, celebrate: event.target.value })} /></label>
@@ -393,7 +431,7 @@ export function WeeklyPlanView({ planner, access, anchorDate, todayKey, reviewIn
         <label><span>{m("planning.week.reviewAdjust")}</span><textarea rows={2} value={reviewDraft.adjust} onChange={(event) => setReviewDraft({ ...reviewDraft, adjust: event.target.value })} /></label>
         <fieldset><legend>{m("planning.week.reviewPriorities")}</legend>{reviewDraft.priorities.map((value, index) => <input key={index} value={value} onChange={(event) => setReviewDraft({ ...reviewDraft, priorities: reviewDraft.priorities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder={m("planning.longTerm.priorityPlaceholder", { number: index + 1 })} />)}</fieldset>
         {operationError && <p className="weekly-error" role="alert">{m(operationError.key, operationError.params)}</p>}
-        <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setReviewOpen(false)}>{m("planning.week.reviewLater")}</Button><Button type="submit" variant="secondary" loading={savingKey === "weekly-review"}>{m("planning.week.reviewSave")}</Button>{recapEnabled && <Button type="submit" data-review-next="true" loading={savingKey === "weekly-review"}>{m("planning.week.recap.prepare")}</Button>}</div>
+        <div className="modal__actions"><Button type="button" variant="ghost" onClick={() => reviewGuard.request(() => setReviewOpen(false))}>{m("planning.week.reviewLater")}</Button><Button type="submit" variant="secondary" loading={savingKey === "weekly-review"}>{m("planning.week.reviewSave")}</Button>{recapEnabled && <Button type="submit" data-review-next="true" loading={savingKey === "weekly-review"}>{m("planning.week.recap.prepare")}</Button>}</div>
       </form>
     </Modal>
   </section>;
@@ -426,18 +464,23 @@ function WeeklyEventComposer({ date, dateBounds, canPlanDate, onClose }: { date:
   const [calendarId, setCalendarId] = useState(defaultCalendar?.id ?? "");
   const [syncWithGoogle, setSyncWithGoogle] = useState(Boolean(defaultCalendar));
   const [validationError, setValidationError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const savingLock = useRef(false);
+  const [initialDraft] = useState(() => JSON.stringify(["", date, "09:00", "10:00", false, defaultCalendar?.id ?? "", Boolean(defaultCalendar)]));
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const saveEvent = async (): Promise<boolean> => {
+    if (savingLock.current) return false;
+    if (title.trim().length < 2) return false;
     if (!canPlanDate(eventDate)) {
       setValidationError(m("planning.trial.limit"));
-      return;
+      return false;
     }
     if (!allDay && endTime <= startTime) {
       setValidationError(m("calendar.event.invalidTime"));
-      return;
+      return false;
     }
     setValidationError("");
+    savingLock.current = true; setSaving(true);
     try {
       await calendarIntegration.createEvent({
         title,
@@ -451,11 +494,14 @@ function WeeklyEventComposer({ date, dateBounds, canPlanDate, onClose }: { date:
         connectedCalendarId: calendarId || undefined,
         syncWithGoogle: syncWithGoogle && Boolean(calendarId),
       });
-      onClose();
+      eventGuard.markSaved(); onClose(); return true;
     } catch {
-      setValidationError(m("planning.trial.limit"));
-    }
+      setValidationError(m("preparation.error"));
+      return false;
+    } finally { savingLock.current = false; setSaving(false); }
   };
+  const eventGuard = useUnsavedDraft({ dirty: JSON.stringify([title, eventDate, startTime, endTime, allDay, calendarId, syncWithGoogle]) !== initialDraft, saving, onSave: saveEvent, onDiscard: onClose });
+  const submit = async (event: FormEvent) => { event.preventDefault(); await saveEvent(); };
 
   return <form className="weekly-event-composer" onSubmit={(event) => void submit(event)}>
     <label className="weekly-event-composer__title"><span>{m("calendar.event.title")}</span><input required minLength={2} value={title} onChange={(event) => setTitle(event.target.value)} placeholder={m("calendar.event.titlePlaceholder")} /></label>
@@ -464,7 +510,7 @@ function WeeklyEventComposer({ date, dateBounds, canPlanDate, onClose }: { date:
     <label className="weekly-event-composer__check"><input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)} /><span>{m("calendar.event.allDay")}</span></label>
     {calendarIntegration.connected && <><label><span>{m("calendar.event.calendar")}</span><select value={calendarId} onChange={(event) => setCalendarId(event.target.value)}>{calendarIntegration.snapshot.calendars.filter((calendar) => calendar.isVisible && calendar.isWritable).map((calendar) => <option key={calendar.id} value={calendar.id} data-no-translate="true" translate="no">{calendar.name}</option>)}</select></label><label className="weekly-event-composer__check weekly-event-composer__sync"><input type="checkbox" checked={syncWithGoogle} disabled={!calendarId} onChange={(event) => setSyncWithGoogle(event.target.checked)} /><span>{m("calendar.event.sync")}</span></label></>}
     {(validationError || calendarIntegration.error) && <p className="weekly-error" role="alert">{validationError || m("calendar.error.generic")}</p>}
-    <div className="weekly-event-composer__actions"><Button type="submit" size="sm" loading={calendarIntegration.saving} disabled={title.trim().length < 2}>{m("calendar.event.save")}</Button><button type="button" className="weekly-composer-cancel" onClick={onClose} aria-label={m("calendar.event.cancel")}><X size={18} /></button></div>
+    <div className="weekly-event-composer__actions"><Button type="submit" size="sm" loading={saving || calendarIntegration.saving} disabled={title.trim().length < 2}>{m("calendar.event.save")}</Button><button type="button" className="weekly-composer-cancel" disabled={saving} onClick={() => eventGuard.request(onClose)} aria-label={m("calendar.event.cancel")}><X size={18} /></button></div>
   </form>;
 }
 
@@ -515,9 +561,9 @@ function WeeklyTaskRow({ task, planner, weekDates, saving, readOnly, canPlanDate
   const complete = task.status === "completed";
   const { m } = useI18n();
   const readOnlySuffix = readOnly ? m("planning.day.readOnlySuffix") : "";
-  return <article id={`weekly-task-${task.id}`} className={`weekly-task-row ${complete ? "is-complete" : ""}`} tabIndex={-1}>
+  return <article id={`weekly-task-${task.id}`} data-record-id={`task-${task.id}`} className={`weekly-task-row ${complete ? "is-complete" : ""}`} tabIndex={-1}>
     <button type="button" className="weekly-task-check" aria-label={m(complete ? "planning.week.reopenTask" : "planning.week.completeTask", { task: task.title, readOnly: readOnlySuffix })} disabled={saving || readOnly} onClick={() => void onToggle(task)}>{complete ? <Check size={14} /> : <Circle size={14} />}</button>
-    <div className="weekly-task-copy"><strong data-no-translate="true" translate="no">{task.title}</strong>{goal && <span>{m("planning.week.goalPrefix")} <span data-no-translate="true" translate="no">{goal.title}</span></span>}</div>
+    <div className="weekly-task-copy">{task.time && <time dateTime={task.time}>{task.time}{task.estimatedMinutes ? ` · ${task.estimatedMinutes} ${m("today.unit.minuteShort")}` : ""}</time>}<strong data-no-translate="true" translate="no">{task.title}</strong>{goal && <span>{m("planning.week.goalPrefix")} <span data-no-translate="true" translate="no">{goal.title}</span></span>}</div>
     <button type="button" className={`weekly-task-star ${task.priority === "high" ? "is-active" : ""}`} aria-pressed={task.priority === "high"} aria-label={m(task.priority === "high" ? "planning.week.removePriorityLabel" : "planning.week.markPriorityLabel", { task: task.title, readOnly: readOnlySuffix })} disabled={saving || readOnly} onClick={() => void onUpdate(task, { priority: task.priority === "high" ? "medium" : "high" }, { key: task.priority === "high" ? "planning.week.priorityRemoved" : "planning.week.priorityAdded" })}><Star size={15} /></button>
     <div className="weekly-task-actions">{readOnly ? <span className="weekly-readonly-label"><Lock size={14} aria-hidden="true" /> {m("planning.common.readOnly")}</span> : <><DateAssignmentMenu task={task} weekDates={weekDates} label={m("planning.week.changeDay")} canPlanDate={canPlanDate} dateBounds={dateBounds} onMove={onMove} onUpdate={onUpdate} /><TaskOptionsMenu task={task} planner={planner} onUpdate={onUpdate} onEdit={onEdit} /></>}</div>
   </article>;

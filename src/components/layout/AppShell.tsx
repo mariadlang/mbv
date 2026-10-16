@@ -3,9 +3,13 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigationType } from "react-router-dom";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, HeartPulse, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, WalletCards, Wrench, X } from "lucide-react";
+import { Apple, BookOpen, Compass, Dumbbell, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, Wrench, X } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { BrandMark } from "@/src/components/ui/BrandMark";
+import { Botanical } from "@/src/features/preparation/PreparationShared";
+import { PlannerSearch } from "@/src/features/preparation/PlannerSearch";
+import { GuideReturn, PlannerNotices } from "@/src/features/preparation/PlannerNotices";
+import type { PlannerSnapshot } from "@/src/domain/planner";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
 
@@ -17,11 +21,41 @@ export const primaryItems = [
   ["/app/progress", "navigation.item.progress", BarChart3],
 ] as const;
 
-const mobileItems = primaryItems;
+const mobileItems = [
+  ["/app/dashboard", "preparation.home", LayoutDashboard],
+  ["/app/guide", "preparation.guide", Compass],
+  ["/app/planning", "preparation.navPlan", CalendarDays],
+  ["/app/today", "preparation.today", Sun],
+  ["/app/more", "preparation.more", Wrench],
+] as const;
+const editorialItems = [
+  ["/app/dashboard", "preparation.home", LayoutDashboard],
+  ["/app/guide", "preparation.guide", Compass],
+  ["/app/planning?view=annual", "homeOverview.yearNav", CalendarDays],
+  ["/app/planning?view=month", "homeOverview.monthNav", CalendarDays],
+  ["/app/planning/weekly", "homeOverview.weekNav", CalendarDays],
+  ["/app/today", "homeOverview.dayNav", Sun],
+] as const;
+export function isEditorialActive(href: string, pathname: string, search: string) {
+  const target = new URL(href, "https://mybestversion.life");
+  if (target.pathname !== pathname) return false;
+  const current = new URLSearchParams(search);
+  if (pathname === "/app/planning") {
+    if (target.searchParams.get("view") === "annual") return current.get("view") === "annual" || (!current.has("view") && !current.has("create"));
+    if (target.searchParams.has("view")) return current.get("view") === target.searchParams.get("view");
+    if (target.searchParams.has("create")) return current.has("create") || current.get("view") === "month";
+    return !current.has("view") && !current.has("create");
+  }
+  if (pathname === "/app/health") return (target.searchParams.get("section") || "nutrition") === (current.get("section") || "nutrition");
+  return true;
+}
 
 const spaceShortcutItems = [
-  ["/app/health", "navigation.item.wellbeing", HeartPulse],
-  ["/app/finance", "navigation.item.finances", WalletCards],
+  ["/app/habits", "preparation.habits", BarChart3],
+  ["/app/health", "preparation.nutrition", Apple],
+  ["/app/health?section=training", "preparation.training", Dumbbell],
+  ["/app/journal", "preparation.journal", BookOpen],
+  ["/app/life-hub", "preparation.space", Layers3],
 ] as const;
 
 const utilityItems = [
@@ -66,16 +100,16 @@ export function isPrimaryActive(href: string, pathname: string) {
   return pathname === "/app/progress";
 }
 
-export function AppShell({ children, userName, userAvatar, saving, theme, accessText, isSuperadmin = false, onQuickAdd, onNeedHelp, onSignOut }: { children: ReactNode; userName: string; userAvatar?: string; saving: boolean; theme: "light" | "rose" | "taupe"; accessText?: string; isSuperadmin?: boolean; onQuickAdd: () => void; onNeedHelp: () => void; onSignOut?: () => void }) {
+export function AppShell({ children, userName, userAvatar, saving, theme, accessText, isSuperadmin = false, onQuickAdd, onNeedHelp, onSignOut, snapshot }: { snapshot?: PlannerSnapshot; children: ReactNode; userName: string; userAvatar?: string; saving: boolean; theme: "light" | "rose" | "taupe"; accessText?: string; isSuperadmin?: boolean; onQuickAdd: () => void; onNeedHelp: () => void; onSignOut?: () => void }) {
   const { pathname, search } = useLocation();
   const navigationType = useNavigationType();
   const isToday = pathname === "/app/today";
   const isWeeklyPlanning = pathname === "/app/planning/weekly" || (pathname === "/app/planning" && new URLSearchParams(search).get("view") === "week");
-  const desktopPrimaryItems = primaryItems;
+  const desktopPrimaryItems = editorialItems;
   const desktopUtilityItems = utilityItems;
   const sidebarCollapsed = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
-  const isSidebarCollapsed = sidebarCollapsed && !isToday;
+  const isSidebarCollapsed = false;
   const colorMode = useUiStore((state) => state.colorMode);
   const toggleColorMode = useUiStore((state) => state.toggleColorMode);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -143,24 +177,25 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
   const avatar = userAvatar ? <img src={userAvatar} alt={m("navigation.avatarAlt", { name: userName })} /> : <span>{userName.slice(0, 1).toUpperCase()}</span>;
   const accessMessage = getAccessMessageDescriptor(accessText);
   const localizedAccessText = accessMessage ? m(accessMessage.key, accessMessage.params) : undefined;
-  return <div className={`app-shell theme-${theme} ${isSidebarCollapsed ? "app-shell--collapsed" : ""} ${isToday ? "app-shell--today" : ""} ${isWeeklyPlanning ? "app-shell--weekly" : ""}`} data-color-mode={colorMode}>
+  return <div className={`app-shell prep-shell theme-${theme} ${isSidebarCollapsed ? "app-shell--collapsed" : ""} ${isToday ? "app-shell--today" : ""} ${isWeeklyPlanning ? "app-shell--weekly" : ""}`} data-color-mode={colorMode}>
     <a className="skip-link" href="#main-content" data-i18n-explicit="true">{m("navigation.skipToContent")}</a>
     <aside className="sidebar" aria-label={m("navigation.mainLabel")} data-mobile-drawer-background data-i18n-explicit="true">
-      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label={m("navigation.brandHome")}><BrandMark compact={isSidebarCollapsed} iconOnly={isSidebarCollapsed} /></NavLink>
-      <nav className="sidebar__nav" aria-label={m("navigation.primaryDestinations")}>{desktopPrimaryItems.map(([href, labelKey, Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${active ? "nav-item--active" : ""}`} aria-current={active ? "page" : undefined} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>; })}</nav>
+      <NavLink to="/app/dashboard" className="sidebar__brand" aria-label={m("navigation.brandHome")}><BrandMark /></NavLink>
+      <nav className="sidebar__nav" aria-label={m("navigation.primaryDestinations")}>{desktopPrimaryItems.map(([href, labelKey, Icon]) => { const active = isEditorialActive(href, pathname, search); return <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${active ? "nav-item--active" : ""}`} aria-current={active ? "page" : undefined} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>; })}</nav>
       <nav className="sidebar__utility-nav sidebar__space-shortcuts" aria-label={m("navigation.spaceShortcuts")}>
-        {!isSidebarCollapsed && <span className="local-note">{m("navigation.inSpace")}</span>}
-        {spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={scrollToTop} className="nav-item" aria-label={m("navigation.spaceShortcutLabel", { destination: m(labelKey) })} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>)}
+
+        {spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${isEditorialActive(href, pathname, search) ? "nav-item--active" : ""}`} aria-current={isEditorialActive(href, pathname, search) ? "page" : undefined} aria-label={m("navigation.spaceShortcutLabel", { destination: m(labelKey) })} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>)}
       </nav>
+      <div className="prep-sidebar-quote"><Botanical /><p>{m("preparation.quote.sidebar")}</p><small>{m("preparation.enjoy")}</small></div>
       <div className="sidebar__footer">
         <nav className="sidebar__utility-nav" aria-label={m("navigation.utilities")}>{desktopUtilityItems.map(([href, labelKey, Icon]) => <NavLink key={href} to={href} className={({ isActive }) => `nav-item ${isActive ? "nav-item--active" : ""}`} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</NavLink>)}{isToday && onSignOut && <button className="nav-item sidebar-today-signout" type="button" onClick={onSignOut}><LogOut size={18} />{!isSidebarCollapsed && <span>{m("navigation.signOut")}</span>}</button>}{isSuperadmin && <NavLink className={({ isActive }) => `nav-item sidebar-admin-link ${isActive ? "nav-item--active" : ""}`} to="/platform" title={isSidebarCollapsed ? m("navigation.access.superadmin") : undefined}><Sparkles size={18} />{!isSidebarCollapsed && <span>{m("navigation.access.superadmin")}</span>}</NavLink>}</nav>
         <Link to="/app/settings" className="sidebar-profile" aria-label={m("navigation.settingsForUser", { name: userName })}>{avatar}{!isSidebarCollapsed && <div><strong>{userName}</strong><small>{m("navigation.settingsAndProfile")}</small></div>}{!isSidebarCollapsed && <ChevronRight size={16} aria-hidden="true" />}</Link>
         {!isToday && <div className="sidebar__footer-actions">{onSignOut && <button className="sidebar-signout" type="button" onClick={onSignOut} aria-label={m("navigation.signOut")} title={m("navigation.signOut")}><LogOut size={17} /></button>}<button className="collapse-button" type="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-expanded={!isSidebarCollapsed} aria-label={isSidebarCollapsed ? m("navigation.expand") : m("navigation.collapse")}>{isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>}
       </div>
     </aside>
-    {mobileMenuOpen && <div className="mobile-drawer-layer" data-i18n-explicit="true"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")} /><aside id="mobile-navigation-drawer" className="mobile-drawer" role="dialog" aria-modal="true" aria-label={m("navigation.mobileMenu")}><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")}><X size={20} /></button></header><nav><section><span>{m("navigation.primary")}</span>{primaryItems.map(([href, labelKey, Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} className={active ? "active" : undefined} aria-current={active ? "page" : undefined} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>; })}</section><section><span>{m("navigation.inSpace")}</span>{spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>)}</section><section><span>{m("navigation.account")}</span>{utilityItems.map(([href, labelKey, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{m(labelKey)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>{m("navigation.access.superadmin")}</strong></NavLink>}</section></nav></aside></div>}
-    <div className="app-main" data-mobile-drawer-background><header className="topbar" data-i18n-explicit="true"><button type="button" className="topbar__mobile-brand" aria-label={m("navigation.openMenu")} aria-controls="mobile-navigation-drawer" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><div className="topbar__utilities">{localizedAccessText && <NavLink to="/upgrade" className="access-chip">{localizedAccessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label={m("navigation.needHelp")} title={m("navigation.needHelpQuestion")}><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? m("navigation.darkMode") : m("navigation.lightMode")} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? m("navigation.saving") : m("navigation.saved")}</div><Link to="/app/settings" className="topbar__profile" aria-label={m("navigation.editProfile")}><span>{userName}</span><span className="topbar-avatar">{avatar}</span></Link></header><main id="main-content" className="page-content" key={pathname}>{children}</main></div>
+    {mobileMenuOpen && <div className="mobile-drawer-layer" data-i18n-explicit="true"><button className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")} /><aside id="mobile-navigation-drawer" className="mobile-drawer" role="dialog" aria-modal="true" aria-label={m("navigation.mobileMenu")}><header><BrandMark compact /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label={m("navigation.closeMenu")}><X size={20} /></button></header><nav><section><span>{m("navigation.primary")}</span>{editorialItems.map(([href, labelKey, Icon]) => { const active = isEditorialActive(href, pathname, search); return <Link key={href} to={href} className={active ? "active" : undefined} aria-current={active ? "page" : undefined} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>; })}</section><section><span>{m("navigation.inSpace")}</span>{spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }}><Icon size={18} /><strong>{m(labelKey)}</strong></Link>)}</section><section><span>{m("navigation.account")}</span>{utilityItems.map(([href, labelKey, Icon]) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)}><Icon size={18} /><strong>{m(labelKey)}</strong></NavLink>)}{isSuperadmin && <NavLink to="/platform" onClick={() => setMobileMenuOpen(false)}><Sparkles size={18} /><strong>{m("navigation.access.superadmin")}</strong></NavLink>}</section></nav></aside></div>}
+    <div className="app-main" data-mobile-drawer-background><header className="topbar" data-i18n-explicit="true"><button type="button" className="topbar__mobile-brand" aria-label={m("navigation.openMenu")} aria-controls="mobile-navigation-drawer" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}><Menu size={20} /><BrandMark compact /></button><PlannerSearch snapshot={snapshot} /><PlannerNotices snapshot={snapshot} /><div className="topbar__utilities">{localizedAccessText && <NavLink to="/upgrade" className="access-chip">{localizedAccessText}</NavLink>}<button type="button" onClick={onNeedHelp} aria-label={m("navigation.needHelp")} title={m("navigation.needHelpQuestion")}><CircleHelp size={18} /></button><button type="button" onClick={toggleColorMode} aria-label={colorMode === "light" ? m("navigation.darkMode") : m("navigation.lightMode")} aria-pressed={colorMode === "dark"}>{colorMode === "light" ? <MoonStar size={18} /> : <Sun size={18} />}</button></div><div className="topbar__status" aria-live="polite"><span className={saving ? "saving-dot saving-dot--active" : "saving-dot"} />{saving ? m("navigation.saving") : m("navigation.saved")}</div><Link to="/app/settings" className="topbar__profile" aria-label={m("navigation.editProfile")}><span>{userName}</span><span className="topbar-avatar">{avatar}</span></Link></header><main id="main-content" className="page-content" key={pathname}><GuideReturn />{children}</main></div>
     {!['/app/dashboard', '/app/today'].includes(pathname) && !isWeeklyPlanning && <div ref={fabRef} className={`fab-cluster ${fabOpen ? "is-open" : ""}`} data-mobile-drawer-background data-i18n-explicit="true"><div className="fab-menu" aria-hidden={!fabOpen}><button type="button" onClick={() => { setFabOpen(false); onQuickAdd(); }}><Plus size={17} /><span>{m("navigation.capture")}</span></button><NavLink to="/app/support" onClick={() => setFabOpen(false)}><MessageCircle size={17} /><span>{m("navigation.supportChat")}</span></NavLink><NavLink to="/app/support?type=suggestion" onClick={() => setFabOpen(false)}><Sparkles size={17} /><span>{m("navigation.suggestion")}</span></NavLink><NavLink to="/app/more" onClick={() => setFabOpen(false)}><Wrench size={17} /><span>{m("navigation.tools")}</span></NavLink></div><button className="fab" type="button" onClick={() => setFabOpen((open) => !open)} aria-label={fabOpen ? m("navigation.quickActions.close") : m("navigation.quickActions.open")} aria-expanded={fabOpen}><Plus size={22} /></button></div>}
-    <nav className="mobile-nav" aria-label={m("navigation.mobileLabel")} data-mobile-drawer-background data-i18n-explicit="true">{mobileItems.map(([href,labelKey,Icon]) => { const active = isPrimaryActive(href, pathname); return <Link key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"} aria-current={active ? "page" : undefined}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{m(labelKey)}</span></Link>; })}</nav>
+    <nav className="mobile-nav" aria-label={m("navigation.mobileLabel")} data-mobile-drawer-background data-i18n-explicit="true">{mobileItems.map(([href,labelKey,Icon]) => { const active = href === "/app/planning" ? pathname.startsWith("/app/planning") || pathname === "/app/vision" : isEditorialActive(href, pathname, search); return <Link key={href} to={href} onClick={scrollToTop} className={active ? "mobile-nav__item is-active" : "mobile-nav__item"} aria-current={active ? "page" : undefined}><Icon size={20} strokeWidth={active ? 2 : 1.6} /><span>{m(labelKey)}</span></Link>; })}</nav>
   </div>;
 }

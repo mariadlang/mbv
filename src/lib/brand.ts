@@ -1,4 +1,6 @@
 export const BRAND_NAME = "My Best Version";
+// Approved logo lockup; independent of marketing and legal messaging.
+export const BRAND_LOGO_TAGLINE = "PLANEA · ACCIONA · LOGRA";
 export const BRAND_PROMISE = "Tu vida completa, organizada con claridad y sin culpa.";
 export const BRAND_IDEA = "Progreso amable.";
 export const BRAND_POSITIONING = "Productividad consciente para una vida multidimensional.";

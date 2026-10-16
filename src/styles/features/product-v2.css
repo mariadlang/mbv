@@ -80,7 +80,7 @@
 .review-history { display: grid; gap: 10px; }
 .review-history > .card { padding: 18px; }
 .review-history > .card > div { display: flex; align-items: center; justify-content: space-between; }
-.review-history h3 { margin: 12px 0; font-family: var(--font-family-primary); font-size: 1.0625rem; }
+.review-history h3 { margin: 12px 0; font-family: var(--font-family-heading); font-size: 1.0625rem; }
 .review-history li { margin-bottom: 4px; color: var(--taupe); font-size: .75rem; }
 
 .privacy-toggle { display: flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; background: white; font-size: .75rem; cursor: pointer; }
@@ -474,9 +474,9 @@
 
 .more-page { max-width: 1000px; margin-inline: auto; }
 .more-group { display: grid; gap: 10px; }
-.more-group > h2 { color: var(--color-text-secondary); font-family: var(--font-family-primary); font-size: var(--text-xs); letter-spacing: .16em; }
+.more-group > h2 { color: var(--color-text-secondary); font-family: var(--font-family-heading); font-size: var(--text-xs); letter-spacing: .16em; }
 .more-group .more-grid { grid-template-columns: repeat(2, 1fr); }
-.more-card h3 { font-family: var(--font-family-primary); font-size: 1.15rem; }
+.more-card h3 { font-family: var(--font-family-heading); font-size: 1.15rem; }
 .learn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .learn-card { display: grid; align-content: start; gap: 10px; min-height: 230px; }
 .learn-card > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--color-surface-muted); color: var(--color-brand-strong); }

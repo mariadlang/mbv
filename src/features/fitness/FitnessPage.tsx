@@ -6,7 +6,7 @@ import {
   ArrowLeft, BarChart3, CalendarDays, Check, ChevronRight, Clock3, Copy, Dumbbell,
   Flame, Heart, Pencil, Plus, Settings2, Star, Target, Trash2, Utensils,
 } from "lucide-react";
-import type { MealLog } from "@/src/domain/planner";
+import type { MealLog, WorkoutLog } from "@/src/domain/planner";
 import { dailyNutritionTotals, mealCompletionPercent, normalizedExerciseSets } from "@/src/domain/fitnessRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getWeekDates, toLocalDateKey } from "@/src/lib/dates";
@@ -14,6 +14,12 @@ import { Button, Card, EmptyState, ProgressBar } from "@/src/components/ui/Primi
 import { Modal } from "@/src/components/ui/Modal";
 import { useAccount } from "@/src/hooks/useAccount";
 import { useLegalPrivacy } from "@/src/hooks/useLegalPrivacy";
+import { HealthPlanning } from "@/src/features/preparation/HealthPlanning";
+import { isValidCalendarDateKey } from "@/src/domain/calendar";
+import { healthPreparation, type HealthScope } from "@/src/domain/healthPreparation";
+import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
+import { useI18n } from "@/src/i18n/I18nProvider";
 
 type FitnessSection = "nutrition" | "training";
 type WorkoutDraftExercise = { id?: string; name: string; sets: Array<{ id?: string; setNumber: number; reps: number; weight: number }> };
@@ -33,13 +39,18 @@ const defaultSettings = {
 };
 
 export function FitnessPage({ planner }: { planner: PlannerController }) {
+  const { m } = useI18n();
+  const mealOperation = usePreparationOperation();
+  const editorOperation = usePreparationOperation();
+  const navigation = useDraftNavigation();
   const account = useAccount();
   const legal = useLegalPrivacy(account.user?.id ?? null);
   const [consentSaving, setConsentSaving] = useState(false);
   const { snapshot } = planner;
   const [searchParams, setSearchParams] = useSearchParams();
   const section: FitnessSection = searchParams.get("section") === "training" ? "training" : "nutrition";
-  const initialDate = searchParams.get("date") || toLocalDateKey(new Date());
+  const requestedDate = searchParams.get("date");
+  const initialDate = requestedDate && isValidCalendarDateKey(requestedDate) ? requestedDate : toLocalDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [mealOpen, setMealOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -61,9 +72,16 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
   const [bodyWeight, setBodyWeight] = useState(0);
   const [waist, setWaist] = useState(0);
   const [hip, setHip] = useState(0);
+  const [editorScope, setEditorScope] = useState<HealthScope | undefined>();
+  const [editorDate, setEditorDate] = useState(initialDate);
+  const [initialMeal, setInitialMeal] = useState("");
+  const [initialWorkout, setInitialWorkout] = useState("");
+  const [initialSettings, setInitialSettings] = useState("");
 
   const weekDates = useMemo(() => getWeekDates(new Date(`${selectedDate}T12:00:00`), 1), [selectedDate]);
   const selectedNutrition = snapshot.nutritionLogs.find((item) => item.date === selectedDate);
+  const completedMeals = (selectedNutrition?.meals ?? []).filter((meal) => meal.completed !== false).length;
+  const restDay = healthPreparation(snapshot, selectedDate, "training").rest;
   const selectedWorkout = snapshot.workoutLogs.find((item) => item.date === selectedDate);
   const totals = dailyNutritionTotals(selectedNutrition?.meals ?? []);
   const fitness = snapshot.profile?.fitnessProfile ?? defaultSettings;
@@ -74,40 +92,49 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
   const [historyExercise, setHistoryExercise] = useState("");
   const visibleHistoryExercise = historyExercise || exerciseNames[0] || "";
 
-  const selectSection = (next: FitnessSection) => {
+  const selectSection = (next: FitnessSection) => navigation.request(() => {
     const params = new URLSearchParams(searchParams);
     if (next === "nutrition") params.delete("section"); else params.set("section", "training");
     params.set("date", selectedDate);
     setSearchParams(params, { replace: true });
-  };
+  });
 
-  const selectDate = (date: string) => {
+  const selectDate = (date: string) => navigation.request(() => {
     setSelectedDate(date);
     const params = new URLSearchParams(searchParams);
     params.set("date", date);
     setSearchParams(params, { replace: true });
-  };
+  });
 
-  const openMeal = (meal?: MealLog) => {
+  const openMeal = (meal?: MealLog, date = selectedDate, scope?: HealthScope) => {
+    setEditorDate(date); setEditorScope(scope);
     setEditingMealId(meal?.id);
     setMealName(meal?.name ?? `Comida ${(selectedNutrition?.meals.length ?? 0) + 1}`);
     setMealCalories(meal?.calories ?? 0); setMealProtein(meal?.protein ?? 0); setMealCarbs(meal?.carbs ?? 0); setMealFat(meal?.fat ?? 0);
     setMealNotes(meal?.notes ?? ""); setMealOpen(true);
+    setInitialMeal(JSON.stringify([meal?.name ?? `Comida ${(selectedNutrition?.meals.length ?? 0) + 1}`, meal?.calories ?? 0, meal?.protein ?? 0, meal?.carbs ?? 0, meal?.fat ?? 0, meal?.notes ?? ""]));
   };
 
-  const saveMeal = async (event: FormEvent) => {
-    event.preventDefault();
-    await planner.saveMeal({ mealId: editingMealId, date: selectedDate, name: mealName, calories: mealCalories, protein: mealProtein, carbs: mealCarbs, fat: mealFat, notes: mealNotes, completed: true });
+  const saveMealDraft = async () => {
+    if (mealName.trim().length < 2 || [mealCalories, mealProtein, mealCarbs, mealFat].some((value) => value < 0) || mealNotes.length > 500) return false;
+    const savedMeal = snapshot.nutritionLogs.find((log) => log.date === editorDate)?.meals.find((meal) => meal.id === editingMealId);
+    if (!await editorOperation.run(() => planner.saveMeal({ mealId: editingMealId, date: editorDate, name: mealName, calories: mealCalories, protein: mealProtein, carbs: mealCarbs, fat: mealFat, notes: mealNotes, completed: savedMeal?.completed ?? (editorScope ? false : true) }, editorScope))) return false;
+    mealGuard.markSaved();
     setMealOpen(false); setMessage(editingMealId ? "Comida actualizada." : "Comida añadida al día.");
+    return true;
   };
+  const saveMeal = async (event: FormEvent) => { event.preventDefault(); await saveMealDraft(); };
 
-  const openWorkout = () => {
-    setWorkoutName(selectedWorkout?.name ?? selectedWorkout?.goal ?? "");
-    setDurationMinutes(selectedWorkout?.durationMinutes ?? 60);
-    setDraftExercises((selectedWorkout?.exercises ?? []).map((exercise) => ({
+  const openWorkout = (record = selectedWorkout, date = selectedDate, scope?: HealthScope) => {
+    setEditorDate(date); setEditorScope(scope);
+    setWorkoutName(record?.name ?? record?.goal ?? "");
+    setDurationMinutes(record?.durationMinutes ?? 0);
+    const exercises = (record?.exercises ?? []).map((exercise) => ({
       id: exercise.id, name: exercise.name,
       sets: normalizedExerciseSets(exercise).map((set) => ({ ...set })),
-    })));
+    }));
+    setDraftExercises(exercises);
+    setInitialWorkout(JSON.stringify([record?.name ?? record?.goal ?? "", record?.durationMinutes ?? 0, exercises]));
     setWorkoutOpen(true);
   };
 
@@ -123,17 +150,42 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     ...exercise, sets: exercise.sets.map((set, currentSetIndex) => currentSetIndex === setIndex ? { ...set, [field]: value } : set),
   } : exercise));
 
-  const saveWorkout = async (event: FormEvent) => {
-    event.preventDefault();
-    await planner.saveWorkoutPlan({ date: selectedDate, name: workoutName, durationMinutes: durationMinutes || undefined, exercises: draftExercises });
+  const saveWorkoutDraft = async () => {
+    if (workoutName.trim().length < 2 || durationMinutes < 0 || draftExercises.some((exercise) => exercise.name.trim().length < 2 || exercise.sets.some((set) => set.reps < 0 || set.weight < 0))) return false;
+    if (!await editorOperation.run(() => planner.saveWorkoutPlan({ date: editorDate, name: workoutName, durationMinutes: durationMinutes || undefined, exercises: draftExercises }, editorScope))) return false;
+    workoutGuard.markSaved();
     setWorkoutOpen(false); setMessage("Rutina planificada guardada sin modificar tu historial.");
+    return true;
   };
+  const saveWorkout = async (event: FormEvent) => { event.preventDefault(); await saveWorkoutDraft(); };
 
-  const saveSettings = async (event: FormEvent) => {
-    event.preventDefault();
-    await planner.updateProfileSettings({ fitnessEnabled: true, fitnessProfile: settings });
-    if (bodyWeight || waist || hip) await planner.saveBodyCheckIn({ date: selectedDate, weight: bodyWeight || undefined, waist: waist || undefined, hip: hip || undefined });
+  const saveSettingsDraft = async () => {
+    if (settings.physicalGoal.trim().length < 2 || settings.dailyCalories <= 0 || !settings.trainingDays.length) return false;
+    if (!await editorOperation.run(async () => {
+      await planner.updateProfileSettings({ fitnessEnabled: true, fitnessProfile: settings });
+      if (bodyWeight || waist || hip) await planner.saveBodyCheckIn({ date: selectedDate, weight: bodyWeight || undefined, waist: waist || undefined, hip: hip || undefined });
+    })) return false;
+    settingsGuard.markSaved();
     setSettingsOpen(false); setMessage("Tu contexto de Bienestar quedó guardado.");
+    return true;
+  };
+  const saveSettings = async (event: FormEvent) => { event.preventDefault(); await saveSettingsDraft(); };
+  const mealGuard = useUnsavedDraft({ dirty: mealOpen && JSON.stringify([mealName, mealCalories, mealProtein, mealCarbs, mealFat, mealNotes]) !== initialMeal, saving: mealOpen && editorOperation.busy, onSave: saveMealDraft, onDiscard: () => setMealOpen(false) });
+  const workoutGuard = useUnsavedDraft({ dirty: workoutOpen && JSON.stringify([workoutName, durationMinutes, draftExercises]) !== initialWorkout, saving: workoutOpen && editorOperation.busy, onSave: saveWorkoutDraft, onDiscard: () => setWorkoutOpen(false) });
+  const settingsGuard = useUnsavedDraft({ dirty: settingsOpen && JSON.stringify([settings, bodyWeight, waist, hip]) !== initialSettings, saving: settingsOpen && editorOperation.busy, onSave: saveSettingsDraft, onDiscard: () => setSettingsOpen(false) });
+  const openHealthRecord = (date: string, recordId?: string, scope?: HealthScope) => {
+    selectDate(date);
+    const current = healthPreparation(snapshot, date, section);
+    const base = scope === "monthly" ? current.monthly : undefined;
+    if (section === "nutrition") {
+      const meal = snapshot.nutritionLogs.find((log) => log.date === date)?.meals.find((item) => item.id === recordId);
+      const record = base?.content?.kind === "nutrition" ? { ...meal, id: base.recordId, name: base.title, ...base.content } : meal;
+      openMeal(record, date, scope);
+    } else {
+      const workout = snapshot.workoutLogs.find((log) => log.date === date);
+      const record: WorkoutLog | undefined = base?.content?.kind === "training" && workout ? { ...workout, name: base.title, ...base.content } : workout;
+      openWorkout(record, date, scope);
+    }
   };
 
   const deleteMeal = async (meal: MealLog) => {
@@ -149,10 +201,13 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     <header className="fitness-page__header">
       <Link className="back-link" to="/app/dashboard"><ArrowLeft size={18} /> Volver al inicio</Link>
       <div><span className="fitness-page__title-icon">{section === "nutrition" ? <Utensils size={27} /> : <Dumbbell size={27} />}</span><div><p className="eyebrow">SALUD · BIENESTAR</p><h1>{section === "nutrition" ? "Alimentación" : "Entrenamiento"}</h1></div></div>
-      <Button variant="secondary" onClick={() => { setSettings(snapshot.profile?.fitnessProfile ?? defaultSettings); setSettingsOpen(true); }}><Settings2 size={17} /> Configurar</Button>
+      <Button variant="secondary" onClick={() => { const current = snapshot.profile?.fitnessProfile ?? defaultSettings; setSettings(current); setBodyWeight(0); setWaist(0); setHip(0); setInitialSettings(JSON.stringify([current, 0, 0, 0])); setSettingsOpen(true); }}><Settings2 size={17} /> Configurar</Button>
     </header>
 
     {message && <div className="inline-message" role="status">{message}</div>}
+    {mealOperation.error && <p role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}
+
+    <HealthPlanning planner={planner} date={selectedDate} section={section} onSelectDate={selectDate} onEditRecord={openHealthRecord} />
 
     <Card className="fitness-context-card">
       <div><span><Target size={20} /></span><small>Meta física</small><strong data-no-translate="true">{fitness.physicalGoal}</strong></div>
@@ -173,36 +228,36 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
     {section === "nutrition" ? <>
       <Card className="fitness-day-card nutrition-day-card">
         <header><div><span className="fitness-round-icon"><CalendarDays size={21} /></span><div><p className="eyebrow">{selectedDate}</p><h2>{selectedDay.long}</h2></div></div><div className="macro-total"><strong><Flame size={21} /> {totals.calories} kcal</strong><span>P {totals.protein}g · C {totals.carbs}g · G {totals.fat}g</span></div></header>
-        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal)} aria-label={`Editar ${meal.name}`} data-no-translate="true"><Pencil size={16} /></button></div><h3 data-no-translate="true">{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small data-no-translate="true">{meal.notes}</small>}<button className="meal-card__delete" type="button" onClick={() => void deleteMeal(meal)} aria-label={`Eliminar ${meal.name}`} data-no-translate="true"><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
+        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal)} aria-label={`Editar ${meal.name}`} data-no-translate="true"><Pencil size={16} /></button></div><h3 data-no-translate="true">{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small data-no-translate="true">{meal.notes}</small>}<button data-i18n-explicit="true" aria-pressed={meal.completed !== false} disabled={mealOperation.busy} onClick={() => mealOperation.run(() => planner.saveMeal({ ...meal, mealId: meal.id, date: selectedDate, completed: meal.completed === false }))}>{m(meal.completed !== false ? "preparation.consumed" : "preparation.markConsumed")}</button><button className="meal-card__delete" type="button" onClick={() => void deleteMeal(meal)} aria-label={`Eliminar ${meal.name}`} data-no-translate="true"><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
       </Card>
-      <Card className="fitness-day-summary"><span className="fitness-round-icon"><BarChart3 size={21} /></span><div><h2>Resumen del día</h2><p>{selectedNutrition?.meals.length ?? 0} comidas registradas</p><ProgressBar value={mealCompletionPercent(selectedNutrition?.meals.length ?? 0, fitness.mealsPerDay)} label={`${selectedNutrition?.meals.length ?? 0}/${fitness.mealsPerDay} completadas`} /></div><Button onClick={() => openMeal()}><Plus size={18} /> Añadir comida</Button></Card>
+      <Card className="fitness-day-summary"><span className="fitness-round-icon"><BarChart3 size={21} /></span><div><h2>Resumen del día</h2><p>{selectedNutrition?.meals.length ?? 0} comidas registradas</p><ProgressBar value={mealCompletionPercent(completedMeals, fitness.mealsPerDay)} label={`${completedMeals}/${fitness.mealsPerDay} completadas`} /></div><Button onClick={() => openMeal()}><Plus size={18} /> Añadir comida</Button></Card>
       <CopyDayControls label="Copiar alimentación a" selectedDate={selectedDate} copyTarget={copyTarget} onTarget={setCopyTarget} onCopy={async () => { if (!copyTarget) return; await planner.copyMeals(selectedDate, copyTarget); setMessage("Alimentación copiada al día elegido."); }} />
     </> : <>
       <Card className="fitness-day-card training-day-card">
         {selectedWorkout ? <>
-          <header><div><span className="fitness-round-icon"><Dumbbell size={22} /></span><div><p className="eyebrow">{selectedDay.long} · {selectedDate}</p><h2 data-no-translate={selectedWorkout.name || selectedWorkout.goal ? "true" : undefined}>{selectedWorkout.name ?? selectedWorkout.goal ?? "Entrenamiento"}</h2></div></div><div className="workout-meta"><span><Clock3 size={16} /> {selectedWorkout.durationMinutes ?? "—"} min</span><span><Dumbbell size={16} /> {selectedWorkout.exercises.length} ejercicios</span><Button variant="secondary" size="sm" onClick={openWorkout}><Pencil size={15} /> Editar</Button><Button variant="ghost" size="sm" onClick={async () => { if (!window.confirm("¿Eliminar este entrenamiento? También se eliminarán las sesiones realizadas guardadas en esta fecha.")) return; await planner.deleteWorkoutPlan(selectedDate); setMessage("Entrenamiento eliminado."); }}><Trash2 size={15} /> Eliminar</Button></div></header>
+          <header><div><span className="fitness-round-icon"><Dumbbell size={22} /></span><div><p className="eyebrow">{selectedDay.long} · {selectedDate}</p><h2 data-no-translate={selectedWorkout.name || selectedWorkout.goal ? "true" : undefined}>{selectedWorkout.name ?? selectedWorkout.goal ?? "Entrenamiento"}</h2></div></div><div className="workout-meta"><span><Clock3 size={16} /> {selectedWorkout.durationMinutes ?? "—"} min</span><span><Dumbbell size={16} /> {selectedWorkout.exercises.length} ejercicios</span><Button variant="secondary" size="sm" onClick={() => openWorkout()}><Pencil size={15} /> Editar</Button><Button variant="ghost" size="sm" onClick={async () => { if (!window.confirm("¿Eliminar este entrenamiento? También se eliminarán las sesiones realizadas guardadas en esta fecha.")) return; await planner.deleteWorkoutPlan(selectedDate); setMessage("Entrenamiento eliminado."); }}><Trash2 size={15} /> Eliminar</Button></div></header>
           {selectedWorkout.exercises.length ? <div className="exercise-table">{selectedWorkout.exercises.map((exercise) => <article key={exercise.id}><div className="exercise-name"><span><Dumbbell size={18} /></span><div><h3 data-no-translate="true">{exercise.name}</h3><small>{normalizedExerciseSets(exercise).length} series</small></div></div><div className="exercise-sets">{normalizedExerciseSets(exercise).map((set) => <div key={set.id}><small>Serie {set.setNumber}</small><strong>{set.reps} repeticiones</strong><span>{set.weight} kg</span></div>)}</div></article>)}</div> : <div className="workout-without-exercises"><Flame size={22} /><div><strong>Actividad sin series ni repeticiones</strong><p>Perfecto para cardio, caminatas, clases o deportes. La duración y el nombre son suficientes.</p></div></div>}
-          <div className="workout-actions"><Button variant="secondary" onClick={() => setHistoryOpen(true)}><BarChart3 size={17} /> Ver historial de pesos</Button><Button onClick={async () => { await planner.completeWorkout(selectedDate); setMessage("Sesión realizada guardada en tu historial."); }}><Check size={17} /> Guardar sesión realizada</Button></div>
+          <div className="workout-actions"><Button variant="secondary" onClick={() => setHistoryOpen(true)}><BarChart3 size={17} /> Ver historial de pesos</Button><Button disabled={restDay} onClick={async () => { await planner.completeWorkout(selectedDate); setMessage("Sesión realizada guardada en tu historial."); }}><Check size={17} /> Guardar sesión realizada</Button></div>
         </> : <EmptyState title={`Sin entrenamiento para ${selectedDay.long.toLowerCase()}`} text="Puedes dejarlo como descanso o crear una rutina para este día." />}
       </Card>
       <section className="fitness-week-overview" aria-label="Resumen de entrenamientos de la semana">{weekDates.map((date, index) => { const key = toLocalDateKey(date); const log = snapshot.workoutLogs.find((item) => item.date === key); return <button type="button" key={key} className={key === selectedDate ? "is-active" : ""} onClick={() => selectDate(key)}><CalendarDays size={18} /><span><small>{days[index].long}</small><strong data-no-translate={log?.name || log?.goal ? "true" : undefined}>{log?.name ?? log?.goal ?? "Descanso"}</strong></span><em>{log?.exercises.length ? `${log.exercises.length} ejercicios` : "Sin plan"}</em><ChevronRight size={17} /></button>; })}</section>
-      <div className="fitness-primary-action"><Button onClick={openWorkout}><Plus size={18} /> {selectedWorkout ? "Editar entrenamiento" : "Añadir entrenamiento"}</Button></div>
+      <div className="fitness-primary-action"><Button onClick={() => openWorkout()}><Plus size={18} /> {selectedWorkout ? "Editar entrenamiento" : "Añadir entrenamiento"}</Button></div>
       {selectedWorkout && <CopyDayControls label="Duplicar entrenamiento en" selectedDate={selectedDate} copyTarget={copyTarget} onTarget={setCopyTarget} onCopy={async () => { if (!copyTarget) return; await planner.duplicateWorkout(selectedDate, copyTarget); setMessage("Entrenamiento duplicado sin copiar el historial."); }} />}
     </>}
 
     <Card className="fitness-quote"><Star size={21} aria-hidden="true" /><p>Pequeñas decisiones hoy, grandes cambios siempre.</p><Heart size={20} aria-hidden="true" /></Card>
     <details className="wellness-disclaimer"><summary>Información importante sobre bienestar</summary><p>Estos registros son de autoobservación y no constituyen diagnóstico ni tratamiento. Detén el ejercicio ante dolor o síntomas inusuales y consulta profesionales cualificados para cambios relevantes en salud o alimentación.</p></details>
 
-    <Modal open={mealOpen} title={editingMealId ? "Editar comida" : "Añadir comida"} description="Registra manualmente solo la información que quieras observar." onClose={() => setMealOpen(false)}>
-      <form className="fitness-form" onSubmit={saveMeal}><label className="form-field"><span>Nombre</span><input required minLength={2} value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="fitness-form-grid"><NumberField label="Calorías" value={mealCalories} onChange={setMealCalories} /><NumberField label="Proteína (g)" value={mealProtein} onChange={setMealProtein} /><NumberField label="Carbohidratos (g)" value={mealCarbs} onChange={setMealCarbs} /><NumberField label="Grasas (g)" value={mealFat} onChange={setMealFat} /></div><label className="form-field"><span>Notas opcionales</span><textarea rows={3} value={mealNotes} onChange={(event) => setMealNotes(event.target.value)} /></label><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setMealOpen(false)}>Cancelar</Button><Button type="submit">Guardar comida</Button></div></form>
+    <Modal open={mealOpen} title={editingMealId ? "Editar comida" : "Añadir comida"} description="Registra manualmente solo la información que quieras observar." onClose={() => mealGuard.request(() => setMealOpen(false))}>
+      <form className="fitness-form" onSubmit={saveMeal}><fieldset disabled={editorOperation.busy} aria-busy={editorOperation.busy} style={{ display: "contents" }}>{editorScope && <p data-i18n-explicit="true">{m(editorScope === "monthly" ? "healthLibrary.monthlyEditor" : "healthLibrary.weeklyEditor")}</p>}{editorOperation.error && <p role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}<label className="form-field"><span>Nombre</span><input required minLength={2} value={mealName} onChange={(event) => setMealName(event.target.value)} /></label><div className="fitness-form-grid"><NumberField label="Calorías" value={mealCalories} onChange={setMealCalories} /><NumberField label="Proteína (g)" value={mealProtein} onChange={setMealProtein} /><NumberField label="Carbohidratos (g)" value={mealCarbs} onChange={setMealCarbs} /><NumberField label="Grasas (g)" value={mealFat} onChange={setMealFat} /></div><label className="form-field"><span>Notas opcionales</span><textarea rows={3} value={mealNotes} onChange={(event) => setMealNotes(event.target.value)} /></label><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => mealGuard.request(() => setMealOpen(false))}>Cancelar</Button><Button type="submit" disabled={editorOperation.busy}>Guardar comida</Button></div></fieldset></form>
     </Modal>
 
-    <Modal open={workoutOpen} title={selectedWorkout ? "Editar entrenamiento" : "Añadir entrenamiento"} description="Guarda una actividad por su nombre y duración. Los ejercicios, series y pesos son opcionales." onClose={() => setWorkoutOpen(false)}>
-      <form className="fitness-form workout-builder" onSubmit={saveWorkout}><div className="fitness-form-grid"><label className="form-field"><span>Nombre del entrenamiento</span><input required minLength={2} value={workoutName} onChange={(event) => setWorkoutName(event.target.value)} placeholder="Ej. Caminata, natación o fuerza" /></label><NumberField label="Duración estimada (min)" value={durationMinutes} onChange={setDurationMinutes} min={1} /></div>{draftExercises.map((exercise, exerciseIndex) => <fieldset key={exercise.id ?? exerciseIndex}><legend>Ejercicio {exerciseIndex + 1}</legend><div className="workout-builder__heading"><label className="form-field"><span>Nombre del ejercicio</span><input required minLength={2} value={exercise.name} onChange={(event) => updateExerciseName(exerciseIndex, event.target.value)} /></label><label className="form-field"><span>Número de series</span><input type="number" min="1" max="10" value={exercise.sets.length} onChange={(event) => updateSetCount(exerciseIndex, Number(event.target.value))} /></label><button type="button" onClick={() => setDraftExercises((current) => current.filter((_, index) => index !== exerciseIndex))} aria-label={`Eliminar ejercicio ${exerciseIndex + 1}`}><Trash2 size={16} /></button></div><div className="workout-builder__sets">{exercise.sets.map((set, setIndex) => <div key={set.id ?? setIndex}><strong>Serie {setIndex + 1}</strong><NumberField label="Repeticiones" value={set.reps} onChange={(value) => updateSet(exerciseIndex, setIndex, "reps", value)} /><NumberField label="Peso kg" value={set.weight} onChange={(value) => updateSet(exerciseIndex, setIndex, "weight", value)} step={0.5} /></div>)}</div></fieldset>)}<Button type="button" variant="secondary" onClick={addExercise}><Plus size={16} /> Añadir ejercicio opcional</Button>{!draftExercises.length && <p className="form-help form-help--positive">Puedes guardar ahora. Añade ejercicios solo cuando necesites registrar series, repeticiones o peso.</p>}<div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setWorkoutOpen(false)}>Cancelar</Button><Button type="submit" disabled={workoutName.trim().length < 2}>Guardar entrenamiento</Button></div></form>
+    <Modal open={workoutOpen} title={selectedWorkout ? "Editar entrenamiento" : "Añadir entrenamiento"} description="Guarda una actividad por su nombre y duración. Los ejercicios, series y pesos son opcionales." onClose={() => workoutGuard.request(() => setWorkoutOpen(false))}>
+      <form className="fitness-form workout-builder" onSubmit={saveWorkout}><fieldset disabled={editorOperation.busy} aria-busy={editorOperation.busy} style={{ display: "contents" }}>{editorScope && <p data-i18n-explicit="true">{m(editorScope === "monthly" ? "healthLibrary.monthlyEditor" : "healthLibrary.weeklyEditor")}</p>}{editorOperation.error && <p role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}<div className="fitness-form-grid"><label className="form-field"><span>Nombre del entrenamiento</span><input required minLength={2} value={workoutName} onChange={(event) => setWorkoutName(event.target.value)} placeholder="Ej. Caminata, natación o fuerza" /></label><NumberField label="Duración estimada (min)" value={durationMinutes} onChange={setDurationMinutes} min={1} /></div>{draftExercises.map((exercise, exerciseIndex) => <fieldset key={exercise.id ?? exerciseIndex}><legend>Ejercicio {exerciseIndex + 1}</legend><div className="workout-builder__heading"><label className="form-field"><span>Nombre del ejercicio</span><input required minLength={2} value={exercise.name} onChange={(event) => updateExerciseName(exerciseIndex, event.target.value)} /></label><label className="form-field"><span>Número de series</span><input type="number" min="1" max="10" value={exercise.sets.length} onChange={(event) => updateSetCount(exerciseIndex, Number(event.target.value))} /></label><button type="button" onClick={() => setDraftExercises((current) => current.filter((_, index) => index !== exerciseIndex))} aria-label={`Eliminar ejercicio ${exerciseIndex + 1}`}><Trash2 size={16} /></button></div><div className="workout-builder__sets">{exercise.sets.map((set, setIndex) => <div key={set.id ?? setIndex}><strong>Serie {setIndex + 1}</strong><NumberField label="Repeticiones" value={set.reps} onChange={(value) => updateSet(exerciseIndex, setIndex, "reps", value)} /><NumberField label="Peso kg" value={set.weight} onChange={(value) => updateSet(exerciseIndex, setIndex, "weight", value)} step={0.5} /></div>)}</div></fieldset>)}<Button type="button" variant="secondary" onClick={addExercise}><Plus size={16} /> Añadir ejercicio opcional</Button>{!draftExercises.length && <p className="form-help form-help--positive">Puedes guardar ahora. Añade ejercicios solo cuando necesites registrar series, repeticiones o peso.</p>}<div className="modal__actions"><Button type="button" variant="ghost" onClick={() => workoutGuard.request(() => setWorkoutOpen(false))}>Cancelar</Button><Button type="submit" disabled={editorOperation.busy || workoutName.trim().length < 2}>Guardar entrenamiento</Button></div></fieldset></form>
     </Modal>
 
-    <Modal open={settingsOpen} title="Configurar Bienestar" description="Este contexto se usa tanto en Alimentación como en Entrenamiento." onClose={() => setSettingsOpen(false)}>
-      <form className="fitness-form" onSubmit={saveSettings}><label className="form-field"><span>Meta física</span><input required minLength={2} value={settings.physicalGoal} onChange={(event) => setSettings({ ...settings, physicalGoal: event.target.value })} /></label><div className="fitness-form-grid"><NumberField label="Calorías diarias" value={settings.dailyCalories} onChange={(dailyCalories) => setSettings({ ...settings, dailyCalories })} min={1} /><NumberField label="Comidas al día" value={settings.mealsPerDay} onChange={(mealsPerDay) => setSettings({ ...settings, mealsPerDay })} min={1} max={10} /><NumberField label="Entrenamientos por semana" value={settings.workoutsPerWeek} onChange={(workoutsPerWeek) => setSettings({ ...settings, workoutsPerWeek })} min={1} max={7} /></div><fieldset className="training-day-picker"><legend>Días de entrenamiento</legend>{days.map((day, index) => <label key={day.long}><input type="checkbox" checked={settings.trainingDays.includes(index)} onChange={(event) => setSettings({ ...settings, trainingDays: event.target.checked ? [...settings.trainingDays, index].sort() : settings.trainingDays.filter((dayIndex) => dayIndex !== index) })} />{day.long}</label>)}</fieldset><details className="body-checkin-settings"><summary>Medidas y progreso corporal (opcional)</summary><p>Tus registros anteriores siguen disponibles: {snapshot.bodyCheckIns.length} registros guardados.</p><div className="fitness-form-grid"><NumberField label="Peso kg" value={bodyWeight} onChange={setBodyWeight} step={0.1} /><NumberField label="Cintura cm" value={waist} onChange={setWaist} step={0.1} /><NumberField label="Cadera cm" value={hip} onChange={setHip} step={0.1} /></div>{snapshot.bodyCheckIns.slice(0, 3).map((item) => <p className="body-checkin-row" key={item.id}><span>{item.date}</span><strong>{item.weight ? `${item.weight} kg` : "Sin peso"}</strong></p>)}</details><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => setSettingsOpen(false)}>Cancelar</Button><Button type="submit" disabled={!settings.trainingDays.length}>Guardar configuración</Button></div></form>
+    <Modal open={settingsOpen} title="Configurar Bienestar" description="Este contexto se usa tanto en Alimentación como en Entrenamiento." onClose={() => settingsGuard.request(() => setSettingsOpen(false))}>
+      <form className="fitness-form" onSubmit={saveSettings}><fieldset disabled={editorOperation.busy} aria-busy={editorOperation.busy} style={{ display: "contents" }}>{editorOperation.error && <p role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}<label className="form-field"><span>Meta física</span><input required minLength={2} value={settings.physicalGoal} onChange={(event) => setSettings({ ...settings, physicalGoal: event.target.value })} /></label><div className="fitness-form-grid"><NumberField label="Calorías diarias" value={settings.dailyCalories} onChange={(dailyCalories) => setSettings({ ...settings, dailyCalories })} min={1} /><NumberField label="Comidas al día" value={settings.mealsPerDay} onChange={(mealsPerDay) => setSettings({ ...settings, mealsPerDay })} min={1} max={10} /><NumberField label="Entrenamientos por semana" value={settings.workoutsPerWeek} onChange={(workoutsPerWeek) => setSettings({ ...settings, workoutsPerWeek })} min={1} max={7} /></div><fieldset className="training-day-picker"><legend>Días de entrenamiento</legend>{days.map((day, index) => <label key={day.long}><input type="checkbox" checked={settings.trainingDays.includes(index)} onChange={(event) => setSettings({ ...settings, trainingDays: event.target.checked ? [...settings.trainingDays, index].sort() : settings.trainingDays.filter((dayIndex) => dayIndex !== index) })} />{day.long}</label>)}</fieldset><details className="body-checkin-settings"><summary>Medidas y progreso corporal (opcional)</summary><p>Tus registros anteriores siguen disponibles: {snapshot.bodyCheckIns.length} registros guardados.</p><div className="fitness-form-grid"><NumberField label="Peso kg" value={bodyWeight} onChange={setBodyWeight} step={0.1} /><NumberField label="Cintura cm" value={waist} onChange={setWaist} step={0.1} /><NumberField label="Cadera cm" value={hip} onChange={setHip} step={0.1} /></div>{snapshot.bodyCheckIns.slice(0, 3).map((item) => <p className="body-checkin-row" key={item.id}><span>{item.date}</span><strong>{item.weight ? `${item.weight} kg` : "Sin peso"}</strong></p>)}</details><div className="modal__actions"><Button type="button" variant="ghost" onClick={() => settingsGuard.request(() => setSettingsOpen(false))}>Cancelar</Button><Button type="submit" disabled={editorOperation.busy || !settings.trainingDays.length}>Guardar configuración</Button></div></fieldset></form>
     </Modal>
 
     <Modal open={historyOpen} title="Historial de pesos" description="Cada registro realizado queda separado de la rutina planificada." onClose={() => setHistoryOpen(false)}>

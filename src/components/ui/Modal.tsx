@@ -5,6 +5,47 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
+const inertLocks = new Map<HTMLElement, { count: number; previous: boolean }>();
+let scrollLocks = 0;
+let savedOverflow = "";
+let savedPaddingRight = "";
+
+function lockBackground(elements: HTMLElement[]) {
+  for (const element of elements) {
+    const lock = inertLocks.get(element) ?? { count: 0, previous: element.inert };
+    lock.count += 1;
+    inertLocks.set(element, lock);
+    element.inert = true;
+  }
+  return () => {
+    for (const element of elements) {
+      const lock = inertLocks.get(element);
+      if (!lock) continue;
+      if (--lock.count === 0) { element.inert = lock.previous; inertLocks.delete(element); }
+    }
+  };
+}
+
+export function lockModalScroll() {
+  if (scrollLocks++ === 0) {
+    savedOverflow = document.body.style.overflow;
+    savedPaddingRight = document.body.style.paddingRight;
+    const viewportWidth = document.documentElement.clientWidth;
+    const scrollbarWidth = viewportWidth > 0 ? window.innerWidth - viewportWidth : 0;
+    if (scrollbarWidth > 0) {
+      const currentPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
+      document.body.style.paddingRight = `${currentPadding + scrollbarWidth}px`;
+    }
+    document.body.style.overflow = "hidden";
+  }
+  return () => {
+    if (--scrollLocks === 0) {
+      document.body.style.overflow = savedOverflow;
+      document.body.style.paddingRight = savedPaddingRight;
+    }
+  };
+}
+
 export function Modal({
   open,
   title,
@@ -46,29 +87,21 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const previousActiveElement = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    const previousPaddingRight = document.body.style.paddingRight;
-    const viewportWidth = document.documentElement.clientWidth;
-    const scrollbarWidth = viewportWidth > 0 ? window.innerWidth - viewportWidth : 0;
     const backgroundElements = inertBackground
       ? Array.from(document.body.children).filter((element): element is HTMLElement => (
           element instanceof HTMLElement && !element.contains(dialogRef.current)
         ))
       : [];
-    const previousInert = backgroundElements.map((element) => ({ element, inert: element.inert }));
-
-    if (scrollbarWidth > 0) {
-      const currentPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
-      document.body.style.paddingRight = `${currentPadding + scrollbarWidth}px`;
-    }
-    document.body.style.overflow = "hidden";
-    backgroundElements.forEach((element) => { element.inert = true; });
+    const releaseScroll = lockModalScroll();
+    const releaseBackground = lockBackground(backgroundElements);
     const preferredFocus = initialFocusRef?.current;
     const initialFocus = preferredFocus && !preferredFocus.matches(":disabled, [inert], [aria-hidden='true']")
       ? preferredFocus
       : closeButtonRef.current;
     initialFocus?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
       if (event.key === "Escape") onCloseRef.current();
       if (event.key !== "Tab" || !dialogRef.current) return;
       const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
@@ -88,10 +121,9 @@ export function Modal({
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      document.body.style.paddingRight = previousPaddingRight;
-      previousInert.forEach(({ element, inert }) => { element.inert = inert; });
-      previousActiveElement?.focus();
+      releaseBackground();
+      releaseScroll();
+      if (previousActiveElement?.isConnected && !previousActiveElement.closest("[inert]")) previousActiveElement.focus();
     };
   }, [inertBackground, initialFocusRef, open]);
 

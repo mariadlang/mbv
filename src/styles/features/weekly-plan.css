@@ -8,7 +8,7 @@
 .weekly-back-link { display: inline-flex; width: max-content; min-height: 40px; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; color: var(--color-text-secondary); font-size: .88rem; cursor: pointer; }
 .weekly-back-link:hover { color: var(--color-brand-strong); }
 .weekly-plan-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 30px; padding: 12px 0 24px; }
-.weekly-plan-heading h1 { margin: 0; font-family: var(--font-family-primary); font-size: var(--type-display-compact-size); font-weight: var(--font-weight-emphasis); line-height: var(--line-height-display-compact); letter-spacing: var(--letter-spacing-tight); }
+.weekly-plan-heading h1 { margin: 0; font-family: var(--font-family-heading); font-size: var(--type-display-compact-size); font-weight: var(--font-weight-emphasis); line-height: var(--line-height-display-compact); letter-spacing: var(--letter-spacing-tight); }
 .weekly-plan-heading p { margin: 12px 0 0; color: var(--color-text-secondary); font-size: .95rem; }
 .weekly-header-actions { display: grid; justify-items: end; gap: 16px; }
 .weekly-header-actions > .button { min-height: 41px; border-color: var(--color-border); background: color-mix(in srgb, var(--color-surface-elevated) 82%, transparent); color: var(--color-text-secondary); box-shadow: none; }
@@ -39,7 +39,7 @@
 .weekly-days-panel, .weekly-pending-panel { min-width: 0; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface-elevated); }
 .weekly-days-panel { overflow: visible; }
 .weekly-days-panel__header { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--color-border); padding: 11px 18px; }
-.weekly-days-panel__header h2, .weekly-pending-panel h2 { margin: 0; font-family: var(--font-family-primary); font-size: 1rem; font-weight: 700; }
+.weekly-days-panel__header h2, .weekly-pending-panel h2 { margin: 0; font-family: var(--font-family-heading); font-size: 1rem; font-weight: 700; }
 .weekly-days-panel__header nav { display: flex; min-width: 0; align-items: center; gap: 3px; }
 .weekly-days-panel__header nav button { display: inline-flex; min-width: 42px; min-height: 32px; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 7px; background: transparent; color: var(--color-text-secondary); font-size: .73rem; cursor: pointer; }
 .weekly-days-panel__header nav button.is-today { background: var(--color-brand-soft); color: var(--color-brand-text-on-soft); }

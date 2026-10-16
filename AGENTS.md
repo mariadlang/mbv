@@ -18,7 +18,8 @@
 ## Interfaz
 
 - Respetar los tokens semánticos definidos en `src/styles/`; los aliases históricos de `src/styles/tokens.css` son sólo compatibilidad y no deben usarse en código nuevo.
-- Nunito Sans es la única tipografía vigente para títulos, cuerpo, controles y marca digital; no reincorporar Cormorant Garamond ni DM Sans.
+- Logo definitivo aprobado: libreta abierta del brand kit (`public/brand-icon.svg`, raster embebido). Monograma MBV y hoja no son identidades alternativas autorizadas. Usar `BrandMark` compartido.
+- Playfair Display para títulos; Inter para cuerpo/UI y lettering de marca. No Nunito por módulo o breakpoint. Las tareas de flujo/funcionalidad no autorizan cambiar identidad global. Ver `docs/brand/approved-kit-system.md`.
 - Conservar navegación de escritorio y navegación inferior móvil.
 - Todos los controles necesitan nombre accesible, foco visible y estados vacíos útiles.
 - Lucide React es el sistema iconográfico principal. El saludo `👋` de Mi día es una excepción aprobada, no un sistema alternativo.

@@ -2,7 +2,8 @@
 
 /* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ArchiveRestore, CalendarDays, Check, CheckCircle2, Circle, Flag, Pencil, Plus, Sparkles } from "lucide-react";
 import { isTaskOverdue } from "@/src/domain/rules";
 import { resistanceSuggestion } from "@/src/domain/guidanceRules";
@@ -15,24 +16,41 @@ import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDraw
 import type { Task } from "@/src/domain/planner";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 import { useI18n } from "@/src/i18n/I18nProvider";
+import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
+import { projectFormSchema, taskFormSchema } from "@/src/lib/schemas";
 
 type TaskTab = "inbox" | "today" | "upcoming" | "completed";
+const emptyAdvanced = (date: string) => ({ title: "", description: "", date, estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", focusPriority: "" as "" | "1" | "2" | "3", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
+const emptyProject = () => ({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
 
 export function TasksPage({ planner, access, onQuickCapture }: { planner: PlannerController; access: UserAccess; onQuickCapture: (defaults: QuickCaptureDefaults) => void }) {
   const { snapshot } = planner;
+  const [searchParams] = useSearchParams();
+  const requestedProject = searchParams.get("project");
+  useEffect(() => {
+    if (requestedProject) document.getElementById(`project-${requestedProject}`)?.scrollIntoView({ block: "center" });
+  }, [requestedProject]);
   const { m } = useI18n();
   const today = toLocalDateKey(new Date());
   const [tab, setTab] = useState<TaskTab>("today");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
-  const [projectComposerOpen, setProjectComposerOpen] = useState(false);
+  const [projectComposerOpen, setProjectComposerOpen] = useState(() => searchParams.get("create") === "project");
   const [resistanceHelp, setResistanceHelp] = useState<string | null>(null);
-  const [advanced, setAdvanced] = useState({ title: "", description: "", date: today, estimatedMinutes: "", priority: "medium" as "low" | "medium" | "high", focusPriority: "" as "" | "1" | "2" | "3", lifeAreaId: "", goalId: "", projectId: "", recurrence: "" as "" | "daily" | "weekly" | "monthly" });
+  const [advanced, setAdvanced] = useState(() => emptyAdvanced(today));
+  const [advancedBaseline, setAdvancedBaseline] = useState(() => JSON.stringify(advanced));
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEdit, setTaskEdit] = useState({ title: "", date: "", goalId: "", projectId: "" });
-  const [project, setProject] = useState({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
+  const [taskBaseline, setTaskBaseline] = useState("");
+  const [project, setProject] = useState(emptyProject);
   const [planningError, setPlanningError] = useState("");
   const [projectStatusMessage, setProjectStatusMessage] = useState("");
+  const navigation = useDraftNavigation();
+  const advancedOperation = usePreparationOperation();
+  const projectOperation = usePreparationOperation();
+  const editOperation = usePreparationOperation();
+  const statusOperation = usePreparationOperation();
   const dateBounds = getTrialPlanningDateBounds(access);
   const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
   const tasks = useMemo(() => snapshot.tasks.filter((task) => {
@@ -46,15 +64,14 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
   const closedProjects = snapshot.projects.filter((item) => item.status === "completed");
 
 
-  const addDetailed = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!advanced.title.trim()) return;
-    if (advanced.date && !canPlanDate(advanced.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+  const addDetailed = async (event?: FormEvent): Promise<boolean> => {
+    event?.preventDefault();
+    if (advanced.date && !canPlanDate(advanced.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return false; }
     setPlanningError("");
     const focusPriority = advanced.focusPriority ? Number(advanced.focusPriority) as 1 | 2 | 3 : undefined;
     const occupied = focusPriority && snapshot.tasks.find((task) => task.date === advanced.date && task.focusPriority === focusPriority && task.status !== "completed" && task.status !== "cancelled");
-    if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return;
-    await planner.createTaskDetailed({
+    if (occupied && !window.confirm(`Ya tienes una prioridad ${focusPriority}: “${occupied.title}”. ¿Quieres reemplazarla?`)) return false;
+    const parsed = taskFormSchema.safeParse({
       ...advanced,
       estimatedMinutes: advanced.estimatedMinutes ? Number(advanced.estimatedMinutes) : undefined,
       focusPriority,
@@ -64,69 +81,91 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
       projectId: advanced.projectId || undefined,
       recurrence: advanced.recurrence || undefined,
     });
-    setAdvanced({ ...advanced, title: "", description: "", estimatedMinutes: "" });
+    if (!parsed.success) { setPlanningError(m("draft.error")); return false; }
+    if (!await advancedOperation.run(() => planner.createTaskDetailed(parsed.data))) return false;
+    advancedGuard.markSaved();
+    const next = { ...advanced, title: "", description: "", estimatedMinutes: "" };
+    setAdvanced(next); setAdvancedBaseline(JSON.stringify(next));
     setTaskDetailsOpen(false);
     setAdvancedOpen(false);
+    return true;
   };
 
-  const addProject = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!project.name.trim() || !project.outcome.trim()) return;
-    await planner.createProject({ ...project, lifeAreaId: project.lifeAreaId || undefined, goalId: project.goalId || undefined, targetDate: project.targetDate || undefined });
-    setProject({ name: "", outcome: "", lifeAreaId: "", goalId: "", targetDate: "" });
+  const addProject = async (event?: FormEvent): Promise<boolean> => {
+    event?.preventDefault();
+    const parsed = projectFormSchema.safeParse({ ...project, lifeAreaId: project.lifeAreaId || undefined, goalId: project.goalId || undefined, targetDate: project.targetDate || undefined });
+    if (!parsed.success) { setPlanningError(m("draft.error")); return false; }
+    setPlanningError("");
+    if (!await projectOperation.run(() => planner.createProject(parsed.data))) return false;
+    projectGuard.markSaved(); setProject(emptyProject());
+    return true;
   };
 
   const closeProject = async (projectId: string, projectName: string) => {
+    await statusOperation.run(async () => {
     const next = await planner.updateProjectStatus(projectId, "completed");
     if (next.projects.find((item) => item.id === projectId)?.status === "completed") {
       setProjectStatusMessage(m("tasks.projects.closedAnnouncement", { name: projectName }));
     }
+    });
   };
 
   const reopenProject = async (projectId: string, projectName: string) => {
+    await statusOperation.run(async () => {
     const next = await planner.updateProjectStatus(projectId, "active");
     if (next.projects.find((item) => item.id === projectId)?.status === "active") {
       setProjectStatusMessage(m("tasks.projects.reopenedAnnouncement", { name: projectName }));
     }
+    });
   };
 
   const openTaskEdit = (task: Task) => {
     if (task.date && !canPlanDate(task.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
-    setPlanningError("");
-    setEditingTaskId(task.id);
-    setTaskEdit({ title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" });
+    navigation.request(() => {
+      setPlanningError("");
+      setEditingTaskId(task.id);
+      const value = { title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" };
+      setTaskEdit(value); setTaskBaseline(JSON.stringify(value));
+    });
   };
 
-  const saveTaskEdit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingTaskId || !taskEdit.title.trim()) return;
-    if (taskEdit.date && !canPlanDate(taskEdit.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+  const saveTaskEdit = async (event?: FormEvent): Promise<boolean> => {
+    event?.preventDefault();
+    if (!editingTaskId) return false;
+    if (!taskFormSchema.safeParse(taskEdit).success) { setPlanningError(m("draft.error")); return false; }
+    if (taskEdit.date && !canPlanDate(taskEdit.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return false; }
     setPlanningError("");
-    await planner.updateTask(editingTaskId, taskEdit);
-    setEditingTaskId(null);
+    if (!await editOperation.run(() => planner.updateTask(editingTaskId, taskEdit))) return false;
+    editGuard.markSaved(); setEditingTaskId(null);
+    return true;
   };
+  const discardAdvanced = () => { const next = emptyAdvanced(today); setAdvanced(next); setAdvancedBaseline(JSON.stringify(next)); setAdvancedOpen(false); setTaskDetailsOpen(false); };
+  const advancedGuard = useUnsavedDraft({ dirty: advancedOpen && JSON.stringify(advanced) !== advancedBaseline, saving: advancedOperation.busy, onSave: addDetailed, onDiscard: discardAdvanced });
+  const projectGuard = useUnsavedDraft({ dirty: projectComposerOpen && Object.values(project).some(Boolean), saving: projectOperation.busy, onSave: addProject, onDiscard: () => { setProject(emptyProject()); setProjectComposerOpen(false); } });
+  const editGuard = useUnsavedDraft({ dirty: Boolean(editingTaskId && JSON.stringify(taskEdit) !== taskBaseline), saving: editOperation.busy, onSave: saveTaskEdit, onDiscard: () => setEditingTaskId(null) });
 
   return <div className="page-stack tasks-page">
     <SectionNavigation section="space" />
     <SectionHeading eyebrow="De la idea a la acción" title="Proyectos y tareas" description="Define primero tus entregables y organiza debajo las acciones que los hacen avanzar." />
+    {(advancedOperation.error || projectOperation.error || editOperation.error || statusOperation.error) && <p role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}
     <section className="projects-section">
       <header>
         <div><p className="eyebrow">Primero, el resultado</p><h2>Proyectos</h2><span>Cada proyecto reúne varias acciones hacia un entregable concreto.</span></div>
-        <Button variant="secondary" onClick={() => setProjectComposerOpen((current) => !current)} aria-expanded={projectComposerOpen}><Plus size={16} /> {projectComposerOpen ? "Cerrar" : "Nuevo proyecto"}</Button>
+        <Button variant="secondary" disabled={projectOperation.busy} onClick={() => navigation.request(() => setProjectComposerOpen(!projectComposerOpen))} aria-expanded={projectComposerOpen}><Plus size={16} /> {projectComposerOpen ? "Cerrar" : "Nuevo proyecto"}</Button>
       </header>
       {projectStatusMessage && <p className="project-status-message" role="status" aria-live="polite">{projectStatusMessage}</p>}
-      {projectComposerOpen && <form className="card project-create" onSubmit={addProject}>
+      {projectComposerOpen && <fieldset disabled={projectOperation.busy} style={{ display: "contents" }}><form className="card project-create" onSubmit={addProject}>
         <label className="form-field"><span>Nombre del proyecto</span><input required value={project.name} onChange={(event) => setProject({ ...project, name: event.target.value })} /></label>
         <label className="form-field"><span>Resultado esperado</span><textarea required rows={3} value={project.outcome} onChange={(event) => setProject({ ...project, outcome: event.target.value })} /></label>
         <label className="form-field"><span>Área</span><select value={project.lifeAreaId} onChange={(event) => setProject({ ...project, lifeAreaId: event.target.value })}><option value="">Sin área</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select></label>
         <label className="form-field"><span>Meta</span><select value={project.goalId} onChange={(event) => setProject({ ...project, goalId: event.target.value })}><option value="">Sin meta</option>{snapshot.goals.map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select></label>
         <label className="form-field"><span>Fecha objetivo</span><input type="date" value={project.targetDate} onChange={(event) => setProject({ ...project, targetDate: event.target.value })} /></label>
         <Button type="submit"><Plus size={16} /> Crear proyecto</Button>
-      </form>}
+      </form></fieldset>}
       <div className="project-card-grid">
         {activeProjects.map((item) => {
           const execution = getProjectExecutionState(snapshot, item.id);
-          return <Card className={`project-card ${execution.state === "ready_to_close" ? "project-card--ready" : ""}`} key={item.id}>
+          return <Card id={`project-${item.id}`} tabIndex={-1} className={`project-card ${execution.state === "ready_to_close" ? "project-card--ready" : ""}`} key={item.id}>
             <div className="project-card__top">
               <Badge tone={execution.state === "ready_to_close" ? "sage" : "warm"}>{m(execution.state === "ready_to_close" ? "tasks.projects.status.ready" : "tasks.projects.status.inProgress")}</Badge>
               <strong>{execution.progress}%</strong>
@@ -139,7 +178,7 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
               <strong>{m("tasks.projects.readyTitle")}</strong>
               <span>{m("tasks.projects.readyDescription")}</span>
               <div className="project-card__actions">
-                <Button size="sm" onClick={() => void closeProject(item.id, item.name)} aria-label={m("tasks.projects.closeLabel", { name: item.name })}><CheckCircle2 size={15} /> {m("tasks.projects.close")}</Button>
+                <Button size="sm" disabled={statusOperation.busy} onClick={() => navigation.request(() => void closeProject(item.id, item.name))} aria-label={m("tasks.projects.closeLabel", { name: item.name })}><CheckCircle2 size={15} /> {m("tasks.projects.close")}</Button>
                 <Button size="sm" variant="secondary" onClick={() => onQuickCapture({ source: "empty", projectId: item.id })} aria-label={m("tasks.projects.addAnotherLabel", { name: item.name })}><Plus size={15} /> {m("tasks.projects.addAnother")}</Button>
               </div>
             </div> : <p className="project-card__next"><strong>{m("tasks.projects.nextAction")}</strong>{execution.nextTitle ? <span data-no-translate="true" translate="no">{execution.nextTitle}</span> : m("tasks.projects.addFirstAction")}</p>}
@@ -157,14 +196,14 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
             <Badge tone="sage">{m("tasks.projects.status.closed")}</Badge>
             <h4 data-no-translate="true" translate="no">{item.name}</h4>
             <p data-no-translate="true" translate="no">{item.outcome}</p>
-            <Button size="sm" variant="secondary" onClick={() => void reopenProject(item.id, item.name)} aria-label={m("tasks.projects.reopenLabel", { name: item.name })}><ArchiveRestore size={15} /> {m("tasks.projects.reopen")}</Button>
+            <Button size="sm" variant="secondary" disabled={statusOperation.busy} onClick={() => void reopenProject(item.id, item.name)} aria-label={m("tasks.projects.reopenLabel", { name: item.name })}><ArchiveRestore size={15} /> {m("tasks.projects.reopen")}</Button>
           </article>)}
         </div>
       </section>}
     </section>
     <ProjectIntelligence planner={planner} />
 
-    <section className="tasks-section"><header><div><p className="eyebrow">Después, las acciones</p><h2>Tareas</h2><span>Acciones ejecutables, vinculadas a un proyecto cuando corresponde.</span></div><Button onClick={() => setAdvancedOpen((current) => !current)} aria-expanded={advancedOpen}><Plus size={17} /> {advancedOpen ? "Cerrar" : "Nueva tarea"}</Button></header>
+    <section className="tasks-section"><header><div><p className="eyebrow">Después, las acciones</p><h2>Tareas</h2><span>Acciones ejecutables, vinculadas a un proyecto cuando corresponde.</span></div><Button disabled={advancedOperation.busy} onClick={() => navigation.request(() => setAdvancedOpen(!advancedOpen))} aria-expanded={advancedOpen}><Plus size={17} /> {advancedOpen ? "Cerrar" : "Nueva tarea"}</Button></header>
     {planningError && <div className="inline-message" role="alert">{planningError}</div>}
     <Tabs
       id="task-filters"
@@ -178,12 +217,12 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
         { id: "completed", label: "Completadas" },
       ] as const}
       value={tab}
-      onChange={setTab}
+      onChange={(next) => navigation.request(() => { setTab(next); setEditingTaskId(null); })}
     />
     {overdue.length > 0 && tab === "today" && <div className="decision-alert"><Flag size={18} /><div><strong>Decisiones vencidas</strong><span>{overdue.length} {overdue.length === 1 ? "tarea requiere" : "tareas requieren"} tu atención.</span></div></div>}
     {snapshot.tasks.some((task) => (task.rescheduleCount ?? 0) >= 3) && <Card className="task-resistance-card"><p className="eyebrow">Desbloquearme</p><h2>Parece que una tarea se está resistiendo</h2><p>Elige lo que más se parece a lo que ocurre; no es un juicio, es contexto.</p><div className="factor-chips">{([['too_big','Es muy grande'],['unclear','No sé empezar'],['no_time','No tengo tiempo'],['avoidance','No quiero hacerlo'],['perfectionism','Perfeccionismo']] as const).map(([reason,label]) => <button type="button" key={reason} onClick={() => setResistanceHelp(resistanceSuggestion(reason))}>{label}</button>)}</div>{resistanceHelp && <div className="inline-message" role="status">{resistanceHelp}</div>}</Card>}
 
-    {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><CalendarDays size={21} /></header><form className="advanced-task-form" onSubmit={addDetailed}>
+    {advancedOpen && <Card className="advanced-task-card"><header><div><p className="eyebrow">Acción conectada</p><h2>Planear una tarea</h2></div><CalendarDays size={21} /></header><fieldset disabled={advancedOperation.busy} style={{ display: "contents" }}><form className="advanced-task-form" onSubmit={addDetailed}>
       <label className="form-field form-field--full"><span>Tarea</span><input required value={advanced.title} onChange={(event) => setAdvanced({ ...advanced, title: event.target.value })} /></label>
       <label className="form-field form-field--full"><span>Descripción</span><textarea rows={2} value={advanced.description} onChange={(event) => setAdvanced({ ...advanced, description: event.target.value })} /></label>
       <label className="form-field"><span>Fecha</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} value={advanced.date} onChange={(event) => { setPlanningError(""); setAdvanced({ ...advanced, date: event.target.value }); }} /></label>
@@ -197,8 +236,8 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
       <label className="form-field"><span>Proyecto</span><select value={advanced.projectId} onChange={(event) => setAdvanced({ ...advanced, projectId: event.target.value })}><option value="">Sin proyecto</option>{snapshot.projects.filter((item) => item.status === "active").map((item) => <option key={item.id} value={item.id} data-no-translate="true" translate="no">{item.name}</option>)}</select></label>
       <label className="form-field"><span>Repetición simple</span><select value={advanced.recurrence} onChange={(event) => setAdvanced({ ...advanced, recurrence: event.target.value as typeof advanced.recurrence })}><option value="">No se repite</option><option value="daily">Diaria</option><option value="weekly">Semanal</option><option value="monthly">Mensual</option></select></label>
       </>}
-      <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setAdvancedOpen(false)}>Cancelar</Button><Button type="submit">Guardar tarea</Button></div>
-    </form></Card>}
+      <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => advancedGuard.request(discardAdvanced)}>Cancelar</Button><Button type="submit">Guardar tarea</Button></div>
+    </form></fieldset></Card>}
 
     <div id="task-list-panel" role="tabpanel" aria-labelledby={`task-filters-${tab}-tab`}>
       <Card className="task-manager-card">
@@ -210,13 +249,13 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
           const personalContext = projectName ?? area?.name;
           const readOnly = Boolean(task.date && !canPlanDate(task.date));
           return editingTaskId === task.id ? (
-            <form className="managed-task-editor" key={task.id} onSubmit={saveTaskEdit}>
+            <fieldset key={task.id} disabled={editOperation.busy} style={{ display: "contents" }}><form className="managed-task-editor" onSubmit={saveTaskEdit}>
               <input autoFocus required value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} aria-label="Nombre de la tarea" />
               <input type="date" min={dateBounds?.min} max={dateBounds?.max} value={taskEdit.date} onChange={(event) => { setPlanningError(""); setTaskEdit({ ...taskEdit, date: event.target.value }); }} aria-label="Fecha de la tarea" />
               <select value={taskEdit.goalId} onChange={(event) => setTaskEdit({ ...taskEdit, goalId: event.target.value })} aria-label="Meta de la tarea"><option value="">Sin meta</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id} data-no-translate="true" translate="no">{goal.title}</option>)}</select>
               <select value={taskEdit.projectId} onChange={(event) => setTaskEdit({ ...taskEdit, projectId: event.target.value })} aria-label="Proyecto de la tarea"><option value="">Sin proyecto</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id} data-no-translate="true" translate="no">{project.name}</option>)}</select>
-              <Button size="sm" type="submit">Guardar</Button><Button size="sm" type="button" variant="ghost" onClick={() => setEditingTaskId(null)}>Cancelar</Button>
-            </form>
+              <Button size="sm" type="submit">Guardar</Button><Button size="sm" type="button" variant="ghost" onClick={() => editGuard.request(() => setEditingTaskId(null))}>Cancelar</Button>
+            </form></fieldset>
           ) : (
             <div key={task.id} className={`managed-task-row ${task.status === "completed" ? "is-complete" : ""}`}>
               <button type="button" className="managed-task__check" disabled={readOnly} title={readOnly ? "Disponible en solo lectura fuera del horizonte de la prueba" : undefined} onClick={() => void planner.toggleTask(task.id)}>
@@ -243,7 +282,22 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
 function ProjectIntelligence({ planner }: { planner: PlannerController }) {
   const { m } = useI18n();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [invalid, setInvalid] = useState(false);
+  const operation = usePreparationOperation();
+  const saveChecklist = async (projectId: string): Promise<boolean> => {
+    const parsed = taskFormSchema.shape.title.safeParse(drafts[projectId] || "");
+    if (!parsed.success) { setInvalid(true); return false; }
+    setInvalid(false);
+    if (!await operation.run(() => planner.addProjectChecklistItem(projectId, parsed.data))) return false;
+    setDrafts((current) => ({ ...current, [projectId]: "" }));
+    return true;
+  };
+  const guard = useUnsavedDraft({
+    dirty: Object.values(drafts).some(Boolean), saving: operation.busy,
+    onSave: async () => { for (const [projectId, title] of Object.entries(drafts)) if (title && !await saveChecklist(projectId)) return false; guard.markSaved(); return true; },
+    onDiscard: () => { setDrafts({}); setInvalid(false); },
+  });
   const activeProjects = planner.snapshot.projects.filter((project) => project.status === "active");
   if (!activeProjects.length) return null;
-  return <section className="project-database"><header><div><p className="eyebrow">Espacio de proyectos</p><h2>Pasos, avance y siguiente semana</h2></div><Sparkles size={23} /></header><div>{activeProjects.map((project) => { const execution = getProjectExecutionState(planner.snapshot, project.id); const checks = planner.snapshot.projectChecklistItems.filter((item) => item.projectId === project.id); return <Card className="project-intelligence-card" key={project.id}><header><div><Badge tone="rose">{execution.progress}%</Badge><h2 data-no-translate="true" translate="no">{project.name}</h2></div><small>{project.targetDate || "Sin fecha objetivo"}</small></header><p data-no-translate="true" translate="no">{project.outcome}</p><div className="project-checklist">{checks.map((item) => <button key={item.id} onClick={() => planner.toggleProjectChecklistItem(item.id)}>{item.completed ? <Check size={15} /> : <Circle size={15} />}<span data-no-translate="true" translate="no">{item.title}</span></button>)}</div><form onSubmit={async (event) => { event.preventDefault(); const title = drafts[project.id]?.trim(); if (!title) return; await planner.addProjectChecklistItem(project.id, title); setDrafts({ ...drafts, [project.id]: "" }); }}><input value={drafts[project.id] ?? ""} onChange={(event) => setDrafts({ ...drafts, [project.id]: event.target.value })} placeholder="Añadir paso a la lista" /><Button type="submit" variant="secondary"><Plus size={14} /> Añadir</Button></form><div className="project-ai-suggestion"><Sparkles size={16} /><div><strong>Sugerencia inteligente local</strong><span data-no-translate="true" translate="no">{execution.state === "ready_to_close" ? m("tasks.projects.readySuggestion") : projectNextSuggestion(planner.snapshot, project.id)}</span></div></div></Card>; })}</div></section>;
+  return <section className="project-database"><header><div><p className="eyebrow">Espacio de proyectos</p><h2>Pasos, avance y siguiente semana</h2></div><Sparkles size={23} /></header>{(operation.error || invalid) && <p role="alert" data-i18n-explicit="true">{m(invalid ? "draft.error" : "preparation.error")}</p>}<div>{activeProjects.map((project) => { const execution = getProjectExecutionState(planner.snapshot, project.id); const checks = planner.snapshot.projectChecklistItems.filter((item) => item.projectId === project.id); return <Card className="project-intelligence-card" key={project.id}><header><div><Badge tone="rose">{execution.progress}%</Badge><h2 data-no-translate="true" translate="no">{project.name}</h2></div><small>{project.targetDate || "Sin fecha objetivo"}</small></header><p data-no-translate="true" translate="no">{project.outcome}</p><div className="project-checklist">{checks.map((item) => <button key={item.id} disabled={operation.busy} onClick={() => operation.run(() => planner.toggleProjectChecklistItem(item.id))}>{item.completed ? <Check size={15} /> : <Circle size={15} />}<span data-no-translate="true" translate="no">{item.title}</span></button>)}</div><fieldset disabled={operation.busy} style={{ display: "contents" }}><form onSubmit={async (event) => { event.preventDefault(); await saveChecklist(project.id); }}><input required minLength={2} aria-label={m("tasks.projects.addAnotherLabel", { name: project.name })} value={drafts[project.id] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, [project.id]: event.target.value }))} placeholder="Añadir paso a la lista" /><Button type="submit" variant="secondary"><Plus size={14} /> Añadir</Button></form></fieldset><div className="project-ai-suggestion"><Sparkles size={16} /><div><strong>Sugerencia inteligente local</strong><span data-no-translate="true" translate="no">{execution.state === "ready_to_close" ? m("tasks.projects.readySuggestion") : projectNextSuggestion(planner.snapshot, project.id)}</span></div></div></Card>; })}</div></section>;
 }

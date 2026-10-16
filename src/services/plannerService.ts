@@ -1,4 +1,8 @@
 import { createDemoSnapshot } from "@/src/domain/demo";
+import { applyMonthlyPriorityStep, type MonthlyPriorityStepInput } from "@/src/domain/monthlyPrioritySteps";
+import { healthPreparationSchema, healthPreparation, healthLibrary, hasHealthDetail, mealPlanContent, workoutPlanContent, preserveMonthlyHealthDetail, storeHealthVersion, applyHealthVersion, type HealthPreparationInput, type HealthScope, type HealthPlanEntry } from "@/src/domain/healthPreparation";
+import { preparationNamespace, preparationPatchSchema, preparationPreferencesSchema, preparationPeriod, type PreparationPatch } from "@/src/domain/weekPreparation";
+import type { CascadePlan } from "@/src/domain/planner";
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { BrainDumpType, EntityStatus, Habit, MoodName, PlannerEvent, PlannerEventSyncOptions, PlannerSnapshot, ReviewType } from "@/src/domain/planner";
 import type { CalendarEvent } from "@/src/domain/calendar";
@@ -30,7 +34,7 @@ import type {
   WorkoutFormInput,
   WorkoutPlanFormInput,
 } from "@/src/lib/schemas";
-import { cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, planActionsFormSchema, plannerSnapshotSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
+import { brainDumpFormSchema, cascadePlanFormSchema, eventFormSchema, fitnessSettingsFormSchema, mealFormSchema, parseBackupEnvelope, planActionsFormSchema, plannerSnapshotSchema, taskFormSchema, taskTimingFormSchema, workoutPlanFormSchema } from "@/src/lib/schemas";
 import { getReviewPeriodKey, toLocalDateKey } from "@/src/lib/dates";
 import { IndexedDbPlannerRepository, plannerDatabaseNameForOwner } from "@/src/repositories/local/IndexedDbPlannerRepository";
 import type { PlannerRepository } from "@/src/repositories/interfaces/PlannerRepository";
@@ -128,6 +132,29 @@ export function createPlannerService(repository: PlannerRepository) {
   ): Promise<PlannerSnapshot> => writes.update(updater);
 
   const service = {
+  saveMonthlyPriorityStep(input: MonthlyPriorityStepInput): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => applyMonthlyPriorityStep(snapshot, input, { id, now: nowIso() }));
+  },
+  saveWeekPreparation(input: PreparationPatch): Promise<PlannerSnapshot> {
+    const value = preparationPatchSchema.parse(input);
+    return updateSnapshot((snapshot) => {
+      const periodKey = preparationPeriod(value.week);
+      const existing = snapshot.cascadePlans.find((plan) => plan.horizon === "weekly" && plan.periodKey === periodKey);
+      const now = nowIso();
+      const details = { ...existing?.details };
+      if (value.month) details[preparationNamespace + "month"] = value.month;
+      if (value.review) details[preparationNamespace + "review"] = value.review;
+      if (value.item && value.state) details[preparationNamespace + "item." + value.item] = value.state;
+      const plan: CascadePlan = existing
+        ? { ...existing, details, updatedAt: now }
+        : { id: id(), horizon: "weekly", periodKey, intention: "", priority: "", objectives: [], activities: [], details, createdAt: now, updatedAt: now };
+      return { ...snapshot, cascadePlans: existing ? snapshot.cascadePlans.map((item) => item.id === plan.id ? plan : item) : [...snapshot.cascadePlans, plan] };
+    });
+  },
+  savePreparationPreferences(input: { id: string; label?: string }[]): Promise<PlannerSnapshot> {
+    const items = preparationPreferencesSchema.parse(input);
+    return updateSnapshot((snapshot) => snapshot.profile ? { ...snapshot, profile: { ...snapshot.profile, preparationItems: items, updatedAt: nowIso() } } : snapshot);
+  },
   async load(): Promise<PlannerSnapshot> {
     const snapshot = await repository.load();
     const financeCategories = mergeDefaultFinanceCategories(snapshot.financeCategories, id, nowIso());
@@ -406,6 +433,7 @@ export function createPlannerService(repository: PlannerRepository) {
 
   createTaskDetailed(input: TaskFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
+      taskFormSchema.parse(input);
       const now = nowIso();
       const taskId = id();
       const tasks = [...snapshot.tasks, {
@@ -437,8 +465,10 @@ export function createPlannerService(repository: PlannerRepository) {
     });
   },
 
-  updateTask(taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description">>): Promise<PlannerSnapshot> {
+  updateTask(taskId: string, input: Pick<TaskFormInput, "title"> & Partial<Pick<TaskFormInput, "date" | "focusPriority" | "goalId" | "projectId" | "periodPlanId" | "priority" | "description" | "time" | "estimatedMinutes">>): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
+      taskTimingFormSchema.parse({ time: input.time || undefined, estimatedMinutes: input.estimatedMinutes });
+      taskFormSchema.pick({ title: true }).parse(input);
       const current = snapshot.tasks.find((task) => task.id === taskId);
       if (!current) return snapshot;
       const date = input.date === undefined ? current.date : input.date || undefined;
@@ -447,13 +477,15 @@ export function createPlannerService(repository: PlannerRepository) {
             ...task,
             title: input.title.trim(),
             date,
-            focusPriority: input.focusPriority,
+            time: "time" in input ? input.time || undefined : task.time,
+            estimatedMinutes: "estimatedMinutes" in input ? input.estimatedMinutes : task.estimatedMinutes,
+            focusPriority: "focusPriority" in input ? input.focusPriority : task.focusPriority,
             goalId: input.goalId === undefined ? task.goalId : input.goalId || undefined,
             projectId: input.projectId === undefined ? task.projectId : input.projectId || undefined,
             periodPlanId: input.periodPlanId === undefined ? task.periodPlanId : input.periodPlanId || undefined,
             priority: input.priority ?? task.priority,
             description: input.description === undefined ? task.description : input.description || undefined,
-            status: task.status === "completed" ? task.status : date ? "planned" as const : "inbox" as const,
+            status: task.status === "completed" || task.status === "in_progress" ? task.status : date ? "planned" as const : "inbox" as const,
             updatedAt: nowIso(),
           }
         : task);
@@ -528,6 +560,9 @@ export function createPlannerService(repository: PlannerRepository) {
     }));
   },
 
+  restoreTask(taskId: string): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => ({ ...snapshot, tasks: snapshot.tasks.map((task) => task.id === taskId && task.status === "cancelled" ? { ...task, status: task.date ? "planned" : "inbox", updatedAt: nowIso() } : task) }));
+  },
   cancelTask(taskId: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => ({
       ...snapshot,
@@ -978,6 +1013,31 @@ export function createPlannerService(repository: PlannerRepository) {
     });
   },
 
+  saveHealthPreparation(input: HealthPreparationInput): Promise<PlannerSnapshot> {
+    const parsed = healthPreparationSchema.parse(input);
+    return updateSnapshot((snapshot) => {
+      const now = nowIso();
+      const preserved = preserveMonthlyHealthDetail(snapshot, parsed.date, parsed.section, now, id);
+      const current = healthPreparation(preserved, parsed.date, parsed.section);
+      if (parsed.inherit && (parsed.scope !== "weekly" || !current.monthly)) throw new Error("No monthly plan to inherit");
+      const workout = snapshot.workoutLogs.find((log) => log.date === parsed.date);
+      const nutrition = snapshot.nutritionLogs.find((log) => log.date === parsed.date);
+      const template = parsed.sourceRecordId ? healthLibrary(snapshot, parsed.section).find((item) => item.date === parsed.sourceDate && item.recordId === parsed.sourceRecordId) : undefined;
+      if (parsed.sourceRecordId && (!template || !hasHealthDetail(template.content))) throw new Error("A template needs real saved detail");
+      const recordId = current.source?.recordId || (parsed.section === "training" ? workout?.id : template?.date === parsed.date ? template.recordId : undefined) || id();
+      const oldMeal = nutrition?.meals.find((meal) => meal.id === recordId);
+      const existingContent = parsed.scope === "monthly" && current.monthly?.content ? current.monthly.content : parsed.section === "nutrition" && oldMeal ? mealPlanContent(oldMeal) : parsed.section === "training" && workout ? workoutPlanContent(workout) : undefined;
+      let content = template ? structuredClone(template.content) : existingContent;
+      // Cross-day reuse creates planned exercise identities, never copies session history.
+      if (template && template.date !== parsed.date && content?.kind === "training") content = { ...content, exercises: content.exercises.map((exercise) => ({ ...exercise, id: id(), setDetails: exercise.setDetails?.map((set) => ({ ...set, id: id() })) })) };
+      const entry: HealthPlanEntry = parsed.inherit ? current.monthly! : { title: parsed.title, rest: parsed.rest, recordId, content };
+      const next = storeHealthVersion(preserved, parsed.date, parsed.section, parsed.scope, parsed.inherit ? undefined : entry, now, id);
+      // A month edit must not silently replace a deliberate weekly exception.
+      if (parsed.scope === "monthly" && current.override) return next;
+      return applyHealthVersion(next, parsed.date, entry, parsed.section, now, id);
+    });
+  },
+
   saveCascadePlan(input: CascadePlanFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const validated = cascadePlanFormSchema.parse(input);
@@ -985,6 +1045,15 @@ export function createPlannerService(repository: PlannerRepository) {
       const existing = snapshot.cascadePlans.find(
         (item) => item.horizon === validated.horizon && item.periodKey === validated.periodKey,
       );
+      const claimedActivityIds = new Set<string>();
+      const activities = validated.activities.map((item) => {
+        const previous = existing?.activities.find((saved) => !claimedActivityIds.has(saved.id) && (
+          item.id ? saved.id === item.id : saved.title === item.title && saved.type === item.type && (saved.date || undefined) === (item.date || undefined)
+        ));
+        const activityId = previous?.id ?? id();
+        claimedActivityIds.add(activityId);
+        return { ...item, id: activityId, date: item.date || undefined };
+      });
       const plan = {
         id: existing?.id ?? id(),
         horizon: validated.horizon,
@@ -993,9 +1062,9 @@ export function createPlannerService(repository: PlannerRepository) {
         intention: validated.intention,
         priority: validated.priority,
         objectives: validated.objectives.filter(Boolean),
-        activities: validated.activities.map((item) => ({ ...item, id: id(), date: item.date || undefined })),
+        activities,
         areaIds: validated.areaIds,
-        details: validated.details ?? existing?.details,
+        details: validated.details ? { ...validated.details, ...Object.fromEntries(Object.entries(existing?.details ?? {}).filter(([key]) => key.startsWith(preparationNamespace) || key.startsWith("health.v1."))) } : existing?.details,
         reflection: validated.reflection ?? existing?.reflection,
         completedObjectiveIndexes: (existing?.completedObjectiveIndexes ?? []).filter((index) => index < validated.objectives.filter(Boolean).length),
         status: validated.status ?? existing?.status ?? "active" as const,
@@ -1079,6 +1148,7 @@ export function createPlannerService(repository: PlannerRepository) {
 
   createBrainDumpItem(input: BrainDumpFormInput): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
+      brainDumpFormSchema.parse(input);
       const now = nowIso();
       return {
         ...snapshot,
@@ -1095,7 +1165,9 @@ export function createPlannerService(repository: PlannerRepository) {
     itemId: string,
     input: { title?: string; type?: BrainDumpType; priority?: "low" | "medium" | "high"; status?: "idea" | "planned" | "completed" | "released"; tentativeDate?: string | null; goalId?: string | null; projectId?: string | null },
   ): Promise<PlannerSnapshot> {
-    return updateSnapshot((snapshot) => ({
+    return updateSnapshot((snapshot) => {
+      brainDumpFormSchema.partial().parse({ ...input, tentativeDate: input.tentativeDate ?? undefined });
+      return {
       ...snapshot,
       brainDumpItems: snapshot.brainDumpItems.map((item) => item.id === itemId
         ? {
@@ -1108,7 +1180,8 @@ export function createPlannerService(repository: PlannerRepository) {
             updatedAt: nowIso(),
           }
         : item),
-    }));
+      };
+    });
   },
 
   scheduleBrainDumpItem(itemId: string, date: string, destination: "monthly" | "weekly" | "daily" = "daily"): Promise<PlannerSnapshot> {
@@ -1243,7 +1316,7 @@ export function createPlannerService(repository: PlannerRepository) {
     }));
   },
 
-  saveWorkoutPlan(input: WorkoutPlanFormInput): Promise<PlannerSnapshot> {
+  saveWorkoutPlan(input: WorkoutPlanFormInput, preparationScope?: HealthScope): Promise<PlannerSnapshot> {
     const parsed = workoutPlanFormSchema.parse(input);
     return updateSnapshot((snapshot) => {
       const now = nowIso();
@@ -1266,12 +1339,12 @@ export function createPlannerService(repository: PlannerRepository) {
         name: parsed.name, durationMinutes: parsed.durationMinutes, exercises,
         completedSessions: existing?.completedSessions ?? [], createdAt: existing?.createdAt ?? now, updatedAt: now,
       };
-      return {
-        ...snapshot,
-        workoutLogs: existing
-          ? snapshot.workoutLogs.map((item) => item.id === existing.id ? plan : item)
-          : [plan, ...snapshot.workoutLogs],
-      };
+      const preserved = preserveMonthlyHealthDetail(snapshot, parsed.date, "training", now, id);
+      const current = healthPreparation(preserved, parsed.date, "training");
+      const scope = preparationScope || (current.override ? "weekly" : current.monthly ? "monthly" : undefined);
+      const next = scope ? storeHealthVersion(preserved, parsed.date, "training", scope, { recordId: plan.id, title: plan.name, rest: false, content: workoutPlanContent(plan) }, now, id) : preserved;
+      if (scope === "monthly" && current.override) return next;
+      return { ...next, workoutLogs: existing ? snapshot.workoutLogs.map((item) => item.id === existing.id ? plan : item) : [plan, ...snapshot.workoutLogs] };
     });
   },
 
@@ -1372,7 +1445,7 @@ export function createPlannerService(repository: PlannerRepository) {
     });
   },
 
-  saveMeal(input: MealFormInput): Promise<PlannerSnapshot> {
+  saveMeal(input: MealFormInput, preparationScope?: HealthScope): Promise<PlannerSnapshot> {
     const parsed = mealFormSchema.parse(input);
     return updateSnapshot((snapshot) => {
       const now = nowIso();
@@ -1382,8 +1455,14 @@ export function createPlannerService(repository: PlannerRepository) {
         protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat,
         notes: parsed.notes || undefined, completed: parsed.completed ?? true,
       };
+      const preserved = preserveMonthlyHealthDetail(snapshot, parsed.date, "nutrition", now, id);
+      const current = healthPreparation(preserved, parsed.date, "nutrition");
+      const tracked = current.source?.recordId === meal.id;
+      const scope = preparationScope || (tracked ? current.override ? "weekly" : current.monthly ? "monthly" : undefined : undefined);
+      const next = scope ? storeHealthVersion(preserved, parsed.date, "nutrition", scope, { recordId: meal.id, title: meal.name, rest: false, content: mealPlanContent(meal) }, now, id) : preserved;
+      if (scope === "monthly" && current.override) return next;
       return {
-        ...snapshot,
+        ...next,
         nutritionLogs: existing
           ? snapshot.nutritionLogs.map((item) => item.id === existing.id
               ? { ...item, meals: parsed.mealId ? item.meals.map((current) => current.id === parsed.mealId ? meal : current) : [...item.meals, meal], updatedAt: now }

@@ -3,13 +3,14 @@
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { UserAccess } from "@/src/domain/access";
 import { createEmptySnapshot, type CascadePlan, type PlannerSnapshot } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { PlanningPage } from "./PlanningPage";
+import { browserRouteLocation } from "@/src/lib/browserRouteLocation";
 
 vi.mock("@/src/components/access/PremiumFeatureGate", () => ({
   PremiumFeatureGate: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -89,6 +90,18 @@ describe("monthly planning safeguards", () => {
     vi.restoreAllMocks();
   });
 
+  it("retains goal-link feedback when a saved month remounts before the router location catches up", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.goals = [{ id: "goal-1", title: "Publicar una guía útil", reason: "Compartir", progressType: "tasks", priority: "medium", status: "active", createdAt: "2026-09-01T12:00:00.000Z", updatedAt: "2026-09-01T12:00:00.000Z" }];
+    snapshot.cascadePlans = [{ ...monthlyPlan("2026-09"), intention: "Terminar el primer borrador", details: { sourceGoalId: "goal-1", sourceGoalTitle: "Publicar una guía útil" } }];
+    const previous = { pathname: "/app/planning", search: "?view=year&create=month&goal=goal-1", hash: "", state: null, key: "before-save" };
+    const current = browserRouteLocation(previous, { pathname: previous.pathname, search: "?view=year", hash: "" }, { key: "after-save", usr: { monthLinkConfirmation: { goal: "Publicar una guía útil", month: "septiembre 2026", preserved: false } } });
+    const view = render(<I18nProvider><MemoryRouter initialEntries={[previous]}><Routes location={current}><Route path="/app/planning" element={<PlanningPage key={current.search} planner={plannerWith(snapshot)} access={access} onQuickCapture={vi.fn()} />} /></Routes></MemoryRouter></I18nProvider>);
+    expect(view.getByRole("status").textContent).toContain("Publicar una guía útil quedó vinculada");
+    expect(view.getAllByRole("heading", { name: "Terminar el primer borrador" }).length).toBeGreaterThan(0);
+    expect(view.queryByRole("dialog")).toBeNull();
+  });
+
   it("keeps a titled important date unsaved until its accessible day field is complete", async () => {
     const snapshot = createEmptySnapshot();
     const planner = plannerWith(snapshot);
@@ -144,7 +157,7 @@ describe("monthly planning safeguards", () => {
     ])];
     const view = renderPlanning(plannerWith(snapshot));
 
-    fireEvent.click(view.getByRole("button", { name: /Ver plan de septiembre 2026/i }));
+    fireEvent.click(view.getByRole("button", { name: "Ver plan" }));
 
     expect(view.getByText("Conversación importante")).toBeTruthy();
     expect(view.getByText("Fecha importada")).toBeTruthy();
@@ -162,7 +175,8 @@ describe("monthly planning safeguards", () => {
       trialEndsAt: "2026-09-30T12:00:00.000Z",
     };
     const readOnlyView = renderPlanning(plannerWith(readOnlySnapshot), "/app/planning", readOnlyAccess);
-    fireEvent.click(readOnlyView.getByRole("button", { name: /Ver plan de enero 2026/i }));
+    fireEvent.click(readOnlyView.getByRole("button", { name: /^enero/i }));
+    fireEvent.click(readOnlyView.getByRole("button", { name: "Ver plan" }));
 
     expect(readOnlyView.getByText("Historia conservada")).toBeTruthy();
     expect(readOnlyView.getByText("Fecha pendiente")).toBeTruthy();

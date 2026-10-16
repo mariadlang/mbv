@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { preparationPreferencesSchema } from "@/src/domain/weekPreparation";
 import type { BackupEnvelope, PlannerSnapshot } from "@/src/domain/planner";
 import { isValidCalendarDateKey, isValidCalendarTimezone } from "@/src/domain/calendar";
 
@@ -128,6 +129,12 @@ export const monthImportantDateFormSchema = z.object({
   date: planDateSchema,
 });
 
+// Validate an explicitly edited agenda time without rewriting legacy backup values.
+export const taskTimingFormSchema = z.object({
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  estimatedMinutes: z.number().int().positive().max(1440).optional(),
+});
+
 export const planActionFormSchema = z.object({
   taskId: optionalId,
   actionKey: z.string().trim().min(1),
@@ -152,7 +159,7 @@ export const cascadePlanFormSchema = z.object({
   intention: z.string().trim(),
   priority: z.string().trim(),
   objectives: z.array(z.string().trim()).default([]),
-  activities: z.array(z.object({ title: z.string().trim().min(2), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })).default([]),
+  activities: z.array(z.object({ id: z.string().optional(), title: z.string().trim().min(2), date: z.string().optional(), type: z.enum(["objective", "activity", "event"]) })).default([]),
   areaIds: z.array(z.string()).default([]),
   details: z.record(z.string(), z.string()).optional(),
   reflection: z.object({ advanced: z.string().optional(), pending: z.string().optional(), next: z.string().optional() }).optional(),
@@ -248,6 +255,7 @@ const profileSchema = z.object({
   baseCurrency: z.enum(["COP", "USD", "EUR", "MXN"]).optional(),
   financePrivacy: z.boolean().optional(), fitnessEnabled: z.boolean().optional(),
   fitnessProfile: fitnessSettingsFormSchema.optional(), avatarDataUrl: imageDataUrlSchema.optional(), activationCompleted: z.boolean().optional(), lastBackupAt: z.string().optional(),
+  preparationItems: preparationPreferencesSchema.optional(),
   onboardingCompleted: z.boolean(), createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

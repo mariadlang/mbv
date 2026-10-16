@@ -1,11 +1,24 @@
 import { BRAND_OPERATIONAL_MESSAGE, BRAND_POSITIONING, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 import { esHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
+import { esHomeOverviewMessages } from "./features/home-overview";
 import { esNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { esPlanningMessages } from "@/src/i18n/messages/features/planning";
 import { esCalendarMessages } from "@/src/i18n/messages/features/calendar";
 import { esSharingMessages } from "@/src/i18n/messages/features/sharing";
 
+import { esPreparationMessages } from "./features/preparation";
+import { esDraftMessages } from "./features/draft";
+import { esEditorialDayMessages } from "./features/editorialDay";
+import { esMonthlyPriorityStepsMessages } from "./features/monthly-priority-steps";
+import { esHealthLibraryMessages } from "./features/health-library";
+
 export const esMessages = {
+  ...esHomeOverviewMessages,
+  ...esDraftMessages,
+  ...esEditorialDayMessages,
+  ...esMonthlyPriorityStepsMessages,
+  ...esHealthLibraryMessages,
+  ...esPreparationMessages,
   "language.selector.label": "Idioma",
   "language.spanish": "Español",
   "language.beta": "Beta",

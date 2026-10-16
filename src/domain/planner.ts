@@ -8,6 +8,7 @@ export type TaskStatus =
   | "cancelled";
 
 export interface Profile {
+  preparationItems?: { id: string; label?: string }[];
   id: string;
   name: string;
   intention: string;

@@ -13,6 +13,8 @@ import { getRecentDates, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { habitFormSchema, type HabitFormInput } from "@/src/lib/schemas";
 import { Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { useUnsavedDraft } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
 import { TodayMoodCard } from "@/src/features/mood/TodayMoodCard";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import { isTrialPlanningDateAllowed, type UserAccess } from "@/src/domain/access";
@@ -122,8 +124,9 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   }, [access, activeHabits, requestedHabitDate, requestedHabitId, requestedSearch, setSearchParams, snapshot.habitLogs]);
 
   const form = useForm<HabitFormInput>({ resolver: zodResolver(habitFormSchema), defaultValues: defaultHabit });
+  const editOperation = usePreparationOperation();
   const selectedDays = useWatch({ control: form.control, name: "scheduledDays" });
-  const toggleDay = (day: number) => form.setValue("scheduledDays", selectedDays.includes(day) ? selectedDays.filter((value) => value !== day) : [...selectedDays, day], { shouldValidate: true });
+  const toggleDay = (day: number) => form.setValue("scheduledDays", selectedDays.includes(day) ? selectedDays.filter((value) => value !== day) : [...selectedDays, day], { shouldValidate: true, shouldDirty: true });
 
   const openCreate = () => {
     setEditingHabitId(null);
@@ -140,14 +143,20 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
     setDialogOpen(true);
   };
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    if (editingHabitId) await planner.updateHabit(editingHabitId, values);
-    else await planner.createHabit(values);
+  const saveHabit = async () => {
+    if (!await form.trigger()) return false;
+    const values = form.getValues();
+    const ok = await editOperation.run(() => editingHabitId ? planner.updateHabit(editingHabitId, values) : planner.createHabit(values));
+    if (!ok) return false;
+    habitGuard.markSaved();
     setDialogOpen(false);
     setEditingHabitId(null);
     setPersonalizeOpen(false);
     form.reset(defaultHabit);
-  });
+    return true;
+  };
+  const onSubmit = (event: FormEvent) => { event.preventDefault(); void saveHabit(); };
+  const habitGuard = useUnsavedDraft({ dirty: dialogOpen && form.formState.isDirty, saving: editOperation.busy, onSave: saveHabit, onDiscard: () => { setDialogOpen(false); form.reset(defaultHabit); } });
 
   const openProgress = (habit: Habit, date = todayKey) => {
     const currentLog = snapshot.habitLogs.find((log) => log.habitId === habit.id && log.date === date);
@@ -157,11 +166,11 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
     setMenuHabitId(null);
   };
 
-  const saveProgress = async (event: FormEvent) => {
-    event.preventDefault();
+  const saveProgress = async (event?: FormEvent) => {
+    event?.preventDefault();
     if (!progressHabitId) return;
-    await planner.setHabitProgress(progressHabitId, progressDate, Number(progressValue));
-    setProgressHabitId(null);
+    const ok = await editOperation.run(() => planner.setHabitProgress(progressHabitId, progressDate, Number(progressValue)));
+    if (ok) { progressGuard.markSaved(); setProgressHabitId(null); } return ok;
   };
 
   const deleteProgress = async () => {
@@ -192,9 +201,11 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
   const progressInsight = completedInMonth >= 3 && bestWeekdays.length ? m("habits.progress.insight", { days: bestWeekdays.slice(0, 2).join(m("habits.conjunction")) }) : m("habits.progress.insight.pending");
   const progressHabit = activeHabits.find((habit) => habit.id === progressHabitId);
   const progressLog = progressHabitId ? snapshot.habitLogs.find((log) => log.habitId === progressHabitId && log.date === progressDate) : undefined;
+  const progressGuard = useUnsavedDraft({ dirty: Boolean(progressHabitId) && progressValue !== String(progressLog?.value ?? 0), saving: editOperation.busy, onSave: async () => Boolean(await saveProgress()), onDiscard: () => setProgressHabitId(null) });
 
   return (
     <div className="page-stack habits-page">
+      {editOperation.error && <p role="alert" data-i18n-explicit="true">{m("draft.error")}</p>}
       <SectionNavigation section="space" />
       <SectionHeading eyebrow={m("habits.header.eyebrow")} title={m("habits.header.title")} description={m("habits.header.description")} action={<Button onClick={openCreate}><Plus size={17} /> {m("habits.create")}</Button>} />
 
@@ -231,18 +242,18 @@ export function HabitsPage({ planner, access }: { planner: PlannerController; ac
         </Card>
       </div>}
 
-      <Modal open={dialogOpen} title={editingHabitId ? m("habits.form.editTitle") : m("habits.form.createTitle")} description={m("habits.form.description")} onClose={() => setDialogOpen(false)} explicitI18n>
+      <Modal open={dialogOpen} title={editingHabitId ? m("habits.form.editTitle") : m("habits.form.createTitle")} description={m("habits.form.description")} onClose={() => habitGuard.request(() => setDialogOpen(false))} explicitI18n>
         <form className="form-grid" onSubmit={onSubmit}>
           <label className="form-field form-field--full"><span>{m("habits.form.name")}</span><input placeholder={m("habits.form.name.placeholder")} {...form.register("name")} />{form.formState.errors.name && <small className="form-error">{m("habits.form.name.error")}</small>}</label>
           <fieldset className="form-field form-field--full"><legend>{m("habits.form.days")}</legend><div className="day-picker">{dayOptions.map((value) => <button type="button" key={value} className={selectedDays.includes(value) ? "is-selected" : ""} onClick={() => toggleDay(value)} aria-pressed={selectedDays.includes(value)}>{m(weekdayShortKeys[value])}</button>)}</div>{form.formState.errors.scheduledDays && <small className="form-error">{m("habits.form.days.error")}</small>}</fieldset>
           <button type="button" className="habit-personalize-toggle form-field--full" aria-expanded={personalizeOpen} onClick={() => setPersonalizeOpen((current) => !current)}><span><strong>{m("habits.form.personalize")}</strong><small>{m("habits.form.personalize.description")}</small></span><ChevronDown size={18} /></button>
           {personalizeOpen && <div className="habit-personalize-fields form-field--full"><label className="form-field"><span>{m("habits.form.recordType")}</span><select {...form.register("type")}><option value="boolean">{m("habits.form.type.boolean")}</option><option value="quantity">{m("habits.form.type.quantity")}</option><option value="duration">{m("habits.form.type.duration")}</option></select></label><label className="form-field"><span>{m("habits.form.lifeArea")}</span><select {...form.register("lifeAreaId")}><option value="">{m("habits.form.noArea")}</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select></label><label className="form-field"><span>{m("habits.form.target")}</span><input type="number" min="1" {...form.register("target", { valueAsNumber: true })} />{form.formState.errors.target && <small className="form-error">{m("habits.form.target.error")}</small>}</label><label className="form-field"><span>{m("habits.form.unit")}</span><input placeholder={m("habits.form.unit.placeholder")} {...form.register("unit")} />{form.formState.errors.unit && <small className="form-error">{m("habits.form.unit.error")}</small>}</label><label className="form-field form-field--full"><span>{m("habits.form.startMode")}</span><select {...form.register("origin")}><option value="established">{m("habits.form.origin.established")}</option><option value="experiment">{m("habits.form.origin.experiment")}</option></select></label></div>}
-          <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>{m("habits.form.notNow")}</Button><Button type="submit">{editingHabitId ? m("habits.form.saveChanges") : m("habits.form.saveHabit")}</Button></div>
+          <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => habitGuard.request(() => setDialogOpen(false))}>{m("habits.form.notNow")}</Button><Button type="submit" disabled={editOperation.busy}>{editingHabitId ? m("habits.form.saveChanges") : m("habits.form.saveHabit")}</Button></div>
         </form>
       </Modal>
 
-      <Modal open={Boolean(progressHabit)} title={progressHabit ? m("habits.progressModal.titleWithName", { name: progressHabit.name }) : m("habits.progressModal.title")} description={progressHabit ? m("habits.progressModal.selectedDate", { target: progressHabit.target, unit: progressHabit.unit, date: formatDate(progressDate, { dateStyle: "long" }) }) : undefined} onClose={() => setProgressHabitId(null)} explicitI18n>
-        {progressHabit && <form className="habit-progress-form" onSubmit={saveProgress}><label className="form-field"><span>{m("habits.progressModal.today", { unit: progressHabit.unit })}</span><input type="number" min="0" max={progressHabit.target} step="any" value={progressValue} onChange={(event) => setProgressValue(event.target.value)} /></label><div className="modal__actions habit-progress-form__actions">{progressLog && <Button type="button" variant="ghost" onClick={() => void deleteProgress()}><Trash2 size={15} /> {m("habits.progressModal.delete")}</Button>}<span className="habit-progress-form__spacer" /><Button type="button" variant="ghost" onClick={() => setProgressHabitId(null)}>{m("habits.form.cancel")}</Button><Button type="submit">{m("habits.progressModal.save")}</Button></div></form>}
+      <Modal open={Boolean(progressHabit)} title={progressHabit ? m("habits.progressModal.titleWithName", { name: progressHabit.name }) : m("habits.progressModal.title")} description={progressHabit ? m("habits.progressModal.selectedDate", { target: progressHabit.target, unit: progressHabit.unit, date: formatDate(progressDate, { dateStyle: "long" }) }) : undefined} onClose={() => progressGuard.request(() => setProgressHabitId(null))} explicitI18n>
+        {progressHabit && <form className="habit-progress-form" onSubmit={saveProgress}><label className="form-field"><span>{m("habits.progressModal.today", { unit: progressHabit.unit })}</span><input type="number" min="0" max={progressHabit.target} step="any" value={progressValue} onChange={(event) => setProgressValue(event.target.value)} /></label><div className="modal__actions habit-progress-form__actions">{progressLog && <Button type="button" variant="ghost" onClick={() => void deleteProgress()}><Trash2 size={15} /> {m("habits.progressModal.delete")}</Button>}<span className="habit-progress-form__spacer" /><Button type="button" variant="ghost" onClick={() => progressGuard.request(() => setProgressHabitId(null))}>{m("habits.form.cancel")}</Button><Button type="submit" disabled={editOperation.busy}>{m("habits.progressModal.save")}</Button></div></form>}
       </Modal>
     </div>
   );

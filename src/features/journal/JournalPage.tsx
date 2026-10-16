@@ -9,10 +9,13 @@ import { CalendarDays, Camera, Feather, Pencil, Search, Sparkles } from "lucide-
 import type { JournalEntry } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { imageUploadSchema } from "@/src/lib/schemas";
+import { useDraftImageReader } from "@/src/hooks/useDraftImageReader";
 import { toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, EmptyState, SectionHeading } from "@/src/components/ui/Primitives";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import { Modal } from "@/src/components/ui/Modal";
+import { useUnsavedDraft } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
 const prompts = ["¿Qué fue lo mejor de hoy?", "¿Qué aprendí sobre mí esta semana?", "¿Qué puedo soltar para avanzar más ligera?"];
@@ -32,53 +35,56 @@ export function JournalPage({ planner }: { planner: PlannerController }) {
   const [imageDataUrl, setImageDataUrl] = useState<string>();
   const [message, setMessage] = useState("");
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const operation = usePreparationOperation();
+  const imageReader = useDraftImageReader();
+  const clearDraft = () => { imageReader.cancel(); setTitle(""); setText(""); setGoalId(""); setImageDataUrl(undefined); setEditingEntryId(null); setType("free"); };
   const entries = snapshot.journalEntries
     .filter((entry) => `${entry.title ?? ""} ${entry.text}`.toLowerCase().includes(query.toLowerCase()))
     .filter((entry) => !month || entry.date.startsWith(month))
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const save = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!text.trim()) return;
-    if (editingEntryId) await planner.updateJournal(editingEntryId, { title: title || undefined, text, type, goalId: goalId || undefined });
-    else await planner.saveJournal(text, { title: title || undefined, type, goalId: goalId || undefined, imageDataUrl });
-    setTitle(""); setText(""); setGoalId(""); setImageDataUrl(undefined); setEditingEntryId(null); setMessage("Tu página quedó guardada en este dispositivo.");
+  const save = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!text.trim() || imageReader.reading) return;
+    const ok = await operation.run(() => editingEntryId ? planner.updateJournal(editingEntryId, { title: title || undefined, text, type, goalId: goalId || undefined }) : planner.saveJournal(text, { title: title || undefined, type, goalId: goalId || undefined, imageDataUrl }));
+    if (ok) { guard.markSaved(); clearDraft(); setMessage("Tu página quedó guardada en este dispositivo."); } return ok;
   };
+  const original = snapshot.journalEntries.find((entry) => entry.id === editingEntryId);
+  const guard = useUnsavedDraft({ dirty: title !== (original?.title || "") || text !== (original?.text || "") || goalId !== (original?.goalId || "") || type !== (original?.type || "free") || Boolean(imageDataUrl), saving: operation.busy || imageReader.reading, onSave: async () => Boolean(await save()), onDiscard: clearDraft });
 
   const choosePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const parsed = imageUploadSchema.safeParse({ type: file.type, size: file.size });
     if (!parsed.success) return setMessage(parsed.error.issues[0]?.message ?? "Revisa la imagen.");
-    const reader = new FileReader();
-    reader.onload = () => setImageDataUrl(String(reader.result));
-    reader.readAsDataURL(file);
+    imageReader.read(file, setImageDataUrl, () => setMessage(m("draft.error")));
   };
 
   return <div className="page-stack journal-page-new">
     <SectionNavigation section="space" />
-    <SectionHeading eyebrow="MI ESPACIO" title="Mi diario" description="Un lugar para volver a ti." action={<Button variant="secondary" onClick={() => setShowReflections(!showReflections)}>{showReflections ? "Volver a mis páginas" : "Ver reflexiones"}</Button>} />
+    <SectionHeading eyebrow="MI ESPACIO" title="Mi diario" description="Un lugar para volver a ti." action={<Button variant="secondary" onClick={() => guard.request(() => setShowReflections(!showReflections))}>{showReflections ? "Volver a mis páginas" : "Ver reflexiones"}</Button>} />
     {message && <p className="inline-message" role="status">{message}</p>}
+    {operation.error && <p role="alert" data-i18n-explicit="true">{m("draft.error")}</p>}
 
     {showReflections ? <div className="journal-reflection-view">
       <Card className="weekly-review-cta"><Sparkles size={25} /><p className="eyebrow">Una sola revisión semanal</p><h2>Revisión semanal</h2><p>Celebra, observa, suelta, ajusta y prepara tus tres prioridades desde el mismo flujo.</p><Link className="button button--primary" to="/app/planning/weekly?reset=1">Iniciar revisión semanal</Link></Card>
       <Card className="weekly-review-cta"><Feather size={25} /><p className="eyebrow">Cierre del ciclo</p><h2>Revisión mensual</h2><p>Conecta lo aprendido con el próximo mes y su primera semana.</p><Link className="button button--secondary" to="/app/planning?view=reset">Abrir revisión mensual</Link></Card>
       <div className="review-history"><h2>Revisiones guardadas</h2>{snapshot.reviews.length ? snapshot.reviews.map((review) => <Card key={review.id}><div><Badge tone="neutral">{review.type}</Badge><small>{review.periodKey}</small></div><h3 data-no-translate="true">{review.summary}</h3>{review.decisions.length > 0 && <ul data-no-translate="true">{review.decisions.map((decision) => <li key={decision}>{decision}</li>)}</ul>}</Card>) : <EmptyState title="Aún no hay revisiones" text="Cuando completes una revisión, su síntesis aparecerá aquí." />}</div>
     </div> : <>
-      <Card className="journal-quick-entry"><div className="journal-date"><span>{m(editingEntryId ? "journal.editing" : "journal.today")}</span><strong>{formatDate(new Date(), { day: "numeric", month: "long" })}</strong></div><form onSubmit={save}><input className="journal-title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título opcional" aria-label="Título de la página" /><textarea required value={text} onChange={(event) => setText(event.target.value)} placeholder="¿Qué quieres recordar de hoy?" rows={7} aria-label="Nueva página del diario" />{imageDataUrl && <img className="journal-photo-preview" src={imageDataUrl} alt="Foto que acompañará esta página" />}<div className="journal-entry-actions"><input ref={fileInput} className="sr-only" type="file" accept="image/*" onChange={choosePhoto} /><Button type="button" variant="ghost" onClick={() => fileInput.current?.click()}><Camera size={16} /> Añadir foto</Button><label><span>Vincular a una meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin vincular</option>{snapshot.goals.map((goal) => <option value={goal.id} key={goal.id} data-no-translate="true">{goal.title}</option>)}</select></label><label><span>Tipo</span><select value={type} onChange={(event) => setType(event.target.value as JournalEntry["type"])}><option value="free">Reflexión</option><option value="gratitude">Gratitud</option><option value="weekly_review">Semanal</option><option value="monthly_reset">Mensual</option></select></label><Button type="submit">{editingEntryId ? "Guardar cambios" : "Guardar"}</Button>{editingEntryId && <Button type="button" variant="ghost" onClick={() => { setEditingEntryId(null); setTitle(""); setText(""); setGoalId(""); }}>Cancelar</Button>}</div></form></Card>
+      <Card className="journal-quick-entry"><div className="journal-date"><span>{m(editingEntryId ? "journal.editing" : "journal.today")}</span><strong>{formatDate(new Date(), { day: "numeric", month: "long" })}</strong></div><form onSubmit={save}><fieldset className="draft-fields" disabled={operation.busy || imageReader.reading}><input className="journal-title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título opcional" aria-label="Título de la página" /><textarea required value={text} onChange={(event) => setText(event.target.value)} placeholder="¿Qué quieres recordar de hoy?" rows={7} aria-label="Nueva página del diario" />{imageDataUrl && <img className="journal-photo-preview" src={imageDataUrl} alt="Foto que acompañará esta página" />}<div className="journal-entry-actions"><input ref={fileInput} className="sr-only" type="file" accept="image/*" onChange={choosePhoto} /><Button type="button" variant="ghost" onClick={() => fileInput.current?.click()}><Camera size={16} /> Añadir foto</Button><label><span>Vincular a una meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin vincular</option>{snapshot.goals.map((goal) => <option value={goal.id} key={goal.id} data-no-translate="true">{goal.title}</option>)}</select></label><label><span>Tipo</span><select value={type} onChange={(event) => setType(event.target.value as JournalEntry["type"])}><option value="free">Reflexión</option><option value="gratitude">Gratitud</option><option value="weekly_review">Semanal</option><option value="monthly_reset">Mensual</option></select></label><Button type="submit" disabled={operation.busy}>{editingEntryId ? "Guardar cambios" : "Guardar"}</Button>{editingEntryId && <Button type="button" variant="ghost" onClick={() => guard.request(clearDraft)}>Cancelar</Button>}</div></fieldset></form></Card>
 
-      <Card className="journal-prompts"><p className="eyebrow">Una pregunta para empezar</p><div>{prompts.map((prompt) => <button key={prompt} onClick={() => { setTitle(prompt); setText(`${prompt}\n\n`); }}>{prompt}</button>)}</div></Card>
+      <Card className="journal-prompts"><p className="eyebrow">Una pregunta para empezar</p><div>{prompts.map((prompt) => <button key={prompt} onClick={() => guard.request(() => { setTitle(prompt); setText(`${prompt}\n\n`); })}>{prompt}</button>)}</div></Card>
 
-      <section className="journal-pages"><header><div><p className="eyebrow">Tus páginas</p><h2>Lo que has querido recordar</h2></div><div className="journal-page-filters"><label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar…" aria-label="Buscar en Mi diario" /></label><input type="month" value={month} onChange={(event) => setMonth(event.target.value)} aria-label="Filtrar páginas por mes" /></div></header><div className="journal-timeline">{entries.map((entry) => <article key={entry.id}><time><strong>{formatDate(entry.date, { day: "numeric" })}</strong><span>{formatDate(entry.date, { month: "short" }).replace(".", "").toUpperCase()}</span></time><Card className="journal-entry"><div className="journal-entry__meta"><span><CalendarDays size={14} /> {entry.date}</span><Badge tone="neutral">{typeLabels[entry.type]}</Badge><button type="button" onClick={() => { setEditingEntryId(entry.id); setTitle(entry.title ?? ""); setText(entry.text); setType(entry.type); setGoalId(entry.goalId ?? ""); }} aria-label={`Editar ${entry.title || "página del diario"}`} data-no-translate="true"><Pencil size={14} /></button></div><h3 data-no-translate="true">{entry.title || "Algo que quise recordar"}</h3><p data-no-translate="true">{entry.text}</p>{entry.imageDataUrl && <img src={entry.imageDataUrl} alt="Recuerdo visual de esta página" />}</Card></article>)}{!entries.length && <EmptyState title="Aún no hay páginas" text="Una frase honesta es suficiente para empezar." />}</div></section>
+      <section className="journal-pages"><header><div><p className="eyebrow">Tus páginas</p><h2>Lo que has querido recordar</h2></div><div className="journal-page-filters"><label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar…" aria-label="Buscar en Mi diario" /></label><input type="month" value={month} onChange={(event) => setMonth(event.target.value)} aria-label="Filtrar páginas por mes" /></div></header><div className="journal-timeline">{entries.map((entry) => <article key={entry.id}><time><strong>{formatDate(entry.date, { day: "numeric" })}</strong><span>{formatDate(entry.date, { month: "short" }).replace(".", "").toUpperCase()}</span></time><Card className="journal-entry"><div className="journal-entry__meta"><span><CalendarDays size={14} /> {entry.date}</span><Badge tone="neutral">{typeLabels[entry.type]}</Badge><button type="button" onClick={() => guard.request(() => { setEditingEntryId(entry.id); setTitle(entry.title ?? ""); setText(entry.text); setType(entry.type); setGoalId(entry.goalId ?? ""); })} aria-label={`Editar ${entry.title || "página del diario"}`} data-no-translate="true"><Pencil size={14} /></button></div><h3 data-no-translate="true">{entry.title || "Algo que quise recordar"}</h3><p data-no-translate="true">{entry.text}</p>{entry.imageDataUrl && <img src={entry.imageDataUrl} alt="Recuerdo visual de esta página" />}</Card></article>)}{!entries.length && <EmptyState title="Aún no hay páginas" text="Una frase honesta es suficiente para empezar." />}</div></section>
     </>}
-    <Modal open={Boolean(editingEntryId)} title="Editar página" description="Guarda los cambios sin salir de Mi diario." onClose={() => { setEditingEntryId(null); setTitle(""); setText(""); setGoalId(""); }}>
-      <form className="form-grid" onSubmit={save}>
+    <Modal open={Boolean(editingEntryId)} title="Editar página" description="Guarda los cambios sin salir de Mi diario." onClose={() => guard.request(clearDraft)}>
+      <form className="form-grid" onSubmit={save}><fieldset className="draft-fields" disabled={operation.busy || imageReader.reading}>
         <label className="form-field form-field--full"><span>Título</span><input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} /></label>
         <label className="form-field form-field--full"><span>Texto</span><textarea required rows={8} value={text} onChange={(event) => setText(event.target.value)} /></label>
         <label className="form-field"><span>Meta</span><select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin vincular</option>{snapshot.goals.map((goal) => <option value={goal.id} key={goal.id} data-no-translate="true">{goal.title}</option>)}</select></label>
         <label className="form-field"><span>Tipo</span><select value={type} onChange={(event) => setType(event.target.value as JournalEntry["type"])}><option value="free">Reflexión</option><option value="gratitude">Gratitud</option><option value="weekly_review">Semanal</option><option value="monthly_reset">Mensual</option></select></label>
-        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => { setEditingEntryId(null); setTitle(""); setText(""); setGoalId(""); }}>Cancelar</Button><Button type="submit">Guardar cambios</Button></div>
-      </form>
+        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => guard.request(clearDraft)}>Cancelar</Button><Button type="submit" disabled={operation.busy}>Guardar cambios</Button></div>
+      </fieldset></form>
     </Modal>
     <p className="privacy-note">Tus entradas se guardan localmente en este dispositivo, no se usan para publicidad personalizada y permanecen bajo tu control · {toLocalDateKey(new Date())}</p>
   </div>;

@@ -4,7 +4,7 @@ Fecha de auditoría: **2026-09-08**.
 
 ## Conclusión
 
-**PENDIENTE DE DEFINICIÓN — Se necesita el archivo vectorial maestro aprobado.**
+**Actualización 2026-10-13: símbolo DEFINITIVO APROBADO — libreta abierta.** La falta de vector no mantiene pendiente la identidad. El raster existente se aplica en `BrandMark`; calidad nativa235×255, no maestro vectorial. Véase [sistema vigente](approved-kit-system.md). El inventario siguiente es histórico y no invalida esta decisión.
 
 El archivo `public/brand-icon.svg` no es un vector real. Es un contenedor SVG con una única imagen PNG embebida, sin elementos `<path>`. Para conservar el diseño aprobado, el producto continúa usando temporalmente ese archivo y no intenta trazarlo o rediseñarlo.
 

@@ -1,5 +1,7 @@
 # Tipografía de My Best Version
 
+> Decisión vigente 2026-10-13: [sistema del kit aprobado](approved-kit-system.md). Playfair Display en títulos e Inter en cuerpo/UI, también móvil, login y editores. Las reglas por superficie y Nunito que siguen se conservan como antecedente, no como instrucciones vigentes.
+
 ## Familias vigentes por superficie
 
 My Best Version mantiene **Nunito Sans** como familia del tracker autenticado, navegación de producto, formularios, onboarding, autenticación y superficies públicas legacy. La nueva landing editorial usa una combinación deliberadamente acotada: **Playfair Display** para titulares y acentos editoriales, e **Inter** para navegación, cuerpo, botones, tablas y controles.

@@ -1,0 +1,50 @@
+/* Weekly panorama uses the established seven-day editor and canonical records.
+   Hourly detail remains available through the Day tab and each dated link. */
+.app-shell--weekly .topbar { display: flex; }
+.app-shell--weekly .page-content { padding: 20px 24px 96px; }
+.app-shell--weekly .app-main { background: var(--color-background); }
+.weekly-editorial { max-width: 1240px; margin-inline: auto; }
+.weekly-editorial .weekly-plan-heading h1 { font-family: var(--prep-serif); font-size: clamp(32px, 3.7vw, 52px); font-weight: 500; line-height: 1.12; }
+.weekly-editorial .weekly-plan-heading p { margin-top: 9px; }
+.weekly-editorial .weekly-plan-header { align-items: center; padding: 8px 0 24px; }
+.weekly-editorial .weekly-header-actions { gap: 10px; }
+.weekly-editorial-overview { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr); gap: 22px; align-items: start; }
+.weekly-editorial-agenda { min-width: 0; }
+.weekly-editorial-agenda > .prep-day-switch { margin-bottom: 16px; }
+.weekly-open-day { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: .75rem; color: var(--color-brand-strong); }
+.weekly-editorial .weekly-task-copy time { font-size: .75rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.weekly-editorial .weekly-days-panel__header { flex-wrap: wrap; }
+.weekly-editorial .weekly-task-actions { opacity: 1; }
+.weekly-editorial-context .weekly-pending-panel { position: static; }
+.weekly-editorial-agenda .prep-day { max-width: none; }
+.weekly-editorial-agenda .editorial-agenda-scroll { max-height: 70vh; }
+.weekly-editorial-context { display: grid; gap: 14px; }
+.weekly-editorial-context > :where(a, button) { width: 100%; justify-content: center; }
+.weekly-editorial-context .prep-month-context { padding: 20px; }
+.weekly-editorial .weekly-priority-strip { margin-top: 24px; border: 1px solid var(--color-border); background: var(--color-surface); border-radius: 14px; padding: 16px; flex-wrap: wrap; }
+.weekly-editorial .weekly-priority-strip > button { margin-left: auto; }
+.weekly-editorial-tools { margin-top: 22px; }
+.weekly-editorial-tools > summary { cursor: pointer; padding: 18px; border: 1px solid var(--color-border); border-radius: 13px; background: var(--color-surface); font-family: var(--prep-serif); font-size: 22px; }
+.weekly-editorial-tools[open] > summary { margin-bottom: 18px; }
+.weekly-editorial .weekly-days-panel, .weekly-editorial .weekly-pending-panel { border-radius: 16px; overflow: visible; }
+.weekly-editorial .weekly-day-group { border-radius: 0; }
+.prep-row-action:is(button) { font-family: inherit; cursor: pointer; }
+@media (max-width: 1100px) {
+  .weekly-editorial .weekly-plan-header { grid-template-columns: 1fr; gap: 16px; }
+  .weekly-editorial .weekly-header-actions { justify-items: start; }
+  .weekly-editorial-overview { grid-template-columns: minmax(0, 1fr) 280px; }
+}
+@media (max-width: 800px) {
+  .app-shell--weekly .page-content { padding: 16px 16px 108px; }
+  .weekly-editorial-overview { grid-template-columns: 1fr; gap: 18px; }
+  .weekly-editorial-context { grid-template-columns: 1fr; }
+  .weekly-editorial-context .prep-month-context { display: none; }
+  .weekly-editorial .weekly-period-navigation { grid-template-columns: 38px minmax(0, 1fr) 38px; width: 100%; }
+  .weekly-editorial .weekly-period-navigation > strong { white-space: normal; text-align: center; padding: 5px; }
+  .weekly-editorial .weekly-period-navigation > .button { grid-column: 1 / -1; margin: 8px 0 0; }
+  .weekly-editorial .weekly-header-actions { width: 100%; justify-items: stretch; }
+  .weekly-editorial .weekly-plan-heading h1 { font-size: 34px; }
+  .weekly-editorial .weekly-priority-strip { align-items: stretch; gap: 12px; }
+  .weekly-editorial .weekly-priority-strip > button { width: 100%; margin: 0; }
+  .weekly-editorial-tools > summary { font-size: 23px; }
+}

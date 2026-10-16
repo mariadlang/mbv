@@ -2,8 +2,10 @@
 
 import { Component, lazy, Suspense, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import NextLink from "next/link";
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { UnsavedDraftProvider } from "@/src/components/navigation/UnsavedDraftProvider";
 import { usePlanner } from "@/src/hooks/usePlanner";
+import { browserRouteLocation } from "@/src/lib/browserRouteLocation";
 import { AppShell } from "@/src/components/layout/AppShell";
 import { Button } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
@@ -27,7 +29,8 @@ import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration"
 import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
 
-const DashboardPage = lazy(() => import("@/src/features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage })));
+const DashboardPage = lazy(() => import("@/src/features/preparation/EditorialDashboard").then((module) => ({ default: module.EditorialDashboard })));
+const GuidePage = lazy(() => import("@/src/features/preparation/GuidePage").then((module) => ({ default: module.GuidePage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
 const HabitsPage = lazy(() => import("@/src/features/habits/HabitsPage").then((module) => ({ default: module.HabitsPage })));
 const JournalPage = lazy(() => import("@/src/features/journal/JournalPage").then((module) => ({ default: module.JournalPage })));
@@ -70,7 +73,9 @@ function useMounted() {
 function useBrowserRouteLocation() {
   const routerLocation = useLocation();
   if (typeof window === "undefined") return routerLocation;
-  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  // URL, key and feedback must come from the same browser history entry.
+  // The URL can advance before React commits routerLocation after an async save.
+  return browserRouteLocation(routerLocation, window.location, window.history.state);
 }
 
 function ReturnActivityTracker({ accountId, routeKey }: { accountId: string; routeKey: string }) {
@@ -222,6 +227,7 @@ function ProtectedPlannerApp() {
     <CalendarIntegrationProvider planner={planner}>
     <>
       <AppShell
+        snapshot={planner.snapshot}
         userName={profile.name}
         userAvatar={profile.avatarDataUrl}
         saving={planner.saving}
@@ -238,8 +244,9 @@ function ProtectedPlannerApp() {
             <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="/app/dashboard" element={<DashboardPage planner={planner} onQuickCapture={openQuickCapture} />} />
+            <Route path="/app/guide" element={<GuidePage planner={planner} />} />
             <Route path="/app/vision" element={<VisionPage planner={planner} />} />
-            <Route path="/app/planning" element={<PlanningPage planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
+            <Route path="/app/planning" element={<PlanningPage key={activityRouteKey} planner={planner} access={account.access} onQuickCapture={openQuickCapture} />} />
             <Route path="/app/planning/long-term" element={<Navigate to="/app/planning" replace />} />
             <Route path="/app/planning/monthly" element={<Navigate to="/app/planning" replace />} />
             <Route path="/app/planning/weekly" element={<PlanningPage planner={planner} access={account.access} initialView="week" onQuickCapture={openQuickCapture} />} />
@@ -318,7 +325,12 @@ export default function PlannerApp() {
     <nav className="brand-loading__legal" aria-label="Información pública"><NextLink href="/privacy">Política de Privacidad</NextLink><NextLink href="/terms">Términos del Servicio</NextLink><NextLink href="/legal">Centro Legal</NextLink></nav>
     <span className="brand-loading__ring" aria-hidden="true" />
   </main>;
-  return <I18nProvider><BrowserRouter><CookieConsentProvider><AccountProvider><RootRoutes /></AccountProvider></CookieConsentProvider></BrowserRouter></I18nProvider>;
+  return <I18nProvider><PlannerBrowserRouter /></I18nProvider>;
+}
+
+function PlannerBrowserRouter() {
+  const [router] = useState(() => createBrowserRouter([{ path: "*", element: <CookieConsentProvider><AccountProvider><UnsavedDraftProvider><RootRoutes /></UnsavedDraftProvider></AccountProvider></CookieConsentProvider> }]));
+  return <RouterProvider router={router} />;
 }
 
 function RootRoutes() {

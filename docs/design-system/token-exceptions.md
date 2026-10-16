@@ -1,5 +1,9 @@
 # Excepciones y baseline de design tokens
 
+## Revisión autorizada 2026-10-13
+
+Kit: ivory pasa a #FFF6F2 y charcoal a #2F2F33 en primitivas; la landing reutiliza ambos. `app/layout.tsx` necesita literal #FFF6F2 en themeColor (API Metadata no consume CSS): se reemplaza únicamente su entrada previa en baseline, sin ampliar tolerancias generales. El primer rosa incompleto queda documentado fuera de las declaraciones CSS; soft temporal conservado. Ver `../brand/approved-kit-system.md`.
+
 ## Política
 
 El código nuevo usa tokens semánticos y de componente. Los colores hexadecimales, `rgb()`/`rgba()` y `hsl()`/`hsla()` directos no deben aumentar.

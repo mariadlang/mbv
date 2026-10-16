@@ -24,7 +24,7 @@
 .habit-progress-card { grid-area: progress; padding: 20px; }
 .habit-today-card > header, .habit-week-card > header, .habit-progress-card > header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 17px; }
 .habit-today-card > header > div, .habit-week-card > header > div, .habit-progress-card > header > div { display: flex; min-width: 0; align-items: center; gap: 12px; }
-.habit-today-card h2, .habit-week-card h2, .habit-progress-card h2 { margin: 0; font-family: var(--font-family-primary); font-size: 1.28rem; }
+.habit-today-card h2, .habit-week-card h2, .habit-progress-card h2 { margin: 0; font-family: var(--font-family-heading); font-size: 1.28rem; }
 .habit-today-card header p, .habit-week-card header p, .habit-progress-card header p { margin: 2px 0 0; color: var(--color-text-secondary); font-size: var(--text-xs); }
 .habit-section-icon { width: 36px; height: 36px; border-radius: 11px; }
 .habit-section-icon--sun { background: transparent; color: var(--color-warning); }

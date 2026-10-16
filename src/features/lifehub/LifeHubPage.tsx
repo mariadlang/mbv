@@ -3,7 +3,7 @@
 /* eslint-disable jsx-a11y/no-autofocus -- Contextual editors open after an explicit user action. */
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Bell,
   BookOpen,
@@ -36,7 +36,7 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getWeekDates, toLocalDateKey } from "@/src/lib/dates";
 import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primitives";
 import { imageUploadSchema } from "@/src/lib/schemas";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
@@ -44,11 +44,13 @@ import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, isTrialPlanning
 import { useI18n } from "@/src/i18n/I18nProvider";
 import type { NavigationSpaceProgressMessageKey } from "@/src/i18n/messages/features/navigation-space-progress";
 import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
-import { calendarEventTimeLabel } from "@/src/domain/calendar";
+import { calendarEventTimeLabel, isValidCalendarDateKey } from "@/src/domain/calendar";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
 
 type HubTab = "summary" | "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
 type ListDateMode = "flexible" | "month" | "date";
+type HubSaveKind = "event" | "routine" | "item" | "inbox" | "conversion" | "vision";
 type ListDraft = { title: string; dateMode: ListDateMode; date: string; goalId: string; projectId: string };
 
 const hubTabs: Array<{ id: HubTab; labelKey: NavigationSpaceProgressMessageKey }> = [
@@ -91,12 +93,21 @@ const eventLabelKeys = {
   personal: "space.event.category.personal",
 } as const satisfies Record<string, NavigationSpaceProgressMessageKey>;
 
-async function fileToDataUrl(file: File): Promise<string> {
+async function fileToDataUrl(file: File, signal?: AbortSignal): Promise<string> {
   imageUploadSchema.parse({ type: file.type, size: file.size });
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
+    const cleanup = () => signal?.removeEventListener("abort", abort);
+    const abort = () => {
+      reader.abort();
+      cleanup();
+      reject(new DOMException("Image read cancelled", "AbortError"));
+    };
+    reader.onload = () => { cleanup(); resolve(String(reader.result)); };
+    reader.onerror = () => { cleanup(); reject(reader.error ?? new Error("Image read failed")); };
+    reader.onabort = () => { cleanup(); reject(new DOMException("Image read cancelled", "AbortError")); };
+    if (signal?.aborted) { abort(); return; }
+    signal?.addEventListener("abort", abort, { once: true });
     reader.readAsDataURL(file);
   });
 }
@@ -106,7 +117,12 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const { snapshot } = planner;
   const calendarIntegration = useCalendarIntegration();
   const today = toLocalDateKey(new Date());
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const draftNavigation = useDraftNavigation();
+  const initialEvent = snapshot.events.find((item) => item.id === searchParams.get("event") && item.status !== "cancelled");
+  const requestedDate = searchParams.get("date");
+  const initialEventDate = initialEvent?.startDate || (requestedDate && isValidCalendarDateKey(requestedDate) ? requestedDate : today);
   const requestedTab = searchParams.get("tab");
   const normalizedRequestedTab = requestedTab === "calendar" ? "events" : requestedTab;
   const tab = hubTabs.some((item) => item.id === normalizedRequestedTab) ? normalizedRequestedTab as HubTab : "summary";
@@ -120,6 +136,9 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const [conversionDate, setConversionDate] = useState(today);
   const [editingInboxTaskId, setEditingInboxTaskId] = useState<string | null>(null);
   const [inboxEdit, setInboxEdit] = useState({ title: "", date: "", goalId: "", projectId: "" });
+  const [itemBaseline, setItemBaseline] = useState("");
+  const [inboxBaseline, setInboxBaseline] = useState("");
+  const [conversionBaseline, setConversionBaseline] = useState("");
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [routineName, setRoutineName] = useState(() => m("space.routine.defaultName"));
   const [routinePeriod, setRoutinePeriod] = useState<"am" | "afternoon" | "pm">("am");
@@ -128,16 +147,29 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const [visionImage, setVisionImage] = useState<string | null>(null);
   const [visionReminder, setVisionReminder] = useState(false);
   const [visionFrequency, setVisionFrequency] = useState<"daily" | "weekly" | "monthly" | "quarterly">("weekly");
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventDate, setEventDate] = useState(today);
-  const [eventEndDate, setEventEndDate] = useState(today);
-  const [eventStartTime, setEventStartTime] = useState("09:00");
-  const [eventEndTime, setEventEndTime] = useState("10:00");
-  const [eventAllDay, setEventAllDay] = useState(false);
-  const [eventCalendarId, setEventCalendarId] = useState("");
-  const [eventSyncWithGoogle, setEventSyncWithGoogle] = useState<boolean | null>(null);
-  const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [eventCategory, setEventCategory] = useState<keyof typeof eventLabelKeys>("personal");
+  const [imageLoading, setImageLoading] = useState(false);
+  const visionUpload = useRef<HTMLInputElement>(null);
+  const visionRead = useRef<AbortController | null>(null);
+  const visionReadVersion = useRef(0);
+  useEffect(() => () => {
+    visionReadVersion.current += 1;
+    visionRead.current?.abort();
+    visionRead.current = null;
+  }, []);
+  const [eventTitle, setEventTitle] = useState(initialEvent?.title ?? "");
+  const [eventDate, setEventDate] = useState(initialEventDate);
+  const [eventEndDate, setEventEndDate] = useState(initialEvent?.endDate ?? initialEventDate);
+  const [eventStartTime, setEventStartTime] = useState(initialEvent?.startTime ?? initialEvent?.time ?? "09:00");
+  const [eventEndTime, setEventEndTime] = useState(initialEvent?.endTime ?? "10:00");
+  const [eventAllDay, setEventAllDay] = useState(initialEvent ? initialEvent.allDay ?? !(initialEvent.startTime || initialEvent.time) : false);
+  const [eventCalendarId, setEventCalendarId] = useState(initialEvent?.connectedCalendarId ?? "");
+  const [eventSyncWithGoogle, setEventSyncWithGoogle] = useState<boolean | null>(initialEvent ? publicConfig.googleCalendarEnabled && initialEvent.calendarProvider === "google" : null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(initialEvent?.id ?? null);
+  const [eventCategory, setEventCategory] = useState<keyof typeof eventLabelKeys>(initialEvent?.category ?? "personal");
+  const [eventBaseline, setEventBaseline] = useState(() => JSON.stringify([eventTitle, eventDate, eventEndDate, eventStartTime, eventEndTime, eventAllDay, eventCalendarId, eventSyncWithGoogle, eventCategory]));
+  const [routineBaseline, setRoutineBaseline] = useState(() => JSON.stringify([routineName, routinePeriod, routineSteps]));
+  const [busy, setBusy] = useState<HubSaveKind | null>(null);
+  const saveLock = useRef(false);
   const [fitnessDate, setFitnessDate] = useState(today);
   const [exercise, setExercise] = useState("");
   const [sets, setSets] = useState(3);
@@ -178,11 +210,13 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
     carbs: total.carbs + (meal.carbs ?? 0), fat: total.fat + (meal.fat ?? 0),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   const selectTab = (nextTab: HubTab) => {
-    setSearchParams(nextTab === "summary" ? {} : { tab: nextTab });
+    draftNavigation.request(() => setSearchParams(nextTab === "summary" ? {} : { tab: nextTab }));
   };
   const openInboxCapture = () => {
-    if (tab !== "lists") setSearchParams({ tab: "lists" });
-    onQuickCapture({ source: "inbox" });
+    draftNavigation.request(() => {
+      if (tab !== "lists") setSearchParams({ tab: "lists" });
+      onQuickCapture({ source: "inbox" });
+    });
   };
 
   const selectFitnessDate = (nextDate: string) => {
@@ -195,40 +229,83 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const visibleBrainItems = snapshot.brainDumpItems.filter((item) => listFilter === "all" || item.type === listFilter);
   const inboxTasks = snapshot.tasks.filter((task) => task.status === "inbox");
 
-  const addRoutine = async (event: FormEvent) => {
-    event.preventDefault();
-    const steps = routineSteps.split("\n").map((item) => item.trim()).filter(Boolean);
-    if (!routineName.trim() || !steps.length) return;
-    const input = { name: routineName, period: routinePeriod, scheduledDays: editingRoutineId ? snapshot.routines.find((routine) => routine.id === editingRoutineId)?.scheduledDays ?? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5, 6], steps };
-    if (editingRoutineId) await planner.updateRoutine(editingRoutineId, input);
-    else await planner.createRoutine(input);
-    setRoutineSteps("");
-    setEditingRoutineId(null);
-    setMessage(m("space.message.routineSaved"));
+  const runSave = async (kind: HubSaveKind, operation: () => Promise<unknown>): Promise<boolean> => {
+    if (saveLock.current) return false;
+    saveLock.current = true; setBusy(kind); setPlanningError("");
+    try { await operation(); return true; }
+    catch { setPlanningError(m("preparation.error")); return false; }
+    finally { saveLock.current = false; setBusy(null); }
   };
+  const resetRoutine = () => {
+    setPlanningError("");
+    const name = m("space.routine.defaultName");
+    setRoutineName(name); setRoutinePeriod("am"); setRoutineSteps(""); setEditingRoutineId(null);
+    setRoutineBaseline(JSON.stringify([name, "am", ""]));
+  };
+  const saveRoutineDraft = async (): Promise<boolean> => {
+    const steps = routineSteps.split("\n").map((item) => item.trim()).filter(Boolean);
+    if (!routineName.trim() || !steps.length) { setPlanningError(m("preparation.error")); return false; }
+    const input = { name: routineName, period: routinePeriod, scheduledDays: editingRoutineId ? snapshot.routines.find((routine) => routine.id === editingRoutineId)?.scheduledDays ?? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5, 6], steps };
+    if (!await runSave("routine", () => editingRoutineId ? planner.updateRoutine(editingRoutineId, input) : planner.createRoutine(input))) return false;
+    routineGuard.markSaved(); resetRoutine();
+    setMessage(m("space.message.routineSaved"));
+    return true;
+  };
+  const routineGuard = useUnsavedDraft({ dirty: JSON.stringify([routineName, routinePeriod, routineSteps]) !== routineBaseline, saving: busy === "routine", onSave: saveRoutineDraft, onDiscard: resetRoutine });
+  const addRoutine = async (event: FormEvent) => { event.preventDefault(); await saveRoutineDraft(); };
+  const editRoutine = (routineId: string) => draftNavigation.request(() => {
+    const routine = snapshot.routines.find((item) => item.id === routineId);
+    if (!routine) return;
+    const steps = routine.steps.map((step) => step.title).join("\n");
+    setEditingRoutineId(routine.id); setRoutineName(routine.name); setRoutinePeriod(routine.period); setRoutineSteps(steps);
+    setRoutineBaseline(JSON.stringify([routine.name, routine.period, steps]));
+  });
 
-  const addVisionItem = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!quote.trim() && !visionImage) return setMessage(m("space.message.visionRequired"));
-    await planner.createVisionBoardItem({
+  const resetVision = () => {
+    visionReadVersion.current += 1;
+    visionRead.current?.abort();
+    visionRead.current = null;
+    setImageLoading(false);
+    setPlanningError("");
+    setQuote(""); setVisionImage(null); setVisionReminder(false); setVisionFrequency("weekly");
+    if (visionUpload.current) visionUpload.current.value = "";
+  };
+  const saveVisionDraft = async (): Promise<boolean> => {
+    if (imageLoading) return false;
+    if (!quote.trim() && !visionImage) { setPlanningError(m("space.message.visionRequired")); return false; }
+    if (!await runSave("vision", () => planner.createVisionBoardItem({
       type: visionImage && quote.trim() ? "mixed" : visionImage ? "image" : "quote",
       content: visionImage || quote.trim(),
       caption: visionImage && quote.trim() ? quote.trim() : undefined,
       reminderEnabled: visionReminder,
       reminderFrequency: visionReminder ? visionFrequency : undefined,
-    });
-    setQuote(""); setVisionImage(null); setMessage(m("space.message.visionAdded"));
+    }))) return false;
+    visionGuard.markSaved(); resetVision(); setMessage(m("space.message.visionAdded"));
+    return true;
   };
+  const visionGuard = useUnsavedDraft({ dirty: Boolean(quote || visionImage || visionReminder || visionFrequency !== "weekly" || imageLoading), saving: busy === "vision" || imageLoading, onSave: saveVisionDraft, onDiscard: resetVision });
+  const addVisionItem = async (event: FormEvent) => { event.preventDefault(); await saveVisionDraft(); };
 
   const uploadVisionImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || saveLock.current || visionRead.current) return;
+    const controller = new AbortController();
+    visionRead.current = controller;
+    const version = ++visionReadVersion.current;
+    setImageLoading(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await fileToDataUrl(file, controller.signal);
+      if (version !== visionReadVersion.current) return;
       setVisionImage(dataUrl);
       setMessage(m("space.message.imageReady"));
     } catch (error) {
+      if (version !== visionReadVersion.current) return;
       setMessage(m(error instanceof Error ? "space.message.imageInvalid" : "space.message.imageUnreadable"));
+    } finally {
+      if (version === visionReadVersion.current) {
+        visionRead.current = null;
+        setImageLoading(false);
+      }
     }
   };
 
@@ -242,13 +319,17 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
     if (permission === "granted") new Notification(m("space.notification.title"), { body: snapshot.visionBoardItems.find((item) => item.reminderEnabled)?.content || m("space.notification.body") });
   };
 
-  const addEvent = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!eventTitle.trim()) return;
-    if (!canPlanDate(eventDate) || !canPlanDate(eventEndDate)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+  const resetEvent = () => {
+    setPlanningError("");
+    setEventTitle(""); setEventEndDate(eventDate); setEventStartTime("09:00"); setEventEndTime("10:00"); setEventAllDay(false); setEventSyncWithGoogle(null); setEditingEventId(null);
+    setEventBaseline(JSON.stringify(["", eventDate, eventDate, "09:00", "10:00", false, eventCalendarId, null, eventCategory]));
+  };
+  const saveEventDraft = async (): Promise<boolean> => {
+    if (!eventTitle.trim()) { setPlanningError(m("preparation.error")); return false; }
+    if (!canPlanDate(eventDate) || !canPlanDate(eventEndDate) || (editingPlannerEvent && !canPlanDate(editingPlannerEvent.startDate))) { setPlanningError(m("space.trialPlanningLimit")); return false; }
     if (eventEndDate < eventDate || (!eventAllDay && eventEndDate === eventDate && eventEndTime <= eventStartTime)) {
       setPlanningError(m("calendar.event.invalidTime"));
-      return;
+      return false;
     }
     setPlanningError("");
     const input = {
@@ -257,55 +338,90 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
       allDay: eventAllDay, timezone: editingPlannerEvent?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"), category: eventCategory,
       connectedCalendarId: selectedEventCalendarId || undefined, syncWithGoogle: shouldSyncEventWithGoogle,
     };
-    if (editingEventId) await calendarIntegration.updateEvent(editingEventId, input);
-    else await calendarIntegration.createEvent(input);
-    setEventTitle(""); setEventEndDate(eventDate); setEventStartTime("09:00"); setEventEndTime("10:00"); setEventAllDay(false); setEventSyncWithGoogle(null);
-    setEditingEventId(null);
+    if (!await runSave("event", () => editingEventId ? calendarIntegration.updateEvent(editingEventId, input) : calendarIntegration.createEvent(input))) return false;
+    eventGuard.markSaved(); resetEvent();
     setMessage(m("space.message.eventSaved"));
+    return true;
   };
+  const eventGuard = useUnsavedDraft({ dirty: JSON.stringify([eventTitle, eventDate, eventEndDate, eventStartTime, eventEndTime, eventAllDay, eventCalendarId, eventSyncWithGoogle, eventCategory]) !== eventBaseline, saving: busy === "event", onSave: saveEventDraft, onDiscard: resetEvent });
+  const addEvent = async (event: FormEvent) => { event.preventDefault(); await saveEventDraft(); };
+  const editEvent = (eventId: string) => draftNavigation.request(() => {
+    const local = snapshot.events.find((item) => item.id === eventId);
+    if (!local) return;
+    const endDate = local.endDate ?? local.startDate;
+    const startTime = local.startTime ?? local.time ?? "09:00";
+    const endTime = local.endTime ?? "10:00";
+    const allDay = local.allDay ?? !(local.startTime ?? local.time);
+    const calendarId = local.connectedCalendarId ?? selectedEventCalendarId;
+    const sync = publicConfig.googleCalendarEnabled && local.calendarProvider === "google";
+    setPlanningError(""); setEditingEventId(local.id); setEventTitle(local.title); setEventDate(local.startDate); setEventEndDate(endDate); setEventStartTime(startTime); setEventEndTime(endTime); setEventAllDay(allDay); setEventCalendarId(calendarId); setEventSyncWithGoogle(sync); setEventCategory(local.category);
+    setEventBaseline(JSON.stringify([local.title, local.startDate, endDate, startTime, endTime, allDay, calendarId, sync, local.category]));
+  });
 
-  const openItemEditor = (itemId: string) => {
+  const closeListEditors = () => {
+    setEditingItemId(null); setEditingInboxTaskId(null); setConvertingItemId(null);
+  };
+  const openItemEditor = (itemId: string) => draftNavigation.request(() => {
     const item = snapshot.brainDumpItems.find((candidate) => candidate.id === itemId);
     if (!item) return;
     if (item.tentativeDate && !canPlanTentativeDate(item.tentativeDate)) { setPlanningError(m("space.trialPlanningLimit")); return; }
     setPlanningError("");
+    closeListEditors();
     setEditingItemId(item.id);
-    setEditDraft({ title: item.title, type: item.type, dateMode: item.tentativeDate?.length === 10 ? "date" : item.tentativeDate?.length === 7 ? "month" : "flexible", date: item.tentativeDate ?? "", goalId: item.goalId ?? "", projectId: item.projectId ?? "" });
-  };
+    const draft: typeof editDraft = { title: item.title, type: item.type, dateMode: item.tentativeDate?.length === 10 ? "date" : item.tentativeDate?.length === 7 ? "month" : "flexible", date: item.tentativeDate ?? "", goalId: item.goalId ?? "", projectId: item.projectId ?? "" };
+    setEditDraft(draft); setItemBaseline(JSON.stringify(draft));
+  });
 
-  const saveItemEdit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingItemId || !editDraft.title.trim()) return;
-    if (editDraft.dateMode !== "flexible" && editDraft.date && !canPlanTentativeDate(editDraft.date)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+  const saveItemDraft = async (): Promise<boolean> => {
+    if (!editingItemId || !editDraft.title.trim()) { setPlanningError(m("preparation.error")); return false; }
+    if (editDraft.dateMode !== "flexible" && editDraft.date && !canPlanTentativeDate(editDraft.date)) { setPlanningError(m("space.trialPlanningLimit")); return false; }
     setPlanningError("");
-    await planner.updateBrainDumpItem(editingItemId, { title: editDraft.title, type: editDraft.type, tentativeDate: editDraft.dateMode === "flexible" ? null : editDraft.date || null, goalId: editDraft.goalId || null, projectId: editDraft.projectId || null });
-    setEditingItemId(null);
+    if (!await runSave("item", () => planner.updateBrainDumpItem(editingItemId, { title: editDraft.title, type: editDraft.type, tentativeDate: editDraft.dateMode === "flexible" ? null : editDraft.date || null, goalId: editDraft.goalId || null, projectId: editDraft.projectId || null }))) return false;
+    itemGuard.markSaved(); setEditingItemId(null);
     setMessage(m("space.message.ideaUpdated"));
+    return true;
   };
+  const itemGuard = useUnsavedDraft({ dirty: Boolean(editingItemId && JSON.stringify(editDraft) !== itemBaseline), saving: busy === "item", onSave: saveItemDraft, onDiscard: () => { setEditingItemId(null); setPlanningError(""); } });
+  const saveItemEdit = async (event: FormEvent) => { event.preventDefault(); await saveItemDraft(); };
 
-  const convertBrainItem = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!convertingItemId || !conversionDate) return;
+  const openConversion = (itemId: string) => draftNavigation.request(() => {
+    closeListEditors(); setPlanningError(""); setConvertingItemId(itemId); setConversionDestination("daily"); setConversionDate(today);
+    setConversionBaseline(JSON.stringify(["daily", today]));
+  });
+  const saveConversionDraft = async (): Promise<boolean> => {
+    if (!convertingItemId || !conversionDate) { setPlanningError(m("preparation.error")); return false; }
     const date = conversionDestination === "monthly"
       ? conversionDate === today.slice(0, 7) ? today : `${conversionDate}-01`
       : conversionDate;
-    if (!canPlanDate(date)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+    if (!canPlanDate(date)) { setPlanningError(m("space.trialPlanningLimit")); return false; }
     setPlanningError("");
-    await planner.scheduleBrainDumpItem(convertingItemId, date, conversionDestination);
-    setConvertingItemId(null);
+    if (!await runSave("conversion", () => planner.scheduleBrainDumpItem(convertingItemId, date, conversionDestination))) return false;
+    conversionGuard.markSaved(); setConvertingItemId(null);
     const destination = m(conversionDestination === "monthly" ? "space.destination.month" : conversionDestination === "weekly" ? "space.destination.week" : "space.destination.today");
     setMessage(m("space.message.converted", { destination, date }));
+    return true;
   };
+  const conversionGuard = useUnsavedDraft({ dirty: Boolean(convertingItemId && JSON.stringify([conversionDestination, conversionDate]) !== conversionBaseline), saving: busy === "conversion", onSave: saveConversionDraft, onDiscard: () => { setConvertingItemId(null); setPlanningError(""); } });
+  const convertBrainItem = async (event: FormEvent) => { event.preventDefault(); await saveConversionDraft(); };
 
-  const saveInboxEdit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingInboxTaskId || !inboxEdit.title.trim()) return;
-    if (inboxEdit.date && !canPlanDate(inboxEdit.date)) { setPlanningError(m("space.trialPlanningLimit")); return; }
+  const openInboxEditor = (taskId: string) => draftNavigation.request(() => {
+    const task = snapshot.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    closeListEditors(); setPlanningError(""); setEditingInboxTaskId(task.id);
+    const draft = { title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" };
+    setInboxEdit(draft); setInboxBaseline(JSON.stringify(draft));
+  });
+  const saveInboxDraft = async (): Promise<boolean> => {
+    if (!editingInboxTaskId || !inboxEdit.title.trim()) { setPlanningError(m("preparation.error")); return false; }
+    if (inboxEdit.date && !canPlanDate(inboxEdit.date)) { setPlanningError(m("space.trialPlanningLimit")); return false; }
     setPlanningError("");
-    await planner.updateTask(editingInboxTaskId, inboxEdit);
-    setEditingInboxTaskId(null);
+    if (!await runSave("inbox", () => planner.updateTask(editingInboxTaskId, inboxEdit))) return false;
+    inboxGuard.markSaved(); setEditingInboxTaskId(null);
     setMessage(inboxEdit.date ? m("space.message.actionScheduled", { date: inboxEdit.date }) : m("space.message.inboxUpdated"));
+    return true;
   };
+  const inboxGuard = useUnsavedDraft({ dirty: Boolean(editingInboxTaskId && JSON.stringify(inboxEdit) !== inboxBaseline), saving: busy === "inbox", onSave: saveInboxDraft, onDiscard: () => { setEditingInboxTaskId(null); setPlanningError(""); } });
+  const saveInboxEdit = async (event: FormEvent) => { event.preventDefault(); await saveInboxDraft(); };
 
   const addWorkout = async (event: FormEvent) => {
     event.preventDefault();
@@ -332,8 +448,14 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
     try { setBodyPhoto(await fileToDataUrl(file)); } catch { setMessage(m("space.message.photoUnreadable")); }
   };
 
+  if (requestedTab === "calendar") {
+    const canonicalParams = new URLSearchParams(searchParams);
+    canonicalParams.set("tab", "events");
+    return <Navigate to={{ pathname: location.pathname, search: `?${canonicalParams}`, hash: location.hash }} state={location.state} replace />;
+  }
+
   return (
-    requestedTab === "fitness" ? <Navigate to="/app/health" replace /> : requestedTab === "calendar" ? <Navigate to="/app/life-hub?tab=events" replace /> :
+    requestedTab === "fitness" ? <Navigate to="/app/health" replace /> :
     <div className="page-stack life-hub-page" data-i18n-explicit="true">
       <SectionNavigation section="space" />
       <SectionHeading eyebrow={m(tab === "summary" ? "space.header.summary.eyebrow" : tab === "lists" ? "space.header.lists.eyebrow" : "space.header.tools.eyebrow")} title={m(tab === "summary" ? "space.header.summary.title" : tab === "lists" ? "space.header.lists.title" : "space.header.tools.title")} description={m(tab === "summary" ? "space.header.summary.description" : tab === "lists" ? "space.header.lists.description" : "space.header.tools.description")} action={tab === "summary" || tab === "lists" ? <Button onClick={openInboxCapture}><Plus size={16} /> {m("space.quickCapture")}</Button> : undefined} />
@@ -344,23 +466,23 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
       {tab === "summary" && <section aria-labelledby="space-destinations-title"><div className="card-heading"><div><p className="eyebrow">{m("space.summary.eyebrow")}</p><h2 id="space-destinations-title">{m("space.summary.title")}</h2></div></div><div className="more-grid">{spaceDestinations.map(([href, titleKey, descriptionKey, Icon]) => <Link to={href} key={href}><Card className="more-card"><span><Icon size={21} aria-hidden="true" /></span><div><h3>{m(titleKey)}</h3><p>{m(descriptionKey)}</p></div><ChevronRight size={19} aria-hidden="true" /></Card></Link>)}</div></section>}
 
       {tab === "lists" && <>
-        <Card className="brain-universal-capture"><div><p className="eyebrow">{m("space.inbox.capture.eyebrow")}</p><h2>{m("space.inbox.capture.title")}</h2><p>{m("space.inbox.capture.description")}</p></div><Button onClick={() => onQuickCapture({ source: "inbox" })}><Plus size={16} /> {m("space.inbox.capture.action")}</Button></Card>
+        <Card className="brain-universal-capture"><div><p className="eyebrow">{m("space.inbox.capture.eyebrow")}</p><h2>{m("space.inbox.capture.title")}</h2><p>{m("space.inbox.capture.description")}</p></div><Button onClick={openInboxCapture}><Plus size={16} /> {m("space.inbox.capture.action")}</Button></Card>
         {inboxTasks.length > 0 && <Card className="brain-list brain-inbox-list"><header><div><h3>{m("space.inbox.unclassified")}</h3><small>{m("space.inbox.count", { count: inboxTasks.length })}</small></div></header>{inboxTasks.map((task) => {
           const readOnly = Boolean(task.date && !canPlanDate(task.date));
-          return editingInboxTaskId === task.id ? <form className="brain-item-editor" key={task.id} onSubmit={saveInboxEdit}><input autoFocus required value={inboxEdit.title} onChange={(event) => setInboxEdit({ ...inboxEdit, title: event.target.value })} aria-label={m("space.inbox.editCapture")} /><input type="date" min={dateBounds ? (today > dateBounds.min ? today : dateBounds.min) : today} max={dateBounds?.max} value={inboxEdit.date} onChange={(event) => { setPlanningError(""); setInboxEdit({ ...inboxEdit, date: event.target.value }); }} aria-label={m("space.inbox.captureDate")} /><select value={inboxEdit.goalId} onChange={(event) => setInboxEdit({ ...inboxEdit, goalId: event.target.value })} aria-label={m("space.field.goal")}><option value="">{m("space.field.noGoal")}</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select value={inboxEdit.projectId} onChange={(event) => setInboxEdit({ ...inboxEdit, projectId: event.target.value })} aria-label={m("space.field.project")}><option value="">{m("space.field.noProject")}</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div><button type="submit"><Save size={14} /> {m("space.action.save")}</button><button type="button" onClick={() => setEditingInboxTaskId(null)}><X size={14} /> {m("space.action.cancel")}</button></div></form> : <div className="brain-item" key={task.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.toggleTask(task.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.completeNamed", { name: task.title })}><Circle size={14} /></button><div><strong>{task.title}</strong><small>{m("space.inbox.capturedNoDate")}</small></div><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => { setPlanningError(""); setEditingInboxTaskId(task.id); setInboxEdit({ title: task.title, date: task.date ?? "", goalId: task.goalId ?? "", projectId: task.projectId ?? "" }); }} aria-label={readOnly ? m("space.readOnly") : m("space.action.organizeNamed", { name: task.title })}><Pencil size={14} /></button></div>;
+          return editingInboxTaskId === task.id ? <form className="brain-item-editor" key={task.id} onSubmit={saveInboxEdit}><input disabled={Boolean(busy)} autoFocus required value={inboxEdit.title} onChange={(event) => setInboxEdit({ ...inboxEdit, title: event.target.value })} aria-label={m("space.inbox.editCapture")} /><input disabled={Boolean(busy)} type="date" min={dateBounds ? (today > dateBounds.min ? today : dateBounds.min) : today} max={dateBounds?.max} value={inboxEdit.date} onChange={(event) => { setPlanningError(""); setInboxEdit({ ...inboxEdit, date: event.target.value }); }} aria-label={m("space.inbox.captureDate")} /><select disabled={Boolean(busy)} value={inboxEdit.goalId} onChange={(event) => setInboxEdit({ ...inboxEdit, goalId: event.target.value })} aria-label={m("space.field.goal")}><option value="">{m("space.field.noGoal")}</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select disabled={Boolean(busy)} value={inboxEdit.projectId} onChange={(event) => setInboxEdit({ ...inboxEdit, projectId: event.target.value })} aria-label={m("space.field.project")}><option value="">{m("space.field.noProject")}</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div><button disabled={Boolean(busy)} type="submit"><Save size={14} /> {m("space.action.save")}</button><button disabled={Boolean(busy)} type="button" onClick={() => inboxGuard.request(() => setEditingInboxTaskId(null))}><X size={14} /> {m("space.action.cancel")}</button></div></form> : <div className="brain-item" key={task.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.toggleTask(task.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.completeNamed", { name: task.title })}><Circle size={14} /></button><div><strong>{task.title}</strong><small>{m("space.inbox.capturedNoDate")}</small></div><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => openInboxEditor(task.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.organizeNamed", { name: task.title })}><Pencil size={14} /></button></div>;
         })}</Card>}
-        <nav className="brain-filters" aria-label={m("space.lists.filterLabel")}>{(["all", ...Object.keys(listLabelKeys)] as Array<"all" | BrainDumpType>).map((type) => <button type="button" key={type} className={listFilter === type ? "is-active" : ""} aria-pressed={listFilter === type} onClick={() => setListFilter(type)}>{type === "all" ? m("space.lists.all") : m(listLabelKeys[type])}</button>)}</nav>
+        <nav className="brain-filters" aria-label={m("space.lists.filterLabel")}>{(["all", ...Object.keys(listLabelKeys)] as Array<"all" | BrainDumpType>).map((type) => <button type="button" key={type} className={listFilter === type ? "is-active" : ""} aria-pressed={listFilter === type} onClick={() => draftNavigation.request(() => setListFilter(type))}>{type === "all" ? m("space.lists.all") : m(listLabelKeys[type])}</button>)}</nav>
         <Card className="brain-list brain-legacy-list"><header><div><h3>{listFilter === "all" ? m("space.lists.organized") : m(listLabelKeys[listFilter])}</h3><small>{m("space.lists.openCount", { count: visibleBrainItems.filter((item) => item.status !== "completed" && item.status !== "released").length })}</small></div></header>{visibleBrainItems.map((item) => {
           const readOnly = Boolean(item.tentativeDate && !canPlanTentativeDate(item.tentativeDate));
-          if (editingItemId === item.id) return <form className="brain-item-editor" key={item.id} onSubmit={saveItemEdit}><input autoFocus value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} aria-label={m("space.lists.editIdea")} /><select value={editDraft.type} onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value as BrainDumpType })} aria-label={m("space.lists.moveList")}>{Object.entries(listLabelKeys).map(([value, labelKey]) => <option key={value} value={value}>{m(labelKey)}</option>)}</select><DateChoice mode={editDraft.dateMode} date={editDraft.date} dateBounds={dateBounds} label={item.title} onMode={(dateMode) => { setPlanningError(""); setEditDraft({ ...editDraft, dateMode, date: dateMode === "flexible" ? "" : editDraft.date }); }} onDate={(date) => { setPlanningError(""); setEditDraft({ ...editDraft, date }); }} /><select value={editDraft.goalId} onChange={(event) => setEditDraft({ ...editDraft, goalId: event.target.value })} aria-label={m("space.lists.ideaGoal")}><option value="">{m("space.field.noGoal")}</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select value={editDraft.projectId} onChange={(event) => setEditDraft({ ...editDraft, projectId: event.target.value })} aria-label={m("space.lists.ideaProject")}><option value="">{m("space.field.noProject")}</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div><button type="submit"><Save size={14} /> {m("space.action.save")}</button><button type="button" onClick={() => setEditingItemId(null)}><X size={14} /> {m("space.action.cancel")}</button></div></form>;
-          if (convertingItemId === item.id) return <form className="brain-item-editor brain-convert-editor" key={item.id} onSubmit={convertBrainItem}><strong>{m("space.lists.convertNamed", { name: item.title })}</strong><label><span>{m("space.lists.destination")}</span><select value={conversionDestination} onChange={(event) => { const destination = event.target.value as typeof conversionDestination; setPlanningError(""); setConversionDestination(destination); setConversionDate(destination === "monthly" ? today.slice(0, 7) : today); }}><option value="daily">{m("space.destination.today")}</option><option value="weekly">{m("space.destination.week")}</option><option value="monthly">{m("space.destination.month")}</option></select></label><label><span>{m(conversionDestination === "monthly" ? "space.date.month" : "space.date.day")}</span><input type={conversionDestination === "monthly" ? "month" : "date"} min={conversionDestination === "monthly" ? (monthBounds && today.slice(0, 7) < monthBounds.min ? monthBounds.min : today.slice(0, 7)) : (dateBounds && today < dateBounds.min ? dateBounds.min : today)} max={conversionDestination === "monthly" ? monthBounds?.max : dateBounds?.max} value={conversionDate} onChange={(event) => { setPlanningError(""); setConversionDate(event.target.value); }} /></label><small>{m("space.lists.convertDescription")}</small><div><button type="submit"><Save size={14} /> {m("space.lists.confirmDestination")}</button><button type="button" onClick={() => setConvertingItemId(null)}><X size={14} /> {m("space.action.cancel")}</button></div></form>;
+          if (editingItemId === item.id) return <form className="brain-item-editor" key={item.id} onSubmit={saveItemEdit}><input disabled={Boolean(busy)} autoFocus value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} aria-label={m("space.lists.editIdea")} /><select disabled={Boolean(busy)} value={editDraft.type} onChange={(event) => setEditDraft({ ...editDraft, type: event.target.value as BrainDumpType })} aria-label={m("space.lists.moveList")}>{Object.entries(listLabelKeys).map(([value, labelKey]) => <option key={value} value={value}>{m(labelKey)}</option>)}</select><DateChoice disabled={Boolean(busy)} mode={editDraft.dateMode} date={editDraft.date} dateBounds={dateBounds} label={item.title} onMode={(dateMode) => { setPlanningError(""); setEditDraft({ ...editDraft, dateMode, date: dateMode === "flexible" ? "" : editDraft.date }); }} onDate={(date) => { setPlanningError(""); setEditDraft({ ...editDraft, date }); }} /><select disabled={Boolean(busy)} value={editDraft.goalId} onChange={(event) => setEditDraft({ ...editDraft, goalId: event.target.value })} aria-label={m("space.lists.ideaGoal")}><option value="">{m("space.field.noGoal")}</option>{snapshot.goals.filter((goal) => goal.status === "active").map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select><select disabled={Boolean(busy)} value={editDraft.projectId} onChange={(event) => setEditDraft({ ...editDraft, projectId: event.target.value })} aria-label={m("space.lists.ideaProject")}><option value="">{m("space.field.noProject")}</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div><button disabled={Boolean(busy)} type="submit"><Save size={14} /> {m("space.action.save")}</button><button disabled={Boolean(busy)} type="button" onClick={() => itemGuard.request(() => setEditingItemId(null))}><X size={14} /> {m("space.action.cancel")}</button></div></form>;
+          if (convertingItemId === item.id) return <form className="brain-item-editor brain-convert-editor" key={item.id} onSubmit={convertBrainItem}><strong>{m("space.lists.convertNamed", { name: item.title })}</strong><label><span>{m("space.lists.destination")}</span><select disabled={Boolean(busy)} value={conversionDestination} onChange={(event) => { const destination = event.target.value as typeof conversionDestination; setPlanningError(""); setConversionDestination(destination); setConversionDate(destination === "monthly" ? today.slice(0, 7) : today); }}><option value="daily">{m("space.destination.today")}</option><option value="weekly">{m("space.destination.week")}</option><option value="monthly">{m("space.destination.month")}</option></select></label><label><span>{m(conversionDestination === "monthly" ? "space.date.month" : "space.date.day")}</span><input disabled={Boolean(busy)} type={conversionDestination === "monthly" ? "month" : "date"} min={conversionDestination === "monthly" ? (monthBounds && today.slice(0, 7) < monthBounds.min ? monthBounds.min : today.slice(0, 7)) : (dateBounds && today < dateBounds.min ? dateBounds.min : today)} max={conversionDestination === "monthly" ? monthBounds?.max : dateBounds?.max} value={conversionDate} onChange={(event) => { setPlanningError(""); setConversionDate(event.target.value); }} /></label><small>{m("space.lists.convertDescription")}</small><div><button disabled={Boolean(busy)} type="submit"><Save size={14} /> {m("space.lists.confirmDestination")}</button><button disabled={Boolean(busy)} type="button" onClick={() => conversionGuard.request(() => setConvertingItemId(null))}><X size={14} /> {m("space.action.cancel")}</button></div></form>;
           const status = item.convertedTaskId ? m("space.lists.convertedTo", { destination: m(item.destination === "monthly" ? "space.destination.month" : item.destination === "weekly" ? "space.destination.week" : "space.destination.today") }) : m(item.status === "planned" ? "space.lists.status.organized" : "space.lists.status.captured");
           const date = item.tentativeDate ? m("space.lists.dateValue", { kind: m(item.tentativeDate.length === 7 ? "space.date.month" : "space.date.date"), date: item.tentativeDate }) : m("space.date.flexible");
-          return <div className={`brain-item is-${item.status}`} key={item.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })} aria-label={readOnly ? m("space.readOnly") : m(item.status === "completed" ? "space.action.reopenNamed" : "space.action.completeNamed", { name: item.title })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{m("space.lists.metadata", { status, date })}</small></div><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => openItemEditor(item.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => { setPlanningError(""); setConvertingItemId(item.id); setConversionDestination("daily"); setConversionDate(today); }} aria-label={readOnly ? m("space.readOnly") : m("space.action.convertNamed", { name: item.title })}><CalendarDays size={14} /></button><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label={readOnly ? m("space.readOnly") : m("space.action.releaseNamed", { name: item.title })}>×</button></div>;
+          return <div className={`brain-item is-${item.status}`} key={item.id}><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.updateBrainDumpItem(item.id, { status: item.status === "completed" ? "idea" : "completed" })} aria-label={readOnly ? m("space.readOnly") : m(item.status === "completed" ? "space.action.reopenNamed" : "space.action.completeNamed", { name: item.title })}>{item.status === "completed" ? <Check size={14} /> : <Circle size={14} />}</button><div><strong>{item.title}</strong><small>{m("space.lists.metadata", { status, date })}</small></div><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => openItemEditor(item.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => openConversion(item.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.convertNamed", { name: item.title })}><CalendarDays size={14} /></button><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => void planner.updateBrainDumpItem(item.id, { status: "released" })} aria-label={readOnly ? m("space.readOnly") : m("space.action.releaseNamed", { name: item.title })}>×</button></div>;
         })}{!visibleBrainItems.length && <p className="brain-empty">{m("space.lists.empty")}</p>}</Card>
       </>}
 
-      {tab === "routines" && <div className="hub-two-column"><Card className="hub-form-card"><Sun size={24} /><p className="eyebrow">{m(editingRoutineId ? "space.routine.edit" : "space.routine.new")}</p><h2>{m("space.routine.title")}</h2><form onSubmit={addRoutine}><label className="form-field"><span>{m("space.routine.name")}</span><input value={routineName} onChange={(event) => setRoutineName(event.target.value)} /></label><label className="form-field"><span>{m("space.routine.period")}</span><select value={routinePeriod} onChange={(event) => setRoutinePeriod(event.target.value as typeof routinePeriod)}><option value="am">{m("space.routine.period.am")}</option><option value="afternoon">{m("space.routine.period.afternoon")}</option><option value="pm">{m("space.routine.period.pm")}</option></select></label><label className="form-field"><span>{m("space.routine.steps")}</span><textarea rows={7} value={routineSteps} onChange={(event) => setRoutineSteps(event.target.value)} placeholder={m("space.routine.steps.placeholder")} /></label><div className="modal__actions"><Button type="submit">{m("space.routine.save")}</Button>{editingRoutineId && <Button type="button" variant="ghost" onClick={() => { setEditingRoutineId(null); setRoutineName(m("space.routine.defaultName")); setRoutineSteps(""); }}>{m("space.action.cancel")}</Button>}</div></form></Card><div className="routine-grid">{snapshot.routines.map((routine) => <Card className="routine-card" key={routine.id}><span>{routine.period === "am" ? <Sun size={20} /> : routine.period === "pm" ? <MoonStar size={20} /> : <Sparkles size={20} />}</span><Badge tone="rose">{m(routine.period === "am" ? "space.routine.badge.am" : routine.period === "pm" ? "space.routine.badge.pm" : "space.routine.badge.afternoon")}</Badge><button type="button" className="routine-card__edit" onClick={() => { setEditingRoutineId(routine.id); setRoutineName(routine.name); setRoutinePeriod(routine.period); setRoutineSteps(routine.steps.map((step) => step.title).join("\n")); }} aria-label={m("space.action.editNamed", { name: routine.name })}><Pencil size={15} /></button><h2>{routine.name}</h2>{routine.steps.map((step, index) => <p key={step.id}><i>{index + 1}</i>{step.title}</p>)}</Card>)}</div></div>}
+      {tab === "routines" && <div className="hub-two-column"><Card className="hub-form-card"><Sun size={24} /><p className="eyebrow">{m(editingRoutineId ? "space.routine.edit" : "space.routine.new")}</p><h2>{m("space.routine.title")}</h2><form onSubmit={addRoutine}><label className="form-field"><span>{m("space.routine.name")}</span><input disabled={busy === "routine"} value={routineName} onChange={(event) => setRoutineName(event.target.value)} /></label><label className="form-field"><span>{m("space.routine.period")}</span><select disabled={busy === "routine"} value={routinePeriod} onChange={(event) => setRoutinePeriod(event.target.value as typeof routinePeriod)}><option value="am">{m("space.routine.period.am")}</option><option value="afternoon">{m("space.routine.period.afternoon")}</option><option value="pm">{m("space.routine.period.pm")}</option></select></label><label className="form-field"><span>{m("space.routine.steps")}</span><textarea disabled={busy === "routine"} rows={7} value={routineSteps} onChange={(event) => setRoutineSteps(event.target.value)} placeholder={m("space.routine.steps.placeholder")} /></label><div className="modal__actions"><Button type="submit" loading={busy === "routine"}>{m("space.routine.save")}</Button>{editingRoutineId && <Button type="button" variant="ghost" disabled={busy === "routine"} onClick={() => routineGuard.request(resetRoutine)}>{m("space.action.cancel")}</Button>}</div></form></Card><div className="routine-grid">{snapshot.routines.map((routine) => <Card className="routine-card" key={routine.id}><span>{routine.period === "am" ? <Sun size={20} /> : routine.period === "pm" ? <MoonStar size={20} /> : <Sparkles size={20} />}</span><Badge tone="rose">{m(routine.period === "am" ? "space.routine.badge.am" : routine.period === "pm" ? "space.routine.badge.pm" : "space.routine.badge.afternoon")}</Badge><button type="button" className="routine-card__edit" onClick={() => editRoutine(routine.id)} aria-label={m("space.action.editNamed", { name: routine.name })}><Pencil size={15} /></button><h2>{routine.name}</h2>{routine.steps.map((step, index) => <p key={step.id}><i>{index + 1}</i>{step.title}</p>)}</Card>)}</div></div>}
 
       {tab === "fitness" && !snapshot.profile?.fitnessEnabled && <Card className="fitness-gate"><span><Dumbbell size={29} /></span><p className="eyebrow">{m("space.fitness.gate.eyebrow")}</p><h1>{m("space.fitness.gate.title")}</h1><p>{m("space.fitness.gate.description")}</p><Button onClick={() => planner.updateProfileSettings({ fitnessEnabled: true })}>{m("space.fitness.gate.action")}</Button></Card>}
 
@@ -381,7 +503,7 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
 
       {tab === "challenges" && <ChallengesPage planner={planner} embedded />}
 
-      {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addVisionItem}><label className="form-field"><span>{m("space.vision.quote")}</span><input value={quote} onChange={(event) => setQuote(event.target.value)} placeholder={m("space.vision.quote.placeholder")} /></label><label className="button button--secondary"><ImagePlus size={16} /> {visionImage ? m("space.vision.changeImage") : m("space.vision.chooseImage")}<input className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label>{visionImage && <figure className="vision-upload-preview"><img src={visionImage} alt={m("space.vision.previewAlt")} /><figcaption>{m("space.vision.imageReady")}</figcaption></figure>}<label className="vision-reminder-control"><input type="checkbox" checked={visionReminder} onChange={(event) => setVisionReminder(event.target.checked)} /> {m("space.vision.reminders")}</label>{visionReminder && <label className="form-field"><span>{m("space.vision.frequency")}</span><select value={visionFrequency} onChange={(event) => setVisionFrequency(event.target.value as typeof visionFrequency)} aria-label={m("space.vision.frequencyLabel")}><option value="daily">{m("space.vision.frequency.daily")}</option><option value="weekly">{m("space.vision.frequency.weekly")}</option><option value="monthly">{m("space.vision.frequency.monthly")}</option><option value="quarterly">{m("space.vision.frequency.quarterly")}</option></select></label>}<Button type="submit"><Plus size={16} /> {m("space.vision.add")}</Button></form>{visionReminder && <Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> {m("space.vision.allowNotifications")}</Button>}</Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type !== "quote" ? <><img src={item.content} alt={item.caption || m("space.vision.itemAlt")} />{item.caption && <blockquote>“{item.caption}”</blockquote>}</> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || m("space.vision.defaultCaption")}</span><button className={item.reminderEnabled ? "is-on" : ""} onClick={() => planner.toggleVisionReminder(item.id)}><Bell size={14} />{item.reminderEnabled ? m("space.vision.remember", { frequency: m(item.reminderFrequency === "daily" ? "space.vision.frequency.daily" : item.reminderFrequency === "monthly" ? "space.vision.frequency.monthly" : item.reminderFrequency === "quarterly" ? "space.vision.frequency.quarterly" : "space.vision.frequency.weekly") }) : m("space.vision.noReminder")}</button></footer></Card>)}</div></>}
+      {tab === "vision" && <><Card className="vision-board-toolbar"><form onSubmit={addVisionItem}><label className="form-field"><span>{m("space.vision.quote")}</span><input disabled={busy === "vision" || imageLoading} value={quote} onChange={(event) => setQuote(event.target.value)} placeholder={m("space.vision.quote.placeholder")} /></label><label className="button button--secondary"><ImagePlus size={16} /> {visionImage ? m("space.vision.changeImage") : m("space.vision.chooseImage")}<input ref={visionUpload} disabled={busy === "vision" || imageLoading} className="sr-only" type="file" accept="image/*" onChange={uploadVisionImage} /></label>{visionImage && <figure className="vision-upload-preview"><img src={visionImage} alt={m("space.vision.previewAlt")} /><figcaption>{m("space.vision.imageReady")}</figcaption></figure>}<label className="vision-reminder-control"><input disabled={busy === "vision" || imageLoading} type="checkbox" checked={visionReminder} onChange={(event) => setVisionReminder(event.target.checked)} /> {m("space.vision.reminders")}</label>{visionReminder && <label className="form-field"><span>{m("space.vision.frequency")}</span><select disabled={busy === "vision" || imageLoading} value={visionFrequency} onChange={(event) => setVisionFrequency(event.target.value as typeof visionFrequency)} aria-label={m("space.vision.frequencyLabel")}><option value="daily">{m("space.vision.frequency.daily")}</option><option value="weekly">{m("space.vision.frequency.weekly")}</option><option value="monthly">{m("space.vision.frequency.monthly")}</option><option value="quarterly">{m("space.vision.frequency.quarterly")}</option></select></label>}<Button type="submit" loading={busy === "vision"} disabled={imageLoading}><Plus size={16} /> {m("space.vision.add")}</Button></form>{visionReminder && <Button variant="secondary" onClick={enableNotifications}><Bell size={16} /> {m("space.vision.allowNotifications")}</Button>}</Card><div className="vision-board-grid">{snapshot.visionBoardItems.map((item) => <Card className={`vision-board-item vision-board-item--${item.type}`} key={item.id}>{item.type !== "quote" ? <><img src={item.content} alt={item.caption || m("space.vision.itemAlt")} />{item.caption && <blockquote>“{item.caption}”</blockquote>}</> : <blockquote>“{item.content}”</blockquote>}<footer><span>{item.caption || m("space.vision.defaultCaption")}</span><button className={item.reminderEnabled ? "is-on" : ""} disabled={busy === "vision"} onClick={() => void runSave("vision", () => planner.toggleVisionReminder(item.id))}><Bell size={14} />{item.reminderEnabled ? m("space.vision.remember", { frequency: m(item.reminderFrequency === "daily" ? "space.vision.frequency.daily" : item.reminderFrequency === "monthly" ? "space.vision.frequency.monthly" : item.reminderFrequency === "quarterly" ? "space.vision.frequency.quarterly" : "space.vision.frequency.weekly") }) : m("space.vision.noReminder")}</button></footer></Card>)}</div></>}
 
       {tab === "events" && <div className="hub-two-column">
         <Card className="hub-form-card calendar-event-manager">
@@ -390,16 +512,16 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
           <h2>{m("space.event.title")}</h2>
           <form onSubmit={addEvent}>
             <div className="calendar-event-fields">
-              <label className="form-field form-field--wide"><span>{m("space.event.name")}</span><input required value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder={m("space.event.placeholder")} /></label>
-              <label className="form-field"><span>{m("space.event.date")}</span><input required type="date" min={dateBounds?.min} max={dateBounds?.max} value={eventDate} onChange={(event) => { setPlanningError(""); setEventDate(event.target.value); if (eventEndDate < event.target.value) setEventEndDate(event.target.value); }} /></label>
-              <label className="form-field"><span>{m("calendar.event.endDate")}</span><input type="date" min={eventDate} max={dateBounds?.max} value={eventEndDate} onChange={(event) => setEventEndDate(event.target.value)} /></label>
-              {!eventAllDay && <><label className="form-field"><span>{m("calendar.event.startTime")}</span><input required type="time" value={eventStartTime} onChange={(event) => setEventStartTime(event.target.value)} /></label><label className="form-field"><span>{m("calendar.event.endTime")}</span><input required type="time" value={eventEndTime} onChange={(event) => setEventEndTime(event.target.value)} /></label></>}
-              <label className="calendar-event-sync-control form-field--wide"><span><input type="checkbox" checked={eventAllDay} onChange={(event) => setEventAllDay(event.target.checked)} /> {m("calendar.event.allDay")}</span></label>
-              <label className="form-field"><span>{m("space.event.category")}</span><select value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabelKeys).map(([value, labelKey]) => <option value={value} key={value}>{m(labelKey)}</option>)}</select></label>
-              {calendarIntegration.connected && <label className="form-field"><span>{m("calendar.event.calendar")}</span><select value={selectedEventCalendarId} disabled={editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventCalendarId(event.target.value)}>{calendarIntegration.snapshot.calendars.filter((item) => item.isVisible && item.isWritable).map((item) => <option value={item.id} key={item.id} data-no-translate="true">{item.name}</option>)}</select></label>}
-              {calendarIntegration.connected && <div className="calendar-event-sync-control form-field--wide"><label><input type="checkbox" checked={shouldSyncEventWithGoogle} disabled={editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventSyncWithGoogle(event.target.checked)} /> {m("calendar.event.sync")}</label><small>{m("calendar.event.syncHint")}</small></div>}
+              <label className="form-field form-field--wide"><span>{m("space.event.name")}</span><input disabled={busy === "event"} required value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder={m("space.event.placeholder")} /></label>
+              <label className="form-field"><span>{m("space.event.date")}</span><input disabled={busy === "event"} required type="date" min={dateBounds?.min} max={dateBounds?.max} value={eventDate} onChange={(event) => { setPlanningError(""); setEventDate(event.target.value); if (eventEndDate < event.target.value) setEventEndDate(event.target.value); }} /></label>
+              <label className="form-field"><span>{m("calendar.event.endDate")}</span><input disabled={busy === "event"} type="date" min={eventDate} max={dateBounds?.max} value={eventEndDate} onChange={(event) => setEventEndDate(event.target.value)} /></label>
+              {!eventAllDay && <><label className="form-field"><span>{m("calendar.event.startTime")}</span><input disabled={busy === "event"} required type="time" value={eventStartTime} onChange={(event) => setEventStartTime(event.target.value)} /></label><label className="form-field"><span>{m("calendar.event.endTime")}</span><input disabled={busy === "event"} required type="time" value={eventEndTime} onChange={(event) => setEventEndTime(event.target.value)} /></label></>}
+              <label className="calendar-event-sync-control form-field--wide"><span><input disabled={busy === "event"} type="checkbox" checked={eventAllDay} onChange={(event) => setEventAllDay(event.target.checked)} /> {m("calendar.event.allDay")}</span></label>
+              <label className="form-field"><span>{m("space.event.category")}</span><select disabled={busy === "event"} value={eventCategory} onChange={(event) => setEventCategory(event.target.value as typeof eventCategory)}>{Object.entries(eventLabelKeys).map(([value, labelKey]) => <option value={value} key={value}>{m(labelKey)}</option>)}</select></label>
+              {calendarIntegration.connected && <label className="form-field"><span>{m("calendar.event.calendar")}</span><select value={selectedEventCalendarId} disabled={busy === "event" || editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventCalendarId(event.target.value)}>{calendarIntegration.snapshot.calendars.filter((item) => item.isVisible && item.isWritable).map((item) => <option value={item.id} key={item.id} data-no-translate="true">{item.name}</option>)}</select></label>}
+              {calendarIntegration.connected && <div className="calendar-event-sync-control form-field--wide"><label><input type="checkbox" checked={shouldSyncEventWithGoogle} disabled={busy === "event" || editingPlannerEvent?.calendarProvider === "google"} onChange={(event) => setEventSyncWithGoogle(event.target.checked)} /> {m("calendar.event.sync")}</label><small>{m("calendar.event.syncHint")}</small></div>}
             </div>
-            <div className="modal__actions"><Button type="submit" loading={calendarIntegration.saving}>{m("space.event.save")}</Button>{editingEventId && <Button type="button" variant="ghost" onClick={() => { setEditingEventId(null); setEventTitle(""); }}>{m("space.action.cancel")}</Button>}</div>
+            <div className="modal__actions"><Button type="submit" loading={busy === "event" || calendarIntegration.saving}>{m("space.event.save")}</Button>{editingEventId && <Button type="button" variant="ghost" disabled={busy === "event"} onClick={() => eventGuard.request(resetEvent)}>{m("space.action.cancel")}</Button>}</div>
           </form>
           {calendarIntegration.error && <p className="form-error">{m("calendar.error.generic")}</p>}
           <div className="event-list">{
@@ -412,7 +534,7 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
               return <article key={item.key} className="calendar-event-list-item">
                 <span className={`event-dot event-dot--${item.category}`} />
                 <div><strong data-no-translate="true" translate="no">{item.title}</strong><small>{formatDate(item.startDate, { dateStyle: "medium" })} · {calendarEventTimeLabel(item, m("calendar.event.allDay"))}</small>{item.origin === "google" && <span className="calendar-origin"><Cloud size={12} aria-hidden="true" /> {item.calendarName || m("calendar.origin.google")}</span>}{item.syncState && item.syncState !== "local" && <span className={`calendar-sync-badge calendar-sync-badge--${item.syncState}`}>{m(item.syncState === "pending" ? "calendar.state.pending" : item.syncState === "synced" ? "calendar.state.synced" : item.syncState === "conflict" ? "calendar.state.conflict" : item.syncState === "reconnect_required" ? "calendar.state.reconnectRequired" : "calendar.state.error")}</span>}</div>
-                {local && <div className="calendar-event-list-actions"><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => { setPlanningError(""); setEditingEventId(local.id); setEventTitle(local.title); setEventDate(local.startDate); setEventEndDate(local.endDate ?? local.startDate); setEventStartTime(local.startTime ?? local.time ?? "09:00"); setEventEndTime(local.endTime ?? "10:00"); setEventAllDay(local.allDay ?? !(local.startTime ?? local.time)); setEventCalendarId(local.connectedCalendarId ?? selectedEventCalendarId); setEventSyncWithGoogle(publicConfig.googleCalendarEnabled && local.calendarProvider === "google"); setEventCategory(local.category); }} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button><button type="button" disabled={readOnly} onClick={() => { if (window.confirm(m(publicConfig.googleCalendarEnabled && local.calendarProvider === "google" ? "calendar.event.deleteConfirm" : "calendar.event.deleteConfirmLocal", { event: item.title }))) void calendarIntegration.deleteEvent(local.id); }} aria-label={m("calendar.event.delete")}><Trash2 size={14} /></button></div>}
+                {local && <div className="calendar-event-list-actions"><button type="button" disabled={readOnly} title={readOnly ? m("space.readOnly") : undefined} onClick={() => editEvent(local.id)} aria-label={readOnly ? m("space.readOnly") : m("space.action.editNamed", { name: item.title })}><Pencil size={14} /></button><button type="button" disabled={readOnly} onClick={() => { if (window.confirm(m(publicConfig.googleCalendarEnabled && local.calendarProvider === "google" ? "calendar.event.deleteConfirm" : "calendar.event.deleteConfirmLocal", { event: item.title }))) void calendarIntegration.deleteEvent(local.id); }} aria-label={m("calendar.event.delete")}><Trash2 size={14} /></button></div>}
                 {publicConfig.googleCalendarEnabled && local?.syncState === "conflict" && <div className="calendar-conflict-actions"><Button size="sm" variant="outline" onClick={() => void calendarIntegration.resolveConflict(local.id, "google")}>{m("calendar.event.keepGoogle")}</Button><Button size="sm" variant="secondary" onClick={() => void calendarIntegration.resolveConflict(local.id, "mbv")}>{m("calendar.event.keepMbv")}</Button></div>}
               </article>;
             })
@@ -425,7 +547,7 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   );
 }
 
-function DateChoice({ mode, date, dateBounds, label, onMode, onDate }: { mode: ListDateMode; date: string; dateBounds: ReturnType<typeof getTrialPlanningDateBounds>; label: string; onMode: (mode: ListDateMode) => void; onDate: (date: string) => void }) {
+function DateChoice({ mode, date, dateBounds, label, onMode, onDate, disabled }: { disabled?: boolean; mode: ListDateMode; date: string; dateBounds: ReturnType<typeof getTrialPlanningDateBounds>; label: string; onMode: (mode: ListDateMode) => void; onDate: (date: string) => void }) {
   const { m } = useI18n();
-  return <fieldset className="brain-date-choice"><legend>{m("space.date.question")}</legend><div>{(["flexible", "month", "date"] as const).map((option) => <button type="button" key={option} className={mode === option ? "is-active" : ""} aria-pressed={mode === option} onClick={() => onMode(option)}>{m(option === "flexible" ? "space.date.flexible" : option === "month" ? "space.date.month" : "space.date.date")}</button>)}</div>{mode !== "flexible" && <input type={mode === "month" ? "month" : "date"} min={mode === "month" ? dateBounds?.min.slice(0, 7) : dateBounds?.min} max={mode === "month" ? dateBounds?.max.slice(0, 7) : dateBounds?.max} value={date} onChange={(event) => onDate(event.target.value)} aria-label={m("space.date.forItem", { kind: m(mode === "month" ? "space.date.month" : "space.date.date"), label })} />}</fieldset>;
+  return <fieldset disabled={disabled} className="brain-date-choice"><legend>{m("space.date.question")}</legend><div>{(["flexible", "month", "date"] as const).map((option) => <button type="button" key={option} className={mode === option ? "is-active" : ""} aria-pressed={mode === option} onClick={() => onMode(option)}>{m(option === "flexible" ? "space.date.flexible" : option === "month" ? "space.date.month" : "space.date.date")}</button>)}</div>{mode !== "flexible" && <input type={mode === "month" ? "month" : "date"} min={mode === "month" ? dateBounds?.min.slice(0, 7) : dateBounds?.min} max={mode === "month" ? dateBounds?.max.slice(0, 7) : dateBounds?.max} value={date} onChange={(event) => onDate(event.target.value)} aria-label={m("space.date.forItem", { kind: m(mode === "month" ? "space.date.month" : "space.date.date"), label })} />}</fieldset>;
 }

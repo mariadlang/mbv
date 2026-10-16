@@ -1,5 +1,7 @@
 "use client";
 
+import { ReturnExperienceCard } from "@/src/features/dashboard/ReturnExperienceCard";
+
 /* eslint-disable jsx-a11y/no-autofocus -- The inline composer opens after an explicit user action. */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -9,7 +11,9 @@ import { isHabitLogComplete, isHabitScheduledOn, isTaskOverdue } from "@/src/dom
 import { getDailyTopThree } from "@/src/domain/guidanceRules";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { getReviewPeriodKey, getWeekDates, toLocalDateKey } from "@/src/lib/dates";
-import { Button, Card, SectionHeading, Tabs } from "@/src/components/ui/Primitives";
+import { Button, Card, Tabs } from "@/src/components/ui/Primitives";
+import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
 import { analyticsService } from "@/src/services/analyticsService";
 import { HabitWeekDots } from "./TodayVisuals";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
@@ -17,6 +21,7 @@ import { TodayMoodCard } from "@/src/features/mood/TodayMoodCard";
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { useCalendarIntegration } from "@/src/hooks/useCalendarIntegration";
 import { calendarEventOccursOnDate, calendarEventTimeLabel } from "@/src/domain/calendar";
+import { resolveTaskMonthlyPriority } from "@/src/domain/todayTimelineOrigin";
 import { CalendarEventSyncFeedback } from "@/src/features/calendar/CalendarEventSyncFeedback";
 import { publicConfig } from "@/src/lib/publicConfig";
 
@@ -66,6 +71,11 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
   const [closeSaved, setCloseSaved] = useState(false);
   const [dayComposer, setDayComposer] = useState<DayComposer | null>(null);
   const [dayComposerError, setDayComposerError] = useState("");
+  const [composerBaseline, setComposerBaseline] = useState("");
+  const [mobileTab, setMobileTab] = useState<"tasks" | "habits">("tasks");
+  const [showFocus, setShowFocus] = useState(false);
+  const operation = usePreparationOperation();
+  const navigation = useDraftNavigation();
   const todayTasks = snapshot.tasks.filter((task) => task.date === todayKey && task.status !== "cancelled");
   const focusTasks = getDailyTopThree(snapshot.tasks, todayKey);
   const nextAction = focusTasks.find((task) => task.status !== "completed") ?? todayTasks.find((task) => task.status !== "completed");
@@ -81,47 +91,57 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
   const todayExternalEvents = calendarIntegration.events.filter((item) => calendarEventOccursOnDate(item, todayKey) && (!item.localEventId || !todayEvents.some((local) => local.id === item.localEventId)));
   const macros = (todayNutrition?.meals ?? []).reduce((total, meal) => ({ calories: total.calories + (meal.calories ?? 0), protein: total.protein + (meal.protein ?? 0), carbs: total.carbs + (meal.carbs ?? 0), fat: total.fat + (meal.fat ?? 0) }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   function openDayComposer(kind: DayComposerKind, itemId?: string) {
+    navigation.request(() => loadDayComposer(kind, itemId));
+  }
+  function startComposer(draft: DayComposer) {
+    setMobileTab("tasks");
+    setDayComposer(draft);
+    setComposerBaseline(JSON.stringify(draft));
+    requestAnimationFrame(() => document.querySelector<HTMLFormElement>(".day-inline-composer")?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  }
+  function loadDayComposer(kind: DayComposerKind, itemId?: string) {
     setDayComposerError("");
     if (kind === "task" || kind === "priority") {
       const task = snapshot.tasks.find((item) => item.id === itemId);
-      setDayComposer({ ...emptyComposer(kind), id: task?.id, title: task?.title ?? "", priority: task?.focusPriority ? String(task.focusPriority) as DayComposer["priority"] : "", goalId: task?.goalId ?? "", projectId: task?.projectId ?? "" });
+      startComposer({ ...emptyComposer(kind), id: task?.id, title: task?.title ?? "", priority: task?.focusPriority ? String(task.focusPriority) as DayComposer["priority"] : "", goalId: task?.goalId ?? "", projectId: task?.projectId ?? "" });
       return;
     }
     if (kind === "workout") {
-      setDayComposer({ ...emptyComposer(kind), id: todayWorkout?.id, title: todayWorkout?.name ?? todayWorkout?.goal ?? "", duration: todayWorkout?.durationMinutes ? String(todayWorkout.durationMinutes) : "" });
+      startComposer({ ...emptyComposer(kind), id: todayWorkout?.id, title: todayWorkout?.name ?? todayWorkout?.goal ?? "", duration: todayWorkout?.durationMinutes ? String(todayWorkout.durationMinutes) : "" });
       return;
     }
     if (kind === "meal") {
       const meal = todayNutrition?.meals.find((item) => item.id === itemId);
-      setDayComposer({ ...emptyComposer(kind), id: meal?.id, title: meal?.name ?? "", calories: meal?.calories ? String(meal.calories) : "" });
+      startComposer({ ...emptyComposer(kind), id: meal?.id, title: meal?.name ?? "", calories: meal?.calories ? String(meal.calories) : "" });
       return;
     }
     if (kind === "event") {
       const currentEvent = todayEvents.find((item) => item.id === itemId);
       const defaultCalendar = calendarIntegration.snapshot.calendars.find((item) => item.isDefault && item.isWritable);
-      setDayComposer({ ...emptyComposer(kind), id: currentEvent?.id, title: currentEvent?.title ?? "", startTime: currentEvent?.startTime ?? currentEvent?.time ?? "09:00", endTime: currentEvent?.endTime ?? "10:00", allDay: currentEvent?.allDay ?? !(currentEvent?.startTime ?? currentEvent?.time), connectedCalendarId: currentEvent?.connectedCalendarId ?? defaultCalendar?.id ?? "", syncWithGoogle: publicConfig.googleCalendarEnabled && (currentEvent?.calendarProvider === "google" || (!currentEvent && calendarIntegration.connected)), linkedToGoogle: publicConfig.googleCalendarEnabled && currentEvent?.calendarProvider === "google" });
+      startComposer({ ...emptyComposer(kind), id: currentEvent?.id, title: currentEvent?.title ?? "", startTime: currentEvent?.startTime ?? currentEvent?.time ?? "09:00", endTime: currentEvent?.endTime ?? "10:00", allDay: currentEvent?.allDay ?? !(currentEvent?.startTime ?? currentEvent?.time), connectedCalendarId: currentEvent?.connectedCalendarId ?? defaultCalendar?.id ?? "", syncWithGoogle: publicConfig.googleCalendarEnabled && (currentEvent?.calendarProvider === "google" || (!currentEvent && calendarIntegration.connected)), linkedToGoogle: publicConfig.googleCalendarEnabled && currentEvent?.calendarProvider === "google" });
       return;
     }
     const habit = snapshot.habits.find((item) => item.id === itemId);
-    setDayComposer({ ...emptyComposer(kind), id: habit?.id, title: habit?.name ?? "", habitRecurrence: habit ? habitRecurrence(habit.scheduledDays, habit.oneOffDate) : "today", scheduledDays: habit?.scheduledDays ?? [today.getDay()] });
+    startComposer({ ...emptyComposer(kind), id: habit?.id, title: habit?.name ?? "", habitRecurrence: habit ? habitRecurrence(habit.scheduledDays, habit.oneOffDate) : "today", scheduledDays: habit?.scheduledDays ?? [today.getDay()] });
   }
 
-  const saveDayItem = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!dayComposer?.title.trim()) return;
+  const saveDayItem = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!dayComposer || dayComposer.title.trim().length < 2 || (dayComposer.kind === "habit" && dayComposer.habitRecurrence === "custom" && !dayComposer.scheduledDays.length)) return false;
     const currentEvent = dayComposer.kind === "event" && dayComposer.id ? snapshot.events.find((item) => item.id === dayComposer.id) : undefined;
     const eventStartDate = currentEvent?.startDate ?? todayKey;
     const eventEndDate = currentEvent?.endDate;
     if (dayComposer.kind === "event" && !dayComposer.allDay && (eventEndDate ?? eventStartDate) === eventStartDate && dayComposer.endTime <= dayComposer.startTime) {
       setDayComposerError(m("calendar.event.invalidTime"));
-      return;
+      return false;
     }
     setDayComposerError("");
+    const saved = await operation.run(async () => {
     const focusPriority = dayComposer.priority ? Number(dayComposer.priority) as 1 | 2 | 3 : undefined;
     if ((dayComposer.kind === "task" || dayComposer.kind === "priority") && dayComposer.id) await planner.updateTask(dayComposer.id, { title: dayComposer.title, date: todayKey, focusPriority: dayComposer.kind === "priority" ? focusPriority : undefined, goalId: dayComposer.goalId, projectId: dayComposer.projectId });
     else if (dayComposer.kind === "task" || dayComposer.kind === "priority") await planner.createTaskDetailed({ title: dayComposer.title, date: todayKey, priority: "medium", focusPriority: dayComposer.kind === "priority" ? focusPriority : undefined, goalId: dayComposer.goalId || undefined, projectId: dayComposer.projectId || undefined });
     else if (dayComposer.kind === "workout") await planner.saveWorkoutPlan({ date: todayKey, name: dayComposer.title, durationMinutes: Number(dayComposer.duration) || undefined, exercises: todayWorkout?.exercises.map((exercise) => ({ id: exercise.id, name: exercise.name, sets: (exercise.setDetails?.length ? exercise.setDetails : Array.from({ length: exercise.sets }, (_, index) => ({ id: crypto.randomUUID(), setNumber: index + 1, reps: exercise.reps, weight: exercise.weight }))).map((set, index) => ({ id: set.id, setNumber: index + 1, reps: set.reps, weight: set.weight })) })) ?? [] });
-    else if (dayComposer.kind === "meal") { const meal = todayNutrition?.meals.find((item) => item.id === dayComposer.id); await planner.saveMeal({ date: todayKey, mealId: meal?.id, name: dayComposer.title, calories: Number(dayComposer.calories) || undefined, protein: meal?.protein, carbs: meal?.carbs, fat: meal?.fat, notes: meal?.notes, completed: meal?.completed ?? true }); }
+    else if (dayComposer.kind === "meal") { const meal = todayNutrition?.meals.find((item) => item.id === dayComposer.id); await planner.saveMeal({ date: todayKey, mealId: meal?.id, name: dayComposer.title, calories: Number(dayComposer.calories) || undefined, protein: meal?.protein, carbs: meal?.carbs, fat: meal?.fat, notes: meal?.notes, completed: meal?.completed ?? false }); }
     else if (dayComposer.kind === "event") { const input = { title: dayComposer.title, startDate: eventStartDate, endDate: eventEndDate, startTime: dayComposer.allDay ? undefined : dayComposer.startTime, endTime: dayComposer.allDay ? undefined : dayComposer.endTime, allDay: dayComposer.allDay, timezone: currentEvent?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC", category: currentEvent?.category ?? ("personal" as const), notes: currentEvent?.notes, connectedCalendarId: dayComposer.connectedCalendarId || undefined, syncWithGoogle: dayComposer.syncWithGoogle }; if (dayComposer.id) await calendarIntegration.updateEvent(dayComposer.id, input); else await calendarIntegration.createEvent(input); }
     else {
       const scheduledDays = dayComposer.habitRecurrence === "daily" ? [0, 1, 2, 3, 4, 5, 6] : dayComposer.habitRecurrence === "weekdays" ? [1, 2, 3, 4, 5] : dayComposer.habitRecurrence === "custom" ? dayComposer.scheduledDays : [today.getDay()];
@@ -129,14 +149,16 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
       if (dayComposer.id) await planner.updateHabit(dayComposer.id, { name: dayComposer.title, scheduledDays, oneOffDate });
       else await planner.createHabit({ name: dayComposer.title, type: "boolean", scheduledDays, oneOffDate: oneOffDate ?? undefined, target: 1, unit: "vez", origin: "experiment" });
     }
-    setDayComposer(null);
+    });
+    if (saved) { composerGuard.markSaved(); setDayComposer(null); }
+    return saved;
   };
   const taskItems: TimelineItem[] = todayTasks.map((task) => {
     const goal = snapshot.goals.find((item) => item.id === task.goalId)?.title;
     const project = snapshot.projects.find((item) => item.id === task.projectId)?.name;
-    const plan = snapshot.cascadePlans.find((item) => item.id === task.periodPlanId && item.horizon === "monthly");
-    const monthlyResult = plan ? m("today.timeline.monthlyOutcome", { result: plan.intention || plan.priority }) : undefined;
-    const origin = [goal, project, monthlyResult].filter(Boolean).join(" · ");
+    const monthlyPriority = resolveTaskMonthlyPriority(snapshot.cascadePlans, task);
+    const monthlyOrigin = monthlyPriority ? m("today.timeline.monthlyPriority", { priority: monthlyPriority }) : undefined;
+    const origin = [goal, project, monthlyOrigin].filter(Boolean).join(" · ");
     return { id: task.id, type: "tasks", title: task.title, detail: origin || (task.focusPriority ? m("today.timeline.priority", { priority: task.focusPriority }) : m("today.timeline.todayTask")), completed: task.status === "completed", action: <div className="timeline-actions"><button type="button" className="timeline-check" onClick={() => planner.toggleTask(task.id)} aria-label={task.status === "completed" ? m("today.timeline.reopenAria", { title: task.title }) : m("today.timeline.completeAria", { title: task.title })}>{task.status === "completed" ? <Check size={16} /> : <Circle size={16} />}</button><button type="button" onClick={() => openDayComposer(task.focusPriority ? "priority" : "task", task.id)} aria-label={m("today.timeline.editAria", { title: task.title })}><Pencil size={15} /></button></div> };
   });
   const workoutItems: TimelineItem[] = todayWorkout ? [{ id: todayWorkout.id, type: "training", title: todayWorkout.name ?? todayWorkout.goal ?? m("today.timeline.workoutFallback"), detail: `${todayWorkout.exercises.length ? formatPlural(todayWorkout.exercises.length, { one: m("today.timeline.exerciseCountOne", { count: formatNumber(todayWorkout.exercises.length) }), other: m("today.timeline.exerciseCount", { count: formatNumber(todayWorkout.exercises.length) }) }) : m("today.timeline.generalActivity")}${todayWorkout.durationMinutes ? ` · ${formatNumber(todayWorkout.durationMinutes)} ${m("today.unit.minuteShort")}` : ""}`, action: <button type="button" onClick={() => openDayComposer("workout", todayWorkout.id)} aria-label={m("today.timeline.editWorkoutAria")}><Pencil size={15} /></button> }] : [];
@@ -170,20 +192,30 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
     ["meal", m("today.timeline.add.meal")],
     ["event", m("today.timeline.add.event")],
   ];
-  const saveIntention = async () => { await planner.updateDailyIntention(intention); setIntentionEditing(false); };
-  const saveClose = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!advancedToday.trim() && !rememberToday.trim()) return;
+  const saveIntention = async () => { const saved = await operation.run(() => planner.updateDailyIntention(intention)); if (saved) { intentionGuard.markSaved(); setIntentionEditing(false); } return saved; };
+  const saveClose = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!advancedToday.trim() && !rememberToday.trim()) return false;
     const text = `¿Qué avancé hoy?\n${advancedToday.trim() || "—"}\n\n¿Qué quiero recordar de hoy?\n${rememberToday.trim() || "—"}`;
-    if (dailyCloseEntry) await planner.updateJournal(dailyCloseEntry.id, { title: "Cierre del día", text, type: "free", goalId: dailyCloseEntry.goalId });
-    else await planner.saveJournal(text, { title: "Cierre del día", type: "free" });
-    setCloseSaved(true);
+    const saved = await operation.run(async () => {
+      if (dailyCloseEntry) await planner.updateJournal(dailyCloseEntry.id, { title: "Cierre del día", text, type: "free", goalId: dailyCloseEntry.goalId });
+      else await planner.saveJournal(text, { title: "Cierre del día", type: "free" });
+    });
+    if (saved) { closeGuard.markSaved(); setCloseSaved(true); }
+    return saved;
   };
+  const composerGuard = useUnsavedDraft({ dirty: Boolean(dayComposer && JSON.stringify(dayComposer) !== composerBaseline), saving: operation.busy, onSave: () => saveDayItem(), onDiscard: () => setDayComposer(null) });
+  const intentionGuard = useUnsavedDraft({ dirty: intentionEditing && intention !== savedIntention, saving: operation.busy, onSave: saveIntention, onDiscard: () => { setIntention(savedIntention); setIntentionEditing(false); } });
+  const closeGuard = useUnsavedDraft({ dirty: !closeSaved && (advancedToday !== initialDailyClose.advanced || rememberToday !== initialDailyClose.remember), saving: operation.busy, onSave: () => saveClose(), onDiscard: () => { setAdvancedToday(initialDailyClose.advanced); setRememberToday(initialDailyClose.remember); } });
   const localizedDate = formatDate(today, { weekday: "long", day: "numeric", month: "long" });
   const todayDateLabel = `${localizedDate.charAt(0).toLocaleUpperCase()}${localizedDate.slice(1)}`;
 
-  return <div className={`page-stack today-command-center ${minimumMode ? "is-minimum" : ""}`} data-i18n-explicit="true">
-    <SectionHeading eyebrow={m("today.header.eyebrow")} title={<>{m("today.header.greeting")} <span data-no-translate={profileName ? "true" : undefined}>{profileName ?? m("today.header.fallbackName")}</span> 👋</>} description={todayDateLabel} action={<span className="today-header-note">{m("today.header.note")} <Heart size={15} /></span>} />
+  return <div className={`page-stack today-command-center editorial-today ${minimumMode ? "is-minimum" : ""} ${showFocus ? "show-mobile-focus" : ""}`} data-mobile-tab={mobileTab} data-i18n-explicit="true">
+    <ReturnExperienceCard planner={planner} onChoosePriority={() => onQuickCapture({ source: "today", date: todayKey, focusPriority: 1 })} />
+    <header className="editorial-today-heading"><div><p className="prep-eyebrow">{m("today.header.greeting")} <span data-no-translate={profileName ? "true" : undefined}>{profileName ?? m("today.header.fallbackName")}</span> 👋</p><h1>{m("editorialDay.today")}</h1><p>{todayDateLabel}</p></div><Link to={`/app/planning?view=day&date=${todayKey}`} aria-label={m("editorialDay.openAgenda")}><CalendarDays size={21} /></Link></header>
+    <div className="editorial-day-intro"><p data-no-translate={intention ? "true" : undefined}>{intention || m("editorialDay.focus")}</p><Heart size={22} aria-hidden="true" /></div>
+    <div className="editorial-today-mobile-tabs"><Tabs id="editorial-today-mobile" ariaLabel={m("editorialDay.today")} items={[{ id: "tasks", label: m("editorialDay.actions") }, { id: "habits", label: m("editorialDay.habits") }]} value={mobileTab} onChange={(tab) => navigation.request(() => setMobileTab(tab))} /></div>
+    {operation.error && <p role="alert">{m("preparation.error")}</p>}
 
     {minimumMode && <Card className="minimum-banner"><HeartPulse size={22} /><div><p className="eyebrow">{m("today.minimum.eyebrow")}</p><h2>{m("today.minimum.title")}</h2><p>{m("today.minimum.description")}</p></div><Button variant="ghost" onClick={() => { setMinimumModeOverride(false); const next = new URLSearchParams(searchParams); next.delete("mode"); setSearchParams(next, { replace: true }); }}>{m("today.minimum.exit")}</Button></Card>}
 
@@ -208,7 +240,7 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
       <Card className="day-timeline-card">
         <header><h2>{m("today.timeline.title")}</h2><button type="button" className="today-text-action" onClick={() => onQuickCapture({ source: "today", date: todayKey })}><Plus size={15} /> {m("today.timeline.add")}</button></header>
         <Tabs id="today-timeline-filters" ariaLabel={m("today.timeline.filterAria")} items={timelineFilters.map(([id, label]) => ({ id, label }))} value={timelineFilter} onChange={setTimelineFilter} panelId="today-timeline-panel" className="timeline-filters" />
-        {dayComposer && <DayComposerForm draft={dayComposer} error={dayComposerError} goals={snapshot.goals} projects={snapshot.projects} onChange={setDayComposer} onSubmit={saveDayItem} onClose={() => setDayComposer(null)} />}
+        {dayComposer && <fieldset className="editorial-day-composer-fieldset" disabled={operation.busy}><DayComposerForm draft={dayComposer} error={dayComposerError} goals={snapshot.goals} projects={snapshot.projects} onChange={setDayComposer} onSubmit={saveDayItem} onClose={() => navigation.request(() => setDayComposer(null))} /></fieldset>}
         <div id="today-timeline-panel" role="tabpanel" aria-labelledby={`today-timeline-filters-${timelineFilter}-tab`}>{visibleTimeline.length ? <div className="day-timeline-list">{(minimumMode ? visibleTimeline.slice(0, 1) : visibleTimeline).map((item) => <article key={`${item.type}-${item.id}`}><span className={`timeline-kind timeline-kind--${item.type}`}>{item.type === "tasks" ? <Check size={17} /> : item.type === "training" ? <Dumbbell size={17} /> : item.type === "meals" ? <Utensils size={17} /> : <CalendarDays size={17} />}</span><div><strong className={item.completed ? "is-complete" : ""} data-no-translate="true">{item.title}</strong><small data-no-translate="true">{item.detail}</small></div>{item.action}</article>)}</div> : <div className="today-timeline-empty"><CalendarDays size={20} aria-hidden="true" /><p>{m("today.timeline.empty")}</p></div>}</div>
         <div className="today-timeline-add-menu" aria-label={m("today.timeline.addMenuAria")}>{timelineComposerKinds.map(([kind, label]) => <button type="button" key={kind} onClick={() => kind === "task" ? onQuickCapture({ source: "today", date: todayKey }) : kind === "priority" ? onQuickCapture({ source: "today", date: todayKey, focusPriority: 1 }) : openDayComposer(kind)}><Plus size={14} /> {label}</button>)}</div>
       </Card>
@@ -229,18 +261,19 @@ export function TodayPage({ planner, onQuickCapture, onNeedHelp }: { planner: Pl
         })}{!habits.length && <div className="today-habits-empty"><p>{m("today.habits.empty")}</p><small>{m("today.habits.freeDay")}</small><button type="button" onClick={() => openDayComposer("habit")}><Plus size={15} /> {m("today.habits.create")}</button></div>}</div>
       </Card>
     </section>
+    <button type="button" className="editorial-mobile-focus-button button button--secondary" aria-expanded={showFocus} onClick={() => navigation.request(() => setShowFocus(!showFocus))}>{m("editorialDay.extras")} <ChevronRight size={16} /></button>
 
     {!minimumMode && overdue.length > 0 && <Card className="overdue-card"><div><p className="eyebrow">{m("today.overdue.eyebrow")}</p><h2>{m("today.overdue.title")}</h2><p>{m("today.overdue.description")}</p></div>{overdue.slice(0, 4).map((task) => <div className="overdue-row" key={task.id}><strong data-no-translate="true">{task.title}</strong><Button variant="secondary" onClick={() => planner.rescheduleTask(task.id, todayKey)}>{m("today.overdue.move")}</Button></div>)}</Card>}
 
     <section className="today-wellbeing-checkin" aria-label={m("today.wellbeing.ariaLabel")}>
       <TodayMoodCard planner={planner} saveOnChange onLowEnergy={() => setMinimumModeOverride(true)} />
-      <Card className="today-intention-card today-intention-card--standalone"><header><h2>{m("today.intention.title")} <Sparkles size={17} aria-hidden="true" /></h2><button type="button" className="today-icon-button" onClick={() => setIntentionEditing(true)} aria-label={m("today.intention.editAria")}><Pencil size={17} /></button></header>{intentionEditing ? <div className="today-intention-editor"><textarea value={intention} onChange={(event) => setIntention(event.target.value)} aria-label={m("today.intention.inputAria")} rows={3} placeholder={m("today.intention.placeholder")} translate="no" data-no-translate="true" /><Button variant="secondary" onClick={saveIntention}><Save size={16} /> {m("today.intention.save")}</Button></div> : <blockquote className={`today-intention-quote ${intention ? "" : "is-empty"}`}><Quote size={25} /><p data-no-translate={intention ? "true" : undefined}>{intention || m("today.intention.placeholder")}</p></blockquote>}</Card>
+      <Card className="today-intention-card today-intention-card--standalone"><header><h2>{m("today.intention.title")} <Sparkles size={17} aria-hidden="true" /></h2><button type="button" className="today-icon-button" onClick={() => setIntentionEditing(true)} aria-label={m("today.intention.editAria")}><Pencil size={17} /></button></header>{intentionEditing ? <div className="today-intention-editor"><textarea disabled={operation.busy} value={intention} onChange={(event) => setIntention(event.target.value)} aria-label={m("today.intention.inputAria")} rows={3} placeholder={m("today.intention.placeholder")} translate="no" data-no-translate="true" /><Button disabled={operation.busy} variant="secondary" onClick={saveIntention}><Save size={16} /> {m("today.intention.save")}</Button></div> : <blockquote className={`today-intention-quote ${intention ? "" : "is-empty"}`}><Quote size={25} /><p data-no-translate={intention ? "true" : undefined}>{intention || m("today.intention.placeholder")}</p></blockquote>}</Card>
     </section>
 
     {!minimumMode && <section className="today-closing-grid">
       {(todayNutrition || todayWorkout) && <Card className="today-nutrition-card"><header><h2>{m("today.wellbeing.title")}</h2><Link to={`/app/health?date=${todayKey}`}>{m("today.wellbeing.detail")} <ChevronRight size={15} /></Link></header>{todayWorkout && <p><Dumbbell size={16} /> <span data-no-translate={todayWorkout.name || todayWorkout.goal ? "true" : undefined}>{todayWorkout.name ?? todayWorkout.goal ?? m("today.wellbeing.workoutFallback")}</span>{todayWorkout.durationMinutes ? ` · ${formatNumber(todayWorkout.durationMinutes)} ${m("today.unit.minuteShort")}` : ""}</p>}{todayNutrition && <><div className="today-macros"><span><strong>{formatNumber(macros.calories)}</strong> {m("today.unit.kcal")}</span><span><strong>{formatNumber(macros.protein)}g</strong> {m("today.wellbeing.protein")}</span><span><strong>{formatNumber(macros.carbs)}g</strong> {m("today.wellbeing.carbs")}</span><span><strong>{formatNumber(macros.fat)}g</strong> {m("today.wellbeing.fats")}</span></div><div className="today-meals">{todayNutrition.meals.map((meal) => <span key={meal.id} data-no-translate="true">{meal.completed ? <Check size={14} /> : <Circle size={14} />}{meal.name}</span>)}</div></>}<footer><Link className="button button--secondary" to={`/app/health?date=${todayKey}`}>{m("today.wellbeing.open")}</Link></footer></Card>}
 
-      <Card className="daily-close-card"><header><div><h2>{m("today.close.title")}</h2><p>{m("today.close.when")}</p></div><Sparkles size={22} /></header><form onSubmit={saveClose}><label><span>{m("today.close.advanced")}</span><textarea rows={3} value={advancedToday} onChange={(event) => { setAdvancedToday(event.target.value); setCloseSaved(false); }} placeholder={m("today.close.placeholder")} translate="no" data-no-translate="true" /></label><label><span>{m("today.close.remember")}</span><textarea rows={3} value={rememberToday} onChange={(event) => { setRememberToday(event.target.value); setCloseSaved(false); }} placeholder={m("today.close.placeholder")} translate="no" data-no-translate="true" /></label><Button type="submit" disabled={(!advancedToday.trim() && !rememberToday.trim()) || closeSaved}><Save size={16} /> {dailyCloseEntry ? m("today.close.update") : m("today.close.create")}</Button>{closeSaved && <small role="status">{m("today.close.saved")}</small>}</form></Card>
+      <Card className="daily-close-card"><header><div><h2>{m("today.close.title")}</h2><p>{m("today.close.when")}</p></div><Sparkles size={22} /></header><form onSubmit={saveClose}><label><span>{m("today.close.advanced")}</span><textarea disabled={operation.busy} rows={3} value={advancedToday} onChange={(event) => { setAdvancedToday(event.target.value); setCloseSaved(false); }} placeholder={m("today.close.placeholder")} translate="no" data-no-translate="true" /></label><label><span>{m("today.close.remember")}</span><textarea disabled={operation.busy} rows={3} value={rememberToday} onChange={(event) => { setRememberToday(event.target.value); setCloseSaved(false); }} placeholder={m("today.close.placeholder")} translate="no" data-no-translate="true" /></label><Button type="submit" disabled={operation.busy || (!advancedToday.trim() && !rememberToday.trim()) || closeSaved}><Save size={16} /> {dailyCloseEntry ? m("today.close.update") : m("today.close.create")}</Button>{closeSaved && <small role="status">{m("today.close.saved")}</small>}</form></Card>
 
       <Card className={`weekly-review-prompt ${completedWeeklyReview ? "is-complete" : ""}`}><h2>{m("today.weeklyReview.title")}</h2><div className="weekly-review-copy"><CalendarDays size={28} /><div><h3>{completedWeeklyReview ? m("today.weeklyReview.completedTitle") : m("today.weeklyReview.readyTitle")}</h3><p>{completedWeeklyReview ? m("today.weeklyReview.completedText") : m("today.weeklyReview.readyText")}</p></div></div><Link className="button button--secondary" to="/app/planning/weekly?reset=1">{completedWeeklyReview ? m("today.weeklyReview.view") : m("today.weeklyReview.start")}</Link></Card>
     </section>}

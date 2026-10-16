@@ -7,6 +7,25 @@ const viewports = {
   small: { width: 360, height: 640 },
 } as const;
 
+test.beforeEach(async ({ page, baseURL }) => {
+  if (!baseURL || new URL(baseURL).hostname !== "127.0.0.1") {
+    throw new Error("Launch UI fixtures must run against the local test server.");
+  }
+  const localOrigin = new URL(baseURL).origin;
+  // BotID 1.5.11 waits for this script before sending protected requests.
+  // These UI tests already intercept every launch POST; simulate only the
+  // external challenge so local builds remain deterministic and offline.
+  // This does not validate real BotID or change application/server protection.
+  const challengePath = "/149e9513-01fa-4fb0-aad4-566afd725d1b/2d206a39-8ed7-437e-a3be-862e0f06eea3/a-4-a/c.js";
+  await page.route((url) => url.origin === localOrigin && url.pathname === challengePath, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: "window.V_C.push({ b: 0, d: 0 });",
+    });
+  });
+});
+
 function signedOutPath(path: string) {
   return `${path}${path.includes("?") ? "&" : "?"}e2e-auth=signed-out`;
 }

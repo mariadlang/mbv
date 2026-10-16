@@ -1,4 +1,5 @@
 export const esPlanningMessages = {
+  "planning.week.openDay": "Ver día",
   "premium.gate.available": "Disponible con Premium",
   "premium.gate.cta": "Desbloquear Premium",
   "premium.gate.fiveYear.title": "Planificación a 5 años",
@@ -343,6 +344,7 @@ export const esPlanningMessages = {
 } as const;
 
 export const enPlanningMessages = {
+  "planning.week.openDay": "View day",
   "premium.gate.available": "Available with Premium",
   "premium.gate.cta": "Unlock Premium",
   "premium.gate.fiveYear.title": "5-year planning",

@@ -13,6 +13,9 @@ import type { PlannerController } from "@/src/hooks/usePlanner";
 import { goalFormSchema, type GoalFormInput } from "@/src/lib/schemas";
 import { Badge, Button, Card, EmptyState, ProgressBar, SectionHeading } from "@/src/components/ui/Primitives";
 import { Modal } from "@/src/components/ui/Modal";
+import { useUnsavedDraft } from "@/src/components/navigation/UnsavedDraftProvider";
+import { usePreparationOperation } from "@/src/features/preparation/PreparationShared";
+import { useI18n } from "@/src/i18n/I18nProvider";
 import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 
@@ -21,6 +24,7 @@ type DateMode = "date" | "month" | "flexible";
 type LocationState = { openGoal?: boolean; areaId?: string; title?: string; reason?: string };
 
 export function GoalsPage({ planner, access }: { planner: PlannerController; access: UserAccess }) {
+  const { m } = useI18n();
   const { snapshot } = planner;
   const location = useLocation();
   const navigate = useNavigate();
@@ -33,6 +37,9 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
   const [successGoalId, setSuccessGoalId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEdit, setTaskEdit] = useState({ title: "", date: "", projectId: "" });
+  const [taskBaseline, setTaskBaseline] = useState("");
+  const createOperation = usePreparationOperation();
+  const taskOperation = usePreparationOperation();
   const [planningError, setPlanningError] = useState("");
   const dateBounds = getTrialPlanningDateBounds(access);
   const canPlanDate = (date: string) => isTrialPlanningDateAllowed(access, date);
@@ -73,6 +80,7 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
         targetDate: "",
         targetMonth: "",
         priority: "medium",
+        progressType: "tasks",
       });
       navigate(location.pathname, { replace: true, state: null });
     });
@@ -83,41 +91,64 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
     return !areaFilter || goal.lifeAreaId === areaFilter;
   }), [snapshot.goals, filter, areaFilter]);
 
-  const closeCreate = () => {
+  const discardCreate = () => {
     setOpen(false);
     setSuccessGoalId(null);
     setDateMode("flexible");
     setAdvancedOpen(false);
     setMilestones([{ id: crypto.randomUUID(), title: "" }, { id: crypto.randomUUID(), title: "" }]);
-    form.reset({ title: "", reason: "", targetDate: "", targetMonth: "", lifeAreaId: "", priority: "medium" });
+    form.reset({ title: "", reason: "", targetDate: "", targetMonth: "", lifeAreaId: "", priority: "medium", progressType: "tasks" });
   };
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    const normalized: GoalFormInput = {
-      ...values,
-      targetDate: dateMode === "date" ? values.targetDate : "",
-      targetMonth: dateMode === "month" ? values.targetMonth : "",
-      progressType: advancedOpen ? values.progressType : undefined,
-    };
-    const next = await planner.createGoal(normalized, milestones.map((item) => item.title));
-    setSuccessGoalId(next.goals.at(-1)?.id ?? null);
+  const saveGoal = async (): Promise<boolean> => {
+    let saved = false;
+    await form.handleSubmit(async (values) => {
+      const normalized: GoalFormInput = {
+        ...values,
+        targetDate: dateMode === "date" ? values.targetDate : "",
+        targetMonth: dateMode === "month" ? values.targetMonth : "",
+        progressType: advancedOpen ? values.progressType : undefined,
+      };
+      saved = await createOperation.run(async () => {
+        const next = await planner.createGoal(normalized, milestones.map((item) => item.title));
+        const goalId = next.goals.at(-1)?.id;
+        if (!goalId) throw new Error("Goal was not persisted");
+        setSuccessGoalId(goalId);
+      });
+      if (saved) createGuard.markSaved();
+    })();
+    return saved;
+  };
+  const createGuard = useUnsavedDraft({
+    dirty: open && !successGoalId && (form.formState.isDirty || dateMode !== "flexible" || milestones.length !== 2 || milestones.some((item) => Boolean(item.title))),
+    saving: open && createOperation.busy,
+    onSave: saveGoal,
+    onDiscard: discardCreate,
   });
+  const closeCreate = () => createGuard.request(discardCreate);
+  const onSubmit = (event: FormEvent) => { event.preventDefault(); void saveGoal(); };
 
   const openTaskEditor = (task: Task) => {
     if (task.date && !canPlanDate(task.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     setPlanningError("");
     setEditingTaskId(task.id);
-    setTaskEdit({ title: task.title, date: task.date ?? "", projectId: task.projectId ?? "" });
+    const value = { title: task.title, date: task.date ?? "", projectId: task.projectId ?? "" };
+    setTaskEdit(value);
+    setTaskBaseline(JSON.stringify(value));
   };
 
-  const saveTaskEdit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingTaskId || !taskEdit.title.trim()) return;
-    if (taskEdit.date && !canPlanDate(taskEdit.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
+  const saveTaskEdit = async (): Promise<boolean> => {
+    if (!editingTaskId || taskEdit.title.trim().length < 2) return false;
+    if (taskEdit.date && !canPlanDate(taskEdit.date)) { setPlanningError(TRIAL_PLANNING_LIMIT_MESSAGE); return false; }
     setPlanningError("");
-    await planner.updateTask(editingTaskId, { ...taskEdit, goalId: selectedGoalId ?? "" });
+    if (!await taskOperation.run(() => planner.updateTask(editingTaskId, { ...taskEdit, goalId: selectedGoalId ?? "" }))) return false;
+    taskGuard.markSaved();
     setEditingTaskId(null);
+    return true;
   };
+  const discardTask = () => { setEditingTaskId(null); setTaskEdit({ title: "", date: "", projectId: "" }); };
+  const taskGuard = useUnsavedDraft({ dirty: Boolean(editingTaskId && JSON.stringify(taskEdit) !== taskBaseline), saving: Boolean(editingTaskId && taskOperation.busy), onSave: saveTaskEdit, onDiscard: discardTask });
+  const closeTask = () => taskGuard.request(discardTask);
 
   if (selectedGoal) {
     const area = snapshot.lifeAreas.find((item) => item.id === selectedGoal.lifeAreaId);
@@ -127,7 +158,7 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
     const next = linkedTasks.find((task) => task.status !== "completed" && task.status !== "cancelled");
     return <div className="page-stack goal-detail-page">
       <SectionNavigation section="plan" />
-      <button className="back-link" onClick={() => setSelectedGoalId(null)}><ArrowLeft size={16} /> Volver a metas</button>
+      <button className="back-link" onClick={() => taskGuard.request(() => setSelectedGoalId(null))}><ArrowLeft size={16} /> Volver a metas</button>
       <header className="goal-detail-hero"><span className="goal-detail-icon"><Target size={29} /></span><div><Badge tone="rose">{area ? <span data-no-translate="true" translate="no">{area.name}</span> : "Personal"}</Badge><h1 data-no-translate="true" translate="no">{selectedGoal.title}</h1><p><CalendarDays size={15} /> {selectedGoal.targetDate ? `Fecha objetivo: ${selectedGoal.targetDate}` : selectedGoal.targetMonth ? `Mes deseado: ${selectedGoal.targetMonth}` : "Ritmo flexible"} · En progreso</p></div><div className="goal-detail-progress"><strong>{progress}%</strong><span>completado</span><ProgressBar value={progress} label="Progreso de la meta" /></div></header>
       <div className="goal-status-actions"><Badge tone="neutral">{selectedGoal.progressType === "numeric" ? "Progreso numérico" : selectedGoal.progressType === "tasks" ? "Por tareas" : selectedGoal.progressType === "manual" ? "Progreso manual" : "Por hitos"}</Badge><Button variant="secondary" onClick={() => planner.updateGoalStatus(selectedGoal.id, selectedGoal.status === "paused" ? "active" : "paused")}>{selectedGoal.status === "paused" ? "Reanudar" : "Pausar"}</Button><Button variant="ghost" onClick={() => planner.updateGoalStatus(selectedGoal.id, "completed")}>Marcar completa</Button></div>
       <Card className="goal-why"><p className="eyebrow">Por qué importa</p><p data-no-translate="true" translate="no">{selectedGoal.reason}</p></Card>
@@ -146,13 +177,16 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
         <Card><p className="eyebrow">Periodo</p><h2>{selectedGoal.createdAt.slice(0, 10)}</h2><p>Inicio</p><hr /><strong>{selectedGoal.targetDate ?? selectedGoal.targetMonth ?? "Flexible"}</strong><p>Objetivo</p></Card>
       </div>
       <Card className="goal-timeline"><div className="goal-timeline__line"><span /><i style={{ "--position": `${progress}%` } as CSSProperties} /></div><div><span>Inicio</span><span>Primer paso</span><span>Mitad</span><span>Meta cumplida</span></div></Card>
-      <Modal open={Boolean(editingTaskId)} title="Editar acción vinculada" description="El cambio se reflejará en Meta, Mes, Semana y Mi día sin crear otra tarea." onClose={() => setEditingTaskId(null)}>
-        <form className="form-grid" onSubmit={saveTaskEdit}>
-          <label className="form-field form-field--full"><span>Acción</span><input autoFocus required value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} /></label>
+      <Modal open={Boolean(editingTaskId)} title="Editar acción vinculada" description="El cambio se reflejará en Meta, Mes, Semana y Mi día sin crear otra tarea." onClose={closeTask} inertBackground>
+        <form className="form-grid" onSubmit={(event) => { event.preventDefault(); void saveTaskEdit(); }}>
+          <fieldset disabled={taskOperation.busy} aria-busy={taskOperation.busy} style={{ display: "contents" }}>
+          <label className="form-field form-field--full"><span>Acción</span><input autoFocus required minLength={2} value={taskEdit.title} onChange={(event) => setTaskEdit({ ...taskEdit, title: event.target.value })} /></label>
           <label className="form-field"><span>Fecha</span><input type="date" min={dateBounds?.min} max={dateBounds?.max} value={taskEdit.date} onChange={(event) => { setPlanningError(""); setTaskEdit({ ...taskEdit, date: event.target.value }); }} /></label>
           <label className="form-field"><span>Proyecto</span><select value={taskEdit.projectId} onChange={(event) => setTaskEdit({ ...taskEdit, projectId: event.target.value })}><option value="">Sin proyecto</option>{snapshot.projects.filter((project) => project.status === "active").map((project) => <option key={project.id} value={project.id} data-no-translate="true" translate="no">{project.name}</option>)}</select></label>
           {planningError && <div className="inline-message form-field--full" role="alert">{planningError}</div>}
-          <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={() => setEditingTaskId(null)}>Cancelar</Button><Button type="submit">Guardar cambios</Button></div>
+          {taskOperation.error && <p className="form-field--full" role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}
+          <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={closeTask} disabled={taskOperation.busy}>Cancelar</Button><Button type="submit" disabled={taskOperation.busy}>Guardar cambios</Button></div>
+          </fieldset>
         </form>
       </Modal>
     </div>;
@@ -173,8 +207,9 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
       return <Card className="goal-card" key={goal.id}><div className="goal-card__top"><span className="goal-card__icon"><Target size={20} /></span><div className="goal-card__badges"><Badge tone="neutral">{area ? <span data-no-translate="true" translate="no">{area.name}</span> : "Personal"}</Badge>{goal.priority === "high" && <Badge tone="rose">Prioridad</Badge>}</div><button className="icon-button" onClick={() => planner.updateGoalStatus(goal.id, (goal.status === "paused" ? "active" : "paused") as EntityStatus)}><Pause size={17} /><span className="sr-only">{goal.status === "paused" ? "Reanudar " : "Pausar "}<span data-no-translate="true" translate="no">{goal.title}</span></span></button></div><h2 data-no-translate="true" translate="no">{goal.title}</h2>{total ? <p>{completed} de {total} hitos completados</p> : <p data-no-translate="true" translate="no">{goal.reason}</p>}<div className="goal-card__progress"><ProgressBar value={progress} label="Progreso de la meta" /><span className="metric-serif">{progress}%</span></div><div className="goal-card__footer"><span><CalendarDays size={13} /> {goal.targetDate ?? goal.targetMonth ?? "Flexible"}</span><Button variant="ghost" onClick={() => setSelectedGoalId(goal.id)}>Ver mi camino</Button></div></Card>;
     })}</div> : <EmptyState title="Todavía no hay metas aquí" text="Una meta describe un resultado que importa, no solo una actividad." action={<Button onClick={() => setOpen(true)}>Crear mi primera meta</Button>} />}
 
-    <Modal open={open} title={successGoalId ? "Meta creada" : "Crear una meta"} description={successGoalId ? "Ya sabes adónde quieres llegar. Ahora hagámoslo manejable." : "Empieza por el resultado y su razón. Los detalles técnicos pueden esperar."} onClose={closeCreate}>
+    <Modal open={open} title={successGoalId ? "Meta creada" : "Crear una meta"} description={successGoalId ? "Ya sabes adónde quieres llegar. Ahora hagámoslo manejable." : "Empieza por el resultado y su razón. Los detalles técnicos pueden esperar."} onClose={closeCreate} inertBackground>
       {successGoalId ? <div className="goal-success goal-success--compact"><span><Check size={20} /></span><h2>¿Qué significaría avanzar este mes?</h2><p>Convierte la meta en una prioridad mensual y después elige qué podrías avanzar esta semana.</p><div className="goal-cascade-path" aria-label="Camino desde la meta hasta Mi día"><strong>Meta <Check size={14} /></strong><ArrowRight size={15} /><span>Mes</span><ArrowRight size={15} /><span>Semana</span><ArrowRight size={15} /><span>Mi día</span></div><Link className="button button--primary" to={`/app/planning?view=year&create=month&goal=${successGoalId}`} onClick={closeCreate}>Planificar esta meta <ArrowRight size={16} /></Link><Button variant="ghost" onClick={closeCreate}>Ahora no</Button></div> : <form className="form-grid goal-create-form" onSubmit={onSubmit}>
+        <fieldset disabled={createOperation.busy} aria-busy={createOperation.busy} style={{ display: "contents" }}>
         <label className="form-field form-field--full"><span>¿Qué quieres lograr?</span><input placeholder="Ej. Completar 21K" {...form.register("title")} />{form.formState.errors.title && <small className="form-error">{form.formState.errors.title.message}</small>}</label>
         <label className="form-field form-field--full"><span>¿Por qué importa para ti?</span><textarea rows={3} placeholder="Conecta con una razón propia…" {...form.register("reason")} />{form.formState.errors.reason && <small className="form-error">{form.formState.errors.reason.message}</small>}</label>
         <label className="form-field form-field--full"><span>¿A qué área pertenece?</span><select {...form.register("lifeAreaId")}><option value="">Sin área por ahora</option>{snapshot.lifeAreas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id} data-no-translate="true" translate="no">{area.name}</option>)}</select></label>
@@ -183,7 +218,9 @@ export function GoalsPage({ planner, access }: { planner: PlannerController; acc
         <button type="button" className="goal-method-summary form-field--full" onClick={toggleProgressSettings} aria-expanded={advancedOpen}><span><p className="eyebrow">Cómo mediremos el avance</p><strong>{selectedMethod}</strong><small>Selección editable</small></span><b>{advancedOpen ? "Ocultar opciones" : "Cambiar método"} <ArrowRight size={15} /></b></button>
         {advancedOpen && <><label className="form-field"><span>Método</span><select {...form.register("progressType")}><option value="milestones">Hitos</option><option value="numeric">Valor numérico</option><option value="tasks">Tareas vinculadas</option><option value="manual">Avance manual</option></select></label><label className="form-field"><span>Prioridad</span><select {...form.register("priority")}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option></select></label>{progressType === "numeric" && <><label className="form-field"><span>Valor objetivo</span><input type="number" min="1" {...form.register("targetValue", { valueAsNumber: true })} /></label><label className="form-field"><span>Unidad</span><input placeholder="km, COP, páginas" {...form.register("unit")} /></label></>}</>}
         {progressType === "milestones" && advancedOpen && <fieldset className="form-field form-field--full milestone-inputs"><legend>Hitos clave</legend>{milestones.map((milestone, index) => <label key={milestone.id}><Flag size={15} /><input value={milestone.title} onChange={(event) => setMilestones((current) => current.map((item) => item.id === milestone.id ? { ...item, title: event.target.value } : item))} placeholder={`Hito ${index + 1}`} /><button type="button" aria-label={`Eliminar hito ${index + 1}`} onClick={() => setMilestones((current) => current.filter((item) => item.id !== milestone.id))}><Trash2 size={15} /></button></label>)}<Button type="button" variant="secondary" onClick={() => setMilestones((current) => [...current, { id: crypto.randomUUID(), title: "" }])}><Plus size={15} /> Añadir hito</Button></fieldset>}
-        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={closeCreate}>Cancelar</Button><Button type="submit">Crear meta</Button></div>
+        {createOperation.error && <p className="form-field--full" role="alert" data-i18n-explicit="true">{m("preparation.error")}</p>}
+        <div className="modal__actions form-field--full"><Button type="button" variant="ghost" onClick={closeCreate} disabled={createOperation.busy}>Cancelar</Button><Button type="submit" disabled={createOperation.busy}>Crear meta</Button></div>
+        </fieldset>
       </form>}
     </Modal>
   </div>;

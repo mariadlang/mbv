@@ -6,6 +6,9 @@ import { Check, ChevronDown, Eye, RotateCcw, Save, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import { Button } from "@/src/components/ui/Primitives";
+import { lockModalScroll } from "@/src/components/ui/Modal";
+import { useUnsavedDraft } from "@/src/components/navigation/UnsavedDraftProvider";
+import { useI18n } from "@/src/i18n/I18nProvider";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, TRIAL_PLANNING_LIMIT_MESSAGE, type UserAccess } from "@/src/domain/access";
 
 export type QuickCaptureDefaults = {
@@ -47,6 +50,8 @@ export function QuickCaptureDrawer({
   const drawerRef = useRef<HTMLElement>(null);
   const headingId = useId();
   const descriptionId = useId();
+  const { m } = useI18n();
+  const closeRef = useRef(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -62,11 +67,12 @@ export function QuickCaptureDrawer({
       setOptionsOpen(false);
       setError("");
     });
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScroll = lockModalScroll();
     requestAnimationFrame(() => titleRef.current?.focus());
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs[dialogs.length - 1] !== drawerRef.current) return;
+      if (event.key === "Escape") closeRef.current();
       if (event.key !== "Tab" || !drawerRef.current) return;
       const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])"));
       if (!focusable.length) return;
@@ -78,17 +84,19 @@ export function QuickCaptureDrawer({
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       window.removeEventListener("keydown", closeOnEscape);
-      document.body.style.overflow = previousOverflow;
+      releaseScroll();
       previousActiveElement?.focus();
     };
-  }, [defaults, onClose, open]);
+  }, [defaults.date, defaults.focusPriority, defaults.goalId, defaults.projectId, open]);
 
-  const save = async (event: FormEvent) => {
-    event.preventDefault();
+  const save = async (event?: FormEvent) => {
+    event?.preventDefault();
     const cleanTitle = title.trim();
     if (!cleanTitle || saving) return;
     if (date && !isTrialPlanningDateAllowed(access, date)) { setError(TRIAL_PLANNING_LIMIT_MESSAGE); return; }
     setSaving(true);
+    setError("");
+    try {
     const existingIds = new Set(planner.snapshot.tasks.map((task) => task.id));
     const next = await planner.createTaskDetailed({
       title: cleanTitle,
@@ -100,11 +108,18 @@ export function QuickCaptureDrawer({
       periodPlanId: defaults.periodPlanId,
     });
     const created = next.tasks.find((task) => !existingIds.has(task.id));
-    setSaving(false);
     if (!created) return;
+    guard.markSaved();
+    setTitle("");
     setFeedback({ id: created.id, title: created.title, destination: created.date ? `Mi día · ${created.date}` : "Bandeja" });
     onClose();
+    return true;
+    } catch { setError(m("draft.error")); return false; }
+    finally { setSaving(false); }
   };
+  const guard = useUnsavedDraft({ dirty: open && (Boolean(title) || date !== (defaults.date || "") || priority !== "medium" || goalId !== (defaults.goalId || "") || projectId !== (defaults.projectId || "") || type !== (defaults.focusPriority ? "priority" : "task") || focusPriority !== String(defaults.focusPriority ?? 1)), saving, onSave: async () => Boolean(await save()), onDiscard: () => { setTitle(""); onClose(); } });
+  const guardedClose = () => guard.request(onClose);
+  useEffect(() => { closeRef.current = guardedClose; });
   const trialDateBounds = getTrialPlanningDateBounds(access);
 
   const undo = async () => {
@@ -115,9 +130,9 @@ export function QuickCaptureDrawer({
 
   return <>
     {open && typeof document !== "undefined" && createPortal(<div className="quick-capture-layer">
-      <button type="button" className="quick-capture-backdrop" aria-label="Cerrar captura rápida" onClick={onClose} />
+      <button type="button" className="quick-capture-backdrop" aria-label="Cerrar captura rápida" onClick={guardedClose} />
       <aside ref={drawerRef} className="quick-capture-drawer" role="dialog" aria-modal="true" aria-labelledby={headingId} aria-describedby={descriptionId}>
-        <header><div><p className="eyebrow">CAPTURA RÁPIDA</p><h2 id={headingId}>¿Qué quieres recordar?</h2><p id={descriptionId}>Escribe primero. Puedes organizarlo ahora o después.</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar"><X size={20} /></button></header>
+        <header><div><p className="eyebrow">CAPTURA RÁPIDA</p><h2 id={headingId}>¿Qué quieres recordar?</h2><p id={descriptionId}>Escribe primero. Puedes organizarlo ahora o después.</p></div><button type="button" className="icon-button" onClick={guardedClose} aria-label="Cerrar"><X size={20} /></button></header>
         <form onSubmit={save}>
           <label className="form-field"><span>Nombre</span><input ref={titleRef} required minLength={2} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Escribe algo para recordarlo…" /></label>
           <button type="button" className="quick-capture-options-toggle" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((current) => !current)}><span>Más opciones</span><ChevronDown size={17} /></button>

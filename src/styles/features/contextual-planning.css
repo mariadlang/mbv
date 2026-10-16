@@ -84,7 +84,7 @@
 .today-wellbeing-checkin { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, .7fr); align-items: stretch; gap: 18px; }
 .today-mood-card { display: grid; gap: 23px; overflow: hidden; border-color: color-mix(in srgb, var(--color-brand) 12%, var(--color-border)); border-radius: 28px; background: linear-gradient(145deg, color-mix(in srgb, var(--color-surface-elevated) 97%, var(--color-brand-soft)), var(--color-surface-elevated)); padding: 28px 34px 24px; box-shadow: 0 18px 45px rgba(98, 70, 61, .09); }
 .today-mood-card__header { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.today-mood-card__header h2 { margin: 0; font-family: var(--font-family-primary); font-size: var(--type-highlight-size); font-weight: var(--font-weight-emphasis); letter-spacing: var(--letter-spacing-tight); }
+.today-mood-card__header h2 { margin: 0; font-family: var(--font-family-heading); font-size: var(--type-highlight-size); font-weight: var(--font-weight-emphasis); letter-spacing: var(--letter-spacing-tight); }
 .today-mood-card__header > span { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: var(--text-xs); }
 .today-mood-card__header > span svg { color: var(--color-brand-strong); }
 .today-mood-section h3, .today-mood-energy legend { margin: 0; color: var(--color-text-primary); font-size: 1.13rem; font-weight: 650; }

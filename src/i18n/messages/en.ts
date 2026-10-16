@@ -1,11 +1,24 @@
 import type { esMessages } from "@/src/i18n/messages/es";
 import { enHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
+import { enHomeOverviewMessages } from "./features/home-overview";
 import { enNavigationSpaceProgressMessages } from "@/src/i18n/messages/features/navigation-space-progress";
 import { enPlanningMessages } from "@/src/i18n/messages/features/planning";
 import { enCalendarMessages } from "@/src/i18n/messages/features/calendar";
 import { enSharingMessages } from "@/src/i18n/messages/features/sharing";
 
+import { enPreparationMessages } from "./features/preparation";
+import { enDraftMessages } from "./features/draft";
+import { enEditorialDayMessages } from "./features/editorialDay";
+import { enMonthlyPriorityStepsMessages } from "./features/monthly-priority-steps";
+import { enHealthLibraryMessages } from "./features/health-library";
+
 export const enMessages = {
+  ...enHomeOverviewMessages,
+  ...enDraftMessages,
+  ...enEditorialDayMessages,
+  ...enMonthlyPriorityStepsMessages,
+  ...enHealthLibraryMessages,
+  ...enPreparationMessages,
   "language.selector.label": "Language",
   "language.spanish": "Spanish",
   "language.beta": "Beta",

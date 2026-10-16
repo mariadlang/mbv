@@ -42,3 +42,6 @@ P1 resolvió esa inconsistencia usando sólo Nunito Sans. El 2026-09-16 la nueva
 - [Excepciones y baseline de tokens](../design-system/token-exceptions.md)
 - `src/styles/tokens.css`
 - `app/globals.css`
+# Sustitución expresa 2026-10-13
+
+La decisión de la usuaria establece Playfair Display para títulos e Inter para UI global, sin cambios por breakpoint. Véase `../brand/approved-kit-system.md`. El contenido histórico siguiente no es la norma vigente.

@@ -97,7 +97,6 @@
 @media (max-width: 900px) {
   .topbar { min-height: 66px; }
   .topbar__mobile-brand { min-width: 44px; min-height: 44px; }
-  .topbar__mobile-brand .brand-mark__icon { display: none; }
   .page-content { padding-inline: clamp(16px, 4vw, 28px); }
   .mobile-nav { inset: auto 10px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent); }
 }

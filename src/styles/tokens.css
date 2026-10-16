@@ -5,23 +5,24 @@
 :root {
   color-scheme: light;
 
-  /* Level 1: approved brand values */
+  /* Kit primitives. Soft rose remains temporary: the kit prints an incomplete code.
+     Deep rose, taupe, sage and semantic states are accessible technical adaptations. */
   --brand-rose-soft: #fbeaec;
   --brand-rose: #e8a7af;
   --brand-rose-deep: #a95568;
   --brand-sand: #e6d3b8;
   --brand-lavender: #b8b1c9;
-  --brand-ivory: #f7f4ef;
+  --brand-ivory: #fff6f2;
   --brand-white: #ffffff;
-  --brand-charcoal: #292724;
+  --brand-charcoal: #2f2f33;
   --brand-taupe: #6f6964;
   --brand-sage: #7d9179;
 
-  /* Official public-site palette. Scoped consumers keep these separate from product UI semantics. */
+  /* Historical public blush retained; it does not resolve the kit typo. */
   --landing-blush: #f6cccc;
   --landing-rose-dark: #a94555;
-  --landing-ivory: #fff6f2;
-  --landing-ink: #2f2f33;
+  --landing-ivory: var(--brand-ivory);
+  --landing-ink: var(--brand-charcoal);
   --landing-success: #53765e;
   --landing-warning: #9a651f;
   --landing-error: #b13d4c;
@@ -69,14 +70,16 @@
   --paper: var(--color-surface);
   --warm-line: var(--color-border);
 
-  /* Typography foundations: Nunito Sans is the only product family. */
-  --font-family-primary: var(--font-nunito-sans), "Segoe UI", Arial, sans-serif;
+  /* Approved kit typography: Inter UI; Playfair headings. Brand lettering stays sans. */
+  --font-family-primary: var(--font-inter), "Segoe UI", Arial, sans-serif;
+  --font-family-heading: var(--font-playfair), Georgia, serif;
+  --font-family-brand: var(--font-family-primary);
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
-  --font-weight-emphasis: 650;
-  --font-weight-bold: 700;
-  --font-weight-heavy: 750;
+  --font-weight-emphasis: 600;
+  --font-weight-bold: 600;
+  --font-weight-heavy: 600;
   --line-height-tight: 1.05;
   --line-height-display-compact: 1.08;
   --line-height-heading: 1.2;

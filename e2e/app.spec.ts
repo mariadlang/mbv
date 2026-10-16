@@ -1,4 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+// Public UI regression uses an isolated campaign; the dedicated launch suite
+// verifies open, closed, unavailable and submission states separately.
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/launch-access/public-state", (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ status: "open" }),
+  }));
+});
 
 const p1Viewports = [
   { width: 320, height: 568 },
@@ -41,6 +50,8 @@ async function dismissCookieBanner(page: Page) {
 
 async function dismissLandingEntryPrompts(page: Page) {
   const dialog = page.locator(".landing-launch-modal");
+  const alreadySeen = await page.evaluate(() => Boolean(localStorage.getItem("mbv:launch-waitlist:v1:seen")));
+  if (alreadySeen && !await dialog.isVisible()) await page.locator(".landing-launch-invitation button").click();
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.locator(".modal__header .icon-button").click();
   await expect(dialog).toBeHidden();
@@ -122,7 +133,7 @@ async function completeOnboarding(page: Page, name = "María", startChoice: RegE
   await expect(page.getByRole("heading", { name: /Todo listo/ })).toBeVisible();
   await page.getByRole("button", { name: /Ver mi primera acción/ }).click();
   await expect(page).toHaveURL(/\/app\/today/);
-  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
+  await expect(page.locator(".day-timeline-list").getByText("Escribir mi primer paso", { exact: true })).toBeVisible();
   if (name !== "María") {
     await page.goto("/app/settings");
     await page.getByLabel("Nombre del perfil").fill(name);
@@ -131,7 +142,34 @@ async function completeOnboarding(page: Page, name = "María", startChoice: RegE
   }
   if (stayAtDestination) return;
   await page.goto("/app/dashboard");
-  await expect(page.getByRole("heading", { name: new RegExp(`Buenos días, ${name}`) })).toBeVisible();
+  await expect(page.locator(".home-overview")).toBeVisible();
+  await expect(page.locator(".topbar__profile")).toContainText(name);
+}
+
+async function openExistingPlans(page: Page) {
+  await page.goto("/app/planning?view=annual");
+  await expect(page.locator(".prep-year .prep-month-grid > button")).toHaveCount(12);
+}
+
+async function openSpaceFromNavigation(page: Page) {
+  const sidebarLink = page.locator('.sidebar__space-shortcuts a[href="/app/life-hub"]');
+  if (await sidebarLink.isVisible()) {
+    await sidebarLink.click();
+  } else {
+    await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
+    await page.locator(".mobile-drawer").getByRole("link", { name: "Mi espacio", exact: true }).click();
+  }
+  await expect(page).toHaveURL(/\/app\/life-hub$/);
+}
+
+async function showTodayHabits(page: Page) {
+  await expect(page.getByRole("heading", { level: 1, name: "Hoy", exact: true })).toBeVisible();
+  const tabs = page.locator(".editorial-today-mobile-tabs");
+  if (await tabs.isVisible()) {
+    const habitsTab = tabs.getByRole("tab", { name: "Hábitos", exact: true });
+    await habitsTab.click();
+    await expect(habitsTab).toHaveAttribute("aria-selected", "true");
+  }
 }
 
 async function authorizeFitnessIfNeeded(page: Page) {
@@ -141,10 +179,11 @@ async function authorizeFitnessIfNeeded(page: Page) {
 
 test("onboarding creates a real first action and activation journey", async ({ page }) => {
   await completeOnboarding(page);
-  await expect(page.getByRole("heading", { name: "Construyamos solo lo necesario" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Preparación semanal" })).toBeVisible();
+  await expect(page.locator(".home-ready-count")).toHaveText("0 de 5 preparados");
   await expect(page.getByText("Completar 21K")).toHaveCount(0);
-  await page.getByRole("link", { name: "Ir a Mi día" }).click();
-  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
+  await page.locator(test.info().project.name === "mobile" ? ".mobile-nav" : ".sidebar__nav").getByRole("link", { name: test.info().project.name === "mobile" ? "Hoy" : "Mi día", exact: true }).click();
+  await expect(page.locator(".day-timeline-list").getByText("Escribir mi primer paso", { exact: true })).toBeVisible();
   await page.goto("/app/habits");
   await expect(page.getByRole("heading", { name: "Hábitos", exact: true })).toBeVisible();
 });
@@ -184,10 +223,11 @@ test("a returning account opens its existing space without repeating onboarding"
   await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
 
   await expect(page).toHaveURL(/\/app\/dashboard/);
-  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
+  await expect(page.locator(".home-overview")).toBeVisible();
+  await expect(page.locator(".topbar__profile")).toContainText("María");
   await expect(page.getByRole("button", { name: /Crear mi espacio/ })).toHaveCount(0);
   await page.goto("/app/today");
-  await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
+  await expect(page.locator(".day-timeline-list").getByText("Escribir mi primer paso", { exact: true })).toBeVisible();
 });
 
 test("Mi plan explains subscription cancellation before any provider request", async ({ page }) => {
@@ -222,12 +262,13 @@ test("each onboarding starting point creates a first action in Mi día", async (
     const page = await context.newPage();
     await completeOnboarding(page, "María", choice, true);
     await expect(page).toHaveURL(/\/app\/today/);
-    await expect(page.getByText("Escribir mi primer paso").first()).toBeVisible();
+    await expect(page.locator(".day-timeline-list").getByText("Escribir mi primer paso", { exact: true })).toBeVisible();
     await context.close();
   }
 });
 
 test("creates and completes a task, then creates and records a habit", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-02T15:00:00-05:00"));
   await completeOnboarding(page);
 
   await page.goto("/app/tasks");
@@ -266,8 +307,11 @@ test("creates and completes a task, then creates and records a habit", async ({ 
   await expect(page.locator(".habit-not-scheduled").first()).toHaveAccessibleName("No programado");
 });
 
-test("habits dashboard records measured progress, edits habits and updates one wellbeing log", async ({ page }) => {
+for (const trackingStart of ["2026-10-05", "2026-10-07"]) {
+test(`habits dashboard records measured progress, edits habits and updates one wellbeing log (${trackingStart})`, async ({ page }) => {
   test.setTimeout(90_000);
+  // Exercise both Monday (no earlier days) and Wednesday (two untracked days).
+  await page.clock.setFixedTime(new Date(`${trackingStart}T12:00:00`));
   await page.setViewportSize(test.info().project.name === "mobile" ? { width: 390, height: 844 } : { width: 1440, height: 900 });
   await completeOnboarding(page);
   await page.goto("/app/habits");
@@ -287,7 +331,10 @@ test("habits dashboard records measured progress, edits habits and updates one w
   const habitRow = page.locator(".habit-today-row").filter({ hasText: "Beber agua con calma" });
   await expect(habitRow).toBeVisible();
   const weeklyHabitRow = page.locator(".habit-week-table tbody tr").filter({ hasText: "Beber agua con calma" });
-  await expect(weeklyHabitRow.locator(".habit-not-tracking").first()).toHaveAccessibleName("Sin seguimiento");
+  const untracked = weeklyHabitRow.locator(".habit-not-tracking");
+  await expect(untracked).toHaveCount(trackingStart === "2026-10-05" ? 0 : 2);
+  for (const cell of await untracked.all()) await expect(cell).toHaveAccessibleName("Sin seguimiento");
+  await expect(weeklyHabitRow.locator("td.is-today .habit-not-tracking")).toHaveCount(0);
   await habitRow.getByRole("button", { name: "Registrar" }).click();
   let progressDialog = page.getByRole("dialog", { name: "Registrar Beber agua con calma" });
   await progressDialog.getByLabel("Progreso (vasos)").fill("4");
@@ -295,6 +342,7 @@ test("habits dashboard records measured progress, edits habits and updates one w
   await expect(habitRow.getByText("4/10 vasos")).toBeVisible();
 
   await page.goto("/app/today");
+  await showTodayHabits(page);
   const todayHabit = page.locator(".today-habit-row").filter({ hasText: "Beber agua con calma" });
   await expect(todayHabit).toContainText("4/10 vasos");
   await todayHabit.getByRole("button", { name: /Editar progreso de Beber agua con calma: 4\/10 vasos/ }).click();
@@ -357,6 +405,7 @@ test("habits dashboard records measured progress, edits habits and updates one w
   });
   expect(todayMoodCount).toBe(1);
 });
+}
 
 test("projects come before tasks and detailed task fields stay progressive", async ({ page }) => {
   test.setTimeout(60_000);
@@ -401,10 +450,12 @@ test("projects come before tasks and detailed task fields stay progressive", asy
 });
 
 test("custom Dream Life cards reuse and can change Wheel of Life areas", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize(test.info().project.name === "mobile" ? { width: 390, height: 844 } : { width: 1440, height: 900 });
   await completeOnboarding(page);
   await page.goto("/app/vision");
 
+  await page.locator(".vision-card:not(.vision-card--create)").first().click();
   await expect(page.locator(".vision-score-state")).toHaveText("Sin evaluar");
   await page.getByLabel("Visión del área").fill("Quiero cuidar mi energía con calma.");
   await page.getByRole("button", { name: "Guardar mi visión" }).click();
@@ -416,11 +467,14 @@ test("custom Dream Life cards reuse and can change Wheel of Life areas", async (
   await page.getByRole("button", { name: "Confirmar mi valoración" }).click();
   await expect(page.locator(".vision-score-state")).toHaveText("Valoración confirmada");
   await page.reload();
+  await page.locator(".vision-card:not(.vision-card--create)").first().click();
   await expect(page.locator(".vision-score-state")).toHaveText("Valoración confirmada");
   await page.getByRole("button", { name: "Rueda de vida" }).click();
   await expect(page.getByText(/1 de \d+ áreas evaluadas/)).toBeVisible();
   await page.getByRole("button", { name: "Vida soñada" }).click();
 
+  const backToAreas = page.getByRole("button", { name: "Volver a mis áreas", exact: true });
+  if (await backToAreas.isVisible()) await backToAreas.click();
   await page.getByRole("button", { name: /Crear una tarjeta personalizada/ }).click();
   const dialog = page.getByRole("dialog", { name: "Crear tarjeta personalizada" });
   await dialog.getByLabel("Nombre").fill("Mi proyecto de escritura");
@@ -428,9 +482,12 @@ test("custom Dream Life cards reuse and can change Wheel of Life areas", async (
   await dialog.getByRole("button", { name: "Guardar tarjeta" }).click();
   await expect(page.getByText(/conectada con Salud y bienestar/)).toBeVisible();
   await page.getByRole("button", { name: "Ahora no" }).click();
+  await page.locator(".vision-card").filter({ hasText: "Mi proyecto de escritura" }).click();
   await page.getByLabel("Área de vida").selectOption({ label: "Carrera profesional o trabajo" });
   await page.getByRole("button", { name: "Guardar mi visión" }).click();
-  await expect(page.getByRole("button", { name: /Carrera profesional o trabajo.*mi proyecto de escritura/i })).toBeVisible();
+  await page.reload();
+  await page.locator(".vision-card").filter({ hasText: "Mi proyecto de escritura" }).click();
+  await expect(page.getByLabel("Área de vida").locator("option:checked")).toHaveText("Carrera profesional o trabajo");
 });
 
 test("creates a goal with manual progress and writes a journal entry", async ({ page }) => {
@@ -488,24 +545,19 @@ test("cascade planning and optional life modules persist locally", async ({ page
   test.setTimeout(60_000);
   await completeOnboarding(page);
   await page.goto("/app/planning");
-  await expect(page.getByRole("heading", { name: "Planificación" })).toBeVisible();
-  await expect(page.locator(".created-month-card")).toHaveCount(12);
-  await expect(page.getByText("Organiza tu año, mes a mes.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tu mapa de 12 meses" })).toBeVisible();
+  await expect(page.locator(".prep-month-grid > button")).toHaveCount(12);
+  await expect(page.getByRole("heading", { name: "Mis 12 meses", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Agregar mes/ })).toHaveCount(0);
   await expect(page.getByText("Mes actual", { exact: true })).toHaveCount(1);
   const nextYear = new Date().getFullYear() + 1;
   await page.getByLabel("Año").selectOption(String(nextYear));
-  await expect(page.locator(".created-month-card")).toHaveCount(12);
+  await expect(page.locator(".prep-month-grid > button")).toHaveCount(12);
   await expect(page.getByText("Mes actual", { exact: true })).toHaveCount(0);
   await page.getByLabel("Año").selectOption(String(new Date().getFullYear()));
-  await page.getByRole("button", { name: "Definir visión" }).click();
-  const longTermDialog = page.getByRole("dialog", { name: "Mi vida en 5 años" });
-  await longTermDialog.getByLabel("¿Cómo se ve y se siente esa vida?").fill("Vivo con energía, estabilidad y tiempo para las personas que amo.");
-  await longTermDialog.getByPlaceholder("Prioridad 1").fill("Cuidar mi bienestar");
-  await longTermDialog.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByText("Vivo con energía, estabilidad y tiempo para las personas que amo.")).toBeVisible();
-
-  await page.getByRole("button", { name: /Añadir plan para/ }).first().click();
+  await openExistingPlans(page);
+  await expect(page.locator(".prep-year-areas, .prep-legacy-plans")).toHaveCount(0);
+  await page.locator(".prep-year .prep-month-grid > button").first().click();
   const monthDialog = page.getByRole("dialog", { name: /Planificar/ });
   await monthDialog.getByLabel("Resultado concreto del mes").fill("Construir una base serena y sostenible");
   await monthDialog.getByLabel("Acción 1", { exact: true }).fill("Definir el alcance de la primera versión");
@@ -515,8 +567,8 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("heading", { name: "Construir una base serena y sostenible" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Construir una base serena y sostenible" })).toBeVisible();
-  await expect(page.locator(".created-month-card")).toHaveCount(12);
-  await page.getByRole("button", { name: "Ver mes", exact: true }).click();
+  await expect(page.locator(".prep-year .prep-month-grid > button")).toHaveCount(12);
+  await page.locator(".prep-year .prep-month-grid > button").first().click();
   await expect(page.getByRole("heading", { name: "Lo que importa en este mes" })).toBeVisible();
   await page.getByRole("button", { name: "Publicar la primera versión" }).click();
   await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
@@ -559,12 +611,20 @@ test("cascade planning and optional life modules persist locally", async ({ page
 
 test("exports, deletes and restores a validated local backup", async ({ page }) => {
   await completeOnboarding(page, "Valeria");
+  await page.goto("/app/today");
+  await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
   await page.goto("/app/settings");
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Exportar", exact: true }).click();
   const download = await downloadPromise;
   const backupPath = await download.path();
   expect(backupPath).toBeTruthy();
+  const originalBackup = JSON.parse(await readFile(backupPath!, "utf8"));
+  expect(originalBackup.schemaVersion).toBe(3);
+  expect(originalBackup.data.tasks).toEqual(expect.arrayContaining([
+    expect.objectContaining({ title: "Escribir mi primer paso", status: "completed" }),
+  ]));
 
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await page.getByLabel("Confirmación para eliminar todos los datos").fill("ELIMINAR");
@@ -580,16 +640,36 @@ test("exports, deletes and restores a validated local backup", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Ajustes y datos" })).toBeVisible();
   await expect(page.getByLabel("Nombre del perfil")).toHaveValue("Valeria");
   await page.goto("/app/dashboard");
-  await expect(page.getByRole("heading", { name: /Buenos días, Valeria/ })).toBeVisible();
+  await expect(page.locator(".home-overview")).toBeVisible();
+  await expect(page.locator(".topbar__profile")).toContainText("Valeria");
+  await page.goto("/app/today");
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
+  await page.goto("/app/settings");
+  const restoredDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar", exact: true }).click();
+  const restoredDownload = await restoredDownloadPromise;
+  const restoredPath = await restoredDownload.path();
+  expect(restoredPath).toBeTruthy();
+  const restoredBackup = JSON.parse(await readFile(restoredPath!, "utf8"));
+  // Compare all collections (including IDs/links), not just the restored name.
+  // Ordering of records is not part of the backup contract.
+  for (const [key, value] of Object.entries(originalBackup.data)) {
+    if (Array.isArray(value)) {
+      const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
+      expect([...restoredBackup.data[key]].sort(byId), key).toEqual([...value].sort(byId));
+    }
+  }
 });
 
 test("deep links and refresh work in the production runtime", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page);
   const routes = [
-    ["/app", /Buenos días/],
-    ["/app/dashboard", /Buenos días/],
-    ["/app/today", /Buenos días/],
+    ["/app", /Tu semana en orden/],
+    ["/app/dashboard", /Tu semana en orden/],
+    ["/app/today", /^Hoy$/],
     ["/app/tasks", /Proyectos y tareas/],
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
@@ -607,7 +687,7 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
   for (const [route, heading] of routes) {
     await page.goto(route);
     if (route === "/app/health") await authorizeFitnessIfNeeded(page);
-    await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(route === "/app" || route === "/app/dashboard" ? page.locator(".home-overview") : page.getByRole("heading", { name: heading }).first()).toBeVisible({ timeout: 15_000 });
     if (route === "/app/habits") {
       await expect(page.getByText("Mayor continuidad", { exact: true })).toBeVisible();
       await expect(page.getByText("Mejor racha", { exact: true })).toHaveCount(0);
@@ -628,64 +708,56 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
 
 test("information architecture separates overview from daily execution", async ({ page }) => {
   await completeOnboarding(page);
-  const navigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await expect(navigation.getByRole("link")).toHaveCount(5);
-  await expect(navigation).toContainText("Inicio");
-  await expect(navigation).toContainText("Mi día");
-  await expect(navigation).toContainText("Planificar");
-  await expect(navigation).toContainText("Progreso");
-  await expect(navigation).toContainText("Mi espacio");
+  const mobile = test.info().project.name === "mobile";
+  const navigation = page.locator(mobile ? ".mobile-nav" : ".sidebar__nav");
+  const labels = mobile ? ["Inicio", "Mi guía", "Plan", "Hoy", "Más"] : ["Inicio", "Mi guía", "Mi año", "Mi mes", "Mi semana", "Mi día"];
+  await expect(navigation.getByRole("link")).toHaveCount(labels.length);
+  for (const label of labels) await expect(navigation.getByRole("link", { name: label, exact: true })).toBeVisible();
   await expect(navigation).not.toContainText("Bienestar");
   await expect(navigation).not.toContainText("Finanzas");
   await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
-  await expect(page.getByRole("heading", { name: "Lo más importante" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Próximos eventos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Preparación semanal" })).toBeVisible();
+  await expect(page.locator(".home-direction")).toBeVisible();
 
-  if (test.info().project.name === "desktop") {
+  if (!mobile) {
     const shortcuts = page.locator(".sidebar__space-shortcuts");
-    await expect(shortcuts).toContainText("En Mi espacio");
-    const wellbeingLink = shortcuts.getByRole("link", { name: /Bienestar/ });
-    await wellbeingLink.click();
-    await expect(page).toHaveURL(/\/app\/health/);
-    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(wellbeingLink).not.toHaveAttribute("aria-current");
-    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
-
-    const financeLink = shortcuts.getByRole("link", { name: /Finanzas/ });
-    await financeLink.click();
-    await expect(page).toHaveURL(/\/app\/finance/);
-    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(financeLink).not.toHaveAttribute("aria-current");
-    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(shortcuts.getByRole("link")).toHaveCount(5);
+    const nutrition = shortcuts.getByRole("link", { name: /Alimentación/ });
+    await nutrition.click();
+    await expect(page).toHaveURL(new RegExp("/app/health"));
+    await expect(nutrition).toHaveAttribute("aria-current", "page");
+    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(0);
+    await expect(shortcuts.locator('[aria-current="page"]')).toHaveCount(1);
+    await openSpaceFromNavigation(page);
+    await page.getByRole("link", { name: /Finanzas/ }).first().click();
+    await expect(page).toHaveURL(new RegExp("/app/finance"));
   } else {
-    await navigation.getByRole("link", { name: "Mi espacio", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Mi espacio", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Bienestar/ }).first()).toBeVisible();
+    await navigation.getByRole("link", { name: "Más", exact: true }).click();
     await expect(page.getByRole("link", { name: /Finanzas/ }).first()).toBeVisible();
     await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
     const drawer = page.locator(".mobile-drawer");
-    await expect(drawer.getByRole("link", { name: /Bienestar/ })).toBeVisible();
-    await expect(drawer.getByRole("link", { name: /Finanzas/ })).toBeVisible();
-    await drawer.getByRole("link", { name: /Bienestar/ }).click();
-    await expect(page).toHaveURL(/\/app\/health/);
-    await expect(navigation.getByRole("link", { name: "Mi espacio", exact: true })).toHaveAttribute("aria-current", "page");
-    await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(drawer.getByRole("link", { name: "Alimentación", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("link", { name: "Entrenamiento", exact: true })).toBeVisible();
+    await drawer.getByRole("link", { name: "Alimentación", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp("/app/health"));
+    await expect(drawer).toBeHidden();
   }
 
-  await navigation.getByRole("link", { name: "Mi día", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Qué hago ahora" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Tareas" })).toBeVisible();
+  await navigation.getByRole("link", { name: test.info().project.name === "mobile" ? "Hoy" : "Mi día", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Hoy", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Agenda y tareas de hoy", exact: true })).toBeVisible();
+  await expect(page.locator(".timeline-filters").getByRole("tab", { name: "Tareas", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cierre del día" })).toBeVisible();
 });
 
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
-  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await openSpaceFromNavigation(page);
   await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await openSpaceFromNavigation(page);
   await page.getByRole("link", { name: "Diario y notas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
@@ -697,7 +769,7 @@ test("browser history and responsive navigation work in the production runtime",
   await expect(page).toHaveURL(/\/app\/journal$/);
   await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
 
-  await page.getByRole("link", { name: "Mi espacio", exact: true }).click();
+  await openSpaceFromNavigation(page);
   await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 
@@ -707,7 +779,7 @@ test("browser history and responsive navigation work in the production runtime",
   });
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   const primaryNavigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
-  await primaryNavigation.getByRole("link", { name: "Mi día", exact: true }).click();
+  await primaryNavigation.getByRole("link", { name: test.info().project.name === "mobile" ? "Hoy" : "Mi día", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
 
@@ -979,8 +1051,13 @@ test("tasks stay date-only while calendar events support times and all-day mode"
   await expect(taskForm.locator('input[type="time"]')).toHaveCount(0);
 
   await page.goto("/app/planning?view=day");
-  await expect(page.locator(".daily-date-plan").locator('input[type="date"]')).toHaveCount(1);
-  await expect(page.locator(".daily-date-plan").locator('input[type="time"]')).toHaveCount(0);
+  await expect(page.locator(".prep-week-strip > button")).toHaveCount(7);
+  await page.locator(".prep-day").getByRole("button", { name: "Añadir", exact: true }).click();
+  const capture = page.locator(".quick-capture-drawer");
+  await capture.getByRole("button", { name: "Más opciones" }).click();
+  await expect(capture.locator('input[type="date"]')).toHaveCount(1);
+  await expect(capture.locator('input[type="time"]')).toHaveCount(0);
+  await capture.getByRole("button", { name: "Cerrar", exact: true }).click();
 
   await page.goto("/app/life-hub?tab=events");
   const calendarForm = page.locator(".calendar-event-manager form");
@@ -1018,6 +1095,7 @@ test("tasks stay date-only while calendar events support times and all-day mode"
   await habitForm.getByPlaceholder("Nombre de hábito").fill("Estirar con calma");
   await habitForm.getByRole("button", { name: /Guardar en Mi día/ }).click();
   await expect(page.getByText("Estirar con calma", { exact: true })).toHaveCount(1);
+  await showTodayHabits(page);
   await page.getByLabel("Editar Estirar con calma").click();
   await page.locator(".day-inline-composer").getByRole("button", { name: "Todos los días" }).click();
   await page.locator(".day-inline-composer").getByRole("button", { name: /Guardar en Mi día/ }).click();
@@ -1088,7 +1166,11 @@ test("a calendar event stays consistent across Mi espacio, Semana and Mi día", 
   await expect(manager.getByText("Revisión de calendario", { exact: true })).toHaveCount(1);
 
   await page.goto("/app/planning/weekly");
-  await expect(page.getByText("Revisión de calendario", { exact: true })).toHaveCount(2);
+  await expect(page.locator(".weekly-day-groups").getByText("Revisión de calendario", { exact: true })).toHaveCount(2);
+  const weeklyEvents = page.locator(".weekly-editorial-agenda .weekly-event-list").getByText("Revisión de calendario", { exact: true });
+  await expect(weeklyEvents).toHaveCount(2);
+  await expect(weeklyEvents.nth(0)).toBeVisible();
+  await expect(weeklyEvents.nth(1)).toBeVisible();
 
   await page.goto("/app/today");
   await expect(page.getByText("Revisión de calendario", { exact: true })).toBeVisible();
@@ -1204,6 +1286,7 @@ test("weekly plan option B creates, assigns and preserves the same task across M
   await page.goto("/app/today");
   await expect(page.getByText("Pendiente semanal de prueba", { exact: true }).first()).toBeVisible();
   await page.getByLabel("Completar Pendiente semanal de prueba").click();
+  await expect(page.getByLabel("Reabrir Pendiente semanal de prueba", { exact: true })).toBeVisible();
 
   await page.goto("/app/planning/weekly");
   scheduled = page.locator(".weekly-task-row").filter({ hasText: "Pendiente semanal de prueba" });
@@ -1228,7 +1311,9 @@ test("weekly plan option B creates, assigns and preserves the same task across M
   expect(matchingTasks).toHaveLength(1);
 });
 
-test("weekly recap uses evidence only through today and prepares the following week", async ({ page }) => {
+for (const recapDate of ["2026-10-05", "2026-10-07"]) {
+test(`weekly recap uses evidence only through today and prepares the following week (${recapDate})`, async ({ page }) => {
+  await page.clock.setFixedTime(new Date(`${recapDate}T12:00:00`));
   await completeOnboarding(page);
   await page.goto("/app/planning/weekly");
 
@@ -1243,8 +1328,8 @@ test("weekly recap uses evidence only through today and prepares the following w
   await expect(dialog.getByText("Metas con avance", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Hitos completados", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Acciones reprogramadas", { exact: true })).toBeVisible();
-  const reviewedDays = ((new Date().getDay() + 6) % 7) + 1;
-  await expect(dialog.getByText(`Evidencia disponible hasta hoy: ${reviewedDays} días de esta semana.`)).toBeVisible();
+  const reviewedDays = recapDate === "2026-10-05" ? 1 : 3;
+  await expect(dialog.getByText(`Evidencia disponible hasta hoy: ${reviewedDays} ${reviewedDays === 1 ? "día" : "días"} de esta semana.`, { exact: true })).toBeVisible();
 
   await dialog.getByLabel("¿Qué sí avanzó?").fill("Mi primera acción quedó visible.");
   await dialog.getByLabel("¿Qué quieres conservar tal como está?").fill("Una prioridad clara.");
@@ -1258,6 +1343,7 @@ test("weekly recap uses evidence only through today and prepares the following w
   await expect(reviewButton).toBeDisabled();
   await expect(reviewButton).toHaveAttribute("title", "Podrás revisar esta semana cuando haya comenzado.");
 });
+}
 
 test("return experience is detected globally and leaves an open action without deleting it", async ({ page }) => {
   await completeOnboarding(page);
@@ -1267,8 +1353,8 @@ test("return experience is detected globally and leaves an open action without d
     sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
   });
   await page.goto("/app/today");
-  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
-  await page.goto("/app/dashboard");
+  await expect(page.getByRole("heading", { level: 1, name: "Hoy", exact: true })).toBeVisible();
+  await page.goto("/app/today");
 
   const card = page.getByRole("region", { name: "Retoma con una sola decisión" });
   await expect(card).toBeVisible();
@@ -1300,6 +1386,7 @@ test("[P2-A] share cards keep private text out and export every supported format
   await completeOnboarding(page);
   await page.goto("/app/today");
   await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
 
   await page.goto("/app/progress");
   await page.getByRole("button", { name: "Crear tarjeta", exact: true }).click();
@@ -1338,6 +1425,7 @@ test("[P2-A] referrals stay opaque, support copy fallback and record a consented
   await completeOnboarding(page);
   await page.goto("/app/today");
   await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
   await page.goto("/app/progress");
 
   const referral = page.locator(".referral-prompt");
@@ -1420,15 +1508,11 @@ test("[P2-A] referrals stay opaque, support copy fallback and record a consented
 test("[P2-A] Premium appears only at the relevant limitation and never interrupts navigation", async ({ page }) => {
   test.setTimeout(90_000);
   await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
-  await page.goto("/app/planning");
+  await openExistingPlans(page);
 
-  await expect(page.getByRole("heading", { name: "Planificación", exact: true })).toBeVisible();
-  const contextualGate = page.locator(".premium-gate");
-  await expect(contextualGate).toHaveCount(1);
-  await expect(contextualGate.getByRole("heading", { name: "Planificación a 5 años", exact: true })).toBeVisible();
-  await expect(contextualGate).toContainText("Esta capacidad histórica conserva su permiso actual mientras se define su ubicación comercial definitiva.");
-  await expect(contextualGate.getByRole("link", { name: "Desbloquear Premium", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mis prioridades a 3 años", exact: true })).toBeVisible();
+  await expect(page.locator(".prep-year .prep-month-grid > button")).toHaveCount(12);
+  await expect(page.locator(".prep-year .prep-month-grid > button:disabled")).not.toHaveCount(0);
+  await expect(page.locator(".premium-gate, .prep-legacy-plans")).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
   for (const path of ["/app/today", "/app/dashboard"] as const) {
@@ -1445,7 +1529,7 @@ test("[P2-A] Premium appears only at the relevant limitation and never interrupt
   await expect(healthGate).toContainText("Registra comidas, entrenamientos y progreso corporal con Premium.");
   await expect(page.getByRole("heading", { name: "Antes de usar Alimentación y Entrenamiento", exact: true })).toHaveCount(0);
 
-  await page.goto("/app/planning");
+  await page.goto("/app/health");
   await expect(page.locator(".premium-gate")).toHaveCount(1);
   await page.reload();
   await expect(page.locator(".premium-gate")).toHaveCount(1);
@@ -1496,6 +1580,7 @@ test("[P2-QA] growth surfaces reflow in every required viewport and color mode",
   await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
   await page.goto("/app/today");
   await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
 
   for (const locale of locales) {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -1545,14 +1630,14 @@ test("[P2-QA] growth surfaces reflow in every required viewport and color mode",
           localStorage.setItem("mbv-return-experience-v1:e2e-user", JSON.stringify({ lastSeenAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }));
           sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
         });
-        await page.goto("/app/dashboard");
+        await page.goto("/app/today");
         await expect(page.getByRole("region", { name: locale.returnRegion })).toBeVisible();
         await expectNoHorizontalOverflow(page, `P2 return ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
         if (captureP2Screenshots && locale.key === "es" && colorMode === "light" && viewport.width === 430) {
           await page.screenshot({ path: "docs/qa/screenshots/p2-return-430x932-light.png" });
         }
 
-        await page.goto("/app/planning");
+        await page.goto("/app/health");
         await expect(page.locator(".premium-gate")).toHaveCount(1);
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expectNoHorizontalOverflow(page, `P2 premium ${locale.key} ${colorMode} ${viewport.width}x${viewport.height}`);
@@ -1580,10 +1665,10 @@ test("weekly plan option B remains legible across its responsive matrix", async 
     await page.setViewportSize(viewport);
     await page.goto("/app/planning/weekly");
     await expect(page.locator(".weekly-day-group")).toHaveCount(7);
-    await expect(page.getByRole("heading", { name: "Plan semanal" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mi semana" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Pendientes sin fecha" })).toBeVisible();
     const metrics = await page.evaluate(() => {
-      const layout = document.querySelector<HTMLElement>(".weekly-plan-layout")!;
+      const layout = document.querySelector<HTMLElement>(".weekly-editorial-overview")!;
       const week = document.querySelector<HTMLElement>(".weekly-days-panel")!;
       const pending = document.querySelector<HTMLElement>(".weekly-pending-panel")!;
       return {
@@ -1592,12 +1677,14 @@ test("weekly plan option B remains legible across its responsive matrix", async 
         columns: getComputedStyle(layout).gridTemplateColumns,
         weekTop: Math.round(week.getBoundingClientRect().top),
         pendingTop: Math.round(pending.getBoundingClientRect().top),
+        weekRight: Math.round(week.getBoundingClientRect().right),
+        pendingLeft: Math.round(pending.getBoundingClientRect().left),
       };
     });
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
     if (viewport.width > 920) {
       expect(metrics.columns.split(" ").length).toBeGreaterThan(1);
-      expect(Math.abs(metrics.weekTop - metrics.pendingTop)).toBeLessThanOrEqual(1);
+      expect(metrics.pendingLeft).toBeGreaterThan(metrics.weekRight);
     } else {
       expect(metrics.pendingTop).toBeGreaterThan(metrics.weekTop);
       const toggle = page.getByRole("button", { name: "Ocultar pendientes sin fecha" });
@@ -1829,12 +1916,12 @@ test("P1 product routes remain usable across the required visual matrix in light
   await completeOnboarding(page);
 
   const screens = [
-    { path: "/app/dashboard", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
-    { path: "/app/today", ready: () => page.getByRole("heading", { name: /Buenos días, María/ }) },
-    { path: "/app/vision", ready: () => page.getByRole("heading", { name: "Vida soñada", exact: true }) },
+    { path: "/app/dashboard", ready: () => page.locator(".home-overview") },
+    { path: "/app/today", ready: () => page.getByRole("heading", { level: 1, name: "Hoy", exact: true }) },
+    { path: "/app/vision", ready: () => page.getByRole("heading", { name: "Mi vida soñada", exact: true }) },
     { path: "/app/goals", ready: () => page.getByRole("heading", { name: "Metas", exact: true }) },
-    { path: "/app/planning", ready: () => page.getByRole("heading", { name: "Planificación", exact: true }) },
-    { path: "/app/planning/weekly", ready: () => page.getByRole("heading", { name: "Plan semanal", exact: true }) },
+    { path: "/app/planning", ready: () => page.getByRole("heading", { name: "Tu mapa de 12 meses", exact: true }) },
+    { path: "/app/planning/weekly", ready: () => page.getByRole("heading", { name: "Mi semana", exact: true }) },
     { path: "/app/life-hub", ready: () => page.getByRole("heading", { name: "Mi espacio", exact: true }) },
     { path: "/app/tasks", ready: () => page.getByRole("heading", { name: "Proyectos y tareas", exact: true }) },
     { path: "/app/habits", ready: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
@@ -1882,7 +1969,7 @@ test("P0 keyboard focus, dark mode, reduced motion and 200% reflow remain usable
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   await page.goto("/app/dashboard");
-  await expect(page.getByRole("heading", { name: /Buenos días, María/ })).toBeVisible();
+  await expect(page.locator(".home-overview")).toBeVisible();
   const skipLink = page.locator(".skip-link");
   await skipLink.focus();
   await expectVisibleKeyboardFocus(skipLink);
@@ -1922,7 +2009,7 @@ test("P0 keyboard focus, dark mode, reduced motion and 200% reflow remain usable
 
   await page.setViewportSize({ width: 720, height: 450 });
   for (const [path, heading] of [
-    ["/app/today", /Buenos días, María/],
+    ["/app/today", /^Hoy$/],
     ["/app/settings", /^Ajustes y datos$/],
   ] as const) {
     await page.goto(path);
@@ -1977,27 +2064,27 @@ test("P0 mobile drawer traps focus and critical touch targets are at least 44px"
 test("the trial permits three local calendar months and blocks the fourth", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop", "The access rule is viewport-independent and already has unit coverage.");
   await completeOnboarding(page, "María", /Mi día/, false, "/app/dashboard?e2e-access=trial");
-  await page.goto("/app/planning");
+  await openExistingPlans(page);
 
   const start = new Date();
   const periodAt = (offset: number) => {
     const date = new Date(start.getFullYear(), start.getMonth() + offset, 1);
     return { year: date.getFullYear(), key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` };
   };
-  const yearSelect = page.getByLabel("Año");
+  const yearSelect = page.locator(".prep-year").getByLabel("Año");
   for (const offset of [0, 1, 2]) {
     const period = periodAt(offset);
     await yearSelect.selectOption(String(period.year));
-    const card = page.locator(`[id="month-${period.key}"]`);
+    const card = page.locator(`[data-period="${period.key}"]`);
     await expect(card).toBeVisible();
-    await expect(card).not.toHaveClass(/month-card--locked/);
+    await expect(card).toBeEnabled();
   }
 
   const blockedPeriod = periodAt(3);
   await yearSelect.selectOption(String(blockedPeriod.year));
-  const blockedCard = page.locator(`[id="month-${blockedPeriod.key}"]`);
-  await expect(blockedCard).toHaveClass(/month-card--locked/);
-  await expect(blockedCard.getByRole("link", { name: "Desbloquear Premium", exact: true })).toBeVisible();
+  const blockedCard = page.locator(`[data-period="${blockedPeriod.key}"]`);
+  await expect(blockedCard).toBeDisabled();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("monthly planning blocks incomplete important dates and saves one action on repeated submit", async ({ page }) => {
@@ -2090,14 +2177,14 @@ test("TasksPage rejects a trial date beyond its horizon without persistence", as
 test("an existing month outside the trial horizon remains available in read-only mode", async ({ page }) => {
   test.skip(test.info().project.name !== "desktop", "The preservation flow is viewport-independent.");
   await completeOnboarding(page);
-  await page.goto("/app/planning");
+  await openExistingPlans(page);
 
   const start = new Date();
   const future = new Date(start.getFullYear(), start.getMonth() + 3, 1);
   const periodKey = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}`;
-  await page.getByLabel("Año").selectOption(String(future.getFullYear()));
-  const futureCard = page.locator(`[id="month-${periodKey}"]`);
-  await futureCard.locator(".month-card-main").click();
+  await page.locator(".prep-year").getByLabel("Año").selectOption(String(future.getFullYear()));
+  const futureCard = page.locator(`[data-period="${periodKey}"]`);
+  await futureCard.click();
   const monthDialog = page.getByRole("dialog", { name: /Planificar/ });
   await monthDialog.getByLabel("Resultado concreto del mes").fill("Preparar un resultado futuro");
   await monthDialog.getByRole("button", { name: "Guardar plan", exact: true }).click();
@@ -2105,11 +2192,11 @@ test("an existing month outside the trial horizon remains available in read-only
 
   await page.evaluate(() => window.sessionStorage.setItem("mbv-e2e-access", "trial"));
   await page.reload();
-  await page.getByLabel("Año").selectOption(String(future.getFullYear()));
-  const preservedCard = page.locator(`[id="month-${periodKey}"]`);
+  await page.locator(".prep-year").getByLabel("Año").selectOption(String(future.getFullYear()));
+  const preservedCard = page.locator(`[data-period="${periodKey}"]`);
   await expect(preservedCard).toContainText("Preparar un resultado futuro");
-  await expect(preservedCard.getByText("Solo lectura", { exact: true })).toBeVisible();
-  await preservedCard.getByRole("button", { name: "Ver mes", exact: true }).click();
+  await expect(preservedCard).toBeEnabled();
+  await preservedCard.click();
   await expect(page.getByText("Preparar un resultado futuro", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Tu plan se conserva sin cambios", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar mes" })).toHaveCount(0);
@@ -2126,9 +2213,9 @@ test("captures the eight P0 visual references", async ({ page }) => {
   await dismissCookieBanner(page);
   await captureP0Reference(page, "onboarding", page.getByRole("heading", { name: /Una vida más tuya/ }), { width: 390, height: 844 });
   await completeOnboarding(page);
-  await captureP0Reference(page, "dashboard", page.getByRole("heading", { name: /Buenos días, María/ }));
+  await captureP0Reference(page, "dashboard", page.locator(".home-overview"));
   await page.goto("/app/today");
-  await captureP0Reference(page, "today", page.getByRole("heading", { name: /Buenos días, María/ }), { width: 390, height: 844 });
+  await captureP0Reference(page, "today", page.getByRole("heading", { level: 1, name: "Hoy", exact: true }), { width: 390, height: 844 });
   await page.goto("/app/habits");
   await captureP0Reference(page, "habits", page.getByRole("heading", { name: "Hábitos", exact: true }));
 
@@ -2173,11 +2260,20 @@ test("a goal connects its monthly result, weekly action, Mi día and Progress", 
   await connectedAction.getByText("Asignar día", { exact: true }).click();
   const currentDate = new Date();
   await connectedAction.getByRole("button", { name: `Asignar Escribir el esquema de la guía al ${formatSpanishAssignmentDate(currentDate)}` }).click();
+  await expect(connectedAction).toHaveCount(0);
 
   await page.goto("/app/today");
   await expect(page.getByText("Escribir el esquema de la guía").first()).toBeVisible();
-  await expect(page.getByText("Resultado mensual: Terminar el primer borrador de la guía")).toBeVisible();
+  // This legacy action links a plan and goal, but no concrete monthly priority.
+  // Do not misrepresent the month's intention as its priority or its result.
+  const todayAction = page.locator(".day-timeline-list article").filter({ hasText: "Escribir el esquema de la guía" });
+  await expect(todayAction).toContainText("Publicar una guía útil");
+  await expect(todayAction).not.toContainText("Terminar el primer borrador de la guía");
+  await expect(todayAction).not.toContainText("Prioridad mensual:");
   await page.getByLabel("Completar Escribir el esquema de la guía").click();
+  await expect(page.getByLabel("Reabrir Escribir el esquema de la guía")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Reabrir Escribir el esquema de la guía")).toBeVisible();
 
   await page.goto("/app/progress");
   const goalProgress = page.locator(".progress-goal-list article").filter({ hasText: "Publicar una guía útil" });
@@ -2196,6 +2292,7 @@ test("Progress keeps a late-night Bogotá achievement on the local day across th
   await completeOnboarding(page);
   await page.goto("/app/today");
   await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
   await page.goto("/app/progress");
 
   const achievementDate = page.locator(".achievement-card__date");
@@ -2205,15 +2302,17 @@ test("Progress keeps a late-night Bogotá achievement on the local day across th
 });
 
 test("English mode covers the updated product flows", async ({ page }) => {
-  test.setTimeout(90_000);
+  // This story visits more than 20 lazy-loaded routes, including cold dev builds.
+  test.setTimeout(180_000);
   await completeOnboarding(page);
   await page.goto("/app/today");
   await page.getByLabel("Completar Escribir mi primer paso").click();
+  await expect(page.getByLabel("Reabrir Escribir mi primer paso")).toBeVisible();
   await page.goto("/app/tasks");
   await page.getByRole("button", { name: "Nueva tarea" }).click();
   await page.getByLabel("Tarea", { exact: true }).fill("Hoy");
   await page.getByRole("button", { name: "Guardar tarea" }).click();
-  await expect(page.getByText("Hoy", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".managed-task__content").getByText("Hoy", { exact: true })).toBeVisible();
   await page.goto("/app/settings");
   await page.getByRole("button", { name: "Inglés, Beta", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -2223,24 +2322,27 @@ test("English mode covers the updated product flows", async ({ page }) => {
     sessionStorage.removeItem("mbv-return-session-v1:e2e-user");
   });
   await page.goto("/app/dashboard");
-  await expect(page.getByRole("heading", { name: /Good morning, María/ })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Come back with one decision" })).toBeVisible();
+  await expect(page.locator(".home-overview")).toBeVisible();
+  await expect(page.locator(".topbar__profile")).toContainText("María");
+  await expect(page.getByRole("region", { name: "Come back with one decision" })).toHaveCount(0);
   const primaryNavigation = test.info().project.name === "mobile" ? page.locator(".mobile-nav") : page.locator(".sidebar__nav");
   await expect(primaryNavigation).toContainText("Home");
-  await expect(primaryNavigation).toContainText("My day");
-  await expect(primaryNavigation).toContainText("Plan");
-  await expect(primaryNavigation).toContainText("My space");
-  await expect(primaryNavigation).toContainText("Progress");
+  await expect(primaryNavigation).toContainText(test.info().project.name === "mobile" ? "Today" : "My day");
+  await expect(primaryNavigation).toContainText("My guide");
+  for (const name of test.info().project.name === "mobile" ? ["Plan", "More"] : ["My year", "My month", "My week"]) {
+    await expect(primaryNavigation.getByRole("link", { name, exact: true })).toBeVisible();
+  }
 
   await page.goto("/app/today");
-  await expect(page.getByRole("heading", { name: /Good morning, María/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Today", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Come back with one decision" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "My mood today", exact: true })).toBeVisible();
 
   await page.goto("/app/tasks");
   await expect(page.getByText("First, the outcome", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "New task" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Inbox" })).toBeVisible();
-  await expect(page.getByText("Hoy", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".managed-task__content").getByText("Hoy", { exact: true })).toBeVisible();
   await expect(page.getByText("Primero, el resultado", { exact: true })).toHaveCount(0);
 
   await page.goto("/app/life-hub");
