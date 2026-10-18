@@ -4,6 +4,8 @@
 
 ## MBV-H-049 — H09: conservación de identidad de áreas
 
+**Publicado y verificado:** commit funcional `3ffca4a`, CI39128284879 aprobado (E2E remoto omitido por condición sólo PR), Vercel `dpl_9Fuihbqzr8c943LBZPUp23VdYYkV` READY en mybestversion.life. Inicio/Ajustes normales cargan tras recarga, ocho áreas y cero errores de consola, sin editar registros personales. Capturas sintéticas desktop/390 y comparación exacta de IDs en H049. El párrafo siguiente conserva el estado previo a publicación. Documentación posterior no cambia aplicación/tests. Siguiente paso: revisión de María; no reparación automática de duplicados previos.
+
 Carga ordinaria y reanudación conservan íntegra cualquier colección existente; sólo una colección vacía recibe las ocho áreas iniciales. Renombrar no recrea el nombre original ni cambia IDs/orden/relaciones. Sin migración, fusión, cambio de diseño o servicios.598 unitarias, ocho E2E principales y dos H09 desktop/390 aprobados; lint/tipos/auditorías/builds separados aprobados. Backups v1/v2/v3 y aislamiento por tests verificados; no prueba entre cuentas normales productivas ni suite E2E completa repetida. Publicación exclusiva H09 autorizada, pendiente de verificar al preparar este commit. Detalle e intentos en H049. Planner sigue local por cuenta/origen; autenticación no implica sincronización. H048 debajo es el antecedente publicado.
 
 ## MBV-H-048 — Inicio: dónde estoy (publicado y verificado)
