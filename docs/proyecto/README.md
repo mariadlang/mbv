@@ -2,6 +2,8 @@
 
 Esta carpeta es la puerta de entrada oficial para comprender cómo evolucionó el proyecto y retomar el trabajo sin reconstruir el contexto desde cero.
 
+Actualización18 de octubre: **MBV-H-049**, corrección exclusiva H09 validada; publicación autorizada y pendiente de verificar al preparar el commit.598 unitarias, ocho E2E principales y dos H09 aprobados. Conservación de IDs/orden/relaciones, backup v1/v2/v3 y límites de acceso normal documentados en ESTADO_ACTUAL/HISTORIAL. El siguiente hito H048 es el antecedente publicado.
+
 Hito actual: **MBV-H-048, Inicio «dónde estoy», publicado y verificado** en [mybestversion.life/app/dashboard](https://mybestversion.life/app/dashboard). Commit funcional `cadaa27`, corrección exclusiva de prueba `7ac40bb`, CI38977381503 SUCCESS y Vercel READY. Cierre posterior sólo documental.592 unitarias, E2E consolidado151 aprobados/25 omisiones preexistentes/0 fallos pendientes tras corregir once expectativas antiguas;11 comprobaciones normales locales. Consulta ESTADO_ACTUAL y la única entrada H048 para intentos, evidencia y límites (logs runtime403). Normal local3102; fixtures E2E3100 separados. Los hitos siguientes son antecedentes.
 
 ## Qué consultar

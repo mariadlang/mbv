@@ -9,7 +9,7 @@ import type { CalendarEvent } from "@/src/domain/calendar";
 import { getProjectExecutionState, habitRecommendation } from "@/src/domain/cascadeRules";
 import { applyDailyFocusPriority } from "@/src/domain/guidanceRules";
 import { defaultFinanceCategories, mergeDefaultFinanceCategories } from "@/src/domain/financeRules";
-import { defaultLifeAreaNames, mergeDefaultLifeAreas } from "@/src/domain/lifeAreaRules";
+import { defaultLifeAreaNames, initializeLifeAreasIfEmpty } from "@/src/domain/lifeAreaRules";
 import type {
   BodyCheckInFormInput,
   BrainDumpFormInput,
@@ -158,7 +158,7 @@ export function createPlannerService(repository: PlannerRepository) {
   async load(): Promise<PlannerSnapshot> {
     const snapshot = await repository.load();
     const financeCategories = mergeDefaultFinanceCategories(snapshot.financeCategories, id, nowIso());
-    const lifeAreas = snapshot.profile ? mergeDefaultLifeAreas(snapshot.lifeAreas, id, nowIso()) : snapshot.lifeAreas;
+    const lifeAreas = snapshot.profile ? initializeLifeAreasIfEmpty(snapshot.lifeAreas, id, nowIso()) : snapshot.lifeAreas;
     if (financeCategories.length === snapshot.financeCategories.length && lifeAreas === snapshot.lifeAreas) return snapshot;
     const migrated = { ...snapshot, financeCategories, lifeAreas };
     await repository.replace(migrated);
@@ -367,7 +367,7 @@ export function createPlannerService(repository: PlannerRepository) {
   resumeExistingSpace(name: string): Promise<PlannerSnapshot> {
     return updateSnapshot((snapshot) => {
       const now = nowIso();
-      const lifeAreas = mergeDefaultLifeAreas(snapshot.lifeAreas, id, now);
+      const lifeAreas = initializeLifeAreasIfEmpty(snapshot.lifeAreas, id, now);
       const profile = snapshot.profile
         ? { ...snapshot.profile, onboardingCompleted: true, updatedAt: now }
         : {

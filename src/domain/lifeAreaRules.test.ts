@@ -1,36 +1,35 @@
-import { describe, expect, it } from "vitest";
-import { defaultLifeAreaNames, mergeDefaultLifeAreas } from "./lifeAreaRules";
+import { describe, expect, it, vi } from "vitest";
+import { defaultLifeAreaNames, initializeLifeAreasIfEmpty } from "./lifeAreaRules";
 
-describe("mergeDefaultLifeAreas", () => {
-  it("adds the eight default areas without duplicates", () => {
+const timestamp = "2026-09-01T00:00:00.000Z";
+
+describe("initializeLifeAreasIfEmpty", () => {
+  it("initializes eight unique areas once, without manufacturing ratings", () => {
     let nextId = 0;
-    const merged = mergeDefaultLifeAreas([], () => `area-${++nextId}`, "2026-09-01T00:00:00.000Z");
-    const repeated = mergeDefaultLifeAreas(merged, () => `area-${++nextId}`, "2026-09-01T00:00:00.000Z");
-    expect(merged.map((area) => area.name)).toEqual(defaultLifeAreaNames);
-    expect(repeated).toEqual(merged);
+    const id = () => `area-${++nextId}`;
+    const initialized = initializeLifeAreasIfEmpty([], id, timestamp);
+    expect(initialized.map((area) => area.name)).toEqual(defaultLifeAreaNames);
+    expect(initialized.map((area) => area.order)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(initializeLifeAreasIfEmpty(initialized, id, timestamp)).toBe(initialized);
     expect(nextId).toBe(8);
-    expect(merged.every((area) => area.currentScore === undefined && area.desiredScore === undefined)).toBe(true);
+    expect(initialized.every((area) => area.currentScore === undefined && area.desiredScore === undefined)).toBe(true);
   });
 
-  it("preserves ambiguous legacy scores without marking them as confirmed", () => {
-    const timestamp = "2026-09-01T00:00:00.000Z";
-    const existing = { ...mergeDefaultLifeAreas([], () => "area", timestamp)[0], currentScore: 6, desiredScore: 8 };
-    const merged = mergeDefaultLifeAreas([existing], () => crypto.randomUUID(), timestamp);
-    expect(merged[0]).toMatchObject({ currentScore: 6, desiredScore: 8 });
-    expect(merged[0].scoresConfirmedAt).toBeUndefined();
+  it.each(["Carrera", "  SALUD Y BIENESTAR  ", "AUD18 Área de prueba"])("preserves a partial legacy collection named %s verbatim", (name) => {
+    const current = [{ ...initializeLifeAreasIfEmpty([], () => "area", timestamp)[0], name, order: 17, active: false, currentScore: 6, desiredScore: 8 }];
+    const createId = vi.fn();
+    expect(initializeLifeAreasIfEmpty(current, createId, "2026-10-18T12:00:00Z")).toBe(current);
+    expect(current[0].scoresConfirmedAt).toBeUndefined();
+    expect(createId).not.toHaveBeenCalled();
   });
 
-  it("preserves existing areas and adds only missing defaults", () => {
-    const existing = mergeDefaultLifeAreas([], () => crypto.randomUUID(), "2026-09-01T00:00:00.000Z")[0];
-    const merged = mergeDefaultLifeAreas([{ ...existing, name: "  SALUD Y BIENESTAR  " }], () => crypto.randomUUID(), "2026-09-01T00:00:00.000Z");
-    expect(merged).toHaveLength(8);
-    expect(merged[0].name).toBe("  SALUD Y BIENESTAR  ");
-  });
-
-  it("normalizes legacy area names instead of duplicating their meaning", () => {
-    const legacy = mergeDefaultLifeAreas([], () => crypto.randomUUID(), "2026-09-01T00:00:00.000Z")[0];
-    const merged = mergeDefaultLifeAreas([{ ...legacy, name: "Carrera" }], () => crypto.randomUUID(), "2026-09-02T00:00:00.000Z");
-    expect(merged.filter((area) => area.name === "Carrera profesional o trabajo")).toHaveLength(1);
-    expect(merged).toHaveLength(8);
+  it("does not merge apparent duplicates, reactivate, rename or sort existing records", () => {
+    const defaults = initializeLifeAreasIfEmpty([], () => crypto.randomUUID(), timestamp);
+    const existing = [...defaults.toReversed(), { ...defaults[0], id: "custom", name: defaults[3].name, custom: true, active: false, order: 100 }];
+    const before = structuredClone(existing);
+    const createId = vi.fn();
+    expect(initializeLifeAreasIfEmpty(existing, createId, timestamp)).toBe(existing);
+    expect(existing).toEqual(before);
+    expect(createId).not.toHaveBeenCalled();
   });
 });
