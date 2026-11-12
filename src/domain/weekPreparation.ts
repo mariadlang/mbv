@@ -17,10 +17,10 @@ export type PreparationPatch = z.infer<typeof preparationPatchSchema>;
 export const preparationNamespace = "preparation.v1.";
 export const preparationPeriod = (week: string) => getReviewPeriodKey("weekly", new Date(`${week}T12:00:00`), 1);
 
-export function weekPreparation(snapshot: PlannerSnapshot, week: string, fixedSteps = false) {
+export function weekPreparation(snapshot: PlannerSnapshot, week: string) {
   const plan = snapshot.cascadePlans.find((item) => item.horizon === "weekly" && item.periodKey === preparationPeriod(week));
   const details = plan?.details ?? {};
-  const items: { id: string; label?: string }[] = (fixedSteps ? undefined : snapshot.profile?.preparationItems) ?? preparationKeys.map((id) => ({ id }));
+  const items: { id: string; label?: string }[] = snapshot.profile?.preparationItems ?? preparationKeys.map((id) => ({ id }));
   const end = new Date(`${week}T12:00:00`);
   end.setDate(end.getDate() + 6);
   const last = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
@@ -40,5 +40,8 @@ export function weekPreparation(snapshot: PlannerSnapshot, week: string, fixedSt
   });
   const active = rows.filter((item) => item.state !== "excluded");
   const ready = active.filter((item) => item.state === "ready").length;
-  return { rows, active, ready, percent: active.length ? Math.round(ready / active.length * 100) : 0, review: details[`${preparationNamespace}review`], month: details[`${preparationNamespace}month`] || week.slice(0, 7) };
+  // Inicio projects the five main rows, but never recalculates their applicability.
+  const overviewRows = preparationKeys.map((id) => rows.find((row) => row.id === id) ?? { id, label: undefined, state: "disabled" });
+  const additional = rows.filter((row) => !preparationKeys.includes(row.id as typeof preparationKeys[number]));
+  return { rows, overviewRows, additional, active, ready, percent: active.length ? Math.round(ready / active.length * 100) : 0, review: details[`${preparationNamespace}review`], month: details[`${preparationNamespace}month`] || week.slice(0, 7) };
 }

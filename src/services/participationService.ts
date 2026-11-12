@@ -2,6 +2,7 @@
 
 import { qualifyingActivityTypes, type QualifyingActivityType } from "@/src/domain/participation";
 import { authService } from "@/src/services/authService";
+import { publicConfig } from "@/src/lib/publicConfig";
 
 const QUEUE_KEY = "mbv-participation-queue-v2";
 const LEGACY_QUEUE_KEY = "mbv-participation-queue-v1";
@@ -151,6 +152,7 @@ function ensureOnlineListener() {
 
 export const participationService = {
   record(userId: string, actionType: QualifyingActivityType) {
+    if (publicConfig.closedBeta) return;
     if (typeof window === "undefined" || !userId) return;
     ensureOnlineListener();
     const entry = { userId, actionType } satisfies QueuedParticipation;
@@ -159,6 +161,7 @@ export const participationService = {
     void drainQueue(userId);
   },
   flush(userId?: string) {
+    if (publicConfig.closedBeta) return Promise.resolve();
     if (typeof window === "undefined") return Promise.resolve();
     ensureOnlineListener();
     return drainQueue(userId);

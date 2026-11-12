@@ -478,9 +478,18 @@
 .more-group .more-grid { grid-template-columns: repeat(2, 1fr); }
 .more-card h3 { font-family: var(--font-family-heading); font-size: 1.15rem; }
 .learn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.learn-card { display: grid; align-content: start; gap: 10px; min-height: 230px; }
-.learn-card > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--color-surface-muted); color: var(--color-brand-strong); }
-.learn-card .button { align-self: end; margin-top: auto; }
+.learn-card { display: grid; align-content: start; gap: var(--space-3); min-width: 0; padding: var(--space-5); }
+.learn-card__category { display: flex; align-items: center; gap: var(--space-3); }
+.learn-card__category > span { display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: var(--color-surface-muted); color: var(--color-brand-strong); }
+.learn-card__category .eyebrow { margin: 0; }
+.learn-card h2, .learn-note h2 { margin: 0; font-size: var(--type-h3-size); font-weight: var(--font-weight-regular); line-height: var(--line-height-label); }
+.learn-card .button { width: 100%; min-width: 0; }
+.learn-card .button:disabled { opacity: 1; }
+.learn-card__confirmation { color: var(--color-text-secondary); font-size: var(--type-body-small-size); line-height: var(--line-height-body); }
+@media (max-width: 600px) {
+  .learn-card { padding: calc(var(--space-4) + var(--space-1)); }
+  .learn-card h2, .learn-note h2 { font-size: var(--type-body-large-size); }
+}
 .toolkit-form { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
 .toolkit-form label { display: grid; gap: 6px; }
 .toolkit-form textarea, .toolkit-form select { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 10px; background: var(--color-surface-elevated); }

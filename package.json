@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:vercel": "next build",
+    "build": "node scripts/check-beta-config.mjs && next build",
+    "build:vercel": "node scripts/check-beta-config.mjs && next build",
     "start": "next start",
     "dev:vinext": "vinext dev",
     "build:vinext": "node scripts/build-vinext.mjs",

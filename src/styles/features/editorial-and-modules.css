@@ -71,6 +71,8 @@
   .goal-card { padding: 20px; }
   .goal-card__badges { flex-wrap: wrap; }
   .goal-card__progress { grid-template-columns: 1fr; }
+  /* Keep card actions outside the floating capture button's right-hand lane. */
+  .goal-card__footer { padding-inline-end: var(--space-9); flex-wrap: wrap; }
   .chart-legend { align-items: flex-end; flex-direction: column; gap: 4px; }
   .progress-goal-list > div { grid-template-columns: 1fr; gap: 8px; }
   .journal-editor-card__footer { align-items: stretch; flex-direction: column; }

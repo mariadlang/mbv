@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { publicConfig } from "@/src/lib/publicConfig";
+import { betaEnabled } from "@/src/server/beta/policy";
 
 export interface BillingServerConfig {
   appBaseUrl: string;
@@ -31,6 +32,7 @@ function normalizedBaseUrl(value: string): string {
 }
 
 export function getBillingServerConfig(): BillingServerConfig | null {
+  if (betaEnabled()) return null;
   const appBaseUrl = normalizedBaseUrl(clean(process.env.APP_BASE_URL));
   const billingMode = clean(process.env.MERCADO_PAGO_BILLING_MODE);
   const mercadoPagoAccessToken = clean(process.env.MERCADO_PAGO_ACCESS_TOKEN);
@@ -54,6 +56,7 @@ export function getBillingServerConfig(): BillingServerConfig | null {
 }
 
 export function getBillingDatabaseConfig(): BillingDatabaseConfig | null {
+  if (betaEnabled()) return null;
   const supabaseServiceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (supabaseServiceRoleKey.length < 20 || !publicConfig.supabaseUrl) return null;
   return { supabaseServiceRoleKey };

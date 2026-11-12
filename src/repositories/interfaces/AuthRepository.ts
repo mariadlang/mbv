@@ -40,6 +40,7 @@ export interface AuthRepository {
   signInWithMagicLink(email: string): Promise<void>;
   signOut(): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
+  updatePassword(password: string): Promise<void>;
   acceptLegal(input: SignupLegalEvidence): Promise<AccountUser>;
   markOnboardingCompleted(): Promise<AccountUser>;
   getOrStartAccess(): Promise<UserAccess>;

@@ -48,6 +48,7 @@ export class E2EAuthRepository implements AuthRepository {
   async signInWithMagicLink() {}
   async signOut() { this.signedIn = false; this.listeners.forEach((listener) => listener(null)); }
   async requestPasswordReset() {}
+  async updatePassword() { throw new Error("PASSWORD_RECOVERY_REQUIRES_NORMAL_AUTH"); }
   async acceptLegal(input: Parameters<AuthRepository["acceptLegal"]>[0]) { user.legalVersion = input.legalVersion; user.termsAcceptedAt = input.termsAcceptedAt; user.dataProcessingAcceptedAt = input.dataProcessingAcceptedAt; user.adultDeclaredAt = input.adultDeclaredAt; user.marketingConsent = input.marketingConsent; return user; }
   async markOnboardingCompleted() { user.onboardingCompleted = true; return user; }
   async getOrStartAccess() {

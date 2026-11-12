@@ -25,6 +25,8 @@
 .home-overview .prep-badge.is-ready, .home-status.is-ready { background: var(--color-success-soft); color: var(--color-success-text); }
 .home-overview .prep-badge.is-progress { background: var(--color-warning-soft); color: var(--color-warning-text); }
 .home-overview .prep-badge.is-pending { color: var(--color-brand-text-on-soft); }
+.home-overview .prep-badge:is(.is-excluded, .is-disabled) { max-width: 10rem; background: var(--color-surface-muted); color: var(--color-text-secondary); }
+.home-preparation .home-ready-count.is-neutral { position: static; }
 .home-overview .prep-text-link { min-height: 44px; font-size: 13px; }
 .home-overview footer { display: flex; justify-content: flex-end; }
 .home-overview :is(h2,h3,p,strong,li) { overflow-wrap: anywhere; }

@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import type { CommercialActivityResult, UserAccess } from "@/src/domain/access";
 import { getSupabaseBrowserClient } from "@/src/lib/supabaseBrowserClient";
+import { publicConfig } from "@/src/lib/publicConfig";
 import type { AccountPreferences, AccountUser, AuthRepository, SignupLegalEvidence } from "@/src/repositories/interfaces/AuthRepository";
 
 function toAccountUser(user: User | null): AccountUser | null {
@@ -119,6 +120,12 @@ export class SupabaseAuthRepository implements AuthRepository {
     if (error) throw error;
   }
 
+  async updatePassword(password: string) {
+    if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    const { error } = await this.client.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
   async acceptLegal(input: SignupLegalEvidence) {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { data, error } = await this.client.auth.updateUser({ data: { legal_version: input.legalVersion, terms_accepted_at: input.termsAcceptedAt, data_processing_accepted_at: input.dataProcessingAcceptedAt, adult_declared_at: input.adultDeclaredAt, marketing_consent: input.marketingConsent, marketing_accepted_at: input.marketingAcceptedAt } });
@@ -139,6 +146,17 @@ export class SupabaseAuthRepository implements AuthRepository {
 
   async getOrStartAccess(): Promise<UserAccess> {
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
+    if (publicConfig.closedBeta) {
+      const token = await this.getAccessToken();
+      if (!token) throw new Error("AUTH_TOKEN_UNAVAILABLE");
+      const response = await fetch("/api/beta/access", {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error("BETA_ACCESS_UNAVAILABLE");
+      const result = await response.json() as { access?: Record<string, unknown> };
+      if (!result.access) throw new Error("BETA_ACCESS_UNAVAILABLE");
+      return toUserAccess(result.access);
+    }
     const { data, error } = await this.client.rpc("ensure_user_access");
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
@@ -147,6 +165,7 @@ export class SupabaseAuthRepository implements AuthRepository {
   }
 
   async getMyCommercialPlan(): Promise<UserAccess> {
+    if (publicConfig.closedBeta) return this.getOrStartAccess();
     if (!this.client) throw new Error("SUPABASE_NOT_CONFIGURED");
     const { data, error } = await this.client.rpc("get_my_commercial_plan");
     if (error) throw error;

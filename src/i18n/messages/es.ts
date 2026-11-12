@@ -12,7 +12,10 @@ import { esEditorialDayMessages } from "./features/editorialDay";
 import { esMonthlyPriorityStepsMessages } from "./features/monthly-priority-steps";
 import { esHealthLibraryMessages } from "./features/health-library";
 
+import { esBetaMessages } from "./features/beta";
+
 export const esMessages = {
+  ...esBetaMessages,
   ...esHomeOverviewMessages,
   ...esDraftMessages,
   ...esEditorialDayMessages,

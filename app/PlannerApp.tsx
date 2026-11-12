@@ -28,6 +28,7 @@ import { publicConfig } from "@/src/lib/publicConfig";
 import { CalendarIntegrationProvider } from "@/src/hooks/useCalendarIntegration";
 import { registerReturnActivity, RETURN_EXPERIENCE_UPDATED_EVENT, touchReturnActivity } from "@/src/services/returnExperienceService";
 import { PremiumFeatureGate } from "@/src/components/access/PremiumFeatureGate";
+import { BetaNotice } from "@/src/features/account/BetaNotice";
 
 const DashboardPage = lazy(() => import("@/src/features/preparation/EditorialDashboard").then((module) => ({ default: module.EditorialDashboard })));
 const GuidePage = lazy(() => import("@/src/features/preparation/GuidePage").then((module) => ({ default: module.GuidePage })));
@@ -164,6 +165,7 @@ function ProtectedPlannerApp() {
   if (!account.configured || !account.user) return <Navigate to="/login" replace />;
   if (!account.user.emailVerified) return <Navigate to="/verify-email" replace />;
   if (!account.access) {
+    if (publicConfig.closedBeta) return <BetaNotice unavailable />;
     return <main className="error-page"><BrandMark /><h1>No pudimos comprobar tu acceso.</h1><p>{account.error ?? "Vuelve a intentarlo en un momento."}</p><Button onClick={account.refreshAccess}>Intentar de nuevo</Button></main>;
   }
   const needsLegalAcceptance = account.user.legalVersion !== LEGAL_VERSION || !account.user.termsAcceptedAt || !account.user.dataProcessingAcceptedAt || !account.user.adultDeclaredAt;
@@ -337,7 +339,7 @@ function RootRoutes() {
   const routeLocation = useBrowserRouteLocation();
   return <Routes location={routeLocation}>
     <Route path="/" element={<LandingPage />} />
-    <Route path="/trial" element={<TrialPage />} />
+    <Route path="/trial" element={publicConfig.closedBeta ? <BetaNotice /> : <TrialPage />} />
     <Route path="/privacy" element={<PrivacyPage />} />
     <Route path="/terms" element={<TermsPage />} />
     <Route path="/data-policy" element={<DataPolicyPage />} />
@@ -355,7 +357,7 @@ function RootRoutes() {
     <Route path="/login" element={<LoginPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />
     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-    <Route path="/upgrade" element={<UpgradePage />} />
+    <Route path="/upgrade" element={publicConfig.closedBeta ? <BetaNotice /> : <UpgradePage />} />
     <Route path="/platform" element={<PlatformPage />} />
     <Route path="/admin" element={<Navigate to="/platform" replace />} />
     <Route path="*" element={<ProtectedPlannerApp />} />

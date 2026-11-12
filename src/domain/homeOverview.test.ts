@@ -44,7 +44,7 @@ describe("Inicio real period and summary", () => {
   it("persists 0, some, all five confirmations without counting execution or copying to next week", async () => {
     let snapshot = createEmptySnapshot();
     const service = createPlannerService({ load: async () => structuredClone(snapshot), replace: async (value: PlannerSnapshot) => { snapshot = structuredClone(value); }, clear: async () => {}, close: () => {} });
-    const get = async () => weekPreparation(await service.load(), "2026-10-26", true);
+    const get = async () => weekPreparation(await service.load(), "2026-10-26");
     expect((await get()).ready).toBe(0);
     await service.createTask("Una tarea no prepara", "2026-10-26");
     expect((await get()).ready).toBe(0);
@@ -55,13 +55,17 @@ describe("Inicio real period and summary", () => {
     expect((await get()).ready).toBe(5);
     await service.saveWeekPreparation({ week: "2026-10-26", item: "agenda", state: "pending" });
     expect((await get()).ready).toBe(4);
-    expect(weekPreparation(await service.load(), "2026-11-02", true).ready).toBe(0);
+    expect(weekPreparation(await service.load(), "2026-11-02").ready).toBe(0);
     expect(snapshot.tasks[0].status).toBe("planned");
   });
   it("always shows five in Inicio without changing custom guide preferences", () => {
     const snapshot = createEmptySnapshot();
     snapshot.profile = { preparationItems: [{ id: "finance" }] } as PlannerSnapshot["profile"];
-    expect(weekPreparation(snapshot, "2026-10-26", true).rows.map((row) => row.id)).toEqual([...preparationKeys]);
-    expect(weekPreparation(snapshot, "2026-10-26").rows.map((row) => row.id)).toEqual(["finance"]);
+    const data = weekPreparation(snapshot, "2026-10-26");
+    expect(data.overviewRows.map((row) => row.id)).toEqual([...preparationKeys]);
+    expect(data.overviewRows.every((row) => row.state === "disabled")).toBe(true);
+    expect(data.rows.map((row) => row.id)).toEqual(["finance"]);
+    expect(data.active).toHaveLength(1);
+    expect(snapshot.profile?.preparationItems).toEqual([{ id: "finance" }]);
   });
 });

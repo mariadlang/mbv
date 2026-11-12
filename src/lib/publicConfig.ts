@@ -1,6 +1,7 @@
 import { resolveProductFeatureFlags } from "@/src/domain/featureFlags";
 
 export const publicConfig = {
+  closedBeta: process.env.NEXT_PUBLIC_MBV_CLOSED_BETA === "1",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
   // Supabase renamed the client-safe anon key to "publishable key" for new
   // projects. Keep the legacy name as a fallback so existing installations

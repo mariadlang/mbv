@@ -1,4 +1,8 @@
 export const esNavigationSpaceProgressMessages = {
+  "learn.apply.action": "Aplicar a Mi día",
+  "learn.apply.adding": "Añadiendo…",
+  "learn.apply.added": "Añadido a Mi día",
+  "learn.apply.confirmation": "Añadido a Mi día como tarea no prioritaria.",
   "navigation.skipToContent": "Saltar al contenido principal",
   "navigation.mainLabel": "Navegación principal",
   "navigation.brandHome": "My Best Version, inicio",
@@ -655,6 +659,10 @@ export const esNavigationSpaceProgressMessages = {
 export type NavigationSpaceProgressMessageKey = keyof typeof esNavigationSpaceProgressMessages;
 
 export const enNavigationSpaceProgressMessages = {
+  "learn.apply.action": "Apply to My day",
+  "learn.apply.adding": "Adding…",
+  "learn.apply.added": "Added to My day",
+  "learn.apply.confirmation": "Added to My day as a non-priority task.",
   "navigation.skipToContent": "Skip to main content",
   "navigation.mainLabel": "Main navigation",
   "navigation.brandHome": "My Best Version, home",

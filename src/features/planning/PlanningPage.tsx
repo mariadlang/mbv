@@ -403,7 +403,7 @@ export function PlanningPage({ planner, access, initialView = "year", onQuickCap
 
   return <div className="page-stack cascade-page planning-v2" data-i18n-explicit="true">
     {(taskOperation.error || legacyOperation.error) && <p role="alert">{m("preparation.error")}</p>}
-    {view !== "week" && view !== "year" && <SectionNavigation section="plan" />}
+    {view !== "week" && <SectionNavigation section="plan" />}
     {view === "year" && query.get("view") !== "annual" && <EditorialMonthMap planner={planner} access={access} year={selectedYear} onYearChange={setSelectedYear} onCreate={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onEdit={openEditMonth} onOpen={openMonthDetail} />}
     {monthLinkConfirmation && <Card className="planning-link-confirmation" role="status"><Check size={18} /><span>{m(monthLinkConfirmation.preserved ? "planning.monthDialog.existingPreserved" : monthLinkConfirmation.unlinked ? "planning.monthDialog.linkRemoved" : "planning.monthDialog.linkSaved", monthLinkConfirmation.preserved || monthLinkConfirmation.unlinked ? { month: monthLinkConfirmation.month } : { goal: monthLinkConfirmation.goal ?? "", month: monthLinkConfirmation.month })}</span><button type="button" onClick={() => setMonthLinkConfirmation(null)} aria-label={m("modal.close")}>×</button></Card>}
     {view === "year" && query.get("view") === "annual" && <EditorialYear planner={planner} access={access} year={selectedYear} onYearChange={(year) => { setSelectedYear(year); navigate(`/app/planning?view=annual&year=${year}`, { replace: true }); }} onCreate={(periodKey) => openCreateMonth(Number(periodKey.slice(0, 4)), Number(periodKey.slice(5, 7)) - 1)} onOpen={openMonthDetail} />}

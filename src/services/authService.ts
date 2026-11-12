@@ -16,6 +16,7 @@ export const authService = {
   signInWithMagicLink: (email: string) => repository.signInWithMagicLink(email),
   signOut: () => repository.signOut(),
   requestPasswordReset: (email: string) => repository.requestPasswordReset(email),
+  updatePassword: (password: string) => repository.updatePassword(password),
   acceptLegal: (input: Parameters<AuthRepository["acceptLegal"]>[0]) => repository.acceptLegal(input),
   markOnboardingCompleted: () => repository.markOnboardingCompleted(),
   getOrStartAccess: () => repository.getOrStartAccess(),

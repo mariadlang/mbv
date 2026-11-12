@@ -206,7 +206,7 @@
 .prep-review-buttons .prep-primary, .prep-review-buttons .prep-secondary { padding: 8px 12px; font-size: 11px; }
 .prep-guide .prep-checklist-row { grid-template-columns: 52px minmax(0, 1fr) auto 97px; gap: 10px; }
 .prep-guide .prep-checklist .prep-card-heading p { display: none; }
-.prep-guide .prep-checklist .prep-progress { display: none; }
+.prep-guide .prep-checklist .prep-progress { display: block; }
 .prep-help > a, .prep-help > button { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px; border: 0; border-radius: 10px; background: var(--prep-rose); margin-top: 6px; text-align: left; }
 .prep-help > a span, .prep-help > button span { flex: 1; }
 .prep-help > a svg, .prep-help > button svg { color: var(--color-brand-strong); stroke-width: 1.5; }

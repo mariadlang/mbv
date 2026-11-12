@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router-dom";
 import { Modal } from "@/src/components/ui/Modal";
 import { useI18n } from "@/src/i18n/I18nProvider";
@@ -84,7 +84,9 @@ export function useUnsavedDraft(draft: Draft) {
   const navigation = useDraftNavigation();
   const id = useId();
   const registration = useRef<Registration>({ current: draft, acknowledged: false });
-  useEffect(() => {
+  // Publish the committed draft before the UI can accept another interaction.
+  // A passive effect leaves an enabled retry reading the previous saving=true.
+  useLayoutEffect(() => {
     registration.current.current = draft;
     registration.current.acknowledged = false;
   }, [draft]);

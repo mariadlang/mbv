@@ -1,0 +1,33 @@
+export const esBetaMessages = {
+  "beta.free.title": "Beta cerrada · Gratis",
+  "beta.free.description": "Este piloto funciona con el plan Gratis. No admite compras, suscripciones ni activaciones Premium.",
+  "beta.access.title": "No pudimos habilitar tu acceso a la beta",
+  "beta.access.description": "Comprueba tu conexión y que tu cuenta esté invitada. El piloto puede estar pausado o haber terminado. Tus datos locales se conservan en este navegador.",
+  "beta.retry": "Intentar de nuevo",
+  "beta.logout": "Cerrar sesión",
+  "beta.return": "Volver a Mi día",
+  "auth.password.title": "Elige tu nueva contraseña",
+  "auth.password.description": "Abre el enlace de recuperación en este navegador para guardar una contraseña nueva.",
+  "auth.password.confirm": "Repite la nueva contraseña",
+  "auth.password.save": "Guardar contraseña",
+  "auth.password.invalid": "Usa al menos 8 caracteres y escribe la misma contraseña en ambos campos.",
+  "auth.password.error": "No pudimos guardar la contraseña. Si el enlace ha caducado, solicita uno nuevo.",
+  "auth.password.saved": "Contraseña actualizada. Ya puedes continuar con tu cuenta.",
+} as const;
+
+export const enBetaMessages = {
+  "beta.free.title": "Closed beta · Free",
+  "beta.free.description": "This pilot uses the Free plan. Purchases, subscriptions and Premium activations are unavailable.",
+  "beta.access.title": "We could not enable your beta access",
+  "beta.access.description": "Check your connection and whether your account is invited. The pilot may be paused or over. Your local data stays in this browser.",
+  "beta.retry": "Try again",
+  "beta.logout": "Sign out",
+  "beta.return": "Back to My day",
+  "auth.password.title": "Choose your new password",
+  "auth.password.description": "Open the recovery link in this browser to save a new password.",
+  "auth.password.confirm": "Repeat the new password",
+  "auth.password.save": "Save password",
+  "auth.password.invalid": "Use at least 8 characters and enter the same password in both fields.",
+  "auth.password.error": "We could not save your password. If the link has expired, request a new one.",
+  "auth.password.saved": "Password updated. You can now continue with your account.",
+} as const satisfies Record<keyof typeof esBetaMessages, string>;

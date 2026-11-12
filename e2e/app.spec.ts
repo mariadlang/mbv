@@ -151,6 +151,45 @@ async function openExistingPlans(page: Page) {
   await expect(page.locator(".prep-year .prep-month-grid > button")).toHaveCount(12);
 }
 
+test("Plan exposes Metas and goal actions stay clear of floating capture", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile";
+  await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1448, height: 1086 });
+  await completeOnboarding(page);
+  const planEntry = mobile
+    ? page.locator('.mobile-nav a[href="/app/planning"]')
+    : page.locator('.sidebar a[href="/app/planning?view=annual"]');
+  await planEntry.click();
+  const planNav = page.locator(".section-navigation");
+  await expect(planNav.getByRole("link", { name: "Metas", exact: true })).toBeVisible();
+  await planNav.getByRole("link", { name: "Metas", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Metas", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Crear meta", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("¿Qué quieres lograr?", { exact: true }).fill("Meta de navegación");
+  await dialog.getByLabel("¿Por qué importa para ti?", { exact: true }).fill("Comprobar los controles sin superposición");
+  await dialog.getByRole("button", { name: "Crear meta", exact: true }).click();
+  await dialog.getByRole("button", { name: "Ahora no", exact: true }).click();
+  await page.evaluate(() => document.fonts.ready);
+  const action = page.getByRole("button", { name: "Ver mi camino", exact: true });
+  const fab = page.locator(".fab");
+  await expect(action).toBeVisible();
+  await expect(fab).toBeVisible();
+  const actionBox = await action.boundingBox();
+  const fabBox = await fab.boundingBox();
+  expect(actionBox).not.toBeNull();
+  expect(fabBox).not.toBeNull();
+  if (mobile) expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(fabBox!.x - 8);
+  const overlap = Math.max(0, Math.min(actionBox!.x + actionBox!.width, fabBox!.x + fabBox!.width) - Math.max(actionBox!.x, fabBox!.x))
+    * Math.max(0, Math.min(actionBox!.y + actionBox!.height, fabBox!.y + fabBox!.height) - Math.max(actionBox!.y, fabBox!.y));
+  expect(overlap).toBe(0);
+  await expectNoHorizontalOverflow(page, "Metas and capture");
+  await fab.click();
+  await expect(page.locator(".fab-menu").getByRole("button", { name: "Capturar", exact: true })).toBeVisible();
+  await fab.click();
+  await action.click();
+  await expect(page.getByRole("button", { name: "Volver a metas", exact: true })).toBeVisible();
+});
+
 async function openSpaceFromNavigation(page: Page) {
   const sidebarLink = page.locator('.sidebar__space-shortcuts a[href="/app/life-hub"]');
   if (await sidebarLink.isVisible()) {
@@ -711,8 +750,15 @@ test("information architecture separates overview from daily execution", async (
   const mobile = test.info().project.name === "mobile";
   const navigation = page.locator(mobile ? ".mobile-nav" : ".sidebar__nav");
   const labels = mobile ? ["Inicio", "Mi guía", "Plan", "Hoy", "Más"] : ["Inicio", "Mi guía", "Mi año", "Mi mes", "Mi semana", "Mi día"];
+  const destinations = mobile
+    ? ["/app/dashboard", "/app/guide", "/app/planning", "/app/today", "/app/more"]
+    : ["/app/dashboard", "/app/guide", "/app/planning?view=annual", "/app/planning?view=month", "/app/planning/weekly", "/app/today"];
   await expect(navigation.getByRole("link")).toHaveCount(labels.length);
-  for (const label of labels) await expect(navigation.getByRole("link", { name: label, exact: true })).toBeVisible();
+  for (const [index, label] of labels.entries()) {
+    const link = navigation.getByRole("link", { name: label, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", destinations[index]);
+  }
   await expect(navigation).not.toContainText("Bienestar");
   await expect(navigation).not.toContainText("Finanzas");
   await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);

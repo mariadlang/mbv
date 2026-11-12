@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beginPendingTrace, endPendingTrace, pendingTrace, tracedSave, tracedUser } from "@/tests/helpers/pendingFieldsTrace";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { ReactNode } from "react";
 import { I18nProvider } from "@/src/i18n/I18nProvider";
@@ -19,7 +19,8 @@ import { PreparationChecklist } from "./PreparationShared";
 
 vi.mock("@/src/hooks/useAccount", () => ({ useAccount: () => ({ user: { id: "test-user" } }) }));
 vi.mock("@/src/hooks/useLegalPrivacy", () => ({ useLegalPrivacy: () => ({ loading: false, hasConsent: () => true }) }));
-afterEach(cleanup);
+beforeEach(context => beginPendingTrace(context.task.name));
+afterEach(async () => { await endPendingTrace(); cleanup(); pendingTrace("cleanup:after"); });
 
 function pendingSave() {
   let resolve!: (value: PlannerSnapshot) => void;
@@ -47,11 +48,11 @@ function goalSnapshot() {
 
 describe("fields cannot change underneath a pending save", () => {
   it.each(["month-list", "month-map"] as const)("locks the %s editor and preserves its draft after a failed save", async (editor) => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
     const snapshot = createEmptySnapshot();
     snapshot.lifeAreas = [{ id: "health", name: "Salud", color: "sage", order: 0, active: true, createdAt: "2026-10-02", updatedAt: "2026-10-02" }];
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot, createBrainDumpItem: save, saveCascadePlan: save } as unknown as PlannerController;
     const component = editor === "month-list" ? <MonthLists planner={planner} month="2026-10" readOnly={false} />
       : <EditorialMonthMap planner={planner} access={access} year={2026} onYearChange={vi.fn()} onEdit={vi.fn()} onCreate={vi.fn()} onOpen={vi.fn()} />;
@@ -60,6 +61,7 @@ describe("fields cannot change underneath a pending save", () => {
     const dialog = view.getByRole("dialog");
     const input = within(dialog).getByRole("textbox") as HTMLInputElement | HTMLTextAreaElement;
     await user.type(input, "Mi intención aceptada");
+    expect(input.value).toBe("Mi intención aceptada");
     await user.click(within(dialog).getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(input.matches(":disabled")).toBe(true);
@@ -72,7 +74,7 @@ describe("fields cannot change underneath a pending save", () => {
     expect(input.matches(":disabled")).toBe(false);
     expect(input.value).toBe("Mi intención aceptada");
     await user.type(input, " revisada");
-    save.mockResolvedValueOnce(snapshot);
+    save.mockImplementationOnce(tracedSave(async () => snapshot));
     await user.click(within(dialog).getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
     expect(save).toHaveBeenCalledTimes(2);
@@ -80,7 +82,7 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("opens the selected week after saving its month context without an unrelated draft warning", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const snapshot = createEmptySnapshot();
     const saveWeekPreparation = vi.fn(async () => snapshot);
     const planner = { snapshot, saveWeekPreparation } as unknown as PlannerController;
@@ -96,11 +98,11 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("locks the review move date and other move controls while keeping the canonical task ID", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
     const snapshot = createEmptySnapshot();
     snapshot.tasks = [{ id: "previous-task", title: "Pendiente anterior", date: "2026-09-23", priority: "medium", status: "planned", createdAt: "2026-09-23", updatedAt: "2026-09-23" }];
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot, rescheduleTask: save } as unknown as PlannerController;
     const view = screenFor(<GuidePage planner={planner} />, "/app/guide?week=2026-09-28");
     await user.click(view.getAllByRole("button", { name: "Revisar semana anterior" })[0]);
@@ -119,7 +121,7 @@ describe("fields cannot change underneath a pending save", () => {
     await within(dialog).findByRole("alert");
     expect(input.matches(":disabled")).toBe(false);
     expect(input.value).toBe("2026-10-02");
-    save.mockResolvedValueOnce(snapshot);
+    save.mockImplementationOnce(tracedSave(async () => snapshot));
     await user.click(within(input.form!).getByRole("button", { name: "Mover" }));
     await waitFor(() => expect(within(dialog).queryByLabelText("Fecha")).toBeNull());
     expect(save).toHaveBeenCalledTimes(2);
@@ -127,10 +129,10 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("locks checklist checkboxes and custom text until preferences save, preserving both on failure", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
     const snapshot = createEmptySnapshot();
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot, savePreparationPreferences: save } as unknown as PlannerController;
     const view = screenFor(<PreparationChecklist planner={planner} week="2026-09-28" />, "/app/guide");
     await user.click(view.getByRole("button", { name: "Personalizar checklist" }));
@@ -152,7 +154,7 @@ describe("fields cannot change underneath a pending save", () => {
     expect(checkbox.matches(":disabled")).toBe(false);
     expect(checkbox.checked).toBe(false);
     expect(input.value).toBe("Tiempo creativo");
-    save.mockResolvedValueOnce(snapshot);
+    save.mockImplementationOnce(tracedSave(async () => snapshot));
     await user.click(within(dialog).getByRole("button", { name: "Continuar" }));
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
     expect(save).toHaveBeenCalledTimes(2);
@@ -165,9 +167,9 @@ describe("fields cannot change underneath a pending save", () => {
     { kind: "workout", path: "training", open: "Añadir entrenamiento", field: "Nombre del entrenamiento", save: "Guardar entrenamiento", value: "Rutina aceptada" },
     { kind: "settings", path: "nutrition", open: "Configurar", field: "Meta física", save: "Guardar configuración", value: "Objetivo aceptado" },
   ])("locks every $kind field and restores editing on failure", async (example) => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot: createEmptySnapshot(), saveMeal: save, saveWorkoutPlan: save, updateProfileSettings: save } as unknown as PlannerController;
     const view = screenFor(<FitnessPage planner={planner} />, `/app/health?date=2026-10-02&section=${example.path}`);
     await user.click(view.getByRole("button", { name: example.open }));
@@ -187,14 +189,23 @@ describe("fields cannot change underneath a pending save", () => {
     expect(input.value).toBe(example.value);
     await user.type(input, " revisado");
     expect(input.value).toBe(example.value + " revisado");
+    save.mockImplementationOnce(tracedSave(async () => planner.snapshot));
+    await user.click(within(dialog).getByRole("button", { name: example.save }));
+    await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
+    expect(save).toHaveBeenCalledTimes(2);
+    if (example.kind === "settings") {
+      expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ fitnessProfile: expect.objectContaining({ physicalGoal: example.value + " revisado" }) }));
+    } else {
+      expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ name: example.value + " revisado", date: "2026-10-02" }), undefined);
+    }
   });
 
   it("locks health template destination, scope and title until persistence finishes", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
     const snapshot = createEmptySnapshot();
     snapshot.nutritionLogs = [{ id: "nutrition-real", date: "2026-10-01", createdAt: "now", updatedAt: "now", meals: [{ id: "meal-real", name: "Comida preparada", notes: "Detalle conservado" }] }];
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot, saveHealthPreparation: save } as unknown as PlannerController;
     const view = screenFor(<HealthPlanning planner={planner} date="2026-10-02" section="nutrition" onSelectDate={vi.fn()} />);
     await user.click(view.getByRole("button", { name: "Biblioteca" }));
@@ -212,7 +223,7 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("opening advanced goal options alone never creates a data draft", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const createGoal = vi.fn();
     const planner = { snapshot: createEmptySnapshot(), createGoal } as unknown as PlannerController;
     const view = screenFor(<GoalsPage planner={planner} access={access} />, "/app/goals");
@@ -224,9 +235,9 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("locks main goal fields and advanced controls during creation", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot: createEmptySnapshot(), createGoal: save } as unknown as PlannerController;
     const view = screenFor(<GoalsPage planner={planner} access={access} />, "/app/goals");
     await user.click(view.getByRole("button", { name: "Crear meta" }));
@@ -246,10 +257,10 @@ describe("fields cannot change underneath a pending save", () => {
   });
 
   it("locks linked action fields and keeps the original ID on completion", async () => {
-    const user = userEvent.setup();
+    const user = tracedUser();
     const pending = pendingSave();
     const snapshot = goalSnapshot();
-    const save = vi.fn(() => pending.promise);
+    const save = vi.fn(tracedSave(() => pending.promise));
     const planner = { snapshot, updateTask: save } as unknown as PlannerController;
     const view = screenFor(<GoalsPage planner={planner} access={access} />, "/app/goals");
     await user.click(view.getByRole("button", { name: "Ver mi camino" }));

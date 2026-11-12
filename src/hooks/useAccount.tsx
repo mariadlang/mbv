@@ -45,42 +45,63 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const analyticsUserIdRef = useRef<string | null>(null);
+  const accessRequestRef = useRef(0);
   const configured = authService.isConfigured();
 
   const loadForUser = useCallback(async (nextUser: AccountUser | null) => {
+    const request = ++accessRequestRef.current;
+    const isCurrent = () => request === accessRequestRef.current;
+    setLoading(true);
+    setAccess(null);
+    setError(null);
     if (analyticsUserIdRef.current && analyticsUserIdRef.current !== nextUser?.id) releaseAnalyticsAccount(analyticsUserIdRef.current);
     analyticsUserIdRef.current = nextUser?.id ?? null;
     setUser(nextUser);
-    if (!nextUser || !nextUser.emailVerified) { setAccess(null); setPreferences(null); setPreferencesLoading(false); return; }
+    if (!nextUser || !nextUser.emailVerified) { setPreferences(null); setPreferencesLoading(false); setLoading(false); return; }
     void participationService.flush(nextUser.id);
     setPreferencesLoading(true);
     try {
-      setAccess(await authService.getOrStartAccess());
+      const nextAccess = await authService.getOrStartAccess();
+      if (!isCurrent()) return;
+      setAccess(nextAccess);
       try {
         const remotePreferences = await authService.getPreferences();
+        if (!isCurrent()) return;
         setPreferences(remotePreferences);
         useUiStore.getState().setLanguage(remotePreferences.locale);
         useUiStore.getState().markTutorialCompleted(nextUser.id, remotePreferences.tutorialCompleted);
       } catch {
+        if (!isCurrent()) return;
         const ui = useUiStore.getState();
         setPreferences({ locale: ui.language, tutorialCompleted: Boolean(ui.tutorialCompletedByUser[nextUser.id]) });
       }
       setError(null);
     } catch {
+      if (!isCurrent()) return;
       setAccess(null);
       setError("No pudimos comprobar tu acceso. Inténtalo de nuevo en un momento.");
     } finally {
-      setPreferencesLoading(false);
+      if (isCurrent()) {
+        setPreferencesLoading(false);
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     let active = true;
-    authService.getCurrentUser().then((nextUser) => { if (active) return loadForUser(nextUser); }).catch(() => {
-      if (active) setError("No pudimos comprobar tu sesión.");
-    }).finally(() => { if (active) setLoading(false); });
+    const initialRequest = accessRequestRef.current;
+    authService.getCurrentUser().then((nextUser) => {
+      if (active && accessRequestRef.current === initialRequest) return loadForUser(nextUser);
+    }).catch(() => {
+      if (active && accessRequestRef.current === initialRequest) {
+        setError("No pudimos comprobar tu sesión.");
+        setPreferencesLoading(false);
+        setLoading(false);
+      }
+    });
     const unsubscribe = authService.onAuthChange((nextUser) => { if (active) void loadForUser(nextUser); });
-    return () => { active = false; unsubscribe(); };
+    return () => { active = false; ++accessRequestRef.current; unsubscribe(); };
   }, [loadForUser]);
 
   useEffect(() => {
@@ -89,6 +110,29 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     window.addEventListener(COMMERCIAL_ACCESS_UPDATED_EVENT, refreshCommercialAccess);
     return () => window.removeEventListener(COMMERCIAL_ACCESS_UPDATED_EVENT, refreshCommercialAccess);
   }, [loadForUser, user]);
+
+  useEffect(() => {
+    if (!publicConfig.closedBeta || !user?.emailVerified) return;
+    let active = true;
+    let checking = false;
+    const recheck = async () => {
+      if (checking) return;
+      checking = true;
+      const request = accessRequestRef.current;
+      try {
+        const nextAccess = await authService.getOrStartAccess();
+        if (active && request === accessRequestRef.current) { setAccess(nextAccess); setError(null); }
+      } catch {
+        if (active && request === accessRequestRef.current) { setAccess(null); setError("BETA_ACCESS_UNAVAILABLE"); }
+      } finally { checking = false; }
+    };
+    // Recheck the server decision without unmounting drafts during a successful
+    // check. Failure/expiry removes access; an old account's response is ignored.
+    const timer = window.setInterval(() => { void recheck(); }, 60_000);
+    const onFocus = () => { void recheck(); };
+    window.addEventListener("focus", onFocus);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
+  }, [user?.id, user?.emailVerified]);
 
   const markOnboardingCompleted = useCallback(async () => {
     setUser((current) => current ? { ...current, onboardingCompleted: true } : current);
@@ -112,7 +156,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     requestPasswordReset: (email) => authService.requestPasswordReset(email),
     acceptLegal: async (input) => { const nextUser = await authService.acceptLegal(input); await loadForUser(nextUser); },
     markOnboardingCompleted,
-    signOut: async () => { if (user) releaseAnalyticsAccount(user.id); await authService.signOut(); setUser(null); setAccess(null); setPreferences(null); },
+    signOut: async () => { if (user) releaseAnalyticsAccount(user.id); await authService.signOut(); await loadForUser(null); },
     updatePreferences: async (input) => {
       const fallback = { locale: input.locale ?? preferences?.locale ?? useUiStore.getState().language, tutorialCompleted: input.tutorialCompleted ?? preferences?.tutorialCompleted ?? false };
       setPreferences(fallback);

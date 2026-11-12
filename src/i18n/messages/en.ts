@@ -12,7 +12,10 @@ import { enEditorialDayMessages } from "./features/editorialDay";
 import { enMonthlyPriorityStepsMessages } from "./features/monthly-priority-steps";
 import { enHealthLibraryMessages } from "./features/health-library";
 
+import { enBetaMessages } from "./features/beta";
+
 export const enMessages = {
+  ...enBetaMessages,
   ...enHomeOverviewMessages,
   ...enDraftMessages,
   ...enEditorialDayMessages,

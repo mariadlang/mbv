@@ -16,6 +16,55 @@ function fixture() {
   return { service, read: () => snapshot };
 }
 describe("weekly preparation shared state", () => {
+  it("H03 counts applicable confirmations, preserves exclusion over content and re-includes without confirming", async () => {
+    const { service, read } = fixture();
+    await service.createTask("Contenido, no confirmación", "2026-10-19");
+    for (const item of ["nutrition", "training", "habits"]) await service.saveWeekPreparation({ week: "2026-10-19", item, state: "ready" });
+    const get = () => weekPreparation(read(), "2026-10-19");
+    expect([get().ready, get().active.length]).toEqual([3, 5]);
+    await service.saveWeekPreparation({ week: "2026-10-19", item: "agenda", state: "excluded" });
+    expect([get().ready, get().active.length]).toEqual([3, 4]);
+    expect(get().overviewRows.find((r) => r.id === "agenda")?.state).toBe("excluded");
+    await service.saveWeekPreparation({ week: "2026-10-19", item: "priorities", state: "ready" });
+    expect([get().ready, get().active.length, get().percent]).toEqual([4, 4, 100]);
+    await service.saveWeekPreparation({ week: "2026-10-19", item: "agenda", state: "pending" });
+    expect([get().ready, get().active.length]).toEqual([4, 5]);
+    expect(get().overviewRows.find((r) => r.id === "agenda")?.state).toBe("progress");
+    expect(read().tasks[0]).toMatchObject({ title: "Contenido, no confirmación", status: "planned" });
+  });
+  it("H03 keeps custom IDs, labels and global selection across weeks without carrying exclusions or editing history", async () => {
+    const { service, read } = fixture();
+    read().profile = { preparationItems: [{ id: "nutrition" }, { id: "habits" }, { id: "custom-original-id", label: "Lectura y creación" }] } as PlannerSnapshot["profile"];
+    await service.saveWeekPreparation({ week: "2026-10-19", item: "nutrition", state: "excluded" });
+    await service.saveWeekPreparation({ week: "2026-10-19", item: "custom-original-id", state: "ready" });
+    const previous = structuredClone(read().cascadePlans);
+    const selection = structuredClone(read().profile?.preparationItems);
+    const old = weekPreparation(read(), "2026-10-19");
+    expect([old.ready, old.active.length]).toEqual([1, 2]);
+    expect(old.additional).toEqual([{ id: "custom-original-id", label: "Lectura y creación", state: "ready" }]);
+    expect(old.overviewRows.find((r) => r.id === "training")?.state).toBe("disabled");
+    const next = weekPreparation(read(), "2026-10-26");
+    expect([next.ready, next.active.length]).toEqual([0, 3]);
+    expect(next.rows.find((r) => r.id === "nutrition")?.state).toBe("pending");
+    expect(next.overviewRows.find((r) => r.id === "training")?.state).toBe("disabled");
+    await service.saveWeekPreparation({ week: "2026-10-26", item: "habits", state: "ready" });
+    expect(read().cascadePlans.filter((p) => p.periodKey === "2026-W43")).toEqual(previous);
+    expect(weekPreparation(await service.load(), "2026-10-19")).toEqual(old);
+    expect(read().profile?.preparationItems).toEqual(selection);
+    expect(read().tasks).toEqual([]);
+    expect(read().habitLogs).toEqual([]);
+    expect(read().workoutLogs).toEqual([]);
+  });
+  it("H03 empty preferences stay empty and stale confirmations never count as active", () => {
+    const snapshot = createEmptySnapshot();
+    snapshot.profile = { id: "h03-profile", name: "Prueba", intention: "", dailyIntention: "", startDate: "2026-10-19", weekStartsOn: 1, priorityAreaIds: [], onboardingCompleted: true, createdAt: "2026-10-19", updatedAt: "2026-10-19", preparationItems: [] };
+    const before = structuredClone(snapshot);
+    const data = weekPreparation(snapshot, "2026-10-19");
+    expect(data).toMatchObject({ rows: [], active: [], ready: 0, percent: 0 });
+    expect(data.overviewRows).toHaveLength(5);
+    expect(data.overviewRows.every((row) => row.state === "disabled")).toBe(true);
+    expect(snapshot).toEqual(before);
+  });
   it("inherits monthly health planning and restores it after an isolated weekly exception", async () => {
     const { service, read } = fixture();
     await service.saveHealthPreparation({ date: "2026-10-02", section: "nutrition", scope: "monthly", title: "Mi comida" });
