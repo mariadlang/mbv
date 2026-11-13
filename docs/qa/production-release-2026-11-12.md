@@ -40,3 +40,27 @@ María confirma mantener el equipo encendido y abierto. Se ejecuta `unit-final`,
 Vercel Settings/Git confirma conexión activa con `mariadlang/mbv` desde agosto; producción sigue main. No hay variables compartidas enlazadas ni flags MBV de beta/E2E en el proyecto. La sesión normal existente permite abrir el dashboard productivo antes de publicar; esto acredita una sesión vigente, no un nuevo login ejecutado ni una prueba de permisos Gratis.
 
 Resultado final antes del push: **665/665 pruebas, 107/107 archivos, 0 fallos, 0 omitidas, 0 reintentos automáticos**. `unit-final-status.json`: 13/11/2026 18:28:19–18:38:48 UTC, salida 0; Vitest 622.90 s. Se mantienen intactos los informes anteriores 663/665 y 664/665. SavePendingFields 12/12, TasksPage 7/7 y regresiones de acceso aprobadas dentro de esta ejecución. No se alteraron aplicación, aserciones o tiempos para obtener el resultado. La evidencia E2E vigente sigue siendo la corrida 10/10 de la misma fuente; no se presenta como autenticación normal en producción.
+
+## Publicación comprobada — 13 de noviembre de 2026
+
+- Commit funcional final: **0a5c69b3588cb2ef61680f70ed148e15731f6c46** (la enmienda respecto a 6c12b32 añadió sólo el resultado documental de pruebas). Push fast-forward a main realizado, sin force.
+- Vercel **Gb4DZ32gKEPXoq7Uf93cq8JtuXdc**, Production/Ready, terminado 13/11 a las 13:40:54 America/Bogota. Dominio asignado **https://mybestversion.life**; URL del despliegue https://vercel-upload-pn31yfekt-mariadelosangelesgtg-4145s-projects.vercel.app/.
+- GitHub CI https://github.com/mariadlang/mbv/actions/runs/43484756885: lint, typecheck, unit-tests y build aprobados. Unitarias **665/665, 107/107 archivos**, 40.51 s. E2E **omitido por condición push/main del workflow**, no ejecutado en CI; evidencia local 10/10 diferenciada arriba.
+- GET login200; assets públicos apuntan a **yvrvetuzuinoinukrivo.supabase.co**, no al proyecto de pruebas. API beta404. Bearer ficticio E2E rechazado con401 en billing/status. No se ejecutaron cobros.
+- Comprobación de interfaz en el dominio con la sesión normal existente: carga «Comprobando tu acceso» y entrada a la aplicación después de recargar. No se inyectó identidad, no se interceptaron servicios y no se borró almacenamiento. No equivale a un nuevo login OAuth ni a una prueba de permisos Gratis: la sesión muestra Superadmin.
+- Tarea sintética «PRUEBA publicación 13-11-2026 — conservar al recargar»: creada en Mi día, editada desde agenda a18:30 con duración vacía, visible a esa hora como punto. Mi día muestra18:30; completar y recargar conserva contenido/estado y una sola fila. El primer llenado automatizado del control nativo de hora no se reflejó al guardar; se introdujo mediante sus controles de teclado, se observó el valor y se confirmó el resultado. No se atribuye esa limitación de entrada a pérdida de datos de aplicación.
+- Aprende: doble pulsación sobre la primera sugerencia produjo un solo registro y botón desactivado «Añadido a Mi día», con aviso «Añadido a Mi día como tarea no prioritaria». Se identificó luego como «PRUEBA Aprende 13-11-2026 — doble pulsación», se completó y recargó. Resultado: una fila por cada uno de los dos registros sintéticos; ningún borrado de registros anteriores. Esta comprobación de interfaz no extrajo IDs internos.
+- Inicio y Mi guía: misma semana9–15nov, mismo total0de5; la tarea completada no marca la preparación como lista. Entrada Mi año → Metas visible y operativa.
+- /legal, /legal-notices, /pqr: un main y cero main anidados/role=main duplicados por ruta, comprobado en DOM real. PQR no enviado.
+
+Evidencia local en la carpeta checks indicada arriba: `production-http.json`, `production-public-landmarks.json`, `github-unit-summary.txt`, `vercel-production-ready.jpg`, `production-task-after-reload.jpg`, `production-learn-double-click.jpg`, `production-two-synthetic-tasks-reloaded.jpg`. Las capturas no se incluyen en los assets publicados. El planificador sigue guardándose en IndexedDB del mismo navegador/origen; no se promete sincronización cloud. No se tocaron el origen3119, LIM01, cuentas, permisos, SMTP, DNS, suscripciones ni configuración beta remota.
+
+### Límites y pendientes que se conservan
+
+- La publicación y el guardado descritos están comprobados; esto no cierra todos los pendientes de H06, ni verifica en producción alta, recuperación de correo, OAuth nuevo, aislamiento entre cuentas o matriz Gratis/Premium completa.
+- La página legal productiva sigue indicando datos del responsable/canales pendientes de completar; no se inventaron ni modificaron textos legales.
+- La observación previa de recorte del logo/lema en escritorio sigue visible en la captura de este viewport y no se corrigió en este bloque.
+- Avisos de build: engines>=22.13 hace que Vercel use Node26 pese al ajuste24.x del proyecto, y aparece deprecación module.register. Build y funcionamiento comprobado pasan; fijar el major de Node requiere una revisión acotada posterior, no se cambió silenciosamente aquí. Lint conserva1warning previo de hooks.
+- Autorización habitual de commit/push/deploy de próximas mejoras acordadas registrada; cualquier bloqueo concreto debe comunicarse. No autoriza cobros, nuevos servicios ni cambios de alcance no acordados.
+
+El cierre documental posterior conserva exactamente la aplicación de0a5c69b; no añade cambios funcionales ni exige repetir manualmente las suites ya aprobadas.
