@@ -48,20 +48,20 @@ export function MealDayCard({ planner, date, daily = false, selected = false }: 
     <header><h3>{daily ? m("meals.day") : formatDate(localDate(date), { weekday: "long" })}</h3><time dateTime={date}>{formatDate(localDate(date), daily ? { day: "numeric", month: "long" } : { day: "numeric", month: "short" })}</time></header>
     <div className="meal-day-content">{mainMealSlots.map((slot) => {
       const entries = meals.filter((meal) => meal.slot === slot);
-      return <section className="meal-slot" key={slot} aria-label={m(slotKeys[slot])}><h4>{m(slotKeys[slot])}</h4>{entries.length ? entries.map((meal) => <MealField key={meal.id} planner={planner} date={date} slot={slot} meal={meal} daily={daily} onSaved={onSaved} />) : <MealField planner={planner} date={date} slot={slot} daily={daily} onSaved={onSaved} />}</section>;
+      return <section className="meal-slot" key={slot} aria-label={m(slotKeys[slot])}><h4>{m(slotKeys[slot])}</h4>{entries.length ? entries.map((meal) => <MealField key={meal.id} planner={planner} date={date} slot={slot} meal={meal} daily={daily} onSaved={onSaved} onStart={() => setSaved(false)} />) : <MealField planner={planner} date={date} slot={slot} daily={daily} onSaved={onSaved} onStart={() => setSaved(false)} />}</section>;
     })}
     {(!daily || snacks.length > 0) && <section className="meal-slot meal-snacks" aria-label={m("meals.snacks")}>
-      {snacks.length > 0 && <h4>{m("meals.snacks")}</h4>}{snacks.map((meal) => <MealField key={meal.id} planner={planner} date={date} slot="snack" meal={meal} onSaved={onSaved} />)}
-      <MealField planner={planner} date={date} slot="snack" onSaved={onSaved} />
+      {snacks.length > 0 && <h4>{m("meals.snacks")}</h4>}{snacks.map((meal) => <MealField key={meal.id} planner={planner} date={date} slot="snack" meal={meal} onSaved={onSaved} onStart={() => setSaved(false)} />)}
+      <MealField planner={planner} date={date} slot="snack" onSaved={onSaved} onStart={() => setSaved(false)} />
     </section>}
-    {legacy.length > 0 && <section className="meal-slot meal-legacy" aria-label={m("meals.previous")}><h4>{m("meals.previous")}</h4>{legacy.map((meal) => <MealField key={meal.id} planner={planner} date={date} meal={meal} onSaved={onSaved} />)}</section>}
+    {legacy.length > 0 && <section className="meal-slot meal-legacy" aria-label={m("meals.previous")}><h4>{m("meals.previous")}</h4>{legacy.map((meal) => <MealField key={meal.id} planner={planner} date={date} meal={meal} onSaved={onSaved} onStart={() => setSaved(false)} />)}</section>}
     </div>
     <MonthlyMealVersion planner={planner} date={date} />
     {saved && <p className="meal-save-status" role="status">{m("meals.saved")}</p>}
   </article>;
 }
 
-function MealField({ planner, date, slot, meal, daily, onSaved }: { planner: PlannerController; date: string; slot?: MealSlot; meal?: MealLog; daily?: boolean; onSaved: () => void }) {
+function MealField({ planner, date, slot, meal, daily, onSaved, onStart }: { planner: PlannerController; date: string; slot?: MealSlot; meal?: MealLog; daily?: boolean; onSaved: () => void; onStart: () => void }) {
   const { m, formatDate } = useI18n();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -75,7 +75,7 @@ function MealField({ planner, date, slot, meal, daily, onSaved }: { planner: Pla
     guard.markSaved(); setEditing(false); onSaved(); return true;
   };
   const guard = useUnsavedDraft({ dirty: editing && (name !== (meal?.name ?? "") || operation.busy), saving: operation.busy, onSave: save, onDiscard: () => setEditing(false) });
-  if (!editing) return <button type="button" className={`meal-value ${meal ? "has-content" : "is-empty"}`} aria-label={m(meal ? "meals.editAria" : "meals.addAria", { meal: fieldLabel })} onClick={() => guard.request(() => { setName(meal?.name ?? ""); setMealId(meal?.id ?? crypto.randomUUID()); setEditing(true); })}>
+  if (!editing) return <button type="button" className={`meal-value ${meal ? "has-content" : "is-empty"}`} aria-label={m(meal ? "meals.editAria" : "meals.addAria", { meal: fieldLabel })} onClick={() => guard.request(() => { onStart(); setName(meal?.name ?? ""); setMealId(meal?.id ?? crypto.randomUUID()); setEditing(true); })}>
     {meal ? <span data-no-translate="true" translate="no">{meal.name}</span> : slot === "snack" ? m("meals.addSnacks") : daily ? <>{m("meals.unplanned")}<span>{m("meals.add")}</span></> : m("meals.add")}
   </button>;
   return <form className="meal-inline-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>

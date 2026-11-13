@@ -46,6 +46,8 @@ describe("meal cards", () => {
     fireEvent.click(view.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(view.getByRole("status").textContent).toBe("Plan guardado"));
     expect(savePlannedMeal.mock.calls[1][0]).toEqual(savePlannedMeal.mock.calls[0][0]);
+    fireEvent.click(view.getByRole("button", { name: /Añadir Desayuno/ }));
+    expect(view.queryByRole("status")).toBeNull();
   });
 
   it("shares content across week and day with independent dates and retains old unclassified meals", async () => {
