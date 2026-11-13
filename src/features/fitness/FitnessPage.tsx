@@ -209,30 +209,30 @@ export function FitnessPage({ planner }: { planner: PlannerController }) {
 
     <HealthPlanning planner={planner} date={selectedDate} section={section} onSelectDate={selectDate} onEditRecord={openHealthRecord} />
 
-    <Card className="fitness-context-card">
+    {section === "training" && <Card className="fitness-context-card">
       <div><span><Target size={20} /></span><small>Meta física</small><strong data-no-translate="true">{fitness.physicalGoal}</strong></div>
       <div><span><Flame size={20} /></span><small>Calorías diarias</small><strong>{fitness.dailyCalories} kcal</strong></div>
-      <div><span>{section === "nutrition" ? <Utensils size={20} /> : <Dumbbell size={20} />}</span><small>{section === "nutrition" ? "Comidas al día" : "Entrenamientos"}</small><strong>{section === "nutrition" ? fitness.mealsPerDay : `${fitness.workoutsPerWeek} por semana`}</strong></div>
+      <div><span><Dumbbell size={20} /></span><small>Entrenamientos</small><strong>{fitness.workoutsPerWeek} por semana</strong></div>
       <div className="fitness-context-days"><span><CalendarDays size={20} /></span><small>Días de entrenamiento</small><div>{days.map((day, index) => <i className={fitness.trainingDays.includes(index) ? "is-active" : ""} key={day.long}>{day.short}</i>)}</div></div>
-    </Card>
+    </Card>}
 
     <div className="fitness-tabs" role="tablist" aria-label="Secciones de Bienestar">
       <button type="button" role="tab" aria-selected={section === "nutrition"} className={section === "nutrition" ? "is-active" : ""} onClick={() => selectSection("nutrition")}>Alimentación</button>
       <button type="button" role="tab" aria-selected={section === "training"} className={section === "training" ? "is-active" : ""} onClick={() => selectSection("training")}>Entrenamiento</button>
     </div>
 
-    <nav className="fitness-week" aria-label="Días de la semana">
+    {section === "training" && <nav className="fitness-week" aria-label="Días de la semana">
       {weekDates.map((date, index) => { const key = toLocalDateKey(date); return <button type="button" key={key} className={selectedDate === key ? "is-active" : ""} aria-current={selectedDate === key ? "date" : undefined} onClick={() => selectDate(key)}><span>{days[index].long}</span><small>{date.getDate()}</small></button>; })}
-    </nav>
+    </nav>}
 
-    {section === "nutrition" ? <>
+    {section === "nutrition" ? <details className="meal-advanced-details"><summary data-i18n-explicit="true">{m("meals.details")}</summary>
       <Card className="fitness-day-card nutrition-day-card">
         <header><div><span className="fitness-round-icon"><CalendarDays size={21} /></span><div><p className="eyebrow">{selectedDate}</p><h2>{selectedDay.long}</h2></div></div><div className="macro-total"><strong><Flame size={21} /> {totals.calories} kcal</strong><span>P {totals.protein}g · C {totals.carbs}g · G {totals.fat}g</span></div></header>
-        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal)} aria-label={`Editar ${meal.name}`} data-no-translate="true"><Pencil size={16} /></button></div><h3 data-no-translate="true">{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small data-no-translate="true">{meal.notes}</small>}<button data-i18n-explicit="true" aria-pressed={meal.completed !== false} disabled={mealOperation.busy} onClick={() => mealOperation.run(() => planner.saveMeal({ ...meal, mealId: meal.id, date: selectedDate, completed: meal.completed === false }))}>{m(meal.completed !== false ? "preparation.consumed" : "preparation.markConsumed")}</button><button className="meal-card__delete" type="button" onClick={() => void deleteMeal(meal)} aria-label={`Eliminar ${meal.name}`} data-no-translate="true"><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
+        {(selectedNutrition?.meals.length ?? 0) > 0 ? <div className="meal-grid">{selectedNutrition?.meals.map((meal) => <article className="meal-card" key={meal.id}><div><span><Utensils size={19} /></span><button type="button" onClick={() => openMeal(meal, selectedDate, healthPreparation(snapshot, selectedDate, "nutrition").source?.recordId === meal.id ? "weekly" : undefined)} aria-label={`Editar ${meal.name}`} data-no-translate="true"><Pencil size={16} /></button></div><h3 data-no-translate="true">{meal.name}</h3><strong>{meal.calories ?? 0} kcal</strong><p>P {meal.protein ?? 0} / C {meal.carbs ?? 0} / G {meal.fat ?? 0}</p>{meal.notes && <small data-no-translate="true">{meal.notes}</small>}<button data-i18n-explicit="true" aria-pressed={meal.completed !== false} disabled={mealOperation.busy} onClick={() => mealOperation.run(() => planner.saveMeal({ ...meal, mealId: meal.id, date: selectedDate, completed: meal.completed === false }))}>{m(meal.completed !== false ? "preparation.consumed" : "preparation.markConsumed")}</button><button className="meal-card__delete" type="button" onClick={() => void deleteMeal(meal)} aria-label={`Eliminar ${meal.name}`} data-no-translate="true"><Trash2 size={14} /> Eliminar</button></article>)}</div> : <EmptyState title="Aún no hay comidas registradas" text="Añade únicamente lo que te ayude a observar tu alimentación con claridad." />}
       </Card>
       <Card className="fitness-day-summary"><span className="fitness-round-icon"><BarChart3 size={21} /></span><div><h2>Resumen del día</h2><p>{selectedNutrition?.meals.length ?? 0} comidas registradas</p><ProgressBar value={mealCompletionPercent(completedMeals, fitness.mealsPerDay)} label={`${completedMeals}/${fitness.mealsPerDay} completadas`} /></div><Button onClick={() => openMeal()}><Plus size={18} /> Añadir comida</Button></Card>
       <CopyDayControls label="Copiar alimentación a" selectedDate={selectedDate} copyTarget={copyTarget} onTarget={setCopyTarget} onCopy={async () => { if (!copyTarget) return; await planner.copyMeals(selectedDate, copyTarget); setMessage("Alimentación copiada al día elegido."); }} />
-    </> : <>
+    </details> : <>
       <Card className="fitness-day-card training-day-card">
         {selectedWorkout ? <>
           <header><div><span className="fitness-round-icon"><Dumbbell size={22} /></span><div><p className="eyebrow">{selectedDay.long} · {selectedDate}</p><h2 data-no-translate={selectedWorkout.name || selectedWorkout.goal ? "true" : undefined}>{selectedWorkout.name ?? selectedWorkout.goal ?? "Entrenamiento"}</h2></div></div><div className="workout-meta"><span><Clock3 size={16} /> {selectedWorkout.durationMinutes ?? "—"} min</span><span><Dumbbell size={16} /> {selectedWorkout.exercises.length} ejercicios</span><Button variant="secondary" size="sm" onClick={() => openWorkout()}><Pencil size={15} /> Editar</Button><Button variant="ghost" size="sm" onClick={async () => { if (!window.confirm("¿Eliminar este entrenamiento? También se eliminarán las sesiones realizadas guardadas en esta fecha.")) return; await planner.deleteWorkoutPlan(selectedDate); setMessage("Entrenamiento eliminado."); }}><Trash2 size={15} /> Eliminar</Button></div></header>

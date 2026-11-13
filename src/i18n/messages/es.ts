@@ -1,3 +1,4 @@
+import { esMealsMessages } from "./features/meals";
 import { BRAND_OPERATIONAL_MESSAGE, BRAND_POSITIONING, BRAND_PROMISE, BRAND_SLOGAN } from "@/src/lib/brand";
 import { esHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { esHomeOverviewMessages } from "./features/home-overview";
@@ -15,6 +16,7 @@ import { esHealthLibraryMessages } from "./features/health-library";
 import { esBetaMessages } from "./features/beta";
 
 export const esMessages = {
+  ...esMealsMessages,
   ...esBetaMessages,
   ...esHomeOverviewMessages,
   ...esDraftMessages,

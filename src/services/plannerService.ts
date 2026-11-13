@@ -1,3 +1,4 @@
+import { applyPlannedMeal, type PlannedMealInput } from "@/src/domain/mealPlanning";
 import { createDemoSnapshot } from "@/src/domain/demo";
 import { applyMonthlyPriorityStep, type MonthlyPriorityStepInput } from "@/src/domain/monthlyPrioritySteps";
 import { healthPreparationSchema, healthPreparation, healthLibrary, hasHealthDetail, mealPlanContent, workoutPlanContent, preserveMonthlyHealthDetail, storeHealthVersion, applyHealthVersion, type HealthPreparationInput, type HealthScope, type HealthPlanEntry } from "@/src/domain/healthPreparation";
@@ -1445,12 +1446,18 @@ export function createPlannerService(repository: PlannerRepository) {
     });
   },
 
+  savePlannedMeal(input: PlannedMealInput): Promise<PlannerSnapshot> {
+    return updateSnapshot((snapshot) => applyPlannedMeal(snapshot, input, nowIso(), id));
+  },
+
   saveMeal(input: MealFormInput, preparationScope?: HealthScope): Promise<PlannerSnapshot> {
     const parsed = mealFormSchema.parse(input);
     return updateSnapshot((snapshot) => {
       const now = nowIso();
       const existing = snapshot.nutritionLogs.find((item) => item.date === parsed.date);
+      const previousMeal = existing?.meals.find((item) => item.id === parsed.mealId);
       const meal = {
+        ...(previousMeal?.slot ? { slot: previousMeal.slot } : {}),
         id: parsed.mealId ?? id(), name: parsed.name.trim(), calories: parsed.calories,
         protein: parsed.protein, carbs: parsed.carbs, fat: parsed.fat,
         notes: parsed.notes || undefined, completed: parsed.completed ?? true,
