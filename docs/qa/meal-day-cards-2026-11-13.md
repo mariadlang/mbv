@@ -20,7 +20,16 @@ Referencia: diseño de tarjetas elegido por María. Semana con siete días segú
 - Lint: cero errores, aviso previo de `useAccount`.
 - Auditorías de i18n y tokens aprobadas. Primer intento i18n detectó claves dinámicas; reemplazadas por mapa explícito de claves.
 - Revisión React: hooks incondicionales, estado de borrador local, guard de navegación, bloqueo síncrono de envío, errores sin descartar texto, labels y foco, sin nuevas dependencias.
-- Chromium local no pudo iniciarse: socket() Operation not permitted del entorno. No se presenta como ejecución E2E aprobada. Se preparó recorrido Playwright escritorio/móvil con guardado, doble pulsación, reload, cambio de semana/día, mismos IDs y capturas; pendiente ejecutarlo en CI.
+- Chromium local no pudo iniciarse: socket() Operation not permitted del entorno. No se presenta como ejecución E2E aprobada. Se preparó recorrido Playwright escritorio/móvil con guardado, doble pulsación, reload, cambio de semana/día, mismos IDs y capturas; ejecutado después en CI (ver resultados siguientes).
+
+## CI y revisión de capturas — 2026-11-14 UTC
+
+- PR [#4](https://github.com/mariadlang/mbv/pull/4), commits `151401a` y `7bf351c`: lint, tipos, 672 unitarias y build aprobados en GitHub. Previews Vercel listos en el proyecto existente; aún no publicados en el dominio.
+- Run [43521183794](https://github.com/mariadlang/mbv/actions/runs/43521183794): **167 E2E aprobadas, 4 fallidas, 25 omitidas**, 30.2 minutos. Los dos recorridos nuevos de comidas pasaron, incluidos cinco registros únicos, guardado/recarga, edición entre vistas y conservación de IDs y estado sin consumir. Las omisiones existentes no se presentan como aprobadas. El run anterior 43520876762 permanece registrado como fallido.
+- Dos fallos (escritorio/móvil) de preparación: selector nuevo demasiado amplio, que coincidía con fecha y textarea. Se restringe al nombre accesible «Otras comidas guardadas», manteniendo las aserciones de persistencia y restauración.
+- Dos fallos (escritorio/móvil) de Inicio: fixture existente fija 15:00 Bogotá, pero el navegador CI interpreta el evento sin zona a las 16:00 UTC, ya pasado a las 20:00 UTC. Se fija `America/Bogota` sólo para ese archivo de prueba; no se cambia la lógica de eventos ni la expectativa de dos eventos.
+- Las cuatro capturas se descargaron del artefacto 14084957360 y se inspeccionaron. La captura de elemento semanal incluía la cabecera sticky a media imagen, pues el elemento excedía el viewport. Se cambia la captura a página real completa desde arriba, esperando fuentes y sin alterar CSS ni ocultar controles. Se requiere nueva evidencia antes del cierre visual.
+- La solicitud de acceso normal quedó cancelada; no se reintenta ni se alteran credenciales. La comprobación autenticada en producción continúa pendiente.
 
 ## Publicación
 

@@ -3,6 +3,17 @@ import { setupHealth, healthRecords } from "./helpers/health-fixture";
 
 test.use({ timezoneId: "America/Bogota" });
 
+async function capturePage(page: import("@playwright/test").Page, path: string) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
+  // Capture the real page from its top; element screenshots taller than the viewport
+  // can place the sticky app header in the middle of the extracted card.
+  await page.screenshot({ path, fullPage: true, animations: "disabled", scale: "css" });
+}
+
 test("meal cards persist one shared daily plan across week, Mi día and reload", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   const mobile = testInfo.project.name === "mobile";
@@ -27,7 +38,7 @@ test("meal cards persist one shared daily plan across week, Mi día and reload",
   await expect(selected.getByText("PRUEBA Huevos y pan")).toBeVisible();
   expect((await healthRecords(page)).nutrition.find((log) => log.date === "2026-10-02")!.meals).toEqual(before);
   await expect(page.getByRole("button", { name: "Abrir editor detallado" })).toBeHidden();
-  await health.screenshot({ path: testInfo.outputPath(`meals-week-${mobile ? "mobile" : "desktop"}.png`) });
+  await capturePage(page, testInfo.outputPath(`meals-week-${mobile ? "mobile" : "desktop"}.png`));
   await health.getByRole("button", { name: "Semana siguiente" }).click();
   await expect(health.getByText("PRUEBA Huevos y pan")).toBeHidden();
   await health.getByRole("button", { name: "Semana anterior" }).click();
@@ -41,7 +52,7 @@ test("meal cards persist one shared daily plan across week, Mi día and reload",
   await expect(day.getByText("PRUEBA Pollo y verduras")).toBeVisible();
   await page.reload();
   await expect(day.getByText("PRUEBA Pollo y verduras")).toBeVisible();
-  await day.screenshot({ path: testInfo.outputPath(`meals-day-${mobile ? "mobile" : "desktop"}.png`) });
+  await capturePage(page, testInfo.outputPath(`meals-day-${mobile ? "mobile" : "desktop"}.png`));
   const after = (await healthRecords(page)).nutrition.find((log) => log.date === "2026-10-02")!.meals;
   expect(after.map((meal) => meal.id)).toEqual(before.map((meal) => meal.id));
   expect(after.every((meal) => meal.completed === false)).toBe(true);

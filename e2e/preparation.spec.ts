@@ -165,9 +165,10 @@ test("health monthly plan and weekly adjustment use the same daily record", asyn
   await health.getByRole("button", { name: "Plan semanal", exact: true }).click();
   await expect(health).toContainText("Recuperado de tu planificación mensual");
   await health.getByRole("button", { name: /^Editar Otras comidas guardadas/ }).click();
-  await health.getByRole("textbox").fill("Ajuste del viernes");
+  const mealEditor = health.getByRole("textbox", { name: /^Otras comidas guardadas/ });
+  await mealEditor.fill("Ajuste del viernes");
   await health.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(health.getByRole("textbox")).toBeHidden();
+  await expect(mealEditor).toBeHidden();
   await expect(health).toContainText("Ajuste del viernes");
   await page.reload();
   await expect(health).toContainText("Ajuste del viernes");

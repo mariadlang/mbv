@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { setupEditorialFixture } from "./helpers/editorial-fixture";
 
+// The fixture's clock is 15:00 in Bogotá; its 16:00 appointment is still upcoming.
+// Pin the browser zone so a UTC CI runner does not treat that appointment as past.
+test.use({ timezoneId: "America/Bogota" });
+
 async function setup(page: import("@playwright/test").Page) {
   await setupEditorialFixture(page);
   await page.evaluate(async () => {
