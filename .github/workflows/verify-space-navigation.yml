@@ -1,0 +1,38 @@
+name: Verify simplified space navigation
+on:
+  push:
+    branches: [verify/space-more-entry-2026-11-14]
+permissions:
+  contents: read
+env:
+  CI: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 51dc73e50d8adeee0494ea9f14389e321eaa5f7e
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm audit:i18n && pnpm audit:design-tokens
+      - run: pnpm test
+      - run: pnpm run build:vercel
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify direct navigation to More in both viewports
+        run: pnpm exec playwright test e2e/app.spec.ts --workers=1 --grep 'information architecture separates'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: space-more-entry-evidence
+          path: test-results/
+          retention-days: 7
