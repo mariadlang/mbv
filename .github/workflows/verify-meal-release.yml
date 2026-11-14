@@ -28,7 +28,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Recheck the unchanged month preservation test in isolation
-        run: pnpm exec playwright test e2e/app.spec.ts --project=desktop --workers=1 --grep "^an existing month outside the trial horizon remains available in read-only mode$" --reporter=line,json
+        run: pnpm exec playwright test e2e/app.spec.ts:2223 --project=desktop --workers=1 --reporter=line,json
         env:
           PLAYWRIGHT_JSON_OUTPUT_FILE: focused-results.json
       - uses: actions/upload-artifact@v4
