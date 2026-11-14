@@ -6,20 +6,13 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Bell,
-  BookOpen,
   CalendarDays,
   Cloud,
   Camera,
   Check,
-  ChevronRight,
   Circle,
-  ClipboardList,
   Dumbbell,
-  HeartPulse,
   ImagePlus,
-  Landmark,
-  Layers3,
-  ListTodo,
   MoonStar,
   Plus,
   Sparkles,
@@ -29,7 +22,6 @@ import {
   Trash2,
   X,
   Utensils,
-  Wrench,
 } from "lucide-react";
 import type { BrainDumpType } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
@@ -38,7 +30,6 @@ import { Badge, Button, Card, SectionHeading } from "@/src/components/ui/Primiti
 import { imageUploadSchema } from "@/src/lib/schemas";
 import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { ChallengesPage } from "@/src/features/challenges/ChallengesPage";
-import { SectionNavigation } from "@/src/components/layout/SectionNavigation";
 import type { QuickCaptureDefaults } from "@/src/features/tasks/QuickCaptureDrawer";
 import { getTrialPlanningDateBounds, isTrialPlanningDateAllowed, isTrialPlanningMonthAllowed, type UserAccess } from "@/src/domain/access";
 import { useI18n } from "@/src/i18n/I18nProvider";
@@ -48,13 +39,12 @@ import { calendarEventTimeLabel, isValidCalendarDateKey } from "@/src/domain/cal
 import { publicConfig } from "@/src/lib/publicConfig";
 import { useUnsavedDraft, useDraftNavigation } from "@/src/components/navigation/UnsavedDraftProvider";
 
-type HubTab = "summary" | "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
+type HubTab = "lists" | "routines" | "fitness" | "challenges" | "vision" | "events";
 type ListDateMode = "flexible" | "month" | "date";
 type HubSaveKind = "event" | "routine" | "item" | "inbox" | "conversion" | "vision";
 type ListDraft = { title: string; dateMode: ListDateMode; date: string; goalId: string; projectId: string };
 
 const hubTabs: Array<{ id: HubTab; labelKey: NavigationSpaceProgressMessageKey }> = [
-  { id: "summary", labelKey: "space.tab.summary" },
   { id: "lists", labelKey: "space.tab.lists" },
   { id: "routines", labelKey: "space.tab.routines" },
   { id: "challenges", labelKey: "space.tab.challenges" },
@@ -62,17 +52,7 @@ const hubTabs: Array<{ id: HubTab; labelKey: NavigationSpaceProgressMessageKey }
   { id: "events", labelKey: "space.tab.calendar" },
 ];
 
-const toolTabs = hubTabs.filter((item) => !["summary", "lists"].includes(item.id));
-
-const spaceDestinations = [
-  ["/app/habits", "space.destination.habits.title", "space.destination.habits.description", ClipboardList],
-  ["/app/tasks", "space.destination.tasks.title", "space.destination.tasks.description", ListTodo],
-  ["/app/journal", "space.destination.journal.title", "space.destination.journal.description", BookOpen],
-  ["/app/health", "space.destination.wellbeing.title", "space.destination.wellbeing.description", HeartPulse],
-  ["/app/finance", "space.destination.finances.title", "space.destination.finances.description", Landmark],
-  ["/app/life-hub?tab=lists", "space.destination.inbox.title", "space.destination.inbox.description", Layers3],
-  ["/app/more", "space.destination.more.title", "space.destination.more.description", Wrench],
-] as const;
+const toolTabs = hubTabs.filter((item) => item.id !== "lists");
 
 const listLabelKeys: Record<BrainDumpType, NavigationSpaceProgressMessageKey> = {
   wishlist: "space.list.wishlist",
@@ -125,7 +105,7 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   const initialEventDate = initialEvent?.startDate || (requestedDate && isValidCalendarDateKey(requestedDate) ? requestedDate : today);
   const requestedTab = searchParams.get("tab");
   const normalizedRequestedTab = requestedTab === "calendar" ? "events" : requestedTab;
-  const tab = hubTabs.some((item) => item.id === normalizedRequestedTab) ? normalizedRequestedTab as HubTab : "summary";
+  const tab = hubTabs.some((item) => item.id === normalizedRequestedTab) ? normalizedRequestedTab as HubTab : "lists";
   const [message, setMessage] = useState("");
   const [planningError, setPlanningError] = useState("");
   const [listFilter, setListFilter] = useState<"all" | BrainDumpType>("all");
@@ -210,11 +190,11 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
     carbs: total.carbs + (meal.carbs ?? 0), fat: total.fat + (meal.fat ?? 0),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   const selectTab = (nextTab: HubTab) => {
-    draftNavigation.request(() => setSearchParams(nextTab === "summary" ? {} : { tab: nextTab }));
+    draftNavigation.request(() => setSearchParams({ tab: nextTab }));
   };
   const openInboxCapture = () => {
     draftNavigation.request(() => {
-      if (tab !== "lists") setSearchParams({ tab: "lists" });
+      if (requestedTab !== "lists") setSearchParams({ tab: "lists" });
       onQuickCapture({ source: "inbox" });
     });
   };
@@ -457,13 +437,12 @@ export function LifeHubPage({ planner, access, onQuickCapture }: { planner: Plan
   return (
     requestedTab === "fitness" ? <Navigate to="/app/health" replace /> :
     <div className="page-stack life-hub-page" data-i18n-explicit="true">
-      <SectionNavigation section="space" />
-      <SectionHeading eyebrow={m(tab === "summary" ? "space.header.summary.eyebrow" : tab === "lists" ? "space.header.lists.eyebrow" : "space.header.tools.eyebrow")} title={m(tab === "summary" ? "space.header.summary.title" : tab === "lists" ? "space.header.lists.title" : "space.header.tools.title")} description={m(tab === "summary" ? "space.header.summary.description" : tab === "lists" ? "space.header.lists.description" : "space.header.tools.description")} action={tab === "summary" || tab === "lists" ? <Button onClick={openInboxCapture}><Plus size={16} /> {m("space.quickCapture")}</Button> : undefined} />
+      {tab !== "lists" && <Link className="button button--ghost" to="/app/more">{m("more.title")}</Link>}
+      <SectionHeading eyebrow={m(tab === "lists" ? "space.header.lists.eyebrow" : "space.header.tools.eyebrow")} title={m(tab === "lists" ? "space.header.lists.title" : "space.header.tools.title")} description={m(tab === "lists" ? "space.header.lists.description" : "space.header.tools.description")} action={tab === "lists" ? <Button onClick={openInboxCapture}><Plus size={16} /> {m("space.quickCapture")}</Button> : undefined} />
       {toolTabs.some((item) => item.id === tab) && <nav className="life-hub-tabs" aria-label={m("space.tools.label")}>{toolTabs.map((item) => <button type="button" key={item.id} className={tab === item.id ? "is-active" : ""} aria-current={tab === item.id ? "page" : undefined} onClick={() => selectTab(item.id)}>{m(item.labelKey)}</button>)}</nav>}
       {message && <div className="inline-message" role="status">{message}</div>}
       {planningError && <div className="inline-message" role="alert">{planningError}</div>}
 
-      {tab === "summary" && <section aria-labelledby="space-destinations-title"><div className="card-heading"><div><p className="eyebrow">{m("space.summary.eyebrow")}</p><h2 id="space-destinations-title">{m("space.summary.title")}</h2></div></div><div className="more-grid">{spaceDestinations.map(([href, titleKey, descriptionKey, Icon]) => <Link to={href} key={href}><Card className="more-card"><span><Icon size={21} aria-hidden="true" /></span><div><h3>{m(titleKey)}</h3><p>{m(descriptionKey)}</p></div><ChevronRight size={19} aria-hidden="true" /></Card></Link>)}</div></section>}
 
       {tab === "lists" && <>
         <Card className="brain-universal-capture"><div><p className="eyebrow">{m("space.inbox.capture.eyebrow")}</p><h2>{m("space.inbox.capture.title")}</h2><p>{m("space.inbox.capture.description")}</p></div><Button onClick={openInboxCapture}><Plus size={16} /> {m("space.inbox.capture.action")}</Button></Card>

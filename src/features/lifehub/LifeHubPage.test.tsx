@@ -47,7 +47,7 @@ describe("LifeHub saved editors", () => {
     await act(async () => { await view.router.navigate(-1); });
     expect(view.router.state.location.search).toBe("");
     expect(view.router.state.location.hash).toBe("");
-    expect(view.getByRole("heading", { name: "Mi espacio" })).toBeTruthy();
+    expect(view.getByRole("heading", { name: "Mis listas" })).toBeTruthy();
   });
 
   it.each([

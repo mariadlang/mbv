@@ -1,5 +1,8 @@
 # Estado actual de My Best Version
 
+## 2026-11-14 — Mi espacio y navegación simplificados — en verificación
+
+Alcance ampliado por María durante el cambio de Finanzas: menú izquierdo con Hábitos, Proyectos y tareas, Finanzas, Alimentación y Entrenamiento; Mi espacio abre directamente Mis listas (antes Bandeja). Más conserva Organizar y explorar la app, Apoyo y Mis listas; sin duplicados de Bienestar/Finanzas. Diario y notas se retira de los accesos y su URL anterior lleva a Mis listas. Registros de diario, cierre del día, respaldos, IDs y permisos conservados; no se cambia almacenamiento ni backend. Base vigente `8e5bb62`. Verificación dirigida 52/52, lint sin errores (aviso previo), tipos y auditorías aprobados. CI integral y recorridos principales pendientes. [Ficha](../qa/space-navigation-2026-11-14.md).
 
 ## 2026-11-14 — comidas por día publicadas y comprobadas con sesión normal (inicio 13/11)
 

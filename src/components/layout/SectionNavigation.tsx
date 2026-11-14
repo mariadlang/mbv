@@ -27,16 +27,7 @@ const sections = {
   },
   space: {
     labelKey: "section.space.label",
-    items: [
-      ["/app/life-hub", "section.item.summary"],
-      ["/app/habits", "section.item.habits"],
-      ["/app/tasks", "section.item.tasks"],
-      ["/app/journal", "section.item.journal"],
-      ["/app/health", "section.item.wellbeing"],
-      ["/app/finance", "section.item.finances"],
-      ["/app/life-hub?tab=lists", "section.item.inbox"],
-      ["/app/more", "section.item.moreTools"],
-    ],
+    items: [["/app/life-hub?tab=lists", "section.item.inbox"]],
   },
 } satisfies Record<Section, { labelKey: NavigationSpaceProgressMessageKey; items: Array<[string, NavigationSpaceProgressMessageKey]> }>;
 
@@ -53,6 +44,10 @@ export function isSectionItemActive(href: string, location: SectionLocation): bo
     return lifeHubToolTabs.has(currentSearch.get("tab") ?? "");
   }
   if (location.pathname !== target.pathname) return false;
+  if (target.pathname === "/app/life-hub" && target.searchParams.get("tab") === "lists") {
+    const tab = currentSearch.get("tab");
+    return !tab || !lifeHubTabs.has(tab) || tab === "lists";
+  }
 
   if (target.pathname === "/app/planning" && !target.search && !target.hash) {
     return currentSearch.get("view") !== "week";

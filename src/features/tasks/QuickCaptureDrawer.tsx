@@ -111,7 +111,7 @@ export function QuickCaptureDrawer({
     if (!created) return;
     guard.markSaved();
     setTitle("");
-    setFeedback({ id: created.id, title: created.title, destination: created.date ? `Mi día · ${created.date}` : "Bandeja" });
+    setFeedback({ id: created.id, title: created.title, destination: created.date ? `Mi día · ${created.date}` : m("section.item.inbox") });
     onClose();
     return true;
     } catch { setError(m("draft.error")); return false; }
@@ -145,7 +145,7 @@ export function QuickCaptureDrawer({
             {type === "priority" && <label className="form-field"><span>Posición</span><select value={focusPriority} onChange={(event) => setFocusPriority(event.target.value as typeof focusPriority)}><option value="1">Prioridad 1</option><option value="2">Prioridad 2</option><option value="3">Prioridad 3</option></select></label>}
           </div>}
           {error && <p className="form-error" role="alert">{error}</p>}
-          <div className="quick-capture-actions"><small>{date ? "Se guardará en el día elegido." : "Se guardará en Bandeja, sin fecha."}</small><Button type="submit" loading={saving}><Save size={16} /> Guardar</Button></div>
+          <div className="quick-capture-actions"><small>{date ? "Se guardará en el día elegido." : m("space.inbox.capture.saveHint")}</small><Button type="submit" loading={saving}><Save size={16} /> Guardar</Button></div>
         </form>
       </aside>
     </div>, document.body)}

@@ -34,7 +34,6 @@ const DashboardPage = lazy(() => import("@/src/features/preparation/EditorialDas
 const GuidePage = lazy(() => import("@/src/features/preparation/GuidePage").then((module) => ({ default: module.GuidePage })));
 const GoalsPage = lazy(() => import("@/src/features/goals/GoalsPage").then((module) => ({ default: module.GoalsPage })));
 const HabitsPage = lazy(() => import("@/src/features/habits/HabitsPage").then((module) => ({ default: module.HabitsPage })));
-const JournalPage = lazy(() => import("@/src/features/journal/JournalPage").then((module) => ({ default: module.JournalPage })));
 const MorePage = lazy(() => import("@/src/features/more/MorePage").then((module) => ({ default: module.MorePage })));
 const PlanningPage = lazy(() => import("@/src/features/planning/PlanningPage").then((module) => ({ default: module.PlanningPage })));
 const ProgressPage = lazy(() => import("@/src/features/progress/ProgressPage").then((module) => ({ default: module.ProgressPage })));
@@ -263,7 +262,7 @@ function ProtectedPlannerApp() {
             <Route path="/app/life-hub/fitness" element={<Navigate to="/app/health" replace />} />
             <Route path="/app/goals" element={<GoalsPage planner={planner} access={account.access} />} />
             <Route path="/app/progress" element={<ProgressPage planner={planner} access={account.access} />} />
-            <Route path="/app/journal" element={<JournalPage planner={planner} />} />
+            <Route path="/app/journal" element={<Navigate to="/app/life-hub?tab=lists" replace />} />
             <Route path="/app/settings" element={<SettingsPage planner={planner} access={account.access} onReplayTutorial={replayTutorial} onRequestLogout={() => setLogoutOpen(true)} onLocalDataCleared={() => setLocallyClearedAccountId(accountUserId ?? null)} />} />
             <Route path="/app/profile" element={<Navigate to="/app/settings" replace />} />
             <Route path="/app/legal" element={<LegalPrivacyPage />} />

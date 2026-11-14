@@ -211,7 +211,7 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
       className="task-tabs"
       panelId="task-list-panel"
       items={[
-        { id: "inbox", label: "Bandeja" },
+        { id: "inbox", label: m("section.item.inbox") },
         { id: "today", label: "Mi día" },
         { id: "upcoming", label: "Próximas" },
         { id: "completed", label: "Completadas" },
@@ -241,7 +241,7 @@ export function TasksPage({ planner, access, onQuickCapture }: { planner: Planne
 
     <div id="task-list-panel" role="tabpanel" aria-labelledby={`task-filters-${tab}-tab`}>
       <Card className="task-manager-card">
-        <header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : "Bandeja"}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header>
+        <header><div><p className="eyebrow">{tab === "today" ? "Mi día" : tab === "upcoming" ? "Próximas" : tab === "completed" ? "Completadas" : m("section.item.inbox")}</p><h2>{tasks.length} tareas</h2></div><Badge tone="neutral">Prioridad primero</Badge></header>
         <button type="button" className="task-manager-add task-manager-add--button" onClick={() => onQuickCapture({ source: tab === "inbox" ? "inbox" : "empty", date: tab === "today" ? today : undefined })}><Plus size={18} /><span>Añadir una tarea…</span><strong>Añadir</strong></button>
         <div className="managed-task-list">{tasks.map((task) => {
           const area = snapshot.lifeAreas.find((item) => item.id === task.lifeAreaId);

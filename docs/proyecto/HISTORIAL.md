@@ -1,5 +1,8 @@
 # Historial verificable de My Best Version
 
+## 2026-11-14 — Mi espacio y navegación simplificados — en curso
+
+Base `8e5bb62`, actualizada desde GitHub conservando la rama local anterior. La petición inicial de Finanzas fue ampliada por María antes de publicar: accesos laterales para módulos frecuentes, Mi espacio sólo Mis listas, Más con tres grupos y retirada de Diario y notas. Se conserva una única entrada para todo el trabajo. AppShell reutiliza iconos y claves; LifeHub abre listas sin resumen duplicado; SectionNavigation se reduce a Mis listas; MorePage tiene ES/EN explícito. La ruta histórica de diario redirige y sus datos siguen en exportación; el cierre diario conserva su registro y una prueba lo comprueba por recarga y backup. No se tocan permisos, Supabase ni funciones financieras. Se adaptan los recorridos existentes de navegación, historial, capturas y rutas. Primer audit detectó dos claves alteradas involuntariamente al renombrar Inbox; corregidas conservando las claves estables. 52/52 dirigidas, tipos/lint/auditorías aprobados (un aviso lint previo). Chromium local no inicia por restricciones de socket; el binario empaquetado de Playwright tampoco estaba instalado. Se comprobará el flujo en CI, sin desactivar restricciones ni ampliar timeouts. Publicación pendiente; [ficha única](../qa/space-navigation-2026-11-14.md).
 
 ## 2026-11-13–14 — comidas en tarjetas por día publicadas y comprobadas
 

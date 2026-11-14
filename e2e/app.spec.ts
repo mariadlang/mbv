@@ -201,6 +201,15 @@ async function openSpaceFromNavigation(page: Page) {
   await expect(page).toHaveURL(/\/app\/life-hub$/);
 }
 
+async function openSpaceShortcut(page: Page, href: string, name: string) {
+  const sidebarLink = page.locator(`.sidebar__space-shortcuts a[href="${href}"]`);
+  if (await sidebarLink.isVisible()) await sidebarLink.click();
+  else {
+    await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
+    await page.locator(".mobile-drawer").getByRole("link", { name, exact: true }).click();
+  }
+}
+
 async function showTodayHabits(page: Page) {
   await expect(page.getByRole("heading", { level: 1, name: "Hoy", exact: true })).toBeVisible();
   const tabs = page.locator(".editorial-today-mobile-tabs");
@@ -529,7 +538,7 @@ test("custom Dream Life cards reuse and can change Wheel of Life areas", async (
   await expect(page.getByLabel("Área de vida").locator("option:checked")).toHaveText("Carrera profesional o trabajo");
 });
 
-test("creates a goal with manual progress and writes a journal entry", async ({ page }) => {
+test("creates a goal with manual progress and redirects the retired journal", async ({ page }) => {
   await completeOnboarding(page);
 
   await page.goto("/app/goals");
@@ -548,10 +557,9 @@ test("creates a goal with manual progress and writes a journal entry", async ({ 
   await expect(page.getByRole("heading", { name: "Publicar la versión beta" })).toBeVisible();
 
   await page.goto("/app/journal");
-  await page.getByPlaceholder("Título opcional").fill("Decisión de producto");
-  await page.getByLabel("Nueva página del diario").fill("Mantener la experiencia simple y local-first.");
-  await page.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Decisión de producto" })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/life-hub\?tab=lists$/);
+  await expect(page.getByRole("heading", { name: "Mis listas", exact: true })).toBeVisible();
+  await expect(page.locator(".journal-page")).toHaveCount(0);
 });
 
 test("budget, savings fund and movement update the finance summary", async ({ page }) => {
@@ -613,10 +621,10 @@ test("cascade planning and optional life modules persist locally", async ({ page
   await expect(page.getByRole("progressbar", { name: "Avance del mes" })).toHaveAttribute("aria-valuenow", "50");
 
   await page.goto("/app/life-hub");
-  await expect(page.getByRole("heading", { name: "Mi espacio", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis listas", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Captura rápida" }).click();
   await expect(page).toHaveURL(/\/app\/life-hub\?tab=lists$/);
-  await expect(page.getByRole("heading", { name: "Bandeja", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis listas", exact: true })).toBeVisible();
   await page.getByLabel("Nombre").fill("Aprender fotografía");
   await page.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(page.locator(".brain-inbox-list").getByText("Aprender fotografía")).toBeVisible();
@@ -713,11 +721,11 @@ test("deep links and refresh work in the production runtime", async ({ page }) =
     ["/app/habits", /^Hábitos$/],
     ["/app/challenges", /^Retos$/],
     ["/app/finance", /^Finanzas$/],
-    ["/app/life-hub", /^Mi espacio$/],
+    ["/app/life-hub", /^Mis listas$/],
     ["/app/health", /^Alimentación$/],
     ["/app/goals", /^Metas$/],
     ["/app/progress", /Tu progreso/],
-    ["/app/journal", /^Mi diario$/],
+    ["/app/journal", /^Mis listas$/],
     ["/app/settings", /Ajustes y datos/],
     ["/app/legal", /Legal y privacidad/],
     ["/app/privacy-center", /Centro de Privacidad/],
@@ -767,19 +775,25 @@ test("information architecture separates overview from daily execution", async (
 
   if (!mobile) {
     const shortcuts = page.locator(".sidebar__space-shortcuts");
-    await expect(shortcuts.getByRole("link")).toHaveCount(5);
+    await expect(shortcuts.getByRole("link")).toHaveCount(6);
+    const finances = shortcuts.getByRole("link", { name: /Finanzas/ });
+    await expect(finances).toBeInViewport();
+    await expect(finances).toHaveAttribute("href", "/app/finance");
     const nutrition = shortcuts.getByRole("link", { name: /Alimentación/ });
     await nutrition.click();
     await expect(page).toHaveURL(new RegExp("/app/health"));
     await expect(nutrition).toHaveAttribute("aria-current", "page");
     await expect(navigation.locator('[aria-current="page"]')).toHaveCount(0);
     await expect(shortcuts.locator('[aria-current="page"]')).toHaveCount(1);
-    await openSpaceFromNavigation(page);
-    await page.getByRole("link", { name: /Finanzas/ }).first().click();
+    await finances.click();
     await expect(page).toHaveURL(new RegExp("/app/finance"));
+    await expect(finances).toHaveAttribute("aria-current", "page");
+    await expect(shortcuts.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Finanzas", exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath("finance-sidebar-desktop.png"), animations: "disabled" });
   } else {
     await navigation.getByRole("link", { name: "Más", exact: true }).click();
-    await expect(page.getByRole("link", { name: /Finanzas/ }).first()).toBeVisible();
+    await expect(page.locator(".more-page").getByRole("link", { name: /Finanzas/ })).toHaveCount(0);
     await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
     const drawer = page.locator(".mobile-drawer");
     await expect(drawer.getByRole("link", { name: "Alimentación", exact: true })).toBeVisible();
@@ -787,7 +801,28 @@ test("information architecture separates overview from daily execution", async (
     await drawer.getByRole("link", { name: "Alimentación", exact: true }).click();
     await expect(page).toHaveURL(new RegExp("/app/health"));
     await expect(drawer).toBeHidden();
+    await page.getByRole("button", { name: "Abrir menú", exact: true }).click();
+    await expect(drawer.getByRole("link", { name: "Finanzas", exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath("finance-menu-mobile.png"), animations: "disabled" });
+    await drawer.getByRole("link", { name: "Finanzas", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp("/app/finance"));
+    await expect(drawer).toBeHidden();
   }
+
+  await openSpaceFromNavigation(page);
+  await expect(page.getByRole("heading", { name: "Mis listas", exact: true })).toBeVisible();
+  await expect(page.locator(".life-hub-page .more-card")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Diario y notas/ })).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("my-lists.png"), animations: "disabled" });
+  await page.goto("/app/more");
+  const more = page.locator(".more-page");
+  await expect(more.locator(".more-group > h2")).toHaveText(["Organizar y explorar la app", "Apoyo", "Mis listas"]);
+  await expect(more.getByRole("link")).toHaveCount(8);
+  await expect(more.locator('a[href="/app/health"], a[href="/app/finance"], a[href="/app/journal"]')).toHaveCount(0);
+  await expect(more.getByRole("link", { name: /Retos/ })).toBeVisible();
+  await expect(more.getByRole("link", { name: /Desbloquearme/ })).toBeVisible();
+  await expect(more.getByRole("link", { name: /Aprende/ })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("more-organized.png"), fullPage: true, animations: "disabled" });
 
   await navigation.getByRole("link", { name: test.info().project.name === "mobile" ? "Hoy" : "Mi día", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Hoy", exact: true })).toBeVisible();
@@ -799,24 +834,21 @@ test("information architecture separates overview from daily execution", async (
 test("browser history and responsive navigation work in the production runtime", async ({ page }) => {
   test.setTimeout(60_000);
   await completeOnboarding(page);
-  await openSpaceFromNavigation(page);
-  await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
+  await openSpaceShortcut(page, "/app/tasks", "Proyectos y tareas");
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 
-  await openSpaceFromNavigation(page);
-  await page.getByRole("link", { name: "Diario y notas", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
+  await openSpaceShortcut(page, "/app/habits", "Hábitos");
+  await expect(page.getByRole("heading", { name: "Hábitos" })).toBeVisible();
 
-  const historySteps = 2;
+  const historySteps = 1;
   for (let step = 0; step < historySteps; step += 1) await page.goBack();
   await expect(page).toHaveURL(/\/app\/tasks$/);
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
   for (let step = 0; step < historySteps; step += 1) await page.goForward();
-  await expect(page).toHaveURL(/\/app\/journal$/);
-  await expect(page.getByRole("heading", { name: "Mi diario" })).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/habits$/);
+  await expect(page.getByRole("heading", { name: "Hábitos" })).toBeVisible();
 
-  await openSpaceFromNavigation(page);
-  await page.getByRole("link", { name: "Proyectos y tareas", exact: true }).click();
+  await openSpaceShortcut(page, "/app/tasks", "Proyectos y tareas");
   await expect(page.getByRole("heading", { name: "Proyectos y tareas" })).toBeVisible();
 
   await page.evaluate(() => {
@@ -1070,16 +1102,22 @@ test("daily close updates one journal entry instead of creating duplicates", asy
   await page.getByLabel("¿Qué avancé hoy?").fill("Terminé la primera versión de una tarea importante.");
   await page.getByLabel("¿Qué quiero recordar de hoy?").fill("Avanzar con calma también cuenta.");
   await page.getByRole("button", { name: "Guardar mi cierre del día" }).click();
-  await expect(page.getByText("Tu cierre quedó guardado en Mi diario.")).toBeVisible();
+  await expect(page.getByText("Tu cierre del día quedó guardado.")).toBeVisible();
 
   await page.getByLabel("¿Qué avancé hoy?").fill("Terminé y revisé una tarea importante.");
   await page.getByRole("button", { name: "Actualizar mi cierre" }).click();
-  await expect(page.getByText("Tu cierre quedó guardado en Mi diario.")).toBeVisible();
+  await expect(page.getByText("Tu cierre del día quedó guardado.")).toBeVisible();
 
-  await page.goto("/app/journal");
-  const dailyCloseEntries = page.locator(".journal-entry").filter({ hasText: "Cierre del día" });
-  await expect(dailyCloseEntries).toHaveCount(1);
-  await expect(dailyCloseEntries).toContainText("Terminé y revisé una tarea importante.");
+  await page.reload();
+  await expect(page.getByLabel("¿Qué avancé hoy?")).toHaveValue("Terminé y revisé una tarea importante.");
+  await page.goto("/app/settings");
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar", exact: true }).click();
+  const backupPath = await (await downloadPromise).path();
+  const backup = JSON.parse(await readFile(backupPath!, "utf8"));
+  const dailyCloseEntries = backup.data.journalEntries.filter((entry: { title: string }) => entry.title === "Cierre del día");
+  expect(dailyCloseEntries).toHaveLength(1);
+  expect(dailyCloseEntries[0].text).toContain("Terminé y revisé una tarea importante.");
 });
 
 test("tasks stay date-only while calendar events support times and all-day mode", async ({ page }) => {
@@ -1968,11 +2006,11 @@ test("P1 product routes remain usable across the required visual matrix in light
     { path: "/app/goals", ready: () => page.getByRole("heading", { name: "Metas", exact: true }) },
     { path: "/app/planning", ready: () => page.getByRole("heading", { name: "Tu mapa de 12 meses", exact: true }) },
     { path: "/app/planning/weekly", ready: () => page.getByRole("heading", { name: "Mi semana", exact: true }) },
-    { path: "/app/life-hub", ready: () => page.getByRole("heading", { name: "Mi espacio", exact: true }) },
+    { path: "/app/life-hub", ready: () => page.getByRole("heading", { name: "Mis listas", exact: true }) },
     { path: "/app/tasks", ready: () => page.getByRole("heading", { name: "Proyectos y tareas", exact: true }) },
     { path: "/app/habits", ready: () => page.getByRole("heading", { name: "Hábitos", exact: true }) },
     { path: "/app/progress", ready: () => page.getByRole("heading", { name: "Tu progreso", exact: true }) },
-    { path: "/app/journal", ready: () => page.getByRole("heading", { name: "Mi diario", exact: true }) },
+    { path: "/app/journal", ready: () => page.getByRole("heading", { name: "Mis listas", exact: true }) },
     { path: "/app/finance", ready: () => page.getByRole("heading", { name: "Finanzas", exact: true }) },
     { path: "/app/health", ready: () => page.getByRole("heading", { name: /Antes de usar Alimentación y Entrenamiento|Alimentación/ }) },
     { path: "/app/settings", ready: () => page.getByRole("heading", { name: "Ajustes y datos", exact: true }) },
@@ -2421,7 +2459,7 @@ test("English mode covers the updated product flows", async ({ page }) => {
 
   for (const [path, heading] of [
     ["/app/habits", "Habits"],
-    ["/app/journal", "My journal"],
+    ["/app/journal", "My lists"],
     ["/app/finance", "Finances"],
     ["/app/progress", "Your progress"],
     ["/app/settings", "Settings and data"],

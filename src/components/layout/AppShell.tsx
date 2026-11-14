@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigationType } from "react-router-dom";
-import { Apple, BookOpen, Compass, Dumbbell, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, Wrench, X } from "lucide-react";
+import { Apple, Compass, Dumbbell, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CircleHelp, LayoutDashboard, Layers3, ListTodo, LogOut, Menu, MessageCircle, MoonStar, Plus, Settings, Sparkles, Sun, WalletCards, Wrench, X } from "lucide-react";
 import { useUiStore } from "@/src/stores/useUiStore";
 import { BrandMark } from "@/src/components/ui/BrandMark";
 import { Botanical } from "@/src/features/preparation/PreparationShared";
@@ -52,9 +52,10 @@ export function isEditorialActive(href: string, pathname: string, search: string
 
 const spaceShortcutItems = [
   ["/app/habits", "preparation.habits", BarChart3],
+  ["/app/tasks", "section.item.tasks", ListTodo],
+  ["/app/finance", "navigation.item.finances", WalletCards],
   ["/app/health", "preparation.nutrition", Apple],
   ["/app/health?section=training", "preparation.training", Dumbbell],
-  ["/app/journal", "preparation.journal", BookOpen],
   ["/app/life-hub", "preparation.space", Layers3],
 ] as const;
 

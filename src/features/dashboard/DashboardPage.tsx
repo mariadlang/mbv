@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, Check, Feather, HeartPulse, Leaf, ListPlus, Quote, Sparkles, Target, TrendingUp, Utensils } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, HeartPulse, Leaf, ListPlus, Quote, Sparkles, Target, TrendingUp, Utensils } from "lucide-react";
 import { buildDashboardSummary } from "@/src/domain/dashboardSummary";
 import { weeklyPlanningInsight } from "@/src/domain/cascadeRules";
 import { getDailyTopThree } from "@/src/domain/guidanceRules";
@@ -81,7 +81,6 @@ export function DashboardPage({ planner, onQuickCapture }: { planner: PlannerCon
       <button type="button" onClick={() => onQuickCapture({ source: "dashboard" })}><ListPlus size={20} /><span>{m("dashboard.quickAccess.newTask")}</span></button>
       <Link to="/app/habits"><Check size={20} /><span>{m("dashboard.quickAccess.logHabit")}</span></Link>
       <Link to="/app/health"><Utensils size={20} /><span>{m("dashboard.quickAccess.addMeal")}</span></Link>
-      <Link to="/app/journal"><Feather size={20} /><span>{m("dashboard.quickAccess.writeJournal")}</span></Link>
       <Link to="/app/life-hub?tab=events"><CalendarDays size={20} /><span>{m("dashboard.quickAccess.openCalendar")}</span></Link>
     </div></section>
 
