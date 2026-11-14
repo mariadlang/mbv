@@ -1,8 +1,10 @@
 # Estado actual de My Best Version
 
-## 2026-11-14 — Mi espacio y navegación simplificados — en verificación
+## 2026-11-14 — Mi espacio y navegación simplificados — publicados
 
-Alcance ampliado por María durante el cambio de Finanzas: menú izquierdo con Hábitos, Proyectos y tareas, Finanzas, Alimentación y Entrenamiento; Mi espacio abre directamente Mis listas (antes Bandeja). Más conserva Organizar y explorar la app, Apoyo y Mis listas; sin duplicados de Bienestar/Finanzas. Diario y notas se retira de los accesos y su URL anterior lleva a Mis listas. Registros de diario, cierre del día, respaldos, IDs y permisos conservados; no se cambia almacenamiento ni backend. Base vigente `8e5bb62`. Verificación dirigida 52/52, lint sin errores (aviso previo), tipos y auditorías aprobados. CI integral y recorridos principales pendientes. [Ficha](../qa/space-navigation-2026-11-14.md).
+Código funcional `11c08fa`, publicado mediante main en el Vercel existente, estado success, https://mybestversion.life. Menú izquierdo con Hábitos, Proyectos y tareas, Finanzas, Alimentación y Entrenamiento; Mi espacio abre directamente Mis listas (antes Bandeja). Más conserva Organizar y explorar la app, Apoyo y Mis listas. Diario y notas se retira de los accesos y su URL anterior lleva a Mis listas. Registros anteriores, cierre del día, respaldos, IDs y permisos conservados; sin cambios de almacenamiento, Supabase, planes ni servicios.
+
+673/673 unitarias y 16/16 E2E principales/navegación en escritorio y móvil emulado, cero fallos, omisiones o reintentos en esta selección; lint/tipos/build/i18n/tokens aprobados, un aviso lint previo. CI de main también verde (E2E omitido por su regla habitual). Se revisaron seis capturas CI. El dominio sirve el nuevo menú, el redireccionamiento y los tres grupos de Más en sus bundles públicos. El navegador disponible llega al login: **no hay nueva comprobación con sesión normal en producción**; no se solicitan otra vez credenciales ni se inyecta una sesión. No cierra H06 ni el timeout histórico de la suite completa anterior. [Ficha, evidencia y límites](../qa/space-navigation-2026-11-14.md).
 
 ## 2026-11-14 — comidas por día publicadas y comprobadas con sesión normal (inicio 13/11)
 
