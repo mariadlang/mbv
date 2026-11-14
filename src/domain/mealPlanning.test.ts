@@ -47,6 +47,17 @@ describe("planned meals share canonical day records", () => {
     expect(mealsForDate(read(), date)[1]).toMatchObject({ id: "lunch", name: "Arroz", slot: "lunch", completed: false });
   });
 
+  it("preserves the absence of a legacy consumption flag when editing its name", async () => {
+    const { service, repository, read } = fixture();
+    const initial = createEmptySnapshot();
+    const meal = { id: "legacy", name: "Comida anterior", notes: "Conservar esta nota" };
+    initial.nutritionLogs = [{ id: "legacy-day", date, meals: [meal], createdAt: "before", updatedAt: "before" }];
+    await repository.replace(initial);
+    await service.savePlannedMeal({ date, mealId: meal.id, name: "Comida editada" });
+    expect(mealsForDate(read(), date)).toEqual([{ ...meal, name: "Comida editada" }]);
+    expect(Object.hasOwn(mealsForDate(read(), date)[0], "completed")).toBe(false);
+  });
+
   it("supports multiple snacks, rejects empty input, and retains categories in backup and old detailed editors", async () => {
     const { service, read } = fixture();
     await expect(service.savePlannedMeal({ date, mealId: "empty", slot: "snack", name: " " })).rejects.toThrow();

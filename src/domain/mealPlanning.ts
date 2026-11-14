@@ -24,7 +24,7 @@ export function applyPlannedMeal(snapshot: PlannerSnapshot, input: PlannedMealIn
     ?? (parsed.slot && parsed.slot !== "snack" ? log?.meals.find((meal) => meal.slot === parsed.slot) : undefined);
   if (!previous && !parsed.slot) throw new Error("An existing meal is required without a category");
   if (previous?.slot && parsed.slot !== previous.slot) throw new Error("Meal category changed during editing");
-  const meal: MealLog = { ...previous, id: previous?.id ?? parsed.mealId, name: parsed.name, ...(parsed.slot ? { slot: parsed.slot } : {}), completed: previous?.completed ?? false };
+  const meal: MealLog = { ...previous, id: previous?.id ?? parsed.mealId, name: parsed.name, ...(parsed.slot ? { slot: parsed.slot } : {}), ...(!previous ? { completed: false } : {}) };
   const preserved = preserveMonthlyHealthDetail(snapshot, parsed.date, "nutrition", now, createId);
   const current = healthPreparation(preserved, parsed.date, "nutrition");
   // Only the existing monthly-linked meal needs a version override. Other meals

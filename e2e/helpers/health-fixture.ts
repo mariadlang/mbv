@@ -41,4 +41,3 @@ export async function healthRecords(page: Page) {
     return { nutrition, training } as { nutrition: Array<{ date: string; meals: Array<{ id: string; name: string; notes?: string; completed?: boolean }> }>; training: Array<{ id: string; date: string; name: string; durationMinutes: number; exercises: unknown[]; completedSessions: unknown[] }> };
   });
 }
-
