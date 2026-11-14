@@ -1,5 +1,7 @@
 # Documentación de continuidad de My Best Version
 
+14/11: **comidas en tarjetas publicadas**, release `02708b2`, código `8299b97`. La aceptación con sesión normal en producción sigue pendiente. Consultar primero [ESTADO_ACTUAL](ESTADO_ACTUAL.md) y la [ficha de comidas con capturas y límites](../qa/meal-day-cards-2026-11-13.md); los hitos siguientes son antecedentes.
+
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 
 Publicado el código funcional **0a5c69b** en **https://mybestversion.life**, Vercel **Gb4DZ32gKEPXoq7Uf93cq8JtuXdc/Ready**, mismo Supabase productivo; beta/E2E desactivados. H08/H03/H01/H02, TasksPage, acceso y Metas/móvil conservados. Completa local665/665 y CI665/665, lint/tipos/build aprobados; E2E local vigente10/10, E2E remoto omitido por regla de push. Comprobación normal con sesión existente: acceso, hora18:30, completado/recarga y doble pulsación de Aprende conservan dos registros sintéticos únicos; Inicio/Mi guía coinciden y Metas abre. Sin cambios de cuentas, permisos, correo, DNS, pagos ni planes; LIM01 y3119 intactos. [Ficha, intentos fallidos conservados, evidencia y límites](../qa/production-release-2026-11-12.md). Pendientes previos: H06 restante, datos legales, recorte logo/lema y revisión del major Node. Autorización de despliegue habitual registrada; no solicitarla otra vez salvo cambio de alcance.

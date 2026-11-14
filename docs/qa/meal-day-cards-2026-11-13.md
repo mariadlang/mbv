@@ -28,13 +28,42 @@ Referencia: diseño de tarjetas elegido por María. Semana con siete días segú
 - Run [43521183794](https://github.com/mariadlang/mbv/actions/runs/43521183794): **167 E2E aprobadas, 4 fallidas, 25 omitidas**, 30.2 minutos. Los dos recorridos nuevos de comidas pasaron, incluidos cinco registros únicos, guardado/recarga, edición entre vistas y conservación de IDs y estado sin consumir. Las omisiones existentes no se presentan como aprobadas. El run anterior 43520876762 permanece registrado como fallido: 167 aprobadas, 4 fallidas, 25 omitidas, 35.3 minutos.
 - Dos fallos (escritorio/móvil) de preparación: selector nuevo demasiado amplio, que coincidía con fecha y textarea. Se restringe al nombre accesible «Otras comidas guardadas», manteniendo las aserciones de persistencia y restauración.
 - Dos fallos (escritorio/móvil) de Inicio: fixture existente fija 15:00 Bogotá, pero el navegador CI interpreta el evento sin zona a las 16:00 UTC, ya pasado a las 20:00 UTC. Se fija `America/Bogota` sólo para ese archivo de prueba; no se cambia la lógica de eventos ni la expectativa de dos eventos.
-- Las cuatro capturas se descargaron del artefacto 14084957360 y se inspeccionaron. La captura de elemento semanal incluía la cabecera sticky a media imagen, pues el elemento excedía el viewport. Se cambia la captura a página real completa desde arriba, esperando fuentes y sin alterar CSS ni ocultar controles. Se requiere nueva evidencia antes del cierre visual.
+- Las cuatro capturas se descargaron del artefacto 14084957360 y se inspeccionaron. La captura de elemento semanal incluía la cabecera sticky a media imagen, pues el elemento excedía el viewport. Se cambia la captura a página real completa desde arriba, esperando fuentes y sin alterar CSS ni ocultar controles. La evidencia nueva se conserva más abajo en cuatro capturas de página completa.
 - La solicitud de acceso normal quedó cancelada; no se reintenta ni se alteran credenciales. La comprobación autenticada en producción continúa pendiente.
 
 - Revisión adicional de compatibilidad: una comida legacy sin propiedad `completed` debe seguir sin ella al editar su nombre. El nuevo método conserva esa ausencia, además de los estados true/false existentes; sólo las comidas nuevas nacen con false. Regresión específica añadida; dirigidas posteriores 8/8. La limpieza de EOF en el helper de pruebas no cambia su comportamiento.
 
-## Publicación
+## Candidata final
 
-Base: `fdcc399e7487b0c5954c1ac33c9da6ea3c15b35b`. Rama `feat/meal-day-cards`. El push por terminal no dispone de credencial; se usa el conector GitHub existente. Destino autorizado: proyecto Vercel y dominio actuales, sin nuevas contrataciones ni cambios de backend.
+Código funcional: `8299b97d0eb33792fd042249bf67c8e4b7fde40b`. CI [43552709003](https://github.com/mariadlang/mbv/actions/runs/43552709003): lint, tipos, **673/673 unitarias en 109 archivos (40.11 s)** y build aprobados. **E2E: 170 aprobadas, 1 fallida y 25 omitidas (42.7 minutos)**. Los recorridos de comidas y las correcciones de preparación e Inicio pasan. Vista previa del mismo proyecto Vercel `4TAhN1rx9sWKQEt4E9hEqeaugmYD`, estado success/Ready; no equivale a despliegue productivo. La corrida anterior [43551904205](https://github.com/mariadlang/mbv/actions/runs/43551904205) de `37aed59` queda aprobada: **171 E2E, cero fallos, 25 omisiones, 31.5 minutos**. No se presenta como una corrida completa de la revisión posterior.
 
-Pendiente: CI de la revisión, despliegue, comprobar UI publicada con sesión normal y E2E desactivado, capturas de ambos tamaños. El navegador de comprobación ha mostrado la pantalla de inicio de sesión; no hay sesión normal disponible todavía. Esta ficha no declara terminado el pedido.
+## Incidencia aislada de la última completa
+
+El caso desktop `an existing month outside the trial horizon remains available in read-only mode` agotó su límite original de 30 s. Traza: el intento de pulsar Guardar plan empieza unos 10.4 s después de iniciar el caso; el botón deja de estar estable y se desprende del DOM unos 0.47 s después. Por tanto, no se atribuye el fallo simplemente a que el setup hubiera consumido todo el presupuesto ni se afirma una causa demostrada. El caso y su aplicación no fueron modificados por esta mejora.
+
+Se realizó una comprobación independiente y acotada del mismo test, mismas aserciones y límite de 30 s, un worker, sobre el commit exacto `8299b97`. Rama de verificación `verify/meal-release-2026-11-14`, workflow auxiliar `c1c0e38` (no forma parte de la publicación), [run 43556884520](https://github.com/mariadlang/mbv/actions/runs/43556884520). Ese primer intento no ejecutó casos: el filtro anclado por título no incluía el prefijo de archivo/proyecto usado por Playwright. Se corrige la selección a `e2e/app.spec.ts:2223`, comprobada con `--list` (exactamente un test desktop), sin modificar el test ni su límite. La ejecución corregida [43557054695](https://github.com/mariadlang/mbv/actions/runs/43557054695), workflow `827c1cb` con checkout fijado a `8299b97`, pasó: **1/1, 23.7 s**, un worker, mismas aserciones, timeout original y sin reintentos automáticos. Este resultado separado no elimina el fallo de la completa ni demuestra su causa. No se modificó el plan mensual para resolverlo.
+
+## Capturas de la candidata
+
+Capturadas por Playwright con datos sintéticos, adaptador E2E y móvil emulado; no acreditan una sesión de producción. Las cuatro imágenes de `8299b97` son byte a byte idénticas a las revisadas de `37aed59`. Son capturas completas de página; la navegación móvil fija aparece a la altura del primer viewport. Los controles se ejercitaron mediante clic/toque normal, sin forzarlos, y se comprobó que no hay desplazamiento horizontal de página.
+
+| Vista | Escritorio 1448×1086 | Móvil 390×844 emulado |
+| --- | --- | --- |
+| Semana | [Captura](screenshots/meals-week-desktop-2026-11-14.png) | [Captura](screenshots/meals-week-mobile-2026-11-14.png) |
+| Mi día | [Captura](screenshots/meals-day-desktop-2026-11-14.png) | [Captura](screenshots/meals-day-mobile-2026-11-14.png) |
+
+## Publicación — 2026-11-14 UTC
+
+PR [#4](https://github.com/mariadlang/mbv/pull/4) fusionada en `main`: **`02708b210d09c2e6a682d70f8e43084d6adcdf67`**, mismo árbol probado de `8299b97` (`46bc032a63cfb5de9063427a6eca9f58e7c6170d`). Base anterior `fdcc399`. Commit y push completados; integración Git existente de Vercel, proyecto `vercel-upload-mbv`, equipo `mariadelosangelesgtg-4145s-projects`, destino productivo **https://mybestversion.life**. [Despliegue 36bJZLFGU6jRdCBvpCZF9scNAQ66](https://vercel.com/mariadelosangelesgtg-4145s-projects/vercel-upload-mbv/36bJZLFGU6jRdCBvpCZF9scNAQ66): estado success/Ready.
+
+El conector GitHub se utilizó porque el push de terminal no tenía credencial. El conector Vercel devolvía 404 pese a existir el proyecto; no se creó otro proyecto ni se cambió su configuración. No se contrataron servicios, modificaron planes de pago, credenciales, permisos, DNS ni Supabase. La rama auxiliar de verificación no forma parte de `main`.
+
+CI posterior a la fusión [43557382505](https://github.com/mariadlang/mbv/actions/runs/43557382505): lint, tipos, **673/673 unitarias (109 archivos, 53.89 s)** y build aprobados. E2E omitido por la regla existente de push a main; se utiliza la evidencia PR descrita arriba.
+
+Comprobación pública a las **04:40 UTC**: `/app/health` y `/login` responden 200; los archivos JavaScript servidos desde el dominio incluyen las nuevas tarjetas y `savePlannedMeal`; el host de Supabase sigue siendo `yvrvetuzuinoinukrivo.supabase.co`. La API de estado de facturación rechaza el token sintético E2E con **401**; no se inició ningún checkout. Esta comprobación de entrega de código y rechazo de acceso no acredita persistencia autenticada. Archivos de tarjetas verificados: `/_next/static/chunks/0bgvlgu_7qgts.js`, `/_next/static/chunks/17embxz.wst51.js`.
+
+La primera inspección sólo buscó en scripts iniciales y no detectó las tarjetas: se cargan como módulos diferidos. Al seguir las referencias reales de esos scripts, se encontró el código nuevo. No se trató esa ausencia inicial como un fallo de despliegue ni se cambió la configuración de producción.
+
+**Pendiente real:** guardar, editar y recargar con autenticación normal en el dominio, y obtener capturas de esa sesión en ambos tamaños. El navegador disponible sólo mostró el login y la solicitud segura de acceso fue cancelada. No se reintentó, se inyectaron sesiones ni se habilitó E2E en producción. Las capturas de esta ficha corresponden exclusivamente a CI. No se declara cerrado el criterio completo de aceptación de María. También queda sin explicar el timeout aislado del plan mensual; su aprobación posterior es una comprobación separada.
+
+Este cierre incorpora documentación y cuatro PNG de evidencia, sin cambios posteriores al código funcional. Los pendientes anteriores de H06, identidad visual, datos legales y Node permanecen fuera de alcance.

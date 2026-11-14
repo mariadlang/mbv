@@ -1,9 +1,13 @@
 # Estado actual de My Best Version
 
 
-## 2026-11-13 — comidas por día, implementación en revisión
+## 2026-11-14 — comidas por día publicadas; aceptación normal pendiente (inicio 13/11)
 
-La simplificación elegida por María está implementada en `feat/meal-day-cards` sobre `fdcc399`: tarjetas semanales, edición directa, snacks opcionales y mismos registros en Mi día. Se conservan comidas anteriores y versiones mensuales. 672/672 unitarias locales; build, tipos y auditorías aprobados. E2E local bloqueado por permisos del entorno. CI del 14/11: lint/tipos/672 unitarias/build aprobados; E2E 167 aprobadas, 4 fallidas y 25 omitidas. Los dos recorridos nuevos de comidas pasan; se corrigen dos problemas del arnés (selector y zona horaria), pendientes de revalidar. Publicación y comprobación autenticada aún pendientes; solicitud de acceso cancelada. Ver [ficha](../qa/meal-day-cards-2026-11-13.md). La producción anterior sigue siendo la versión vigente hasta verificar el nuevo despliegue.
+Tarjetas semanales con desayuno/almuerzo/cena, snacks opcionales, selector móvil y edición del mismo registro en Mi día. Compatibilidad de IDs, comidas antiguas, estado de consumo y base mensual. PR #4 fusionada en `main`, release `02708b2`, código funcional `8299b97`; Vercel existente `36bJZLFGU6jRdCBvpCZF9scNAQ66` Ready en **https://mybestversion.life**. Sin cambios de Supabase, permisos, cuentas, pagos ni contrataciones.
+
+Validación: 673/673 unitarias, lint/tipos/build/auditorías aprobados. Última completa E2E: **170 aprobadas, 1 timeout mensual, 25 omisiones**; comidas pasa en ambos tamaños. El caso mensual pasa separado sobre el mismo commit, con límite y aserciones intactos (1/1); no borra el fallo de la completa ni demuestra su causa. La revisión anterior 37aed59 tuvo 171/0/25. Cuatro capturas CI conservadas, datos sintéticos y móvil emulado.
+
+**Falta la aceptación con sesión normal en producción:** el navegador está sin sesión y se canceló la solicitud segura de acceso. No se presenta la evidencia E2E como producción autenticada. [Ficha única, capturas y comprobación pública](../qa/meal-day-cards-2026-11-13.md). Los hitos anteriores permanecen como antecedentes.
 
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 

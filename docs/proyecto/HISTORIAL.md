@@ -1,7 +1,7 @@
 # Historial verificable de My Best Version
 
 
-## 2026-11-13 — comidas en tarjetas por día (en curso)
+## 2026-11-13–14 — comidas en tarjetas por día publicadas; aceptación normal pendiente
 
 - Alcance autorizado: semana con siete tarjetas, edición directa de desayuno/almuerzo/cena y snacks opcionales; mismo registro en Mi día; publicar en el dominio y servicios existentes, sin gastos adicionales. Referencia visual aportada por María.
 - Base comprobada: `fdcc399e7487b0c5954c1ac33c9da6ea3c15b35b`, árbol limpio. Rama `feat/meal-day-cards`.
@@ -11,6 +11,9 @@
 - Actualización 2026-11-14 UTC: PR #4, previews en Vercel existente; CI lint/tipos/672 unitarias/build pasan. E2E 167 aprobadas, 4 fallidas, 25 omitidas: los dos recorridos nuevos pasan; se corrigen selector ambiguo de preparación y zona horaria de fixture de Inicio, sin modificar producto fuera de comidas. Capturas revisadas; se reemplaza captura de elemento por página completa para evitar artefactos de cabecera sticky. Acceso normal cancelado, sin reintento. Evidencia y límites en [ficha única](../qa/meal-day-cards-2026-11-13.md).
 
 - Revisión de compatibilidad del 14/11: se conserva también la ausencia de `completed` en comidas legacy al editar el nombre, sin normalizarla a false. Nueva regresión, dirigidas 8/8; se mantienen los estados anteriores y sólo las comidas nuevas se crean sin consumir.
+
+- Candidata funcional final `8299b97`, push completado: CI 43552709003 con lint/tipos/673 unitarias (109 archivos, 40.11 s)/build aprobados. E2E final 170 aprobadas, 1 timeout en un caso existente del plan mensual, 25 omisiones. El caso pasa separado sobre el mismo código, sin cambiar el timeout ni las aserciones: 1/1, run 43557054695. La causa del timeout sigue desconocida. Se conserva también un intento dirigido sin casos por filtro de selección incorrecto. La completa anterior 37aed59 pasó 171/0/25; no se atribuye a la revisión posterior.
+- Publicación 14/11: PR #4 fusionada, release `02708b2`, mismo árbol que 8299b97; Vercel `36bJZLFGU6jRdCBvpCZF9scNAQ66` Ready en el dominio existente. Sin contratación, nuevos proyectos ni cambios de Supabase/configuración remota. Se incorporan cuatro capturas CI de página completa y el informe actualizado. La aceptación autenticada y capturas productivas quedan pendientes por falta de sesión normal; solicitud segura cancelada, no se reintenta. Véase la ficha para comprobación pública y límites. No se declara cerrada la solicitud completa.
 
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 
