@@ -64,6 +64,8 @@ const utilityItems = [
   ["/app/settings", "navigation.item.settings", Settings],
 ] as const;
 
+const desktopSpaceShortcutItems = [...spaceShortcutItems, ["/app/more", "preparation.more", Wrench]] as const;
+
 export function getAccessMessageDescriptor(accessText?: string): { key: NavigationSpaceProgressMessageKey; params?: { count: number } } | undefined {
   if (!accessText) return undefined;
   if (accessText === "Superadmin") return { key: "navigation.access.superadmin" };
@@ -185,7 +187,7 @@ export function AppShell({ children, userName, userAvatar, saving, theme, access
       <nav className="sidebar__nav" aria-label={m("navigation.primaryDestinations")}>{desktopPrimaryItems.map(([href, labelKey, Icon]) => { const active = isEditorialActive(href, pathname, search); return <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${active ? "nav-item--active" : ""}`} aria-current={active ? "page" : undefined} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={19} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>; })}</nav>
       <nav className="sidebar__utility-nav sidebar__space-shortcuts" aria-label={m("navigation.spaceShortcuts")}>
 
-        {spaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${isEditorialActive(href, pathname, search) ? "nav-item--active" : ""}`} aria-current={isEditorialActive(href, pathname, search) ? "page" : undefined} aria-label={m("navigation.spaceShortcutLabel", { destination: m(labelKey) })} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>)}
+        {desktopSpaceShortcutItems.map(([href, labelKey, Icon]) => <Link key={href} to={href} onClick={scrollToTop} className={`nav-item ${isEditorialActive(href, pathname, search) ? "nav-item--active" : ""}`} aria-current={isEditorialActive(href, pathname, search) ? "page" : undefined} aria-label={m("navigation.spaceShortcutLabel", { destination: m(labelKey) })} title={isSidebarCollapsed ? m(labelKey) : undefined}><Icon size={18} strokeWidth={1.7} aria-hidden="true" />{!isSidebarCollapsed && <span>{m(labelKey)}</span>}</Link>)}
       </nav>
       <div className="prep-sidebar-quote"><Botanical /><p>{m("preparation.quote.sidebar")}</p><small>{m("preparation.enjoy")}</small></div>
       <div className="sidebar__footer">

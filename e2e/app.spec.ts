@@ -775,7 +775,7 @@ test("information architecture separates overview from daily execution", async (
 
   if (!mobile) {
     const shortcuts = page.locator(".sidebar__space-shortcuts");
-    await expect(shortcuts.getByRole("link")).toHaveCount(6);
+    await expect(shortcuts.getByRole("link")).toHaveCount(7);
     const finances = shortcuts.getByRole("link", { name: /Finanzas/ });
     await expect(finances).toBeInViewport();
     await expect(finances).toHaveAttribute("href", "/app/finance");
@@ -814,7 +814,12 @@ test("information architecture separates overview from daily execution", async (
   await expect(page.locator(".life-hub-page .more-card")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Diario y notas/ })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("my-lists.png"), animations: "disabled" });
-  await page.goto("/app/more");
+  const moreLink = mobile
+    ? page.locator(".mobile-nav").getByRole("link", { name: "Más", exact: true })
+    : page.locator('.sidebar__space-shortcuts a[href="/app/more"]');
+  await moreLink.click();
+  await expect(page).toHaveURL(/\/app\/more$/);
+  await expect(moreLink).toHaveAttribute("aria-current", "page");
   const more = page.locator(".more-page");
   await expect(more.locator(".more-group > h2")).toHaveText(["Organizar y explorar la app", "Apoyo", "Mis listas"]);
   await expect(more.getByRole("link")).toHaveCount(8);
