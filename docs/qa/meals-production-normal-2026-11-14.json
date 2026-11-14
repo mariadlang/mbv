@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-11-14T17:04:08.000Z",
+  "origin": "https://mybestversion.life",
+  "version": "e600dbdd85393a2d27e973adf7db0e13e067ce35",
+  "functionalRelease": "02708b210d09c2e6a682d70f8e43084d6adcdf67",
+  "auth": "sesión normal existente; rol Superadmin; sin cambios de permisos",
+  "mobile": "viewport emulado 390x844; no teléfono físico",
+  "todayAfterReload": "Mis Comidas\n14 de noviembre\nDesayuno\nPRUEBA MBV 14-11 · Avena con fruta y canela\nAlmuerzo\nPRUEBA MBV 14-11 · Arroz, verduras y pollo\nCena\nSin planificar\n+ Añadir\nSnacks\nPRUEBA MBV 14-11 · Manzana\nPRUEBA MBV 14-11 · Yogur\n+ Snacks",
+  "mobileGeometry": {
+    "height": 844,
+    "scrollWidth": 390,
+    "width": 390
+  },
+  "limits": [
+    "No se provocaron errores artificiales de producción; demora/error/IDs cubiertos en pruebas controladas existentes.",
+    "No se repitió la matriz Gratis/Premium ni cambio entre cuentas.",
+    "El listado de agenda existente también representa las comidas; no equivale a registros duplicados."
+  ],
+  "weekFinal": "Sábado\n14 de nov\nDesayuno\nPRUEBA MBV 14-11 · Avena con fruta y canela\nAlmuerzo\nPRUEBA MBV 14-11 · Arroz, verduras y pollo\nCena\n+ Añadir\nSnacks\nPRUEBA MBV 14-11 · Manzana\nPRUEBA MBV 14-11 · Yogur\n+ Snacks",
+  "desktopGeometry": {
+    "height": 1086,
+    "scrollWidth": 1433,
+    "visibleDates": [
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-14",
+      "2026-11-15"
+    ],
+    "width": 1448
+  },
+  "deployment": "7a7CLyyWJMmkooxvyRnMKFbKYwFB",
+  "vercelObserved": {
+    "state": "Ready",
+    "environment": "Production",
+    "domain": "mybestversion.life",
+    "commit": "e600dbdd85393a2d27e973adf7db0e13e067ce35"
+  },
+  "checks": {
+    "emptyMainSlotsInitially": 3,
+    "createdRecords": 4,
+    "recordsAfterDesktopReload": 4,
+    "recordsAfterMobileReload": 4,
+    "finalSlots": {
+      "breakfast": 1,
+      "lunch": 1,
+      "dinner": 0,
+      "snacks": 2
+    },
+    "nextDayEmpty": true,
+    "nextWeekEmpty": true,
+    "desktopEditReflectedInWeek": true,
+    "mobileEditReflectedInToday": true,
+    "previousPersonalRecordsEdited": false,
+    "storageCleared": false,
+    "permissionsChanged": false,
+    "authInjected": false
+  }
+}

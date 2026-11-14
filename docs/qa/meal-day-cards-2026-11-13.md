@@ -64,6 +64,35 @@ Comprobación pública a las **04:40 UTC**: `/app/health` y `/login` responden 2
 
 La primera inspección sólo buscó en scripts iniciales y no detectó las tarjetas: se cargan como módulos diferidos. Al seguir las referencias reales de esos scripts, se encontró el código nuevo. No se trató esa ausencia inicial como un fallo de despliegue ni se cambió la configuración de producción.
 
-**Pendiente real:** guardar, editar y recargar con autenticación normal en el dominio, y obtener capturas de esa sesión en ambos tamaños. El navegador disponible sólo mostró el login y la solicitud segura de acceso fue cancelada. No se reintentó, se inyectaron sesiones ni se habilitó E2E en producción. Las capturas de esta ficha corresponden exclusivamente a CI. No se declara cerrado el criterio completo de aceptación de María. También queda sin explicar el timeout aislado del plan mensual; su aprobación posterior es una comprobación separada.
+**Pendiente al cierre anterior (conservado como histórico):** guardar, editar y recargar con autenticación normal en el dominio, y obtener capturas de esa sesión en ambos tamaños. El navegador disponible sólo mostró el login y la solicitud segura de acceso fue cancelada. No se reintentó, se inyectaron sesiones ni se habilitó E2E en producción. Las capturas de las secciones anteriores corresponden exclusivamente a CI. En ese momento no se declaró cerrado el criterio completo de aceptación de María. También quedó sin explicar el timeout aislado del plan mensual; su aprobación posterior es una comprobación separada.
 
 Este cierre incorpora documentación y cuatro PNG de evidencia, sin cambios posteriores al código funcional. Los pendientes anteriores de H06, identidad visual, datos legales y Node permanecen fuera de alcance.
+
+## Comprobación normal completada — 2026-11-14, America/Bogota
+
+Se retomó la sesión autenticada existente de `https://mybestversion.life` mediante la interfaz real del navegador. No hubo login simulado, identidad inyectada, interceptores, borrado de almacenamiento ni cambios de permisos. La cuenta ya tenía rol **Superadmin**; esta comprobación no representa una nueva matriz Gratis/Premium ni de cambio entre cuentas. Se conservan esos permisos y los datos anteriores. El planificador continúa guardando localmente por cuenta en IndexedDB, no se afirma sincronización cloud.
+
+Versión observada en Vercel: **`e600dbdd85393a2d27e973adf7db0e13e067ce35`**, deployment **`7a7CLyyWJMmkooxvyRnMKFbKYwFB`**, **Ready / Production**, dominio `mybestversion.life`. Diff contra `02708b2`: únicamente documentación y capturas; aplicación igual a la candidata funcional probada. No se reconstruyó ni sustituyó esa implementación. El 14/11 a las12:02-05:00, login200, token sintético E2E rechazado401 y endpoint beta404. Backend productivo conservado; ninguna configuración de mbv-h06-pruebas trasladada.
+
+| Comprobación en el dominio | Resultado observado |
+| --- | --- |
+| Estado inicial del14/11 | Tres comidas principales vacías, snacks ausentes en Mi día. No se sobrescribió una comida anterior. |
+| Semana escritorio → guardar | Desayuno, almuerzo y dos snacks sintéticos; cuatro entradas en la tarjeta después de recargar. Cena continúa vacía. |
+| Mi día → editar desayuno | Avena con fruta → Avena con fruta y canela; cambio conservado tras recarga y reflejado en la semana. |
+| Semana móvil → editar almuerzo | Arroz con verduras → Arroz, verduras y pollo; cambio conservado tras recarga y reflejado en Mi día. |
+| Mi día móvil → recarga | Los mismos cuatro contenidos, una vez cada uno dentro de Mis comidas; Sin planificar y Añadir disponibles para cena. Abrir/cancelar edición funciona. |
+| Cambiar día/semana | Domingo15 y semana16–22 no contienen las comidas del14; volver recupera las cuatro. |
+| Presentación | Escritorio1448×1086: siete tarjetas. Móvil390×844 emulado: siete botones de día, una tarjeta visible. Ancho de documento1433≤1448 en escritorio,375≤390 en semana móvil y390≤390 en Mi día. Controles usados sin clic forzado; no se ocultaron barras ni se retocaron imágenes. |
+
+Textos de prueba identificables con prefijo `PRUEBA MBV 14-11`. Cantidad por tarjeta: **0 antes +4 nuevas =4 después =4 después de editar/recargar**. Los IDs, consumo=false de registros nuevos, conservación de estado legacy, relaciones mensuales, guardado concurrente, fallo y reintento se comprueban en las pruebas de dominio/componente/E2E ya registradas; esta revisión normal acredita contenidos y cantidades visibles, no una nueva extracción de IDs de IndexedDB. La agenda anterior también representa las comidas como filas: esa segunda representación no implica duplicación de registros.
+
+No se provocaron fallos de almacenamiento ni se demoró artificialmente producción. La prueba controlada de `MealPlanning.test.tsx` verifica un único envío durante guardado pendiente, ausencia de éxito prematuro, borrador conservado tras rechazo y reintento con la misma identidad. `mealPlanning.test.ts` verifica persistencia, otras fechas, original mensual, estado de consumo y snacks múltiples. Se reutilizan las ejecuciones correspondientes al código sin modificaciones, sin repetir suites para obtener otro verde. El timeout mensual histórico continúa abierto; la prueba dirigida aprobada no demuestra su causa.
+
+Evidencia estructurada sin credenciales: [meals-production-normal-2026-11-14.json](meals-production-normal-2026-11-14.json). Capturas reales de página completa (las barras fijas permanecen donde las captura el navegador):
+
+| Vista | Escritorio | Móvil emulado |
+| --- | --- | --- |
+| Semana | [Normal](screenshots/meals-production-week-desktop-2026-11-14.jpg) | [Normal](screenshots/meals-production-week-mobile-2026-11-14.jpg) |
+| Mi día | [Normal](screenshots/meals-production-day-desktop-2026-11-14.jpg) | [Normal](screenshots/meals-production-day-mobile-2026-11-14.jpg) |
+
+[Vista cercana de Mis comidas en móvil](screenshots/meals-production-day-mobile-viewport-2026-11-14.jpg), obtenida con desplazamiento normal de la página. No es una prueba en teléfono físico ni de teclado virtual. No hubo cambios de código, diseño, servicios, cuentas, pagos ni gastos adicionales en esta ampliación de evidencia; no se borraron las comidas sintéticas para evitar eliminar datos sin recuperación.

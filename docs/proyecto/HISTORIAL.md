@@ -1,7 +1,7 @@
 # Historial verificable de My Best Version
 
 
-## 2026-11-13–14 — comidas en tarjetas por día publicadas; aceptación normal pendiente
+## 2026-11-13–14 — comidas en tarjetas por día publicadas y comprobadas
 
 - Alcance autorizado: semana con siete tarjetas, edición directa de desayuno/almuerzo/cena y snacks opcionales; mismo registro en Mi día; publicar en el dominio y servicios existentes, sin gastos adicionales. Referencia visual aportada por María.
 - Base comprobada: `fdcc399e7487b0c5954c1ac33c9da6ea3c15b35b`, árbol limpio. Rama `feat/meal-day-cards`.
@@ -14,6 +14,9 @@
 
 - Candidata funcional final `8299b97`, push completado: CI 43552709003 con lint/tipos/673 unitarias (109 archivos, 40.11 s)/build aprobados. E2E final 170 aprobadas, 1 timeout en un caso existente del plan mensual, 25 omisiones. El caso pasa separado sobre el mismo código, sin cambiar el timeout ni las aserciones: 1/1, run 43557054695. La causa del timeout sigue desconocida. Se conserva también un intento dirigido sin casos por filtro de selección incorrecto. La completa anterior 37aed59 pasó 171/0/25; no se atribuye a la revisión posterior.
 - Publicación 14/11: PR #4 fusionada, release `02708b2`, mismo árbol que 8299b97; Vercel `36bJZLFGU6jRdCBvpCZF9scNAQ66` Ready en el dominio existente. Sin contratación, nuevos proyectos ni cambios de Supabase/configuración remota. Se incorporan cuatro capturas CI de página completa y el informe actualizado. La aceptación autenticada y capturas productivas quedan pendientes por falta de sesión normal; solicitud segura cancelada, no se reintenta. Véase la ficha para comprobación pública y límites. No se declara cerrada la solicitud completa.
+
+- Ampliación 14/11, America/Bogota: se detectó que la copia local seguía en `fdcc399` mientras GitHub ya contenía la implementación anterior y su publicación. Se integró por fast-forward hasta `e600dbd`, conservando `next-env.d.ts` modificado previamente y todos los archivos ajenos sin seguimiento. No se duplicó la implementación ni se atribuye como nueva. Vercel confirma `7a7CLyyWJMmkooxvyRnMKFbKYwFB`, Ready/Production, dominio actual y `e600dbd`; respecto a `02708b2` sólo difieren documentación/imágenes.
+- Se completó la comprobación pendiente en la sesión normal existente del dominio: cuatro registros sintéticos (desayuno, almuerzo, dos snacks) añadidos sólo en huecos vacíos del 14/11; edición del desayuno en Mi día y del almuerzo en semana móvil; cuatro contenidos únicos en la tarjeta después de recargar. Domingo15 y semana16–22 sin esas comidas. Cena vacía conserva Sin planificar. Viewports1448×1086 y390×844, sin desbordamiento horizontal; capturas sin retoques ni ocultar barras. Rol Superadmin existente, sin ampliar permisos ni repetir matrices de acceso. No se alteraron registros previos ni LIM01. Se reutilizaron 673/673 unitarias y comprobaciones existentes del mismo código; no se repitió la suite. Histórico E2E170/1/25 y dirigido1/1 permanecen separados. Se añaden cuatro capturas de página completa, un viewport móvil y evidencia JSON sin credenciales; ficha única y continuidad actualizadas. Sin cambios adicionales de aplicación/configuración.
 
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 

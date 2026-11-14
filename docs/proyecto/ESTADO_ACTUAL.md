@@ -1,13 +1,13 @@
 # Estado actual de My Best Version
 
 
-## 2026-11-14 — comidas por día publicadas; aceptación normal pendiente (inicio 13/11)
+## 2026-11-14 — comidas por día publicadas y comprobadas con sesión normal (inicio 13/11)
 
 Tarjetas semanales con desayuno/almuerzo/cena, snacks opcionales, selector móvil y edición del mismo registro en Mi día. Compatibilidad de IDs, comidas antiguas, estado de consumo y base mensual. PR #4 fusionada en `main`, release `02708b2`, código funcional `8299b97`; Vercel existente `36bJZLFGU6jRdCBvpCZF9scNAQ66` Ready en **https://mybestversion.life**. Sin cambios de Supabase, permisos, cuentas, pagos ni contrataciones.
 
 Validación: 673/673 unitarias, lint/tipos/build/auditorías aprobados. Última completa E2E: **170 aprobadas, 1 timeout mensual, 25 omisiones**; comidas pasa en ambos tamaños. El caso mensual pasa separado sobre el mismo commit, con límite y aserciones intactos (1/1); no borra el fallo de la completa ni demuestra su causa. La revisión anterior 37aed59 tuvo 171/0/25. Cuatro capturas CI conservadas, datos sintéticos y móvil emulado.
 
-**Falta la aceptación con sesión normal en producción:** el navegador está sin sesión y se canceló la solicitud segura de acceso. No se presenta la evidencia E2E como producción autenticada. [Ficha única, capturas y comprobación pública](../qa/meal-day-cards-2026-11-13.md). Los hitos anteriores permanecen como antecedentes.
+**Comprobación normal completada el 14/11:** sesión existente en el dominio, E2E rechazado (401), deployment `7a7CLyyWJMmkooxvyRnMKFbKYwFB` Ready/Production, commit documental `e600dbd` con el mismo código funcional. Cuatro comidas sintéticas del 14/11 conservadas tras edición cruzada Semana/Mi día y recargas en escritorio y móvil390×844 emulado; otras fechas separadas, cena vacía y snacks opcionales. Sin cambios de permisos, backend, datos previos ni almacenamiento. La sesión tiene rol Superadmin: no equivale a repetir la matriz Gratis/Premium ni el aislamiento entre cuentas. Demora/error/IDs se acreditan por las pruebas controladas anteriores. Se conserva abierto el timeout mensual de la completa, aunque su ejecución dirigida pasó. [Ficha única, capturas reales y límites](../qa/meal-day-cards-2026-11-13.md). Los hitos anteriores permanecen como antecedentes.
 
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 

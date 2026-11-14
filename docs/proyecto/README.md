@@ -1,6 +1,6 @@
 # Documentación de continuidad de My Best Version
 
-14/11: **comidas en tarjetas publicadas**, release `02708b2`, código `8299b97`. La aceptación con sesión normal en producción sigue pendiente. Consultar primero [ESTADO_ACTUAL](ESTADO_ACTUAL.md) y la [ficha de comidas con capturas y límites](../qa/meal-day-cards-2026-11-13.md); los hitos siguientes son antecedentes.
+14/11: **comidas en tarjetas publicadas y comprobadas con sesión normal**, release funcional `02708b2`/`8299b97`; evidencia normal sobre `e600dbd`, mismo código. Semana/Mi día y recargas pasan en escritorio/móvil emulado con cuatro comidas sintéticas. El timeout mensual histórico permanece sin causa confirmada. Consultar primero [ESTADO_ACTUAL](ESTADO_ACTUAL.md) y la [ficha de comidas con capturas y límites](../qa/meal-day-cards-2026-11-13.md); los hitos siguientes son antecedentes.
 
 ## 2026-11-13 — mejoras pendientes publicadas y comprobadas (inicio 12/11)
 
