@@ -1,0 +1,41 @@
+name: MBV focused release verification
+
+on:
+  push:
+    branches: [verify/meal-release-2026-11-14]
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+
+jobs:
+  month-preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 8299b97d0eb33792fd042249bf67c8e4b7fde40b
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Recheck the unchanged month preservation test in isolation
+        run: pnpm exec playwright test e2e/app.spec.ts --project=desktop --workers=1 --grep "^an existing month outside the trial horizon remains available in read-only mode$" --reporter=line,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: focused-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: focused-month-preservation-8299b97
+          path: |
+            focused-results.json
+            test-results/
+          retention-days: 7
