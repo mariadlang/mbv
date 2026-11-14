@@ -397,7 +397,7 @@ const workoutLogSchema = z.object({
 });
 
 const nutritionLogSchema = z.object({
-  id: z.string(), date: z.string(), meals: z.array(z.object({ id: z.string(), name: z.string(), calories: z.number().optional(), protein: z.number().optional(), carbs: z.number().optional(), fat: z.number().optional(), notes: z.string().optional(), completed: z.boolean().optional() })),
+  id: z.string(), date: z.string(), meals: z.array(z.object({ id: z.string(), name: z.string(), slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(), calories: z.number().optional(), protein: z.number().optional(), carbs: z.number().optional(), fat: z.number().optional(), notes: z.string().optional(), completed: z.boolean().optional() })),
   createdAt: timestampSchema, updatedAt: timestampSchema,
 });
 

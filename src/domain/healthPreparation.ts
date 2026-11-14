@@ -15,14 +15,14 @@ export const healthPreparationSchema = z.object({
 }).refine((input) => input.section === "training" || !input.rest);
 export type HealthPreparationInput = z.input<typeof healthPreparationSchema>;
 export type HealthScope = "monthly" | "weekly";
-const mealContentSchema = z.object({ kind: z.literal("nutrition"), calories: z.number().nonnegative().optional(), protein: z.number().nonnegative().optional(), carbs: z.number().nonnegative().optional(), fat: z.number().nonnegative().optional(), notes: z.string().optional() });
+const mealContentSchema = z.object({ kind: z.literal("nutrition"), slot: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional(), calories: z.number().nonnegative().optional(), protein: z.number().nonnegative().optional(), carbs: z.number().nonnegative().optional(), fat: z.number().nonnegative().optional(), notes: z.string().optional() });
 const setSchema = z.object({ id: z.string(), setNumber: z.number(), reps: z.number(), weight: z.number() });
 const workoutContentSchema = z.object({ kind: z.literal("training"), goal: z.string().optional(), durationMinutes: z.number().optional(), exercises: z.array(z.object({ id: z.string(), name: z.string(), sets: z.number(), reps: z.number(), weight: z.number(), setDetails: z.array(setSchema).optional() })) });
 const entrySchema = z.object({ title: z.string(), rest: z.boolean(), recordId: z.string(), content: z.discriminatedUnion("kind", [mealContentSchema, workoutContentSchema]).optional() });
 export type HealthPlanEntry = z.infer<typeof entrySchema>;
 export type HealthContent = NonNullable<HealthPlanEntry["content"]>;
 export function mealPlanContent(meal: MealLog): HealthContent {
-  return { kind: "nutrition", calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, notes: meal.notes };
+  return { kind: "nutrition", ...(meal.slot ? { slot: meal.slot } : {}), calories: meal.calories, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, notes: meal.notes };
 }
 export function workoutPlanContent(workout: WorkoutLog): HealthContent {
   return { kind: "training", goal: workout.goal, durationMinutes: workout.durationMinutes, exercises: structuredClone(workout.exercises) };
@@ -76,7 +76,7 @@ export function applyHealthVersion(snapshot: PlannerSnapshot, date: string, entr
     const nutrition = snapshot.nutritionLogs.find((log) => log.date === date);
     const oldMeal = nutrition?.meals.find((meal) => meal.id === entry.recordId);
     const content = entry.content?.kind === "nutrition" ? entry.content : oldMeal;
-    const meal: MealLog = { id: entry.recordId, name: entry.title, calories: content?.calories, protein: content?.protein, carbs: content?.carbs, fat: content?.fat, notes: content?.notes, completed: oldMeal?.completed ?? false };
+    const meal: MealLog = { id: entry.recordId, name: entry.title, ...((content?.slot ?? oldMeal?.slot) ? { slot: content?.slot ?? oldMeal?.slot } : {}), calories: content?.calories, protein: content?.protein, carbs: content?.carbs, fat: content?.fat, notes: content?.notes, completed: oldMeal?.completed ?? false };
     const log = { id: nutrition?.id || createId(), date, meals: oldMeal ? nutrition!.meals.map((item) => item.id === oldMeal.id ? meal : item) : [...(nutrition?.meals || []), meal], createdAt: nutrition?.createdAt || now, updatedAt: now };
     return { ...snapshot, nutritionLogs: nutrition ? snapshot.nutritionLogs.map((item) => item.id === log.id ? log : item) : [...snapshot.nutritionLogs, log] };
   }

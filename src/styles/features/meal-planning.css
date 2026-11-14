@@ -1,0 +1,44 @@
+.meal-week, .meal-day-card { min-width: 0; }
+.meal-week-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-block: 12px 20px; }
+.meal-week-heading h3 { margin: 0; font-family: var(--font-family-heading); font-size: 1.6rem; }
+.meal-week-navigation { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--color-text-secondary); }
+.meal-week-navigation button { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-primary); cursor: pointer; }
+.meal-week-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.meal-day-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-surface-elevated); }
+.meal-day-card > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 13px; border-bottom: 1px solid var(--color-border); }
+.meal-day-card.is-selected > header { background: var(--color-brand-soft); }
+.meal-day-card > header h3 { margin: 0; font: inherit; font-weight: 600; text-transform: capitalize; }
+.meal-day-card > header time { font-size: .75rem; color: var(--color-text-secondary); }
+.meal-day-content { padding: 0 12px; }
+.meal-slot { padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+.meal-slot:last-child { border-bottom: 0; }
+.meal-slot h4 { margin: 0 0 3px; font: inherit; font-size: .78rem; color: var(--color-text-secondary); }
+.meal-value { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; width: 100%; min-height: 44px; border: 0; padding: 6px 0; background: transparent; text-align: left; color: var(--color-brand-strong); font: inherit; font-size: .86rem; cursor: pointer; }
+.meal-value.has-content { color: var(--color-text-primary); }
+.meal-value span { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.meal-value:hover { text-decoration: underline; text-underline-offset: 3px; }
+.meal-inline-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.meal-inline-form textarea { display: block; width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; padding: 8px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-primary); font: inherit; font-size: 1rem; }
+.meal-inline-form fieldset > div { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.meal-inline-form .button { min-height: 44px; padding: 6px 10px; font-size: .8rem; }
+.meal-inline-form [role="alert"] { color: var(--color-danger-text); font-size: .8rem; }
+.meal-save-status, .meal-plan-note { font-size: .8rem; color: var(--color-text-secondary); margin: 14px 0 0; }
+.meal-save-status { padding: 0 12px 12px; color: var(--color-success-text); }
+.meal-day-selector { display: none; }
+.meal-day-card.is-daily > header h3 { font-family: var(--font-family-heading); font-size: 1.35rem; }
+.meal-advanced-details > summary { cursor: pointer; min-height: 44px; padding: 12px; color: var(--color-text-secondary); }
+.meal-advanced-details[open] > .card { margin-top: 12px; }
+@media (min-width: 641px) and (max-width: 1100px) { .meal-week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .meal-week-heading { display: block; }
+  .meal-week-navigation { justify-content: space-between; margin-top: 8px; }
+  .meal-day-selector { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; margin: 14px 0; }
+  .meal-day-selector button { display: grid; place-items: center; gap: 4px; min-width: 0; min-height: 58px; padding: 7px 1px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-primary); font: inherit; cursor: pointer; }
+  .meal-day-selector button span { font-size: .68rem; }
+  .meal-day-selector button[aria-pressed="true"] { background: var(--color-brand-soft); border-color: var(--color-brand-strong); }
+  .meal-week-grid { display: block; }
+  .meal-week-grid > .meal-day-card:not(.is-selected) { display: none; }
+}
+
+.meal-month-version { display: grid; gap: 6px; padding: 0 12px 12px; color: var(--color-text-secondary); }
+.meal-month-version button { min-height: 44px; padding: 6px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-brand-strong); font: inherit; font-size: .8rem; cursor: pointer; }

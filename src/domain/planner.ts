@@ -365,8 +365,11 @@ export interface WorkoutLog {
   updatedAt: string;
 }
 
+export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
+
 export interface MealLog {
   id: string;
+  slot?: MealSlot;
   name: string;
   calories?: number;
   protein?: number;

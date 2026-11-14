@@ -32,7 +32,7 @@ describe("health preparation editor", () => {
     const snapshot = createEmptySnapshot();
     const saveHealthPreparation = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(snapshot);
     const planner = { snapshot, saveHealthPreparation } as unknown as PlannerController;
-    const view = render(<I18nProvider><MemoryRouter><HealthPlanning planner={planner} date="2026-10-02" section="nutrition" onSelectDate={vi.fn()} /></MemoryRouter></I18nProvider>);
+    const view = render(<I18nProvider><MemoryRouter><HealthPlanning planner={planner} date="2026-10-02" section="training" onSelectDate={vi.fn()} /></MemoryRouter></I18nProvider>);
     fireEvent.click(view.getByRole("button", { name: "Crear mi plan" }));
     fireEvent.change(view.getByRole("textbox"), { target: { value: "Mi comida preparada" } });
     fireEvent.click(view.getByRole("button", { name: "Guardar" }));

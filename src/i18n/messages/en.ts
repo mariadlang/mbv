@@ -1,3 +1,4 @@
+import { enMealsMessages } from "./features/meals";
 import type { esMessages } from "@/src/i18n/messages/es";
 import { enHomeTodayMessages } from "@/src/i18n/messages/features/home-today";
 import { enHomeOverviewMessages } from "./features/home-overview";
@@ -15,6 +16,7 @@ import { enHealthLibraryMessages } from "./features/health-library";
 import { enBetaMessages } from "./features/beta";
 
 export const enMessages = {
+  ...enMealsMessages,
   ...enBetaMessages,
   ...enHomeOverviewMessages,
   ...enDraftMessages,

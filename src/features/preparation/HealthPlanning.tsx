@@ -1,4 +1,5 @@
 "use client";
+import { WeeklyMeals, MealDayCard } from "./MealPlanning";
 import { useState } from "react";
 import { Apple, ArrowRight, CalendarDays, Dumbbell, Pencil, Sparkles } from "lucide-react";
 import type { PlannerController } from "@/src/hooks/usePlanner";
@@ -14,7 +15,7 @@ type LibraryRecord = ReturnType<typeof healthLibrary>[number];
 type Props = { planner: PlannerController; date: string; section: "nutrition" | "training"; onSelectDate: (date: string) => void; onEditRecord?: (date: string, recordId?: string, scope?: HealthScope) => void };
 export function HealthPlanning({ planner, date, section, onSelectDate, onEditRecord }: Props) {
   const { m, formatDate } = useI18n();
-  const [view, setView] = useState<"weekly" | "monthly" | "library">("weekly");
+  const [view, setView] = useState<"weekly" | "monthly" | "library" | "daily">("weekly");
   const [draft, setDraft] = useState<HealthPreparationInput | null>(null);
   const [initialDraft, setInitialDraft] = useState("");
   const [detail, setDetail] = useState<LibraryRecord | null>(null);
@@ -28,7 +29,7 @@ export function HealthPlanning({ planner, date, section, onSelectDate, onEditRec
   const draftGuard = useUnsavedDraft({ dirty: Boolean(draft && JSON.stringify(draft) !== initialDraft), saving: operation.busy, onSave: saveDraft, onDiscard: () => setDraft(null) });
   const startDraft = (value: HealthPreparationInput) => { setInitialDraft(JSON.stringify(value)); setDraft(value); };
   const anchor = localDate(date);
-  const dates = view === "monthly" ? Array.from({ length: new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate() }, (_, day) => new Date(anchor.getFullYear(), anchor.getMonth(), day + 1, 12)) : getWeekDates(anchor, 1);
+  const dates = view === "monthly" ? Array.from({ length: new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate() }, (_, day) => new Date(anchor.getFullYear(), anchor.getMonth(), day + 1, 12)) : getWeekDates(anchor, planner.snapshot.profile?.weekStartsOn ?? 1);
   const library = healthLibrary(planner.snapshot, section).sort((a, b) => b.date.localeCompare(a.date));
   const template = draft?.sourceRecordId ? library.find((item) => item.recordId === draft.sourceRecordId && item.date === draft.sourceDate) : undefined;
   const edit = (key: string) => {
@@ -43,10 +44,10 @@ export function HealthPlanning({ planner, date, section, onSelectDate, onEditRec
   };
   const Icon = section === "nutrition" ? Apple : Dumbbell;
   return <EditorialCard className="prep-health">
-    <div data-i18n-explicit="true"><header className="prep-card-heading"><span className="prep-icon is-sage"><Icon /></span><div><h2>{m(section === "nutrition" ? "preparation.mealPlan" : "preparation.trainingPlan")}</h2><p>{m("preparation.healthHelp")}</p></div></header>
-      <div className="prep-category-tabs" role="group" aria-label={m("preparation.plan")}><button aria-pressed={view === "weekly"} onClick={() => draftGuard.request(() => setView("weekly"))}>{m("preparation.week")}</button><button aria-pressed={view === "monthly"} onClick={() => draftGuard.request(() => setView("monthly"))}>{m("preparation.month")}</button><button aria-pressed={view === "library"} onClick={() => draftGuard.request(() => setView("library"))}>{m("healthLibrary.title")}</button></div>
+    <div data-i18n-explicit="true"><header className="prep-card-heading"><span className="prep-icon is-sage"><Icon /></span><div><h2>{m(section === "nutrition" ? view === "weekly" ? "meals.week" : view === "daily" ? "meals.day" : "preparation.mealPlan" : "preparation.trainingPlan")}</h2><p>{m("preparation.healthHelp")}</p></div></header>
+      <div className="prep-category-tabs" role="group" aria-label={m("preparation.plan")}><button aria-pressed={view === "weekly"} onClick={() => draftGuard.request(() => setView("weekly"))}>{m(section === "nutrition" ? "meals.weekTab" : "preparation.week")}</button>{section === "nutrition" && <button aria-pressed={view === "daily"} onClick={() => draftGuard.request(() => setView("daily"))}>{m("meals.dayTab")}</button>}<button aria-pressed={view === "monthly"} onClick={() => draftGuard.request(() => setView("monthly"))}>{m("preparation.month")}</button><button aria-pressed={view === "library"} onClick={() => draftGuard.request(() => setView("library"))}>{m("healthLibrary.title")}</button></div>
       <label className="prep-health-date">{m("preparation.date")}<input type="date" required value={date} onChange={(event) => { const value = event.target.value; if (value) draftGuard.request(() => onSelectDate(value)); }} /></label>
-      {view === "library" ? <><p>{m("healthLibrary.help")}</p>{library.length ? <div className="health-library-records">{library.map((item) => <article className="health-library-record" key={item.date + item.recordId}><time>{formatDate(localDate(item.date), { day: "numeric", month: "long", year: "numeric" })}</time><h3 data-no-translate="true">{item.title}</h3>{!hasHealthDetail(item.content) && <p className="health-library-incomplete">{m("healthLibrary.incomplete")}</p>}<div><button className="button button--outline" onClick={() => setDetail(item)}>{m("healthLibrary.detail")}</button>{hasHealthDetail(item.content) && <button className="button" onClick={() => applyTemplate(item)}>{m("healthLibrary.use")}</button>}</div></article>)}</div> : <p>{m("preparation.libraryEmpty")}</p>}</> : <>
+      {section === "nutrition" && view === "weekly" ? <WeeklyMeals planner={planner} date={date} onSelectDate={onSelectDate} /> : section === "nutrition" && view === "daily" ? <MealDayCard key={date} planner={planner} date={date} daily /> : view === "library" ? <><p>{m("healthLibrary.help")}</p>{library.length ? <div className="health-library-records">{library.map((item) => <article className="health-library-record" key={item.date + item.recordId}><time>{formatDate(localDate(item.date), { day: "numeric", month: "long", year: "numeric" })}</time><h3 data-no-translate="true">{item.title}</h3>{!hasHealthDetail(item.content) && <p className="health-library-incomplete">{m("healthLibrary.incomplete")}</p>}<div><button className="button button--outline" onClick={() => setDetail(item)}>{m("healthLibrary.detail")}</button>{hasHealthDetail(item.content) && <button className="button" onClick={() => applyTemplate(item)}>{m("healthLibrary.use")}</button>}</div></article>)}</div> : <p>{m("preparation.libraryEmpty")}</p>}</> : <>
         <div className="prep-health-choices"><button onClick={() => setView("library")}><CalendarDays size={20} />{m("preparation.useTemplate")}</button><button onClick={() => setHelp(true)}><Sparkles size={20} />{m("preparation.proposal")}</button><button onClick={() => edit(date)}><Pencil size={20} />{m("preparation.createPlan")}</button></div>
         <div className="prep-health-days">{dates.map((day) => { const key = toLocalDateKey(day); const saved = healthPreparation(planner.snapshot, key, section); const title = view === "monthly" ? saved.monthly?.title || saved.title : saved.title; return <button key={key} onClick={() => edit(key)}><time>{formatDate(day, { weekday: "short", day: "numeric" })}</time><span><strong data-no-translate="true">{title || m("preparation.pending")}</strong>{saved.recovered && view === "weekly" && <small>{m("preparation.recovered")}</small>}{saved.override && <small>{m("preparation.weeklyException")}</small>}{saved.rest && <small>{m("preparation.rest")}</small>}</span><ArrowRight size={17} /></button>; })}</div>
       </>}

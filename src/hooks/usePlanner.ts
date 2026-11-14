@@ -1,5 +1,7 @@
 "use client";
 
+import type { PlannedMealInput } from "@/src/domain/mealPlanning";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { MonthlyPriorityStepInput } from "@/src/domain/monthlyPrioritySteps";
@@ -387,6 +389,10 @@ export function usePlanner(ownerId: string | null, access: UserAccess | null = n
       commit((service) => service.createRecurringItem(input)),
     saveFinancialReview: (monthKey: string, summary: string, decisions: string[]) =>
       commit((service) => service.saveFinancialReview(monthKey, summary, decisions)),
+    savePlannedMeal: (input: PlannedMealInput) => {
+      assertPlanningDateAllowed(input.date);
+      return commit((service) => service.savePlannedMeal(input));
+    },
     saveHealthPreparation: (input: HealthPreparationInput) => {
       assertPlanningDateAllowed(input.date);
       return commit((service) => service.saveHealthPreparation(input));

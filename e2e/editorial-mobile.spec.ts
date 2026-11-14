@@ -133,8 +133,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }
         await page.goto(`/app/health?date=2026-10-02&section=${section}`);
         const health = page.locator(".prep-health");
         await expect(health).toBeVisible();
-        await expect(health.locator(".prep-health-choices > button")).toHaveCount(3);
-        await expect(health.locator(".prep-health-days > button")).toHaveCount(7);
+        if (section === "nutrition") {
+          await expect(health.locator(".meal-day-card")).toHaveCount(7);
+        } else {
+          await expect(health.locator(".prep-health-choices > button")).toHaveCount(3);
+          await expect(health.locator(".prep-health-days > button")).toHaveCount(7);
+        }
         await editorialCapture(page, testInfo, `r3-${section}-weekly-choice`);
         await health.getByRole("button", { name: "Mes", exact: true }).click();
         await expect(health.locator(".prep-health-days > button")).toHaveCount(31);
