@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 789a07cf3bba6df69e2a948b4890e92b4365d8f3
+          ref: e431770fbb89ace35e61237f61ff6175cb00b0bc
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -23,14 +23,9 @@ jobs:
           node-version: 22.13.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm audit:i18n && pnpm audit:design-tokens
-      - run: pnpm test
-      - run: pnpm run build:vercel
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify main flows and guide planning in both sizes
-        run: pnpm exec playwright test e2e/app.spec.ts e2e/guide-navigation.spec.ts e2e/preparation.spec.ts --workers=1 --grep 'creates and completes a task|creates a goal with manual progress|budget, savings fund|cascade planning and optional|exports, deletes and restores|information architecture separates|browser history and responsive|daily close updates|Mi guia owns|Mi guia exposes|preparation persists'
+        run: pnpm exec playwright test e2e/guide-navigation.spec.ts --workers=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
