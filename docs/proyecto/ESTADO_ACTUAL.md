@@ -1,5 +1,13 @@
 # Estado actual de My Best Version
 
+## 2026-11-16 — Mi año, Mi mes y Mi semana dentro de Mi guía — publicados
+
+Código funcional `789a07c`, publicado como `e431770` (este último sólo refuerza la prueba). Mi guía agrupa los tres periodos con navegación interna compartida; salen del menú principal. Móvil conserva Inicio, Mi guía, Hoy y Más. Rutas, Visión, Metas, Calendario y datos existentes conservados. Sin cambios de permisos, almacenamiento, Supabase, servicios o gastos. Base 56dda89, árbol previo limpio.
+
+673/673 unitarias y 22/22 E2E principales/navegación sobre 789a07c; lint, tipos, build, i18n y tokens aprobados, un aviso lint previo. Comprobación adicional 2/2 sobre e431770 confirma los accesos visibles tras el desplazamiento de entrada, en escritorio y móvil, sin modificar la app. Exportaciones de planes, tareas, metas y áreas idénticas antes/después. Las corridas se registran por separado; no se repite ni se declara aprobada toda la suite E2E histórica. Primer error de tipos por referencia al antiguo enlace Plan corregido y conservado en la ficha.
+
+Commit y push a main completados; Vercel success y nuevo código servido en https://mybestversion.life/app/guide. El navegador disponible llega al login: no hay nueva comprobación con sesión normal en producción. Capturas CI revisadas, móvil emulado, pendientes previos de H06 y timeout integral conservados. [Ficha única, resultados, capturas y límites](../qa/guide-planning-navigation-2026-11-16.md).
+
 ## 2026-11-14 — Mi espacio y navegación simplificados — publicados
 
 Código funcional final `51dc73e`, publicado mediante main en el Vercel existente, estado success, https://mybestversion.life. Menú izquierdo con Hábitos, Proyectos y tareas, Finanzas, Alimentación, Entrenamiento, Mi espacio y Más. Mi espacio abre directamente Mis listas (antes Bandeja). Más conserva Organizar y explorar la app, Apoyo y Mis listas. Diario y notas se retira de los accesos y su URL anterior lleva a Mis listas. Registros anteriores, cierre del día, respaldos, IDs y permisos conservados; sin cambios de almacenamiento, Supabase, planes ni servicios.
