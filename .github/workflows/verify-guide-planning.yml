@@ -1,0 +1,39 @@
+name: Verify guide planning navigation
+on:
+  push:
+    branches: [verify/guide-planning-2026-11-16]
+permissions:
+  contents: read
+env:
+  CI: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 789a07cf3bba6df69e2a948b4890e92b4365d8f3
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm audit:i18n && pnpm audit:design-tokens
+      - run: pnpm test
+      - run: pnpm run build:vercel
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify main flows and guide planning in both sizes
+        run: pnpm exec playwright test e2e/app.spec.ts e2e/guide-navigation.spec.ts e2e/preparation.spec.ts --workers=1 --grep 'creates and completes a task|creates a goal with manual progress|budget, savings fund|cascade planning and optional|exports, deletes and restores|information architecture separates|browser history and responsive|daily close updates|Mi guia owns|Mi guia exposes|preparation persists'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guide-planning-evidence
+          path: test-results/
+          retention-days: 7
