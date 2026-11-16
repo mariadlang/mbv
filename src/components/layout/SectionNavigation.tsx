@@ -12,8 +12,6 @@ const sections = {
     items: [
       ["/app/vision", "section.item.vision"],
       ["/app/goals", "section.item.goals"],
-      ["/app/planning", "section.item.yearMonths"],
-      ["/app/planning/weekly", "section.item.week"],
       ["/app/life-hub?tab=events", "section.item.calendar"],
     ],
   },

@@ -151,14 +151,15 @@ async function openExistingPlans(page: Page) {
   await expect(page.locator(".prep-year .prep-month-grid > button")).toHaveCount(12);
 }
 
-test("Plan exposes Metas and goal actions stay clear of floating capture", async ({ page }, testInfo) => {
+test("Mi guia exposes Metas and goal actions stay clear of floating capture", async ({ page }, testInfo) => {
   const mobile = testInfo.project.name === "mobile";
   await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1448, height: 1086 });
   await completeOnboarding(page);
   const planEntry = mobile
-    ? page.locator('.mobile-nav a[href="/app/planning"]')
-    : page.locator('.sidebar a[href="/app/planning?view=annual"]');
+    ? page.locator('.mobile-nav a[href="/app/guide"]')
+    : page.locator('.sidebar a[href="/app/guide"]');
   await planEntry.click();
+  await page.locator('.guide-planning-navigation').getByRole('link', { name: 'Mi año', exact: true }).click();
   const planNav = page.locator(".section-navigation");
   await expect(planNav.getByRole("link", { name: "Metas", exact: true })).toBeVisible();
   await planNav.getByRole("link", { name: "Metas", exact: true }).click();
@@ -757,10 +758,10 @@ test("information architecture separates overview from daily execution", async (
   await completeOnboarding(page);
   const mobile = test.info().project.name === "mobile";
   const navigation = page.locator(mobile ? ".mobile-nav" : ".sidebar__nav");
-  const labels = mobile ? ["Inicio", "Mi guía", "Plan", "Hoy", "Más"] : ["Inicio", "Mi guía", "Mi año", "Mi mes", "Mi semana", "Mi día"];
+  const labels = mobile ? ["Inicio", "Mi guía", "Hoy", "Más"] : ["Inicio", "Mi guía", "Mi día"];
   const destinations = mobile
-    ? ["/app/dashboard", "/app/guide", "/app/planning", "/app/today", "/app/more"]
-    : ["/app/dashboard", "/app/guide", "/app/planning?view=annual", "/app/planning?view=month", "/app/planning/weekly", "/app/today"];
+    ? ["/app/dashboard", "/app/guide", "/app/today", "/app/more"]
+    : ["/app/dashboard", "/app/guide", "/app/today"];
   await expect(navigation.getByRole("link")).toHaveCount(labels.length);
   for (const [index, label] of labels.entries()) {
     const link = navigation.getByRole("link", { name: label, exact: true });

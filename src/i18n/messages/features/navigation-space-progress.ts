@@ -1,4 +1,5 @@
 export const esNavigationSpaceProgressMessages = {
+  "navigation.guideSections": "Planificación de Mi guía",
   "more.title": "Más",
   "more.eyebrow": "Tu espacio, a tu manera",
   "more.description": "Ideas para organizarte, explorar la app y encontrar apoyo.",
@@ -675,6 +676,7 @@ export const esNavigationSpaceProgressMessages = {
 export type NavigationSpaceProgressMessageKey = keyof typeof esNavigationSpaceProgressMessages;
 
 export const enNavigationSpaceProgressMessages = {
+  "navigation.guideSections": "My guide planning",
   "more.title": "More",
   "more.eyebrow": "Your space, your way",
   "more.description": "Ideas to get organized, explore the app and find support.",

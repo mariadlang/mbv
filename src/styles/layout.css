@@ -51,6 +51,11 @@
 .section-navigation a { display: inline-flex; min-height: 38px; flex: 0 0 auto; align-items: center; border-radius: var(--radius-full); padding: 7px 13px; color: var(--color-text-secondary); font-size: var(--type-caption-size); font-weight: var(--font-weight-emphasis); text-decoration: none; white-space: nowrap; }
 .section-navigation a:hover { background: var(--color-surface-muted); color: var(--color-text-primary); }
 .section-navigation a.is-active { background: var(--color-brand-soft); color: var(--color-brand-strong); }
+.guide-planning-navigation { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 6px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.guide-planning-navigation a { display: flex; flex: 1 1 120px; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-md); color: var(--color-text-secondary); font-size: var(--type-navigation-size); font-weight: var(--font-weight-semibold); text-align: center; }
+.guide-planning-navigation a:hover { background: var(--color-surface-muted); color: var(--color-text-primary); }
+.guide-planning-navigation a[aria-current="page"] { background: var(--color-brand-soft); color: var(--color-brand-text-on-soft); }
+.guide-planning-navigation a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .section-heading h1 { margin-bottom: 8px; }
 .section-heading p:not(.eyebrow) { max-width: 700px; margin-bottom: 0; color: var(--color-text-secondary); }

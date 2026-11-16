@@ -290,7 +290,7 @@
   .prep-shell .topbar__mobile-brand { display: flex; }
   .prep-shell .prep-search, .prep-shell .topbar__status, .prep-shell .topbar__utilities { display: none; }
   .prep-shell .topbar__profile { margin-left: auto; }
-  .prep-shell .mobile-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 12px max(10px, env(safe-area-inset-bottom)); min-height: 66px; }
+  .prep-shell .mobile-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 8px 12px max(10px, env(safe-area-inset-bottom)); min-height: 66px; }
   .prep-shell .mobile-nav__item { width: auto; gap: 5px; padding: 6px 0; }
   .prep-shell .fab-cluster { bottom: 90px; }
   .prep-aside { grid-template-columns: 1fr; }
