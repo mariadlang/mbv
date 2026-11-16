@@ -29,6 +29,13 @@ test("Mi guia owns annual monthly and weekly navigation without changing saved p
   const navigation = page.getByRole("navigation", { name: "Planificación de Mi guía", exact: true });
   await expect(navigation.getByRole("link")).toHaveText(["Mi guía", "Mi año", "Mi mes", "Mi semana"]);
   await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => page.evaluate(() => window.scrollY), { message: "Entering Mi guía finishes scrolling to the top" }).toBe(0);
+  await expect(navigation).toBeInViewport({ ratio: 1 });
+  await expect.poll(() => navigation.evaluate((nav) => {
+    const link = nav.querySelector("a")!;
+    const rect = link.getBoundingClientRect();
+    return link.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+  }), { message: "Guide links are not covered by the header" }).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("guide.png"), animations: "disabled" });
 
   const destinations = [
