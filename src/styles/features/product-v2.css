@@ -43,7 +43,7 @@
 .finance-budget-result span { font-size: .75rem; }
 .finance-budget-result strong { font-family: var(--font-family-primary); font-size: 1.35rem; }
 .finance-two-column { display: grid; grid-template-columns: minmax(320px, .75fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
-.movement-list > div, .recurring-list > div { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 64px; border-bottom: 1px solid var(--border); }
+.movement-list > div:not(.empty-state), .recurring-list > div:not(.empty-state) { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 64px; border-bottom: 1px solid var(--border); }
 .movement-list > div > div, .recurring-list > div > div { display: grid; gap: 2px; }
 .movement-list small, .recurring-list small { color: var(--taupe); font-size: .75rem; }
 .movement-list b, .recurring-list b { font-size: .75rem; }
@@ -192,10 +192,11 @@
 .legal-app-grid p { color:var(--color-text-secondary); line-height:1.5; }
 .legal-app-grid .button { width:100%; margin-top:auto; }
 .privacy-center-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr); gap:16px; }
-.privacy-center-grid > .card { display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
+.privacy-center-grid > .card { display:flex; flex-direction:column; align-items:flex-start; gap:12px; padding:24px; }
 .privacy-center-grid h2 { margin:0; }
 .consent-manager > div { display:flex; align-items:center; justify-content:space-between; gap:18px; }
 .consent-manager h2,.consent-manager p { margin:0; }
+.card:has(> .privacy-request-form.is-compact) { padding:24px; }
 .privacy-request-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
 .privacy-request-form .form-field:nth-child(3),.privacy-request-form .form-field:nth-child(4),.privacy-request-form .inline-message { grid-column:1 / -1; }
 .privacy-request-form > .button { justify-self:start; }
@@ -406,6 +407,7 @@
 .progress-goal-list--editorial article > b { font-family: var(--font-family-primary); font-size: 1.5rem; }
 .progress-bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .premium-insight-card { min-height: 100%; }
+.progress-empty-state, .premium-insight-card, .goals-closer-card, .progress-bottom-grid > .card, .brain-universal-capture { padding: 24px; }
 .premium-insight-card .metric-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; }
 .premium-insight-card .metric-grid--three > div { display: grid; gap: 4px; padding: 16px; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface-muted); }
 .premium-insight-card .metric-grid--three small,

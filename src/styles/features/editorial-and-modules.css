@@ -469,14 +469,11 @@ body { font-size: var(--type-body-size); background: var(--color-background); }
 
 /* Fidelidad de la vista Hoy respecto al tablero editorial de producto. */
 @media (min-width: 901px) {
-  .app-shell--today:not(.app-shell--collapsed) .sidebar { width: 210px; padding-inline: 14px; }
-  .app-shell--today:not(.app-shell--collapsed) .app-main { margin-left: 210px; }
   .app-shell--today .page-content { width: 100%; max-width: none; padding: 22px clamp(28px, 2.25vw, 36px) 72px; }
 }
 .app-shell--today .sidebar { overflow: hidden; background: #fbf8f3; }
 .app-shell--today .sidebar::after { content: ""; position: absolute; z-index: -1; width: 170px; height: 170px; left: -45px; bottom: -42px; border-radius: 55% 45% 50% 50%; background: radial-gradient(ellipse at 72% 35%, color-mix(in srgb, var(--color-brand-soft) 78%, transparent) 0 19%, transparent 20%), radial-gradient(ellipse at 42% 64%, color-mix(in srgb, var(--color-brand-soft) 74%, transparent) 0 22%, transparent 23%); opacity: .75; transform: rotate(-18deg); }
 .app-shell--today .sidebar__brand { min-height: 95px; gap: 10px; }
-.app-shell--today .sidebar__brand .brand-mark__copy strong { font-size: 1rem; letter-spacing: .1em; }
 .sidebar-today-claim { color: var(--color-text-secondary); font-size: .56rem; letter-spacing: .15em; text-transform: uppercase; }
 .app-shell--today .sidebar__nav { gap: 10px; margin-top: 18px; }
 .app-shell--today .nav-item { min-height: 50px; border-radius: 10px; }

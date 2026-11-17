@@ -179,3 +179,8 @@
   .habit-summary-card, .habit-today-row__status > span > i, .habit-progress-bars > div > span { transition: none; }
   .habit-complete-button { animation: none; }
 }
+
+.habit-personalize-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 12px 0; text-align: left; }
+.habit-personalize-toggle > span { display: grid; gap: 4px; min-width: 0; }
+.habit-personalize-toggle small { color: var(--color-text-secondary); }
+.habit-personalize-toggle > svg { flex-shrink: 0; }

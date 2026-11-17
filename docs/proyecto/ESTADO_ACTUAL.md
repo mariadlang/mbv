@@ -1,5 +1,10 @@
 # Estado actual de My Best Version
 
+## 2026-11-17 — correcciones visuales verificadas; publicación en curso
+
+Revisión retomada sin reiniciar: marca y etiquetas laterales, margen inferior móvil con FAB, estados vacíos de Finanzas, márgenes de tarjetas y diálogos, preparación semanal en tableta, encabezados y ayuda de Hábitos. Sólo presentación, datos y funciones conservados. [Ficha única: cobertura real, antes/después, pruebas y pendientes](../qa/visual-review-2026-11-17.md). Unitarias673/673 en corrida con dos trabajadores; principal E2E6/6; adicional8/10 (dos timeouts180s de preparación, comparación con base en curso). Build normal y tipos pasan en copia aislada. No se declara toda la app revisada: zoom real200%, roles normales Gratis/Premium, estados excepcionales y varias pantallas internas siguen pendientes. Sin cambios de Supabase ni servicios.
+
+
 ## 2026-11-16 — Mi año, Mi mes y Mi semana dentro de Mi guía — publicados
 
 Código funcional `789a07c`, publicado como `e431770` (este último sólo refuerza la prueba). Mi guía agrupa los tres periodos con navegación interna compartida; salen del menú principal. Móvil conserva Inicio, Mi guía, Hoy y Más. Rutas, Visión, Metas, Calendario y datos existentes conservados. Sin cambios de permisos, almacenamiento, Supabase, servicios o gastos. Base 56dda89, árbol previo limpio.

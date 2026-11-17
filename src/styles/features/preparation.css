@@ -65,9 +65,9 @@
   background: var(--prep-bg);
 }
 .prep-shell .sidebar { width: 270px; padding: 26px 18px 20px; overflow-y: auto; background: var(--prep-bg); border-right-color: var(--prep-border); }
-.prep-shell .sidebar__brand { min-height: 58px; padding: 0 4px; }
+.prep-shell .sidebar__brand { min-height: 58px; flex-shrink: 0; padding: 0 4px; }
 .prep-shell .sidebar__nav { flex: none; margin-top: 22px; gap: 7px; }
-.prep-shell .nav-item { min-height: 47px; gap: 20px; border-radius: 9px; font-size: 16px; font-weight: 400; padding-inline: 18px; }
+.prep-shell .nav-item { min-height: 47px; gap: 20px; border-radius: 9px; font-size: 16px; font-weight: 400; padding: 10px 18px; white-space: normal; overflow-wrap: anywhere; }
 .prep-shell .nav-item svg { width: 23px; height: 23px; flex-shrink: 0; }
 .prep-shell .nav-item--active { background: var(--prep-rose); color: var(--color-brand-strong); }
 .prep-shell .sidebar__space-shortcuts { margin-top: 22px; padding-top: 22px; gap: 7px; }
@@ -136,6 +136,8 @@
 .prep-secondary { background: var(--button-secondary-background); color: var(--button-secondary-text); border-color: var(--color-border-strong); }
 .prep-secondary:hover { background: var(--color-surface-muted); }
 .prep-dialog-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.prep-dialog { padding: 0 24px 24px; }
+.prep-dialog > .modal__header { margin: 0 -24px 20px; }
 .prep-option { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--color-border); min-height: 44px; }
 .prep-option input { width: 18px; height: 18px; }
 .prep-month-context { position: relative; overflow: hidden; min-height: 310px; }
@@ -283,9 +285,11 @@
   .prep-card h2 { font-size: 23px; }
 }
 @media (max-width: 800px) {
+  .prep-shell .section-heading { align-items: stretch; }
   .prep-shell .sidebar { display: none; }
   .prep-shell .app-main { margin-left: 0; }
   .prep-shell .page-content { padding: 14px 16px 100px; }
+  .prep-shell:has(.fab-cluster) .page-content { padding-bottom: calc(156px + env(safe-area-inset-bottom)); }
   .prep-shell .topbar { min-height: 65px; padding: 12px 16px; gap: 10px; }
   .prep-shell .topbar__mobile-brand { display: flex; }
   .prep-shell .prep-search, .prep-shell .topbar__status, .prep-shell .topbar__utilities { display: none; }

@@ -152,7 +152,7 @@
 .weekly-pending-idea .weekly-pending-task__main > span { grid-column: 2; color: var(--color-text-muted); font-size: .66rem; }
 .weekly-pending-empty { margin: 6px 0 0; color: var(--color-text-muted); font-size: .74rem; line-height: 1.5; }
 
-.weekly-review-dialog { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.weekly-review-dialog { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px 24px 24px; }
 .weekly-review-dialog > label, .weekly-review-dialog > fieldset { display: grid; gap: 6px; }
 .weekly-review-dialog > label span, .weekly-review-dialog legend { color: var(--color-text-secondary); font-size: .78rem; font-weight: 650; }
 .weekly-review-dialog textarea, .weekly-review-dialog input { width: 100%; min-height: 42px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--input-background); padding: 9px 11px; color: var(--color-text-primary); }

@@ -78,14 +78,16 @@
   .home-column { display: contents; }
   .home-block-preparation { order: 1; } .home-block-week { order: 2; } .home-block-month { order: 3; } .home-block-project { order: 4; } .home-block-upcoming { order: 5; }
 }
-@media(max-width:600px) {
-  .home-overview .prep-card { padding: 16px; }
-  .home-heading h1 { font-size: 32px; }
-  .home-overview .prep-card h2 { font-size: 23px; }
+@media(max-width:800px) {
   .home-preparation .prep-card-heading { grid-template-columns: 36px minmax(0,1fr); }
   .home-preparation .prep-card-heading > .prep-icon { display: flex; width: 36px; height: 36px; }
   .home-preparation .prep-card-heading > div { grid-column: 2; }
   .home-preparation .prep-card-heading p { display: block; }
+}
+@media(max-width:600px) {
+  .home-overview .prep-card { padding: 16px; }
+  .home-heading h1 { font-size: 32px; }
+  .home-overview .prep-card h2 { font-size: 23px; }
   .home-overview .prep-checklist-row { grid-template-columns: 36px minmax(0,1fr) auto; gap: 8px; }
   .home-overview .prep-checklist-row .prep-icon { width: 36px; height: 36px; grid-row: span 2; }
   .home-overview .prep-row-copy { grid-row: span 2; }

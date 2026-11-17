@@ -1,5 +1,9 @@
 # Historial verificable de My Best Version
 
+## 2026-11-17 — revisión visual integral — en curso
+
+Base remota f24c3e5, confirmada en el panel Vercel como Production/Ready (4SotArqKQqqi6t6u1FpgxZviyGAd) para mybestversion.life. Rama fix/visual-review-2026-11-17 actualizada por fast-forward conservando next-env.d.ts previamente modificado y archivos sin seguimiento. Revisión práctica en copia aislada local3130 con autenticación E2E y datos sintéticos; producción con sesión normal Superadmin, sin confundirla con Gratis/Premium. Primer defecto demostrado: Mi día reduce lateral a210px y corta marca/lema y etiquetas a1280×720. Se retiran overrides particulares de ancho y lettering y se permite ajuste de etiquetas en navegación compartida. Añadidos márgenes de formularios/tarjetas, protección inferior frente al FAB, ajuste de encabezados/tableta y separación de ayuda de Hábitos. Navegador integrado recuperado tras bloqueo de verificación de URL de Chrome nativo; sin eludirlo. Unitarias673/673, principal E2E6/6, adicional8/10 con dos timeouts180s de preparación conservados. Build normal y tipos aprobados; publicación autorizada en curso. Ficha docs/qa/visual-review-2026-11-17.md con cobertura y capturas; no se declara cobertura completa. Evidencia en outputs/MBV-Visual-2026-11-17 del espacio de trabajo de la tarea. Datos personales y LIM01 intactos.
+
 ## 2026-11-16 — Mi año, Mi mes y Mi semana dentro de Mi guía — publicados
 
 Código funcional `789a07c`, publicado como `e431770` (este último sólo refuerza la prueba). Mi guía agrupa los tres periodos con navegación interna compartida; salen del menú principal. Móvil conserva Inicio, Mi guía, Hoy y Más. Rutas, Visión, Metas, Calendario y datos existentes conservados. Sin cambios de permisos, almacenamiento, Supabase, servicios o gastos. Base 56dda89, árbol previo limpio.
