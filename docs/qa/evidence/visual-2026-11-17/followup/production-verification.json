@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-17T19:44:53.949Z",
+  "url": "https://mybestversion.life/app/today",
+  "http": 200,
+  "cssFiles": [
+    "/_next/static/chunks/0a1~zr3kmxjyg.css",
+    "/_next/static/chunks/0wcryqqe.bmbq.css"
+  ],
+  "checks": {
+    "challengeFormPadding": true,
+    "challengeTitleFlex": true,
+    "platformMinWidth": true,
+    "habitPersonalize": true,
+    "weeklyReviewPadding": true,
+    "privacyRequestPadding": true,
+    "emptyMovementExclusion": true
+  },
+  "e2eTestTokenHttp": 401
+}

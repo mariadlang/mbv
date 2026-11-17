@@ -33,7 +33,7 @@ Clasificación respaldada: sobrecoste acumulado del entorno de desarrollo dentro
 
 ### Validación de esta continuación
 
-Completa unitaria673/673,109archivos,310.93s, dos trabajadores. Regresión nueva administrativa: antes0/1 (overflow26px), después4/4. Build normal local ilnPmOHj9r_ZIWDGjsaL1. Principal E2E y Retos8/8 en3.1min, sin omisiones/reintentos. Tipos, lint completo, i18n y tokens aprobados (un aviso lint previo). Publicación autorizada en curso; comprobación posterior pendiente.
+Completa unitaria673/673,109archivos,310.93s, dos trabajadores. Regresión nueva administrativa: antes0/1 (overflow26px), después4/4. Build normal local ilnPmOHj9r_ZIWDGjsaL1. Principal E2E y Retos8/8 en3.1min, sin omisiones/reintentos. Tipos, lint completo, i18n y tokens aprobados (un aviso lint previo). Publicado código funcional f821c2edb1a95a52dea4d5877331cdce5b71d656 en https://mybestversion.life mediante main; Vercel DB45LpamqLL52R7jQmv9YtZQHrky success. Dominio200, CSS nuevo comprobado, token E2E rechazado401. Revisión normal posterior Superadmin: administración360×800 sin desbordamiento (scrollWidth=clientWidth=345), métricas legibles y editor de Retos con campos/acciones accesibles; cerrado sin guardar datos. Título largo comprobado sólo con registro sintético local, producción no tiene reto activo. Capturas privadas en normal-production. No cambios de permisos, datos personales, Supabase ni servicios.
 
 Pendientes reales: matriz user Gratis/Premium normal, recuperación/confirmación con token válido, errores remotos inducidos, colecciones masivas y variantes de cada registro señaladas en la tabla histórica. No se envían correos ni se cambian credenciales o permisos para ampliar cobertura. No cierre H06 ni certificación visual exhaustiva.
 
