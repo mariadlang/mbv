@@ -1,0 +1,39 @@
+
+Running 1 test using 1 worker
+
+(node:26740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 360px (9.7s)
+
+
+  1) [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 360px 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1
+    Received:    26
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+       7 |     await expect(page.getByRole("heading", { name: "Growth · Etapa 1", exact: true })).toBeVisible();
+       8 |     await page.screenshot({ path: info.outputPath("platform-summary.png"), fullPage: true });
+    >  9 |     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+         |                                                                                                                               ^
+      10 |     const metrics = page.locator(".platform-metrics .card");
+      11 |     expect(await metrics.count()).toBeGreaterThan(20);
+      12 |     for (const metric of await metrics.all()) {
+        at C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-20261117\e2e\platform-layout.spec.ts:9:127
+
+    Error Context: ..\..\outputs\MBV-Visual-2026-11-17\platform-before\platform-layout-platform-s-b28fa-xt-inside-the-page-at-360px-desktop\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\platform-before\platform-layout-platform-s-b28fa-xt-inside-the-page-at-360px-desktop\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\outputs\MBV-Visual-2026-11-17\platform-before\platform-layout-platform-s-b28fa-xt-inside-the-page-at-360px-desktop\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 360px 

@@ -1,0 +1,22 @@
+✓ Lockfile passes supply-chain policies (verified 59m ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 2.4s using pnpm v11.25.0
+
+Running 8 tests using 1 worker
+
+(node:15344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [desktop] › e2e\app.spec.ts:229:1 › onboarding creates a real first action and activation journey (14.7s)
+  ok 2 [desktop] › e2e\app.spec.ts:319:1 › creates and completes a task, then creates and records a habit (24.8s)
+  ok 3 [desktop] › e2e\app.spec.ts:592:1 › cascade planning and optional life modules persist locally (40.3s)
+  ok 4 [desktop] › e2e\app.spec.ts:943:1 › creates a gentle challenge and records today (15.0s)
+(node:22852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 5 [mobile] › e2e\app.spec.ts:229:1 › onboarding creates a real first action and activation journey (13.4s)
+  ok 6 [mobile] › e2e\app.spec.ts:319:1 › creates and completes a task, then creates and records a habit (20.2s)
+  ok 7 [mobile] › e2e\app.spec.ts:592:1 › cascade planning and optional life modules persist locally (37.7s)
+  ok 8 [mobile] › e2e\app.spec.ts:943:1 › creates a gentle challenge and records today (12.8s)
+
+  8 passed (3.1m)

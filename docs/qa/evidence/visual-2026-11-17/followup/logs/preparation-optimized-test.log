@@ -1,0 +1,11 @@
+
+Running 2 tests using 1 worker
+
+(node:20772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads (53.4s)
+(node:27312) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 2 [mobile] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads (1.0m)
+
+  2 passed (2.1m)

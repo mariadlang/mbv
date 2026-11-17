@@ -1,0 +1,11 @@
+
+Running 4 tests using 1 worker
+
+(node:26716) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 360px (5.1s)
+  ok 2 [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 390px (4.1s)
+  ok 3 [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 768px (4.4s)
+  ok 4 [desktop] › e2e\platform-layout.spec.ts:4:3 › platform summary keeps metric text inside the page at 1440px (4.3s)
+
+  4 passed (19.5s)

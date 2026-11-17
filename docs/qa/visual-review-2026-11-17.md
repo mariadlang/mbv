@@ -1,6 +1,43 @@
 # Revisión visual MBV — 17 de noviembre de 2026
 
-## Entrega y entorno
+## Continuación desde 1806a03 — verificación y correcciones adicionales
+
+La revisión anterior y sus fallos se conservan abajo como antecedentes. Estado actualizado: sesión normal productiva recuperada en el navegador integrado con URL verificable, rol Superadmin; no representa cuentas user Gratis/Premium. Zoom de navegador al200% comprobado en localhost3130: viewport solicitado1440×900, área CSS720×450, DPR2 y CSS zoom1. No se eludió el bloqueo de Chrome ni se usó CSS zoom. Se verificaron Inicio, Mi guía, Mi día, revisión semanal y controles finales de Retos; asistencia previa de María para fijar el zoom. Capturas y medidas en evidence/visual-2026-11-17/followup/zoom200.
+
+### Cobertura adicional efectiva
+
+| Pantalla/estado | Resultado y límite |
+|---|---|
+| Producción normal: Mi día1280, Inicio/Ajustes768, Finanzas360, Hábitos/Entrenamiento/revisión semanal360, Listas/Progreso/Privacidad360 | Lectura, finales y apertura/cierre de modales comprobados; sin guardar datos personales. Capturas privadas conservadas localmente en normal-production, no publicadas en Git. |
+| Administración | Resumen y Usuarios con sesión autorizada; ocho apartados también recorridos con datos sintéticos locales: Resumen, Usuarios, Uso, Comercial, Soporte, Sugerencias, Audiencias, Configuración. Sin conceder permisos ni ejecutar acciones comerciales. No tickets con contenido ni acciones destructivas. |
+| Retos | Editor personal, título largo, guardado, recarga, pausa y regreso con registro sintético local. Sin alterar registros anteriores. |
+| /verify-email sin token | Aviso de revisar correo legible; no equivale a confirmar correo ni recuperar con token válido. |
+
+### Defectos adicionales demostrados
+
+| Pantalla | Antes | Corrección y después |
+|---|---|---|
+| /platform,360px | Métricas fuerzan desbordamiento global; prueba previa falla con26px | Columnas minmax(0,1fr), mínimo0 y ajuste de palabras en tarjetas. Regresión4/4 a360,390,768,1440 sin desbordamiento global ni interno. |
+| Retos/editor,360px CSS | Campos pegados al borde | Padding coherente con otros formularios. |
+| Retos/título largo,360px CSS | Botón Pausar comprime texto en columna estrecha | Cabecera permite envolver y da espacio flexible al título; botón queda accesible debajo. Recarga y pausa/retorno conservan contenido. |
+
+Antes/después sintéticos en evidence/visual-2026-11-17/followup/{before,after}. Las capturas de retos usan viewport solicitado720×1600 con zoom200%, área CSS360×800; la prueba administrativa automatizada usa360×800 al100%. No teléfono físico. Registro nuevo: «QA visual: dedicar unos minutos a la lectura y reconocer pequeños avances durante una semana de prueba», descripción «Registro sintético para comprobar texto largo y controles del reto.», inicio17/11/2026, conservado activo en3130.
+
+### Diagnóstico de los dos timeouts H03
+
+Se analizaron los tres traces fallidos originales antes de cambiar nada. Los dos candidatos consumen el presupuesto global180s durante una secuencia extensa de navegación/recarga, no en una única operación bloqueada: goto+reload suman97.35s escritorio y86.92s móvil. La base tiene110.30s en navegación, incluido primer goto52.34s por compilación fría. Que falle la base no se usa como resolución.
+
+Comparación con runtime optimizado (next build/start3140), mismo archivo de prueba SHA256 AAFF6F365F84C4DC11C55BD54CB56E8740EE96B7F2E4E357355269A0EBE4E2D2, límite180s y aserciones intactos:2/2 en2.1min, escritorio53.4s y móvil1.0min. Ambos completan22 navegaciones y16 recargas; su tiempo acumulado baja a12.08s y10.91s. Cada trace completa117 expectativas. No se repitió hasta verde ni se omitieron casos: cambió explícitamente el runtime para contrastar la hipótesis.
+
+Clasificación respaldada: sobrecoste acumulado del entorno de desarrollo dentro del presupuesto de una prueba larga; no se demostró un defecto funcional de preparación. La contribución exacta de compilación/HMR/carga del equipo a cada segundo no quedó aislada; no se declara solucionada toda intermitencia histórica. No se cambia la aplicación, el test H03 ni su timeout por este diagnóstico. Traces originales y nuevos conservados localmente; análisis y resultados en followup/logs.
+
+### Validación de esta continuación
+
+Completa unitaria673/673,109archivos,310.93s, dos trabajadores. Regresión nueva administrativa: antes0/1 (overflow26px), después4/4. Build normal local ilnPmOHj9r_ZIWDGjsaL1. Principal E2E y Retos8/8 en3.1min, sin omisiones/reintentos. Tipos, lint completo, i18n y tokens aprobados (un aviso lint previo). Publicación autorizada en curso; comprobación posterior pendiente.
+
+Pendientes reales: matriz user Gratis/Premium normal, recuperación/confirmación con token válido, errores remotos inducidos, colecciones masivas y variantes de cada registro señaladas en la tabla histórica. No se envían correos ni se cambian credenciales o permisos para ampliar cobertura. No cierre H06 ni certificación visual exhaustiva.
+
+## Entrega anterior y entorno (antecedente conservado)
 
 Base f24c3e5, verificada Production/Ready en Vercel (4SotArqKQqqi6t6u1FpgxZviyGAd). Destino autorizado: https://mybestversion.life, proyecto existente vercel-upload-mbv. Publicado código funcional **1806a036e176d637d3a762a45682fe1ed657bdd7**, commit y push a main completados. [Vercel B4Yb7vxEZPZF9rBNLEXRGfocZiio](https://vercel.com/mariadelosangelesgtg-4145s-projects/vercel-upload-mbv/B4Yb7vxEZPZF9rBNLEXRGfocZiio), estado success. El17/11 a19:14UTC el dominio respondió200 y sirvió el CSS nuevo de Hábitos, revisión semanal, solicitudes y estados vacíos. GET /api/feedback con credencial sintética E2E fue rechazado401. [Comprobación técnica del dominio](evidence/visual-2026-11-17/production-verification.json). Cierre documental posterior conserva exactamente el mismo código funcional. No se contrató ni configuró ningún servicio.
 

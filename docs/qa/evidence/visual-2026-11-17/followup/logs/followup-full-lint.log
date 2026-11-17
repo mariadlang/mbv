@@ -1,0 +1,7 @@
+$ eslint . --ignore-pattern dist --ignore-pattern .next
+
+C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-followup-build\src\hooks\useAccount.tsx
+  104:55  warning  The ref value 'accessRequestRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'accessRequestRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)
+

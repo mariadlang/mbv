@@ -1,0 +1,65 @@
+baseline-0-trace.trace {"newPage":{"n":1,"ms":213.3209999999999},"clockSetFixedTime":{"n":4,"ms":191.71700000001874},"goto":{"n":18,"ms":85276.139},"waitForSelector":{"n":20,"ms":1017.2220000000016},"click":{"n":23,"ms":4563.379999999939},"fill":{"n":3,"ms":125.99299999998766},"expect":{"n":90,"ms":22266.377000000044},"evaluateExpression":{"n":16,"ms":340.0960000000123},"setNetworkInterceptionPatterns":{"n":2,"ms":6.353000000002794},"reload":{"n":12,"ms":25027.038000000037},"innerText":{"n":13,"ms":213.3190000000468},"focus":{"n":11,"ms":164.29300000001967},"press":{"n":11,"ms":771.6759999999631},"screenshot":{"n":4,"ms":1218.5829999999987},"uncheck":{"n":4,"ms":601.9189999999944},"isVisible":{"n":1,"ms":13.224000000016531}}
+unfinished [{"method":"goto","time":182382.626,"params":{"url":"/app/dashboard","waitUntil":"load"}}]
+span 178326.358 sum 142010.65000000008 gaps [
+  { ms: 1432.268000000011, after: 'reload', before: 'expect' },
+  { ms: 1402.7069999999949, after: 'goto', before: 'waitForSelector' },
+  { ms: 1154.877999999997, after: 'goto', before: 'expect' },
+  { ms: 1152.350999999995, after: 'goto', before: 'expect' },
+  { ms: 1136.021000000008, after: 'goto', before: 'expect' }
+]
+candidate-desktop-0-trace.trace {"newPage":{"n":1,"ms":130.73399999999674},"clockSetFixedTime":{"n":4,"ms":30.409999999857973},"goto":{"n":22,"ms":57791.734},"waitForSelector":{"n":22,"ms":1527.896000000037},"click":{"n":26,"ms":7544.814000000071},"fill":{"n":3,"ms":91.07300000000396},"expect":{"n":110,"ms":29768.9739999999},"evaluateExpression":{"n":18,"ms":388.2260000000824},"setNetworkInterceptionPatterns":{"n":2,"ms":5.972999999998137},"reload":{"n":15,"ms":39561.312000000034},"innerText":{"n":16,"ms":252.19000000003143},"focus":{"n":11,"ms":173.93399999997928},"press":{"n":11,"ms":789.9420000000391},"screenshot":{"n":5,"ms":1605.1949999999779},"uncheck":{"n":5,"ms":894.7860000000219},"isVisible":{"n":1,"ms":11.260999999998603}}
+unfinished []
+span 179844.237 sum 140568.45400000003 gaps [
+  { ms: 1397.6410000000033, after: 'goto', before: 'expect' },
+  { ms: 1336.636999999988, after: 'goto', before: 'expect' },
+  { ms: 1322.1699999999837, after: 'reload', before: 'expect' },
+  { ms: 1316.9770000000135, after: 'goto', before: 'expect' },
+  { ms: 1300.5530000000144, after: 'goto', before: 'expect' }
+]
+candidate-mobile-0-trace.trace {"newPage":{"n":1,"ms":111.79000000003725},"clockSetFixedTime":{"n":4,"ms":30.676999999966938},"goto":{"n":21,"ms":50556.534999999974},"waitForSelector":{"n":28,"ms":1220.716999999946},"click":{"n":27,"ms":8679.994999999937},"fill":{"n":3,"ms":94.37800000002608},"expect":{"n":110,"ms":27851.178999999887},"evaluateExpression":{"n":25,"ms":550.96999999939},"setNetworkInterceptionPatterns":{"n":2,"ms":2.4739999999292195},"reload":{"n":15,"ms":36367.674999999756},"innerText":{"n":16,"ms":186.41400000010617},"focus":{"n":11,"ms":240.59599999996135},"press":{"n":11,"ms":969.637999999919},"screenshot":{"n":8,"ms":4415.781000000192},"setViewportSize":{"n":8,"ms":272.6209999999264},"uncheck":{"n":5,"ms":516.9060000000754},"isVisible":{"n":1,"ms":14.893000000040047}}
+unfinished []
+span 179821.03599999996 sum 132083.23899999907 gaps [
+  { ms: 1980.4909999999218, after: 'goto', before: 'expect' },
+  { ms: 1742.1909999999916, after: 'goto', before: 'expect' },
+  {
+    ms: 1488.5219999999972,
+    after: 'goto',
+    before: 'evaluateExpression'
+  },
+  { ms: 1454.488000000012, after: 'reload', before: 'expect' },
+  { ms: 1441.5260000000708, after: 'reload', before: 'expect' }
+]
+optimized-desktop-0-trace.trace {"newPage":{"n":1,"ms":169.51800000000003},"clockSetFixedTime":{"n":4,"ms":78.50300000000334},"goto":{"n":22,"ms":7194.036000000004},"waitForSelector":{"n":24,"ms":877.7769999999928},"click":{"n":26,"ms":4823.536999999983},"fill":{"n":3,"ms":90.19500000000608},"expect":{"n":117,"ms":20084.09700000001},"evaluateExpression":{"n":21,"ms":383.81699999999455},"setNetworkInterceptionPatterns":{"n":2,"ms":3.036000000000058},"reload":{"n":16,"ms":4883.798999999996},"innerText":{"n":17,"ms":267.8100000000004},"focus":{"n":11,"ms":182.63000000000466},"press":{"n":11,"ms":466.9800000000032},"screenshot":{"n":6,"ms":1780.0419999999922},"uncheck":{"n":5,"ms":847.9580000000024},"isVisible":{"n":1,"ms":60.58299999999872}}
+unfinished []
+span 49218.996999999996 sum 42194.31799999999 gaps [
+  { ms: 363.4439999999995, after: 'waitForSelector', before: 'focus' },
+  { ms: 226.65700000000288, after: 'waitForSelector', before: 'focus' },
+  {
+    ms: 224.51100000000042,
+    after: 'waitForSelector',
+    before: 'waitForSelector'
+  },
+  {
+    ms: 208.3060000000005,
+    after: 'waitForSelector',
+    before: 'waitForSelector'
+  },
+  {
+    ms: 197.77100000000064,
+    after: 'waitForSelector',
+    before: 'waitForSelector'
+  }
+]
+optimized-mobile-0-trace.trace {"newPage":{"n":1,"ms":145.28400000000693},"clockSetFixedTime":{"n":4,"ms":26.093999999990046},"goto":{"n":22,"ms":6310.3759999999675},"waitForSelector":{"n":36,"ms":1007.174999999952},"click":{"n":27,"ms":6568.029000000002},"fill":{"n":3,"ms":74.43499999999767},"expect":{"n":117,"ms":19725.40099999988},"evaluateExpression":{"n":33,"ms":430.1069999999818},"setNetworkInterceptionPatterns":{"n":2,"ms":2.713999999999942},"reload":{"n":16,"ms":4604.189999999959},"innerText":{"n":17,"ms":161.96199999996315},"focus":{"n":11,"ms":145.3130000000092},"press":{"n":11,"ms":412.5789999999979},"screenshot":{"n":12,"ms":5417.127000000008},"setViewportSize":{"n":12,"ms":337.61299999999756},"uncheck":{"n":5,"ms":345.3790000000008},"isVisible":{"n":1,"ms":9.029999999998836}}
+unfinished []
+span 54677.736000000004 sum 45722.80799999971 gaps [
+  { ms: 296.4380000000092, after: 'waitForSelector', before: 'focus' },
+  { ms: 280.90200000000186, after: 'waitForSelector', before: 'focus' },
+  {
+    ms: 271.7569999999978,
+    after: 'waitForSelector',
+    before: 'waitForSelector'
+  },
+  { ms: 271.23799999999756, after: 'waitForSelector', before: 'focus' },
+  { ms: 266.75800000000163, after: 'waitForSelector', before: 'focus' }
+]

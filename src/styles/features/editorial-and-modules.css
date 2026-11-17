@@ -833,8 +833,8 @@ body { font-size: var(--type-body-size); background: var(--color-background); }
 .challenge-preset-card small { flex: 1; color: var(--taupe); font-size: .75rem; line-height: 1.5; }
 .challenge-preset-card .button { width: 100%; }
 .active-challenge-card { display: grid; gap: 14px; }
-.active-challenge-card > header { gap: 14px; }
-.challenge-card-title { display: flex; align-items: flex-start; gap: 11px; }
+.active-challenge-card > header { gap: 14px; flex-wrap: wrap; }
+.challenge-card-title { display: flex; align-items: flex-start; gap: 11px; flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
 .challenge-card-title > span { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; border-radius: 50%; background: var(--blush); color: var(--rose-deep); }
 .challenge-card-title .badge { margin-bottom: 6px; }
 .challenge-period { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--taupe); font-size: .75rem; }
@@ -843,7 +843,7 @@ body { font-size: var(--type-body-size); background: var(--color-background); }
 .challenge-day-count span { color: var(--taupe); font-size: .75rem; }
 .active-challenge-card .challenge-encouragement { margin: 0; min-height: 0; }
 .active-challenge-card > .button { justify-self: start; }
-.challenge-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.challenge-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px 24px 24px; }
 .challenge-form .form-field--wide, .challenge-health-note { grid-column: 1 / -1; }
 .challenge-health-note { margin: 0; border-radius: 10px; background: var(--blush); padding: 12px 14px; color: var(--taupe); font-size: .75rem; line-height: 1.5; }
 .completed-challenges { display: grid; gap: 8px; }
