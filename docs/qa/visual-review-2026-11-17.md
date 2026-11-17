@@ -1,5 +1,18 @@
 # Revisión visual MBV — 17 de noviembre de 2026
 
+## Continuación de pendientes — cuentas y estados secundarios
+
+María confirma que todavía no hay cuenta de prueba Premium. No se concede acceso ni se cambia ningún permiso. Cuenta H06 A documentada Gratis tras retirar Premium temporal; cuenta LIM01 autorizada conservada, sin modificar contraseña/datos. Backend mbv-h06-pruebas confirmado ACTIVE_HEALTHY por conector de lectura.
+
+**Bloqueo de Gratis/recuperación:** pestaña3119 muestra sitio inaccesible;3130 es E2E y producción conserva sesión Superadmin. Se preparó copia aislada actual en work/visual-normal-20261117, pero la política de ejecución rechazó el comando de build/arranque normal con backend de pruebas en3141, antes de ejecutarlo, sin motivo específico. No se intentó otra vía para eludirlo. No nueva sesión Gratis, solicitud de correo ni token válido comprobados. Hace falta un entorno actualizado normal de pruebas en ejecución; la introducción/confirmación de una nueva contraseña de prueba debe hacerla María mediante el navegador. No usar contraseña personal ni sustitución E2E para dar el paso por aprobado.
+
+**Comprobación independiente realizada:** reto sintético largo existente de3130: cerrar→Retos cerrados→retomar→pausar→retomar; formulario vacío muestra validación y foco en nombre. No se crea otro registro. Título/contenido conservados al volver a activo. Entorno sintético, no prueba de persistencia remota ni permisos. Capturas a360×400CSS (viewport720×800, zoom200%, ventana corta); primer intento de captura completa falló y se conserva ese límite, no se atribuye a la aplicación.
+
+**Nuevo defecto demostrado y corregido:** tarjeta compartida de retos pausados/cerrados mantenía el botón Retomar junto al título y lo comprimía en una columna estrecha. Se permite envolver la fila, título flexible con mínimo0 y ajuste de palabras, botón a la derecha en su fila. Sólo src/styles/features/editorial-and-modules.css, sin lógica, textos ni datos. Evidencia antes/después en evidence/visual-2026-11-17/remaining.
+
+**Validación pertinente:** E2E de Retos2/2 (23.7s), escritorio/móvil; build normal8qRZIvrxQhDgVkMScv_W3 con TypeScript y auditorías i18n/tokens aprobados. Se reutilizan unitarias673/673, lint y recorridos no afectados anteriores, sin presentarlos como nuevas ejecuciones. No se repite H03:2/2 optimizados anteriores conservados, causa completa de timeouts históricos NO aislada. Publicación de esta corrección en curso.
+
+Pendientes: Gratis/Premium normal, token válido y final de recuperación, rechazo/demora remotos inducidos y variantes/colecciones extensas de la cobertura anterior. No se declara auditoría completa.
 ## Continuación desde 1806a03 — verificación y correcciones adicionales
 
 La revisión anterior y sus fallos se conservan abajo como antecedentes. Estado actualizado: sesión normal productiva recuperada en el navegador integrado con URL verificable, rol Superadmin; no representa cuentas user Gratis/Premium. Zoom de navegador al200% comprobado en localhost3130: viewport solicitado1440×900, área CSS720×450, DPR2 y CSS zoom1. No se eludió el bloqueo de Chrome ni se usó CSS zoom. Se verificaron Inicio, Mi guía, Mi día, revisión semanal y controles finales de Retos; asistencia previa de María para fijar el zoom. Capturas y medidas en evidence/visual-2026-11-17/followup/zoom200.

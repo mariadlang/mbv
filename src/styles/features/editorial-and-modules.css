@@ -847,9 +847,10 @@ body { font-size: var(--type-body-size); background: var(--color-background); }
 .challenge-form .form-field--wide, .challenge-health-note { grid-column: 1 / -1; }
 .challenge-health-note { margin: 0; border-radius: 10px; background: var(--blush); padding: 12px 14px; color: var(--taupe); font-size: .75rem; line-height: 1.5; }
 .completed-challenges { display: grid; gap: 8px; }
-.completed-challenge-card { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.completed-challenge-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 18px; }
 .completed-challenge-card > span { color: var(--rose-deep); }
-.completed-challenge-card > div { flex: 1; }
+.completed-challenge-card > div { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.completed-challenge-card > .button { margin-left: auto; }
 .completed-challenge-card p { margin: 3px 0 0; color: var(--taupe); font-size: .75rem; }
 .challenges-page--embedded { padding-top: 4px; }
 

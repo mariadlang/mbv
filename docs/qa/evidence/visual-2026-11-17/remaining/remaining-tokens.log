@@ -1,0 +1,3 @@
+$ node scripts/audit-design-tokens.mjs
+Design-token audit passed: 296/298 baseline direct-color occurrences.
+Inherited direct-color debt reduced by 2 occurrences; update the baseline after review.

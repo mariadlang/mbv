@@ -1,0 +1,4 @@
+$ node scripts/audit-i18n.mjs
+i18n: 1983 claves estables ES/EN; 803/803 entradas legacy.
+ADVERTENCIA: 187 claves estables no tienen un uso literal detectable (muestra: brand.positioning, brand.operationalMessage, public.nav.label, public.nav.how, public.nav.trial, public.nav.access, public.cta.authenticated, public.cta.checkout, landing.trial.note, landing.preview.label, landing.preview.logo, landing.preview.direction, landing.preview.directionValue, landing.preview.day, landing.preview.dayValue, landing.how.eyebrow, landing.how.title, landing.how.look.title, landing.how.look.description, landing.how.act.title). Revisa claves dinámicas antes de eliminarlas.
+Auditoría i18n superada: paridad, duplicados y deuda nueva verificados.
