@@ -1,0 +1,20 @@
+▲ Next.js 16.2.6 (webpack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 60s
+  Running TypeScript ...
+Failed to type check.
+
+.next/types/app/api/billing/checkout/route.ts:14:13
+Type error: Type 'OmitWithTag<typeof import("C:/Users/maria/Documents/Codex/2026-10-16/files-pasted-by-the-user-my/work/visual-build-20261117/app/api/billing/checkout/route"), "POST" | "DELETE" | "config" | ... 14 more ... | "OPTIONS", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'createCheckoutHandler' is incompatible with index signature.
+    Type '(overrides?: Partial<CheckoutRouteDependencies>) => (request: NextRequest) => Promise<NextResponse<unknown>>' is not assignable to type 'never'.
+
+  12 |
+  13 | // Check that the entry is a valid entry
+> 14 | checkFields<Diff<{
+     |             ^
+  15 |   GET?: Function
+  16 |   HEAD?: Function
+  17 |   OPTIONS?: Function
+Next.js build worker exited with code: 1 and signal: null

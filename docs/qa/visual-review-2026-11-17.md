@@ -2,7 +2,7 @@
 
 ## Entrega y entorno
 
-Base f24c3e5, verificada Production/Ready en Vercel (4SotArqKQqqi6t6u1FpgxZviyGAd). Destino autorizado: https://mybestversion.life, proyecto existente vercel-upload-mbv. Publicación de esta revisión pendiente al redactar esta primera ficha; el cierre se incorpora aquí.
+Base f24c3e5, verificada Production/Ready en Vercel (4SotArqKQqqi6t6u1FpgxZviyGAd). Destino autorizado: https://mybestversion.life, proyecto existente vercel-upload-mbv. Publicado código funcional **1806a036e176d637d3a762a45682fe1ed657bdd7**, commit y push a main completados. [Vercel B4Yb7vxEZPZF9rBNLEXRGfocZiio](https://vercel.com/mariadelosangelesgtg-4145s-projects/vercel-upload-mbv/B4Yb7vxEZPZF9rBNLEXRGfocZiio), estado success. El17/11 a19:14UTC el dominio respondió200 y sirvió el CSS nuevo de Hábitos, revisión semanal, solicitudes y estados vacíos. GET /api/feedback con credencial sintética E2E fue rechazado401. [Comprobación técnica del dominio](evidence/visual-2026-11-17/production-verification.json). Cierre documental posterior conserva exactamente el mismo código funcional. No se contrató ni configuró ningún servicio.
 
 Revisión práctica mediante navegador integrado, copia aislada en http://127.0.0.1:3130. E2E local, cuenta sintética Premium/user, sin credenciales de Supabase. No equivale a autenticación normal ni prueba de permisos. Origen3119, LIM01, datos personales y almacenamiento existente conservados. No cambios de persistencia, permisos, funciones de negocio, traducciones personales, marca o servicios. next-env.d.ts ya estaba modificado antes de este trabajo y se excluye del commit.
 
@@ -58,7 +58,7 @@ Esta tabla es una lista de cobertura, no una certificación de todas las combina
 | /platform, /admin |No comprobado en esta revisión | No elevar permisos sintéticos |
 | Alias /app/profile, /app/journal, /app/challenges, /app/mood, /app/life-hub/fitness, planificación antigua |Inventariados por código como redirecciones | No nueva pantalla; no todos repetidos visualmente |
 
-El zoom real200% sigue pendiente: Ctrl+igual no modifica innerWidth ni devicePixelRatio del navegador integrado. El intento anterior de Chrome nativo fue detenido por verificación de URL. No se ha sustituido por CSS zoom ni por un viewport menor para afirmar que pasó. La reanudación utilizó el navegador integrado permitido, sin eludir ese bloqueo.
+El zoom real200% sigue pendiente: Ctrl+igual no modifica innerWidth ni devicePixelRatio del navegador integrado. Chrome nativo fue detenido por verificación de URL. María preparó manualmente Chrome al200% durante la reanudación; un único nuevo intento sobre la ventana identificada volvió a ser rechazado por la herramienta. No se obtuvo observación verificable del zoom ni se eludió el bloqueo. No se ha sustituido por CSS zoom ni por un viewport menor para afirmar que pasó. La reanudación utilizó el navegador integrado permitido, sin eludir ese bloqueo.
 
 Matriz Gratis/Premium con autenticación normal y administración no comprobada. La sesión normal productiva previamente disponible es Superadmin, y no representa una cuenta normal de cada plan. No se provocaron caídas remotas ni se activó E2E en producción. Estados de guardado, error/reintento e identidad tienen pruebas controladas anteriores; no se atribuyen a observación visual nueva.
 
@@ -72,10 +72,14 @@ En3130, fecha17/11/2026: tarea «QA visual: revisar el documento de prueba…»,
 - Completa candidata con dos trabajadores:673/673,109archivos,312.84s. Control de concurrencia, no cambio de pruebas. No demuestra resuelta la intermitencia histórica.
 - Base archivada f24c3e5 con dos trabajadores:672/673. Fallo SQL por CRLF de git archive frente a búsqueda literal LF; no cambios SQL. SavePendingFields pasó en esa ejecución.
 - Flujo E2E principal:6/6, escritorio/móvil; onboarding, tarea/hábito y planificación/módulos. Datos desechables en contextos separados.
-- E2E adicional: resultados finales por incorporar; timeout180s del caso de preparación conservado con trace. No se declara verde la suite completa histórica.
-- Lint completo: sin errores, un aviso previo useAccount. i18n y tokens aprobados; contraste aprobado. No nuevos textos. Build final normal y comparación E2E base por cerrar en esta ficha.
+- E2E adicional:8/10,11.7min. Navegación de Mi guía, biblioteca de comidas/entrenamientos e Inicio pasan en escritorio y móvil. Preparación H03 agota180s en ambos tamaños. Comparación separada sobre base f24c3e5 sin correcciones, escritorio:0/1, también timeout180s. Esto demuestra que la limitación existe sin este diff, no su causa ni que cada timeout sea idéntico. Traces y capturas conservados; no se aumentan límites ni se omiten casos. No se declara verde la suite completa histórica.
+- Lint completo: sin errores, un aviso previo useAccount. i18n y tokens aprobados; contraste aprobado. No nuevos textos. Typecheck explícito (next typegen y tsc --noEmit) aprobado. Build final normal aprobado, build local wy9ayqisdH1-s49Wx2W63. Logs originales incluidos en evidence/visual-2026-11-17/logs.
 - Primer build Webpack compiló pero rechazó un export previo de ruta API en su generador de tipos. El build normal Turbopack de la copia enlazada primero rechazó node_modules fuera de raíz. Se ajustó exclusivamente turbopack.root en la copia aislada para incluir ambas carpetas, sin cambiar configuración del repositorio. Build normal posterior pasó con TypeScript. Todos los logs fallidos se conservan.
 
 ## Cómo repetir desde la interfaz
 
 Usar primero3130 con registros QA conservados. Abrir las rutas de la tabla de defectos, fijar el viewport indicado, comparar captura anterior/posterior, desplazar hasta el final y abrir/cerrar cada modal. No enviar PQR, no comprar, no borrar ni importar datos. Repetir Mi día/Inicio/Guía tras navegar y recargar; comprobar marca y etiquetas. En producción usar sólo sesión normal existente y lectura, E2E desactivado. Registrar rol y no confundir ausencia de permiso con defecto visual. Zoom200% requiere navegador que exponga y confirme el zoom real.
+
+## Límites de la comprobación productiva posterior
+
+La pestaña normal del dominio llegó a «Comprobando tu acceso / Preparando tu espacio…» antes del bloqueo de la herramienta. Esto NO demuestra que la transición terminara ni permite acreditar los recorridos corregidos con sesión normal en esta publicación. La comprobación del despliegue mediante estado Vercel, HTTP y CSS servido se registra por separado y no sustituye esa revisión visual. H06 y los fallos históricos siguen abiertos.

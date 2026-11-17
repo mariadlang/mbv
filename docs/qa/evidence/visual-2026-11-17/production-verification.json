@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-17T19:14:26.067Z",
+  "url": "https://mybestversion.life/app/today",
+  "http": 200,
+  "cssFiles": [
+    "/_next/static/chunks/0a1~zr3kmxjyg.css",
+    "/_next/static/chunks/0dlleh7~8jn16.css"
+  ],
+  "checks": {
+    "habitPersonalize": true,
+    "weeklyReviewPadding": true,
+    "privacyRequestPadding": true,
+    "emptyMovementExclusion": true
+  },
+  "e2eTestTokenHttp": 401
+}

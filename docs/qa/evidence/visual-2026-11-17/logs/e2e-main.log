@@ -1,0 +1,15 @@
+
+Running 6 tests using 1 worker
+
+(node:20428) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [desktop] › e2e\app.spec.ts:229:1 › onboarding creates a real first action and activation journey (13.8s)
+  ok 2 [desktop] › e2e\app.spec.ts:319:1 › creates and completes a task, then creates and records a habit (25.5s)
+  ok 3 [desktop] › e2e\app.spec.ts:592:1 › cascade planning and optional life modules persist locally (40.4s)
+(node:18828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 4 [mobile] › e2e\app.spec.ts:229:1 › onboarding creates a real first action and activation journey (15.1s)
+  ok 5 [mobile] › e2e\app.spec.ts:319:1 › creates and completes a task, then creates and records a habit (19.4s)
+  ok 6 [mobile] › e2e\app.spec.ts:592:1 › cascade planning and optional life modules persist locally (41.8s)
+
+  6 passed (2.7m)

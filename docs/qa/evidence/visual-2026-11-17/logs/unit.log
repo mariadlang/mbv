@@ -1,0 +1,43 @@
+
+ RUN  v4.1.10 C:/Users/maria/Documents/Codex/2026-10-16/files-pasted-by-the-user-my/work/visual-20261117
+
+ ❯ src/features/preparation/SavePendingFields.test.tsx (12 tests | 3 failed) 34360ms
+     × locks the month-map editor and preserves its draft after a failed save 5179ms
+     × locks every 'meal' field and restores editing on failure 5164ms
+     × locks every 'settings' field and restores editing on failure 5222ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/preparation/SavePendingFields.test.tsx > fields cannot change underneath a pending save > locks the month-map editor and preserves its draft after a failed save
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/features/preparation/SavePendingFields.test.tsx:50:47
+     48|
+     49| describe("fields cannot change underneath a pending save", () => {
+     50|   it.each(["month-list", "month-map"] as const)("locks the %s editor a…
+       |                                               ^
+     51|     const user = tracedUser();
+     52|     const pending = pendingSave();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/features/preparation/SavePendingFields.test.tsx > fields cannot change underneath a pending save > locks every 'meal' field and restores editing on failure
+ FAIL  src/features/preparation/SavePendingFields.test.tsx > fields cannot change underneath a pending save > locks every 'settings' field and restores editing on failure
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/features/preparation/SavePendingFields.test.tsx:169:4
+    167|     { kind: "workout", path: "training", open: "Añadir entrenamiento",…
+    168|     { kind: "settings", path: "nutrition", open: "Configurar", field: …
+    169|   ])("locks every $kind field and restores editing on failure", async …
+       |    ^
+    170|     const user = tracedUser();
+    171|     const pending = pendingSave();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed | 108 passed (109)
+      Tests  3 failed | 670 passed (673)
+   Start at  13:37:27
+   Duration  150.00s (transform 24.85s, setup 0ms, import 984.02s, tests 154.49s, environment 333.35s)
+

@@ -1,8 +1,8 @@
 # Estado actual de My Best Version
 
-## 2026-11-17 — correcciones visuales verificadas; publicación en curso
+## 2026-11-17 — correcciones visuales publicadas; cobertura parcial documentada
 
-Revisión retomada sin reiniciar: marca y etiquetas laterales, margen inferior móvil con FAB, estados vacíos de Finanzas, márgenes de tarjetas y diálogos, preparación semanal en tableta, encabezados y ayuda de Hábitos. Sólo presentación, datos y funciones conservados. [Ficha única: cobertura real, antes/después, pruebas y pendientes](../qa/visual-review-2026-11-17.md). Unitarias673/673 en corrida con dos trabajadores; principal E2E6/6; adicional8/10 (dos timeouts180s de preparación, comparación con base en curso). Build normal y tipos pasan en copia aislada. No se declara toda la app revisada: zoom real200%, roles normales Gratis/Premium, estados excepcionales y varias pantallas internas siguen pendientes. Sin cambios de Supabase ni servicios.
+Revisión retomada sin reiniciar: marca y etiquetas laterales, margen inferior móvil con FAB, estados vacíos de Finanzas, márgenes de tarjetas y diálogos, preparación semanal en tableta, encabezados y ayuda de Hábitos. Sólo presentación, datos y funciones conservados. [Ficha única: cobertura real, antes/después, pruebas y pendientes](../qa/visual-review-2026-11-17.md). Unitarias673/673 en corrida con dos trabajadores; principal E2E6/6; adicional8/10 (dos timeouts180s de preparación; el caso también falla por180s sobre base sin cambios). Build normal y tipos pasan en copia aislada. No se declara toda la app revisada: zoom real200%, roles normales Gratis/Premium, estados excepcionales y varias pantallas internas siguen pendientes. Publicado **1806a03** en https://mybestversion.life, Vercel B4Yb7vxEZPZF9rBNLEXRGfocZiio success; HTTP200 y CSS nuevo comprobados, E2E401. Typecheck explícito aprobado. Chrome volvió a bloquear el control por URL incluso tras preparación manual200%; la pestaña normal sólo llegó a carga antes del bloqueo. No se acredita recorrido productivo posterior ni zoom. Sin cambios de Supabase ni servicios.
 
 
 ## 2026-11-16 — Mi año, Mi mes y Mi semana dentro de Mi guía — publicados

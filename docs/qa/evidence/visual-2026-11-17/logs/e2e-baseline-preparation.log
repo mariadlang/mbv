@@ -1,0 +1,62 @@
+
+Running 1 test using 1 worker
+
+(node:7876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads (3.2m)
+
+
+  1) [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 
+
+    Test timeout of 180000ms exceeded.
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.prep-progress small')
+    Expected: visible
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for locator('.prep-progress small')
+      - Test timeout of 180000ms exceeded.
+
+
+      66 |       await page.goto(surface === "home" ? "/app/dashboard" : `/app/guide?week=${week}`);
+      67 |       const count = page.locator(surface === "home" ? ".home-ready-count" : ".prep-progress small");
+    > 68 |       await expect(count).toBeVisible();
+         |                           ^
+      69 |       await expect(count).toHaveText(expected);
+      70 |       await page.reload();
+      71 |       await expect(count).toBeVisible();
+        at both (C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-baseline\e2e\preparation-consistency.spec.ts:68:27)
+        at C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-baseline\e2e\preparation-consistency.spec.ts:147:3
+
+    attachment #1: excluded-home (image/png) ───────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\excluded-home-b12ad83a00ea85e973fc8e7fa59be4ec863d4214.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: excluded-guide (image/png) ──────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\excluded-guide-2c6925624f04f302fd4d4623c2cd83a37a9ed8c9.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: allExcluded-home (image/png) ────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\allExcluded-home-3b6a29e22e6c28bdb30b7a9c1a8b2594c7143ab3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: allExcluded-guide (image/png) ───────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\allExcluded-guide-86c999f0f26cee4d3579463d561d720028b37278.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\outputs\MBV-Visual-2026-11-17\e2e-baseline-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 

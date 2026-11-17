@@ -1,0 +1,118 @@
+
+Running 10 tests using 1 worker
+
+(node:20596) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [desktop] › e2e\guide-navigation.spec.ts:13:1 › Mi guia owns annual monthly and weekly navigation without changing saved plans (34.6s)
+  ok  2 [desktop] › e2e\health-library.spec.ts:6:1 › real meal library preserves detailed monthly base, weekly exception and guarded editor (27.6s)
+  ok  3 [desktop] › e2e\health-library.spec.ts:49:1 › detailed workout reuse keeps sets, target identity and source performed history (29.3s)
+  ok  4 [desktop] › e2e\home-overview.spec.ts:27:1 › Inicio five persistent preparations, actual summaries, responsive composition and links (56.2s)
+  x   5 [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads (3.2m)
+(node:24916) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  6 [mobile] › e2e\guide-navigation.spec.ts:13:1 › Mi guia owns annual monthly and weekly navigation without changing saved plans (37.5s)
+  ok  7 [mobile] › e2e\health-library.spec.ts:6:1 › real meal library preserves detailed monthly base, weekly exception and guarded editor (26.1s)
+  ok  8 [mobile] › e2e\health-library.spec.ts:49:1 › detailed workout reuse keeps sets, target identity and source performed history (25.1s)
+  ok  9 [mobile] › e2e\home-overview.spec.ts:27:1 › Inicio five persistent preparations, actual summaries, responsive composition and links (58.6s)
+  x  10 [mobile] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads (3.2m)
+
+
+  1) [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 
+
+    Test timeout of 180000ms exceeded.
+
+    attachment #1: excluded-home (image/png) ───────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\excluded-home-49a5b9f75e604e31667a9e512d6c822512c7cc5d.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: excluded-guide (image/png) ──────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\excluded-guide-b1735375626277a0afd2a3d6a4323fb42a3deb3b.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: allExcluded-home (image/png) ────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\allExcluded-home-34750915c8d5d061e3bd29e48f2fbad8a42a8efd.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: allExcluded-guide (image/png) ───────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\allExcluded-guide-3410f0c7acb90639d2bbfc1135794b3c5789ef1e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: noneSelected-home (image/png) ───────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\noneSelected-home-ab8b9cc26e2e0bddf7ab7e194995ebdf83879aa3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: noneSelected-guide (image/png) ──────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\attachments\noneSelected-guide-7c5c77389cc29230fb03b2a23b3449f01399f9b2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\error-context.md
+
+    attachment #9: trace (application/zip) ─────────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-desktop\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [mobile] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 
+
+    Error: Test timeout of 180000ms exceeded
+
+      46 | async function capture(page: Page, info: TestInfo, name: string) {
+      47 |   await page.evaluate(() => document.fonts.ready);
+    > 48 |   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+         |                                                                                                        ^
+      49 |   const card = page.locator(".prep-checklist");
+      50 |   await card.scrollIntoViewIfNeeded();
+      51 |   const path = info.outputPath(`${name}-${page.viewportSize()!.width}.png`);
+        at capture (C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-20261117\e2e\preparation-consistency.spec.ts:48:104)
+        at both (C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-20261117\e2e\preparation-consistency.spec.ts:80:9)
+        at C:\Users\maria\Documents\Codex\2026-10-16\files-pasted-by-the-user-my\work\visual-20261117\e2e\preparation-consistency.spec.ts:157:3
+
+    attachment #1: excluded-home (image/png) ───────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\excluded-home-ed79497c45de071e6ba298197641f8979bb94df6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: excluded-home-narrow (image/png) ────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\excluded-home-narrow-040d206c8ed1683956ed089150a0ea452bfd8d8a.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: excluded-guide (image/png) ──────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\excluded-guide-f903c7ba8b5fa2c551ae3cd72cc2446d21208084.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: excluded-guide-narrow (image/png) ───────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\excluded-guide-narrow-6196dcc2ea2684bb05778ca6682a317ebc89e453.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: allExcluded-home (image/png) ────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\allExcluded-home-d8695f0457911c4ad995f59c2679ee8c09e64fa9.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: allExcluded-home-narrow (image/png) ─────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\allExcluded-home-narrow-4f289fc5bd137748a52d2ee0ae03cf2a331c4199.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: allExcluded-guide (image/png) ───────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\allExcluded-guide-91324062ef95d7535df2af822942ab2cce52a84e.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: allExcluded-guide-narrow (image/png) ────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\attachments\allExcluded-guide-narrow-4a085d40f1de9ff60c9f86c86456e3d567a0201f.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\error-context.md
+
+    attachment #10: trace (application/zip) ────────────────────────────────────────────────────────
+    ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\trace.zip
+    Usage:
+
+        npx playwright show-trace ..\..\outputs\MBV-Visual-2026-11-17\e2e-results\preparation-consistency-H0-78a78-eferences-weeks-and-reloads-mobile\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [desktop] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 
+    [mobile] › e2e\preparation-consistency.spec.ts:57:1 › H03 applicable preparation is identical in Inicio and Mi guía across preferences, weeks and reloads 
+  8 passed (11.7m)

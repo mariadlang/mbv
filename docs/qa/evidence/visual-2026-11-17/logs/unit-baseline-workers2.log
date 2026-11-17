@@ -1,0 +1,26 @@
+
+ RUN  v4.1.10 C:/Users/maria/Documents/Codex/2026-10-16/files-pasted-by-the-user-my/work/visual-baseline
+
+ ❯ tests/launch-access-sql.test.ts (7 tests | 1 failed) 21ms
+     × serializes capacity and limits by client without an email timing bucket 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/launch-access-sql.test.ts > launch access migration safety > serializes capacity and limits by client without an email timing bucket
+AssertionError: expected 10006 to be less than -1
+ ❯ tests/launch-access-sql.test.ts:52:79
+     50|     expect(migration).toContain("accepted_requests=c.accepted_requests…
+     51|     expect(migration).toContain("client_fingerprint text not null");
+     52|     expect(migration.indexOf("insert into public.launch_access_rate_li…
+       |                                                                               ^
+     53|       migration.indexOf("from public.launch_access_campaigns c\n  wher…
+     54|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 108 passed (109)
+      Tests  1 failed | 672 passed (673)
+   Start at  13:41:14
+   Duration  330.47s (transform 9.40s, setup 0ms, import 401.92s, tests 69.81s, environment 123.48s)
+
