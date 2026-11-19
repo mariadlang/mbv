@@ -220,3 +220,12 @@
   .energy-buttons { flex-wrap: wrap; }
   .energy-buttons button { width: auto; min-width: 34px; flex: 1 1 38px; }
 }
+
+/* Direct creation shares the existing list editor. */
+.brain-legacy-list > header { justify-content: space-between; flex-wrap: wrap; }
+.brain-legacy-list > header > div { min-width: 0; }
+.brain-legacy-list > header > .button { flex-shrink: 0; }
+.brain-item-editor label { min-width: 0; }
+.brain-item-editor label input, .brain-item-editor label select { width: 100%; min-width: 0; color: var(--color-text-primary); font: inherit; }
+.brain-item-editor > div:last-child { flex-wrap: wrap; }
+.brain-item-editor > div:last-child button { min-height: 44px; }

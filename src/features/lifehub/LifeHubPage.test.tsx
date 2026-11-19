@@ -7,11 +7,13 @@ import { UnsavedDraftProvider } from "@/src/components/navigation/UnsavedDraftPr
 import { createEmptySnapshot } from "@/src/domain/planner";
 import type { PlannerController } from "@/src/hooks/usePlanner";
 import type { UserAccess } from "@/src/domain/access";
+import { useUiStore } from "@/src/stores/useUiStore";
+import type { BrainDumpType } from "@/src/domain/planner";
 import { LifeHubPage } from "./LifeHubPage";
 
 const calendar = vi.hoisted(() => ({ updateEvent: vi.fn(), createEvent: vi.fn(), snapshot: { calendars: [] }, events: [], connected: false, saving: false, error: null }));
 vi.mock("@/src/hooks/useCalendarIntegration", () => ({ useCalendarIntegration: () => calendar }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); useUiStore.setState({ language: "es" }); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 const access = { accessStatus: "free", role: "user" } as UserAccess;
 function setup(path: string) {
   const snapshot = createEmptySnapshot();
@@ -22,14 +24,18 @@ function setup(path: string) {
   const updateRoutine = vi.fn().mockResolvedValue(snapshot);
   const createRoutine = vi.fn().mockResolvedValue(snapshot);
   const updateTask = vi.fn().mockResolvedValue(snapshot);
+  const createBrainDumpItem = vi.fn().mockImplementation(async (input: { title: string; type: BrainDumpType }) => {
+    snapshot.brainDumpItems.push({ ...input, id: "new-" + snapshot.brainDumpItems.length, priority: "medium", status: "idea", createdAt: "2026-11-19", updatedAt: "2026-11-19" });
+    return snapshot;
+  });
   const updateBrainDumpItem = vi.fn().mockResolvedValue(snapshot);
   const scheduleBrainDumpItem = vi.fn().mockResolvedValue(snapshot);
   const createVisionBoardItem = vi.fn().mockResolvedValue(snapshot);
   const onQuickCapture = vi.fn();
-  const planner = { snapshot, updateRoutine, createRoutine, updateTask, updateBrainDumpItem, scheduleBrainDumpItem, createVisionBoardItem } as unknown as PlannerController;
+  const planner = { snapshot, updateRoutine, createRoutine, updateTask, createBrainDumpItem, updateBrainDumpItem, scheduleBrainDumpItem, createVisionBoardItem } as unknown as PlannerController;
   const router = createMemoryRouter([{ path: "/app/life-hub", element: <UnsavedDraftProvider><LifeHubPage planner={planner} access={access} onQuickCapture={onQuickCapture} /></UnsavedDraftProvider> }], { initialEntries: ["/app/life-hub", path], initialIndex: 1 });
   const view = render(<I18nProvider><RouterProvider router={router} /></I18nProvider>);
-  return { ...view, updateRoutine, createRoutine, updateTask, updateBrainDumpItem, scheduleBrainDumpItem, createVisionBoardItem, onQuickCapture, router };
+  return { ...view, snapshot, updateRoutine, createRoutine, updateTask, createBrainDumpItem, updateBrainDumpItem, scheduleBrainDumpItem, createVisionBoardItem, onQuickCapture, router };
 }
 
 describe("LifeHub saved editors", () => {
@@ -260,5 +266,85 @@ describe("LifeHub saved editors", () => {
     fireEvent.click(view.getByRole("button", { name: "Descartar cambios" }));
     await waitFor(() => expect(view.onQuickCapture).toHaveBeenCalledWith({ source: "inbox" }));
     expect(view.updateTask).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("direct category creation", () => {
+  it.each([
+    ["Deseos", "wishlist"], ["Cosas que quiero hacer", "want_to_do"], ["Debo hacer", "must_do"],
+    ["Compras por realizar", "shopping"], ["Quiero aprender", "want_to_learn"], ["Quiero leer", "want_to_read"], ["Series, TV y podcasts", "watch_list"],
+  ])("creates directly in %s without a date, keeps existing records and appears in All", async (label, type) => {
+    const view = setup("/app/life-hub?tab=lists");
+    const original = structuredClone(view.snapshot.brainDumpItems);
+    fireEvent.click(view.getByRole("button", { name: label }));
+    fireEvent.click(view.getByRole("button", { name: "Añadir" }));
+    expect((view.getByLabelText("Categoría") as unknown as HTMLSelectElement).value).toBe(type);
+    const name = view.getByLabelText("Nombre") as HTMLInputElement;
+    expect(name.required).toBe(true);
+    expect(name.closest("form")!.querySelector('input[type="date"]')).toBeNull();
+    fireEvent.change(name, { target: { value: "Prueba " + label } });
+    fireEvent.click(view.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(view.queryByLabelText("Nombre")).toBeNull());
+    expect(view.createBrainDumpItem).toHaveBeenCalledExactlyOnceWith({ title: "Prueba " + label, type });
+    expect(view.getByRole("status").textContent).toBe("Prueba " + label + " se añadió a " + label + ".");
+    expect(view.getByText("Prueba " + label, { exact: true })).toBeTruthy();
+    expect(view.getByRole("button", { name: "Añadir" })).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Todas" }));
+    expect(view.getAllByText("Prueba " + label, { exact: true })).toHaveLength(1);
+    for (const item of original) expect(view.snapshot.brainDumpItems.find(row => row.id === item.id)).toEqual(item);
+    expect(view.snapshot.brainDumpItems.at(-1)?.tentativeDate).toBeUndefined();
+  });
+
+  it("blocks duplicate submit during a pending save, retains a rejected draft, and retries once", async () => {
+    const view = setup("/app/life-hub?tab=lists");
+    let reject!: (error: Error) => void;
+    view.createBrainDumpItem.mockImplementationOnce(() => new Promise((_resolve, rejectSave) => { reject = rejectSave; }));
+    fireEvent.click(view.getByRole("button", { name: "Añadir" }));
+    const name = view.getByLabelText("Nombre") as HTMLInputElement;
+    fireEvent.change(name, { target: { value: "Borrador recuperable" } });
+    fireEvent.change(view.getByLabelText("Categoría"), { target: { value: "shopping" } });
+    const form = name.closest("form")!;
+    fireEvent.submit(form); fireEvent.submit(form);
+    await waitFor(() => expect(view.createBrainDumpItem).toHaveBeenCalledTimes(1));
+    expect([...form.querySelectorAll("input, select, button")].every(c => c.matches(":disabled"))).toBe(true);
+    expect(view.getByRole("button", { name: "Guardando…" })).toBeTruthy();
+    expect(view.queryByRole("status")).toBeNull();
+    await act(async () => reject(new Error("synthetic write failure")));
+    expect(name.value).toBe("Borrador recuperable"); expect(name.disabled).toBe(false);
+    expect(view.getByRole("alert").textContent).toContain("Conservamos");
+    expect(view.queryByRole("status")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(view.queryByLabelText("Nombre")).toBeNull());
+    expect(view.createBrainDumpItem).toHaveBeenCalledTimes(2);
+    expect(view.snapshot.brainDumpItems.filter(item => item.title === "Borrador recuperable")).toHaveLength(1);
+    expect(view.snapshot.brainDumpItems.at(-1)?.type).toBe("shopping");
+  });
+
+  it("cancels without creating and keeps quick capture unclassified", async () => {
+    const view = setup("/app/life-hub?tab=lists");
+    fireEvent.click(view.getByRole("button", { name: "Añadir" }));
+    fireEvent.click(view.getByRole("button", { name: "Cancelar" }));
+    expect(view.queryByLabelText("Nombre")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Añadir" }));
+    fireEvent.change(view.getByLabelText("Nombre"), { target: { value: "No guardar" } });
+    fireEvent.click(view.getByRole("button", { name: "Cancelar" }));
+    fireEvent.click(view.getByRole("button", { name: "Descartar cambios" }));
+    await waitFor(() => expect(view.queryByLabelText("Nombre")).toBeNull());
+    expect(view.createBrainDumpItem).not.toHaveBeenCalled();
+    fireEvent.click(view.getByRole("button", { name: "Captura rápida" }));
+    expect(view.onQuickCapture).toHaveBeenCalledWith({ source: "inbox" });
+  });
+
+  it("uses English creation labels and announces successful persistence", async () => {
+    useUiStore.setState({ language: "en" });
+    const view = setup("/app/life-hub?tab=lists");
+    fireEvent.click(view.getByRole("button", { name: "Add" }));
+    fireEvent.change(view.getByLabelText("Name"), { target: { value: "Synthetic book" } });
+    fireEvent.change(view.getByLabelText("Category"), { target: { value: "want_to_read" } });
+    fireEvent.click(view.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(view.queryByLabelText("Name")).toBeNull());
+    expect(view.getByRole("status").textContent).toContain("Synthetic book was added to");
+    expect(view.createBrainDumpItem).toHaveBeenCalledExactlyOnceWith({ title: "Synthetic book", type: "want_to_read" });
   });
 });

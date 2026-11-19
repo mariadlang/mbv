@@ -1,5 +1,10 @@
 # Historial verificable de My Best Version
 
+## 2026-11-19 — creación directa en Mis listas — preparada para publicar
+
+Base ed8d342; rama feat/list-category-create-2026-11-19 en copia aislada. Se añade creación en las siete categorías y Todas reutilizando el editor, usePlanner y createBrainDumpItem; Captura rápida conserva su comportamiento. Sin migraciones ni cambios de permisos. Suite completa previa al ajuste móvil 683/683; regresión final LifeHub 29/29, tipos/lint/auditorías y E2E final 8/8 con cero reintentos. Se centra el nuevo editor para evitar que la navegación móvil cubra sus acciones. Publicación autorizada, pendiente de comprobación remota. Ficha: [creación directa](../qa/list-category-creation-2026-11-19.md).
+
+
 ## 2026-11-17 — revisión visual — correcciones publicadas, cobertura parcial
 
 Continuación de pendientes: no existe cuenta Premium de prueba (confirmado por María); no se elevan permisos. Gratis/recuperación bloqueados: comando de arranque de la copia normal actual3141 rechazado por política antes de ejecutarse, sin eludirlo;3119 inaccesible,3130 E2E no sustituye Auth normal. Sin correos ni cambio de contraseñas. Nuevo defecto visual demostrado en títulos largos de Retos pausados/cerrados: fila flexible evita compresión por Retomar. E2E pertinente2/2, build normal8qRZIvrxQhDgVkMScv_W3 y auditorías pasan; validaciones no afectadas reutilizadas, H03 no repetido ni causa histórica completamente aislada. Corrección publicada como e46b81d en https://mybestversion.life, Vercel BK2Paz4A6nFYQ19h3pvxaXXR3Ehf success; dominio200, CSS nuevo de tarjetas cerradas/pausadas comprobado y token E2E rechazado401. No hay nueva observación visual de esos estados con cuenta normal en producción: sólo registro sintético local, sin crear/modificar datos personales productivos. Ficha única actualizada, evidencias anteriores intactas.
