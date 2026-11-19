@@ -1,9 +1,8 @@
 # Historial verificable de My Best Version
 
-## 2026-11-19 — creación directa en Mis listas — preparada para publicar
+## 2026-11-19 — creación directa en Mis listas — publicada y comprobada
 
-Base ed8d342; rama feat/list-category-create-2026-11-19 en copia aislada. Se añade creación en las siete categorías y Todas reutilizando el editor, usePlanner y createBrainDumpItem; Captura rápida conserva su comportamiento. Sin migraciones ni cambios de permisos. Suite completa previa al ajuste móvil 683/683; regresión final LifeHub 29/29, tipos/lint/auditorías y E2E final 8/8 con cero reintentos. Se centra el nuevo editor para evitar que la navegación móvil cubra sus acciones. Publicación autorizada, pendiente de comprobación remota. Ficha: [creación directa](../qa/list-category-creation-2026-11-19.md).
-
+Código funcional e43d418424ca82827c80b63252975c304b993aef publicado en https://mybestversion.life/app/life-hub; Vercel HMwPchJkWE6E3Z8ALVUeRceqVR7S success. CI 44613091536 sobre ese commit: lint, tipos, 683/683 unitarias (109 archivos) y build aprobados; E2E remoto omitido por la regla existente de main, no se presenta como recorrido. E2E local final separado 8/8, cero omisiones/reintentos. Sesión normal productiva Superadmin: siete categorías preseleccionadas, creación desde Todas, cancelación, ocho registros sintéticos/IDs distintos, mismos datos tras recarga y registros anteriores/perfil intactos mediante exportaciones UI. Móvil 390×844 emulado, controles libres de superposición. Sin cambios de permisos, datos personales, Supabase ni servicios. Ficha: [creación directa](../qa/list-category-creation-2026-11-19.md).
 
 ## 2026-11-17 — revisión visual — correcciones publicadas, cobertura parcial
 
